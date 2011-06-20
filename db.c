@@ -39,6 +39,12 @@ int db_write(char* key,char* value)
 	return (1);
 }
 
+int db_bulk_write(char* block)
+{
+	
+	return (1);
+}
+
 char* db_read(char* key)
 {
 	return NULL;
