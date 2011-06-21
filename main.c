@@ -1,7 +1,7 @@
 #include "ivm.h"
 #include <stdio.h>
 #include <time.h>
-
+#define LOOP 100
 
 int main()
 {
@@ -13,7 +13,7 @@ int main()
 
 	time_t start,end;
 	start=clock();
-	for(i=0;i<100000;i++)
+	for(i=0;i<LOOP;i++)
 	{
 		sprintf(key,"%d",rand());
 		sprintf(value,"%d",i);
@@ -22,7 +22,7 @@ int main()
 
 	end=clock();
 	double cost=(double)(end-start);
-	printf("cost:%lf\n",cost);
+	printf("%d,cost:%lf\n",LOOP,cost);
 	
 	return (1);
 }

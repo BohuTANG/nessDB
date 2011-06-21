@@ -2,7 +2,10 @@
 #include "db.h"
 #include <stdlib.h>
 #include <string.h>
+#define BULK_SIZE 4096
 
+size_t _index=0,_offset=0;
+char _buffer[BULK_SIZE+1]={0};//bulk bufer
 
 static pointer_t* _pointers;
 
@@ -29,8 +32,15 @@ int ivm_put(char* key,char* value)
 				return (-1);
 			}
 
-			HASH_ADD_KEYPTR(hh,_pointers,strdup(key),strlen(key),p);
-			db_write(key,value);
+			size_t k_len=strlen(key);
+			size_t v_len=strlen(value);
+			size_t offset=sizeof(int)+k_len+v_len;
+			size_t idx= db_write(key,k_len,value,v_len,offset);
+			p->index=idx;
+			p->offset=offset;
+			//add table
+			HASH_ADD_KEYPTR(hh,_pointers,key,k_len,p);
+			printf("ivm-put\n");
 		}
 
 	return (1);
@@ -38,5 +48,6 @@ int ivm_put(char* key,char* value)
 
 int ivm_bulk_put(char* key,char* value)
 {
+	
 	return (1);
 }
