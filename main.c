@@ -1,4 +1,4 @@
-#include "ivm.h"
+#include "vm.h"
 #include <stdio.h>
 #include <time.h>
 #define LOOP 100
@@ -9,7 +9,7 @@ int main()
 	char value[256]={0};
 	int i;
 
-        ivm_init();
+        vm_init();
 
 	time_t start,end;
 	start=clock();
@@ -17,7 +17,7 @@ int main()
 	{
 		sprintf(key,"%d",rand());
 		sprintf(value,"%d",i);
-		ivm_put(key,value);
+		vm_put(key,value);
 	}
 
 	end=clock();

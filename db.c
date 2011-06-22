@@ -1,11 +1,11 @@
-#include "db.h"
 #include <stdlib.h>
-
+#include "db.h"
 
 static db_t* _db;
-static size_t _idx=0;
+static unsigned int _idx=0;
 
-void db_init(const char* dbname)
+void 
+db_init(const char* dbname)
 {
 	FILE* fread,*fwrite;
 	fread=fopen(dbname,"rb");
@@ -30,24 +30,27 @@ void db_init(const char* dbname)
 }
 
 
-size_t  db_write(char* key,size_t k_len,char* value,size_t v_len,size_t offset)
+unsigned int
+db_write(char* key,unsigned int k_len,char* value,unsigned int v_len,unsigned int offset)
 {
 	fwrite(&k_len,k_len,sizeof(int),_db->db_write_ptr);
 	fwrite(&v_len,v_len,sizeof(int),_db->db_write_ptr);
 	fwrite(key,k_len,1,_db->db_write_ptr);
 	fwrite(value,v_len,1,_db->db_write_ptr);
-	size_t tmp=_idx;
+	unsigned int tmp=_idx;
 	_idx+=offset;
 	return tmp;
 }
 
-int db_bulk_write(char* block)
+void 
+db_bulk_write(char* block,unsigned int b_len)
 {
-	
-	return (1);
+	fwrite(block,b_len,1,_db->db_write_ptr);
+	_idx+=b_len;
 }
 
-char* db_read(char* key)
+char* 
+db_read(char* key)
 {
 	return NULL;
 }
