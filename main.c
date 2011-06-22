@@ -1,7 +1,7 @@
 #include "vm.h"
 #include <stdio.h>
 #include <time.h>
-#define LOOP 100000
+#define LOOP 10
 
 int main()
 {
@@ -20,6 +20,7 @@ int main()
 		vm_bulk_put(key,value);
 	}
 
+	vm_bulk_flush();
 	end=clock();
 	double cost=(double)(end-start);
 	printf("%d,cost:%lf\n",LOOP,cost);

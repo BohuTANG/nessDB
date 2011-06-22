@@ -88,11 +88,33 @@ vm_bulk_put(char* key,char* value)
 	if(_bufsize>BULK_SIZE)
 	{
 		int b_len=io_len(_io);
-		char* block=io_detach(_io);
-		db_bulk_write(block,b_len);
-		_bufsize=0;
-		INFO("bulk write...");
+		if(b_len>0)
+		{
+			char* block=io_detach(_io);
+			db_bulk_write(block,b_len);
+			_bufsize=0;
+			if(block)
+				free(block);
+			INFO("bulk write...");
+
+		}
 	}
 
 	return (1);
+}
+
+void
+vm_bulk_flush()
+{
+	int b_len=io_len(_io);
+	if(b_len>0)
+	{
+		char* block=io_detach(_io);
+		db_bulk_write(block,b_len);
+		_bufsize=0;
+		if(block)
+			free(block);
+		INFO("bulk flush...");
+	}
+
 }
