@@ -2,7 +2,7 @@
    io buffer 
    overred@gmail.com
  */
-#include "iobuffer.h"
+#include "io.h"
 #include <stdlib.h>
 static unsigned int
 next_power(unsigned int x)

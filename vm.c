@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
+#include "debug.h"
 #include "vm.h"
 #include "db.h"
-#include "iobuffer.h"
+#include "io.h"
 
 #define BULK_SIZE (4096*10)
 
@@ -33,7 +34,7 @@ vm_put(char* key,char* value)
 			pointer_t* p=(pointer_t*)malloc(sizeof(pointer_t));
 			if(p==NULL)
 			{
-				printf("mem leak!\n");
+				INFO("mem leak!\n");
 				return (-1);
 			}
 
@@ -45,7 +46,7 @@ vm_put(char* key,char* value)
 			p->offset=offset;
 			//add table
 			HASH_ADD_KEYPTR(hh,_pointers,key,k_len,p);
-			printf("vm-put\n");
+			INFO("vm-put\n");
 		}
 
 	return (1);
@@ -60,7 +61,7 @@ vm_putcache(char* key,unsigned int k_len,char* value,unsigned int v_len,int offs
 	{
 		pointer_t* p=(pointer_t*)malloc(sizeof(pointer_t));
 		if(p==NULL)
-			printf("mem leak!\n");
+			INFO("mem leak!\n");
 		p->index=_dbidx;
 		p->offset=offset;
 		_dbidx+=offset;
@@ -90,6 +91,7 @@ vm_bulk_put(char* key,char* value)
 		char* block=io_detach(_io);
 		db_bulk_write(block,b_len);
 		_bufsize=0;
+		INFO("bulk write...");
 	}
 
 	return (1);

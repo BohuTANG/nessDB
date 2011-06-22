@@ -1,7 +1,7 @@
 #include "vm.h"
 #include <stdio.h>
 #include <time.h>
-#define LOOP 100
+#define LOOP 100000
 
 int main()
 {
@@ -17,7 +17,7 @@ int main()
 	{
 		sprintf(key,"%d",rand());
 		sprintf(value,"%d",i);
-		vm_put(key,value);
+		vm_bulk_put(key,value);
 	}
 
 	end=clock();
