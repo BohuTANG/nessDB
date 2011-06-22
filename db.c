@@ -50,7 +50,7 @@ db_bulk_write(char* block,unsigned int b_len)
 }
 
 char* 
-db_read(char* key)
+db_read(unsigned int index,unsigned int offset)
 {
 	return NULL;
 }
