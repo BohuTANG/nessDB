@@ -1,3 +1,7 @@
+/*
+   io buffer 
+   overred@gmail.com
+ */
 #include "iobuffer.h"
 #include <stdlib.h>
 static unsigned int
