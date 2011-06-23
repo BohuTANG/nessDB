@@ -28,8 +28,8 @@ void vm_bulk_put_test()
 	char value[256]={0};
 	for(i=0;i<LOOP;i++)
 	{
-		itoa(i,key,10);
-		itoa(i,value,10);
+		sprintf(key,"%d",i);
+		sprintf(value,"%d",i);
 		vm_bulk_put(key,value);
 	}
 	vm_bulk_flush();

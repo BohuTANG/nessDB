@@ -59,7 +59,7 @@ db_bulk_write(char* block, int b_len)
 }
 
 void
-db_read(unsigned int index, int offset,char* value)
+db_read(int index, int offset,char* value)
 {
 	int k_len=0;
 	int v_len=0;
