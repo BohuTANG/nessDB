@@ -1,11 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "debug.h"
 #include "vm.h"
 #include "db.h"
 #include "io.h"
 
-#define BULK_SIZE (4096*10)
+#define BULK_SIZE (4096*100)
 
 typedef struct pointer
 {
@@ -27,9 +28,7 @@ vm_init()
 	_io=io_new(0);
 
 	db_init(dbname);
-	
 }
-
 
 int
 vm_put(char* key,char* value)
@@ -67,7 +66,7 @@ vm_put(char* key,char* value)
 }
 
 static void
-vm_putcache(char* key, int k_len,char* value, int v_len,int offset)
+vm_putcache(char* key, int k_len, int v_len,int offset)
 {
 	pointer_t* v;
 	HASH_FIND_STR(_pointers,key,v);
@@ -79,7 +78,6 @@ vm_putcache(char* key, int k_len,char* value, int v_len,int offset)
 		p->index=_dbidx;
 		p->offset=offset;
 		_dbidx+=offset;
-		//add table
 		HASH_ADD_KEYPTR(hh,_pointers,strdup(key),k_len,p);
 	}
 }
@@ -92,8 +90,7 @@ vm_bulk_put(char* key,char* value)
 	int offset=sizeof(int)*2+k_len+v_len;
     _bufsize+=offset;
 
-	//put cache
-	vm_putcache(key,k_len,value,v_len,offset);
+	vm_putcache(key,k_len,v_len,offset);
 
 	io_puti(_io,k_len);
 	io_puti(_io,v_len);
@@ -110,11 +107,37 @@ vm_bulk_put(char* key,char* value)
 			if(block)
 				free(block);
 			INFO("bulk write...");
-
 		}
 	}
-
 	return (1);
+}
+
+void
+vm_load_data()
+{
+	char k[KLEN__]={0};
+	int k_len=0,v_len=0,idx=0,size=0,offset=0;
+	FILE* fin;
+	fin=fopen("ness.db","rb");
+	if(fin)
+	{
+		fseek (fin , 0 , SEEK_END);
+		size = ftell (fin);
+		rewind (fin);
+		while(idx<size)
+		{
+			fread(&k_len,sizeof(int),1,fin);
+			fread(&v_len,sizeof(int),1,fin);
+			fread(k,k_len,1,fin);
+			fseek(fin,v_len,SEEK_CUR);
+
+			offset=(sizeof(int)*2+k_len+v_len);
+			vm_putcache(k,k_len,v_len,offset);
+			idx+=offset;
+		}
+		_dbidx+=size;
+	}
+	fclose(fin);
 }
 
 void
@@ -130,7 +153,6 @@ vm_bulk_flush()
 			free(block);
 		INFO("bulk flush...");
 	}
-
 }
 
 int

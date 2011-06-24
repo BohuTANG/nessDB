@@ -12,13 +12,12 @@ typedef struct db
 	FILE* db_read_ptr;
 }db_t;
 
-
 static db_t* _db;
 
 void 
 db_init(const char* dbname)
 {
-	FILE* fread,*fwrite;
+	FILE* fread=NULL,*fwrite=NULL,*fload=NULL;
 	fread=fopen(dbname,"rb");
 	if(fread==NULL)
 	{
@@ -26,7 +25,7 @@ db_init(const char* dbname)
 		fread=fopen(dbname,"rb");
 	}
 	else
-		fwrite=fopen(dbname,"wb");
+		fwrite=fopen(dbname,"ab");
 
 	_db=(db_t*)malloc(sizeof(db_t));
 	if(fread!=NULL
@@ -63,12 +62,12 @@ db_read(int index, int offset,char* value)
 {
 	int k_len=0;
 	int v_len=0;
-	char v_tmp[1024*10]={0};
+	char v_tmp[VLEN__]={0};
 
 	fseek(_db->db_read_ptr,index,SEEK_SET);
 	fread(&k_len,sizeof(int),1,_db->db_read_ptr);
 	fread(&v_len,sizeof(int),1,_db->db_read_ptr);
-	//sikp k_len
+	//skip k_len
 	fseek(_db->db_read_ptr,k_len,SEEK_CUR);
 	fread(&v_tmp,v_len,1,_db->db_read_ptr);
 	memcpy(value,v_tmp,v_len);
