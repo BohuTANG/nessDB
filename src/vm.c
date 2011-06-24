@@ -6,7 +6,7 @@
 #include "db.h"
 #include "io.h"
 
-#define BULK_SIZE (4096*100)
+#define BULK_SIZE (4096*64)
 
 typedef struct pointer
 {
@@ -68,6 +68,7 @@ vm_put(char* key,char* value)
 static void
 vm_putcache(char* key, int k_len, int v_len,int offset)
 {
+	char* s;
 	pointer_t* v;
 	HASH_FIND_STR(_pointers,key,v);
 	if(v==NULL)
@@ -78,7 +79,9 @@ vm_putcache(char* key, int k_len, int v_len,int offset)
 		p->index=_dbidx;
 		p->offset=offset;
 		_dbidx+=offset;
-		HASH_ADD_KEYPTR(hh,_pointers,strdup(key),k_len,p);
+		s=malloc(k_len+1);
+		strcpy(s,key);
+		HASH_ADD_KEYPTR(hh,_pointers,s,k_len,p);
 	}
 }
 
@@ -88,7 +91,7 @@ vm_bulk_put(char* key,char* value)
 	int k_len=strlen(key);
 	int v_len=strlen(value);
 	int offset=sizeof(int)*2+k_len+v_len;
-    _bufsize+=offset;
+	_bufsize+=offset;
 
 	vm_putcache(key,k_len,v_len,offset);
 
