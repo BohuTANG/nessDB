@@ -1,0 +1,11 @@
+   nessDB:    version 0.1
+   Date:      2011/06/24
+   CPU:       Intel(R) Pentium(R) Dual CPU   T3200  @ 2.0GHz
+	    
+   Keys:       ~16 bytes each
+   Values:     ~74 bytes each
+   Entries:    5000000
+   DB File Size:  427MB 
+		        
+   write sync: 275938.189 entries/sec;   23.56MB/sec 
+   read random sync:  146241.591 entries/sec;   12.49M/sec   
