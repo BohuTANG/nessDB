@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include "vm.h"
+#include "lru.h"
 #include "debug.h"
 
-#define LOOP 5
+#define LOOP 5000000
 
-void vm_init_test()
+void vm_init_test(int lru)
 {
-	vm_init();
+	vm_init(lru);
 	INFO("---init---");
 }
 
@@ -54,13 +55,14 @@ void vm_bulk_put_test()
 void vm_get_test()
 {
 	double cost;
-	char key[256]="key2";
+	char key[256]="xxxxxxxxxxxxxxxxx2";
 	char value[256]={0};
 	int i;
-		clock_t begin,end;
+	clock_t begin,end;
 	begin=clock();
-	for(i=0;i<LOOP;i++)
+	for(i=1;i<LOOP;i++)
 	{
+		sprintf(key,"xxxxxxxxxxxxxxxxx%d",rand()%i);
 		int  ret=vm_get(key,value);
 		if(ret)
 			LOG("v is:%s",value);
@@ -68,17 +70,38 @@ void vm_get_test()
 			INFO("nofound!");
 	}
 	end=clock();
-    cost=(double)(end-begin);
+    	cost=(double)(end-begin);
 	printf("get cost:%lf\n",cost);
 }
 
+void lru_test()
+{
+	double cost;
+	int i;
+	char key[256]={0};
+	clock_t begin,end;
+	begin=clock();
+	for(i=0;i<LOOP;i++)
+	{
+		sprintf(key,"xxxxx%d",i);
+
+		char* v=lru_find(key);
+		if(!v)
+			lru_add(key,key);
+	}
+	end=clock();
+	cost=(double)(end-begin);
+	printf("lru cost:%lf\n",cost);
+}
 
 int main()
 {
-    vm_init_test();
+	int lru=0;
+	//lru_test();
+	vm_init_test(lru);
 	//vm_put_test();
-	vm_load_data_test();
 	vm_bulk_put_test();
+	//vm_load_data_test();
 	vm_get_test();
 	return (1);
 }

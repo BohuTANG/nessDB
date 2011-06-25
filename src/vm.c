@@ -5,7 +5,8 @@
 #include "vm.h"
 #include "db.h"
 #include "io.h"
-
+#include "lru.h"
+#define DBNAME "ness.db"
 #define BULK_SIZE (4096*64)
 
 typedef struct pointer
@@ -18,21 +19,22 @@ typedef struct pointer
 static pointer_t* _pointers;
 static io_t* _io;
 
-unsigned int _bufsize=0,_dbidx=0;
+int _bufsize=0,_dbidx=0,_lru=0;
 
 void 
-vm_init()
+vm_init(int lru)
 {
-	const char* dbname="ness.db";
+	_lru=lru;
 	_pointers=NULL;
 	_io=io_new(0);
 
-	db_init(dbname);
+	db_init(DBNAME);
 }
 
 int
 vm_put(char* key,char* value)
 {
+	char* ktmp;
 	pointer_t* v;
 	HASH_FIND_STR(_pointers,key,v);
 	if(v==NULL)
@@ -58,7 +60,9 @@ vm_put(char* key,char* value)
 			//next pointer index
 			_dbidx+=offset;
 			//add table
-			HASH_ADD_KEYPTR(hh,_pointers,key,k_len,p);
+			ktmp=malloc(k_len+1);
+			strcpy(ktmp,key);
+			HASH_ADD_KEYPTR(hh,_pointers,ktmp,k_len,p);
 			INFO("vm-put\n");
 		}
 
@@ -121,7 +125,7 @@ vm_load_data()
 	char k[KLEN__]={0};
 	int k_len=0,v_len=0,idx=0,size=0,offset=0;
 	FILE* fin;
-	fin=fopen("ness.db","rb");
+	fin=fopen(DBNAME,"rb");
 	if(fin)
 	{
 		fseek (fin , 0 , SEEK_END);
@@ -161,11 +165,19 @@ vm_bulk_flush()
 int
 vm_get(char* key,char* value)
 {
+	char* lru_v=NULL;
 	pointer_t* v;
 	HASH_FIND_STR(_pointers,key,v);
 	if(v!=NULL)
 	{
-		db_read(v->index,v->offset,value);
+		if(_lru)
+			lru_v=lru_find(key);
+		if(lru_v==NULL)
+		{
+			db_read(v->index,v->offset,value);
+			if(_lru)
+				lru_add(key,value);
+		}
 		return 1;
 	}
 	return 0;
