@@ -8,11 +8,13 @@
 #include "lru.h"
 #define DBNAME "ness.db"
 #define BULK_SIZE (4096*64)
+#define MAX_HITS (1024)
 
 typedef struct pointer
 {
-	unsigned int index;
-	unsigned int offset;
+	int index;
+	int offset;
+	unsigned int  hit_count;
 	UT_hash_handle hh;
 }pointer_t;
 
@@ -175,8 +177,12 @@ vm_get(char* key,char* value)
 		if(lru_v==NULL)
 		{
 			db_read(v->index,v->offset,value);
-			if(_lru)
+			if(_lru&&(v->hit_count++)>=MAX_HITS)
+			{
+				v->hit_count=0;
 				lru_add(key,value);
+				return 2;
+			}
 		}
 		return 1;
 	}

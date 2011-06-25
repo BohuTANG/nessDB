@@ -3,6 +3,8 @@
 #include "uthash.h"
 #include "lru.h"
 
+#define MAX_CACHE_SIZE (1024*4*100)
+
 typedef struct cache
 {
 	char* k;
