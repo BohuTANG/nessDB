@@ -5,7 +5,7 @@
 #include "lru.h"
 #include "debug.h"
 
-#define LOOP 5000000
+#define LOOP 5
 
 void vm_init_test(int lru)
 {
@@ -20,54 +20,78 @@ void vm_load_data_test()
 
 void vm_put_test()
 {
-	char* key="key1";
-	char* value="val1";
-	vm_put(key,value);
+	nessobj_t* obj=(nessobj_t*)malloc(sizeof(nessobj_t));
+	obj->k=("key1");
+	obj->v=("val1");
+	vm_put(obj);
 
-	key="key2";
-	value="val2";
-	vm_put(key,value);
+	nessobj_t* obj1=(nessobj_t*)malloc(sizeof(nessobj_t));
+	obj1->k=("key2");
+	obj1->v=("val2");
+	vm_put(obj1);
 	INFO("---vm put ---");
 	
+}
+
+void vm_get_test()
+{
+	nessobj_t* obj=(nessobj_t*)malloc(sizeof(nessobj_t));
+	obj->k=("key2");
+	obj->v=malloc(sizeof(char)*1024);
+
+	int ret=vm_get(obj);
+	if(ret)
+	{
+		LOG("v is %s",obj->v);
+	}
 }
 
 void vm_bulk_put_test()
 {
 	double cost;
 	int i;
-	char key[256]={0};
-	char value[256]={0};
+	//nessobj_t* obj=(nessobj_t*)malloc(sizeof(nessobj_t));
+	//obj->k=malloc(sizeof(char)*256);
+	//obj->v=malloc(sizeof(char)*256);
 	clock_t begin,end;
 	begin=clock();
 	for(i=0;i<LOOP;i++)
 	{
-		sprintf(key,"xxxxxxxxxxxxxxxxx%d",i);
-		sprintf(value,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx%d",i);
-		vm_bulk_put(key,value);
+		nessobj_t* obj=(nessobj_t*)malloc(sizeof(nessobj_t));
+		obj->k=malloc(sizeof(char)*256);
+		obj->v=malloc(sizeof(char)*256);
+		sprintf(obj->k,"xxxxxxxxxxxxxxxxx%d",i);
+		sprintf(obj->v,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx%d",i);
+		vm_bulk_put(obj);
 	}
 	vm_bulk_flush();
 	end=clock();
-    cost=(double)(end-begin);
+	cost=(double)(end-begin);
 	printf("put cost:%lf\n",cost);
 	INFO("---vm bulk put ---");
 }
 
-void vm_get_test()
+void vm_bulk_get_test()
 {
-	double cost;
-	char key[256]="xxxxxxxxxxxxxxxxx2";
-	char value[256]={0};
 	int i;
+	double cost;
+	//nessobj_t* obj=(nessobj_t*)malloc(sizeof(nessobj_t));
+	//obj->k=malloc(sizeof(char)*256);
+	//obj->v=malloc(sizeof(char)*256);
+	
 	clock_t begin,end;
 	begin=clock();
 	for(i=1;i<LOOP;i++)
 	{
-		sprintf(key,"xxxxxxxxxxxxxxxxx%d",rand()%i);
-		int  ret=vm_get(key,value);
+		nessobj_t* obj=(nessobj_t*)malloc(sizeof(nessobj_t));
+		obj->k=malloc(sizeof(char)*256);
+		obj->v=malloc(sizeof(char)*256);
+		sprintf(obj->k,"xxxxxxxxxxxxxxxxx%d",i);
+		int  ret=vm_get(obj);
 		if(ret)
-			LOG("v is:%s",value);
+			printf("v is:%s",obj->v);
 		else
-			INFO("nofound!");
+			printf("nofound!");
 	}
 	end=clock();
     	cost=(double)(end-begin);
@@ -100,8 +124,10 @@ int main()
 	//lru_test();
 	vm_init_test(lru);
 	//vm_put_test();
+	//vm_get_test();
 	vm_bulk_put_test();
+	vm_bulk_get_test();
 	//vm_load_data_test();
-	vm_get_test();
+	//vm_get_test();
 	return (1);
 }

@@ -34,11 +34,11 @@ vm_init(int lru)
 }
 
 int
-vm_put(char* key,char* value)
+vm_put(nessobj_t* obj)
 {
 	char* ktmp;
 	pointer_t* v;
-	HASH_FIND_STR(_pointers,key,v);
+	HASH_FIND_STR(_pointers,obj->k,v);
 	if(v==NULL)
 		{
 			 int k_len;
@@ -52,19 +52,19 @@ vm_put(char* key,char* value)
 				return (-1);
 			}
 
-			k_len=strlen(key);
-			v_len=strlen(value);
+			k_len=strlen(obj->k);
+			v_len=strlen(obj->v);
 			offset=sizeof(int)*2+k_len+v_len;
-			db_write(key,k_len,value,v_len);
+			db_write(obj->k,k_len,obj->v,v_len);
 			p->index=_dbidx;
 			p->offset=offset;
 
 			//next pointer index
 			_dbidx+=offset;
 			//add table
-			ktmp=malloc(k_len+1);
-			strcpy(ktmp,key);
-			HASH_ADD_KEYPTR(hh,_pointers,ktmp,k_len,p);
+			//ktmp=malloc(k_len+1);
+			//strcpy(ktmp,key);
+			HASH_ADD_KEYPTR(hh,_pointers,obj->k,k_len,p);
 			INFO("vm-put\n");
 		}
 
@@ -85,26 +85,26 @@ vm_putcache(char* key, int k_len, int v_len,int offset)
 		p->index=_dbidx;
 		p->offset=offset;
 		_dbidx+=offset;
-		s=malloc(k_len+1);
-		strcpy(s,key);
-		HASH_ADD_KEYPTR(hh,_pointers,s,k_len,p);
+		//s=malloc(k_len+1);
+		//strcpy(s,key);
+		HASH_ADD_KEYPTR(hh,_pointers,key,k_len,p);
 	}
 }
 
 int
-vm_bulk_put(char* key,char* value)
+vm_bulk_put(nessobj_t* obj)
 {
-	int k_len=strlen(key);
-	int v_len=strlen(value);
+	int k_len=strlen(obj->k);
+	int v_len=strlen(obj->v);
 	int offset=sizeof(int)*2+k_len+v_len;
 	_bufsize+=offset;
 
-	vm_putcache(key,k_len,v_len,offset);
+	vm_putcache(obj->k,k_len,v_len,offset);
 
 	io_puti(_io,k_len);
 	io_puti(_io,v_len);
-	io_put(_io,key,k_len);
-	io_put(_io,value,v_len);
+	io_put(_io,obj->k,k_len);
+	io_put(_io,obj->v,v_len);
 	if(_bufsize>BULK_SIZE)
 	{
 		int b_len=io_len(_io);
@@ -141,7 +141,7 @@ vm_load_data()
 			fseek(fin,v_len,SEEK_CUR);
 
 			offset=(sizeof(int)*2+k_len+v_len);
-			vm_putcache(k,k_len,v_len,offset);
+			vm_putcache(strdup(k),k_len,v_len,offset);
 			idx+=offset;
 		}
 		_dbidx+=size;
@@ -165,22 +165,22 @@ vm_bulk_flush()
 }
 
 int
-vm_get(char* key,char* value)
+vm_get(nessobj_t* obj)
 {
 	char* lru_v=NULL;
 	pointer_t* v;
-	HASH_FIND_STR(_pointers,key,v);
+	HASH_FIND_STR(_pointers,obj->k,v);
 	if(v!=NULL)
 	{
 		if(_lru)
-			lru_v=lru_find(key);
+			lru_v=lru_find(obj->k);
 		if(lru_v==NULL)
 		{
-			db_read(v->index,v->offset,value);
+			db_read(v->index,v->offset,obj->v);
 			if(_lru&&(v->hit_count++)>=MAX_HITS)
 			{
 				v->hit_count=0;
-				lru_add(key,value);
+				lru_add(obj->k,obj->v);
 				return 2;
 			}
 		}
