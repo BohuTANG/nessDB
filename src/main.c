@@ -5,7 +5,7 @@
 #include "lru.h"
 #include "debug.h"
 
-#define LOOP 5000000
+static int LOOP;
 
 void vm_init_test(int lru)
 {
@@ -15,7 +15,13 @@ void vm_init_test(int lru)
 
 void vm_load_data_test()
 {
+	double cost;
+	clock_t begin,end;
+	begin=clock();
 	vm_load_data();
+	end=clock();
+	cost=(double)(end-begin);
+	printf("---load cost:%lf\n",cost);
 }
 
 void vm_put_test()
@@ -41,7 +47,7 @@ void vm_bulk_put_test()
 	begin=clock();
 	for(i=0;i<LOOP;i++)
 	{
-		sprintf(key,"xxxxxxxxxxxxxxxxx%d",i);
+		sprintf(key,"xxxxxxxxxx%d",i);
 		sprintf(value,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx%d",i);
 		vm_bulk_put(key,value);
 	}
@@ -62,10 +68,10 @@ void vm_get_test()
 	begin=clock();
 	for(i=1;i<LOOP;i++)
 	{
-		sprintf(key,"xxxxxxxxxxxxxxxxx%d",rand()%i);
+		sprintf(key,"xxxxxxxxxx%d",rand()%i);
 		int  ret=vm_get(key,value);
 		if(ret)
-			LOG("v is:%s",value);
+			LOG("v is:%s----%s",key,value);
 		else
 			INFO("nofound!");
 	}
@@ -94,14 +100,25 @@ void lru_test()
 	printf("lru cost:%lf\n",cost);
 }
 
-int main()
+int main(int argc,char**argv)
 {
 	int lru=0;
+	if(argc!=4)
+	{
+		printf("arg error,format--->loopcount opt lru...\n");
+		return 1;
+	}
+	LOOP=atoi(argv[1]);
+	if(strcmp(argv[3],"lru")==0)
+		lru=1;
 	//lru_test();
 	vm_init_test(lru);
 	//vm_put_test();
-	vm_bulk_put_test();
-	//vm_load_data_test();
+	if(strcmp(argv[2],"put")==0)
+		vm_bulk_put_test();
+	if(strcmp(argv[2],"load")==0)
+		vm_load_data_test();
+
 	vm_get_test();
 	return (1);
 }

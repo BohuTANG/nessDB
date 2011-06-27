@@ -8,13 +8,13 @@
 #include "lru.h"
 #define DBNAME "ness.db"
 #define BULK_SIZE (4096*64)
-#define MAX_HITS (1024)
+#define MAX_HITS (255&0xFF)
 
 typedef struct pointer
 {
-	int index;
-	int offset;
-	unsigned int  hit_count;
+	char* k;
+	int	 index;
+	char  hit_count;
 	UT_hash_handle hh;
 }pointer_t;
 
@@ -37,9 +37,9 @@ int
 vm_put(char* key,char* value)
 {
 	char* ktmp;
-	pointer_t* v;
-	HASH_FIND_STR(_pointers,key,v);
-	if(v==NULL)
+	pointer_t* vtmp;
+	HASH_FIND_STR(_pointers,key,vtmp);
+	if(vtmp==NULL)
 		{
 			 int k_len;
 			 int v_len;
@@ -57,13 +57,14 @@ vm_put(char* key,char* value)
 			offset=sizeof(int)*2+k_len+v_len;
 			db_write(key,k_len,value,v_len);
 			p->index=_dbidx;
-			p->offset=offset;
+			//p->offset=offset;
 
 			//next pointer index
 			_dbidx+=offset;
 			//add table
 			ktmp=malloc(k_len+1);
 			strcpy(ktmp,key);
+			p->k=ktmp;
 			HASH_ADD_KEYPTR(hh,_pointers,ktmp,k_len,p);
 			INFO("vm-put\n");
 		}
@@ -83,10 +84,11 @@ vm_putcache(char* key, int k_len, int v_len,int offset)
 		if(p==NULL)
 			INFO("mem leak!\n");
 		p->index=_dbidx;
-		p->offset=offset;
+		//p->offset=offset;
 		_dbidx+=offset;
 		s=malloc(k_len+1);
 		strcpy(s,key);
+		p->k=s;
 		HASH_ADD_KEYPTR(hh,_pointers,s,k_len,p);
 	}
 }
@@ -115,7 +117,6 @@ vm_bulk_put(char* key,char* value)
 			_bufsize=0;
 			if(block)
 				free(block);
-			INFO("bulk write...");
 		}
 	}
 	return (1);
@@ -168,22 +169,27 @@ int
 vm_get(char* key,char* value)
 {
 	char* lru_v=NULL;
-	pointer_t* v;
-	HASH_FIND_STR(_pointers,key,v);
-	if(v!=NULL)
+	pointer_t* vtmp;
+	HASH_FIND_STR(_pointers,key,vtmp);
+	if(vtmp!=NULL)
 	{
 		if(_lru)
-			lru_v=lru_find(key);
-		if(lru_v==NULL)
 		{
-			db_read(v->index,v->offset,value);
-			if(_lru&&(v->hit_count++)>=MAX_HITS)
+			lru_v=lru_find(key);
+			if(lru_v==NULL)
 			{
-				v->hit_count=0;
-				lru_add(key,value);
-				return 2;
+				db_read(vtmp->index,value);
+				if(_lru&&(vtmp->hit_count++)>=MAX_HITS)
+				{
+					vtmp->hit_count=0;
+					lru_add(vtmp->k,value);
+					return 2;
+				}
 			}
 		}
+		else
+				db_read(vtmp->index,value);
+			
 		return 1;
 	}
 	return 0;
