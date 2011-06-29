@@ -5,7 +5,7 @@
 #include "io.h"
 #include <stdlib.h>
 
-static unsigned int
+unsigned int
 next_power(unsigned int x)
 {
 	--x;
@@ -14,7 +14,8 @@ next_power(unsigned int x)
 	x|=x>>0x004;
 	x|=x>>0x008;
 	x|=x>>0x010;
-	return (++x);
+	x++;
+	return x;
 }
 
 static void
@@ -42,8 +43,8 @@ io_new(unsigned int reserve)
 	io->pos=0;
 	io->buflen=0;
 
-	if(reserve)
-		io_fixed(io,reserve);
+	
+	io_fixed(io,reserve);
 	return io;
 }
 

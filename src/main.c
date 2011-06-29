@@ -5,7 +5,7 @@
 #include "lru.h"
 #include "debug.h"
 
-static int LOOP;
+static int LOOP=5;
 
 void vm_init_test(int lru)
 {
@@ -26,37 +26,28 @@ void vm_load_data_test()
 
 void vm_put_test()
 {
-	char* key="key1";
-	char* value="val1";
-	vm_put(key,value);
+	int i;
+	double cost;
+	clock_t begin,end;
+	begin=clock();
+	char key[256]="key1";
+	char value[256]="val1";
 
-	key="key2";
-	value="val2";
-	vm_put(key,value);
+	for(i=0;i<LOOP;i++)
+	{
+		LOG("%d",i);
+		sprintf(key,"%dxxxxxxxxxx",i);
+		sprintf(value,"%dxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",i);
+		vm_put(key,value);
+	}
+	end=clock();
+	cost=(double)(end-begin);
+	printf("---put cost:%lf\n",cost);
 	INFO("---vm put ---");
 	
 }
 
-void vm_bulk_put_test()
-{
-	double cost;
-	int i;
-	char key[256]={0};
-	char value[256]={0};
-	clock_t begin,end;
-	begin=clock();
-	for(i=0;i<LOOP;i++)
-	{
-		sprintf(key,"xxxxxxxxxx%d",i);
-		sprintf(value,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx%d",i);
-		vm_bulk_put(key,value);
-	}
-	vm_bulk_flush();
-	end=clock();
-    cost=(double)(end-begin);
-	printf("put cost:%lf\n",cost);
-	INFO("---vm bulk put ---");
-}
+	
 
 void vm_get_test()
 {
@@ -68,7 +59,7 @@ void vm_get_test()
 	begin=clock();
 	for(i=1;i<LOOP;i++)
 	{
-		sprintf(key,"xxxxxxxxxx%d",rand()%i);
+		sprintf(key,"%dxxxxxxxxxx",rand()%i);
 		int  ret=vm_get(key,value);
 		if(ret)
 			LOG("v is:%s----%s",key,value);
@@ -76,29 +67,10 @@ void vm_get_test()
 			INFO("nofound!");
 	}
 	end=clock();
-    	cost=(double)(end-begin);
+    cost=(double)(end-begin);
 	printf("get cost:%lf\n",cost);
 }
 
-void lru_test()
-{
-	double cost;
-	int i;
-	char key[256]={0};
-	clock_t begin,end;
-	begin=clock();
-	for(i=0;i<LOOP;i++)
-	{
-		sprintf(key,"xxxxx%d",i);
-
-		char* v=lru_find(key);
-		if(!v)
-			lru_add(key,key);
-	}
-	end=clock();
-	cost=(double)(end-begin);
-	printf("lru cost:%lf\n",cost);
-}
 
 int main(int argc,char**argv)
 {
@@ -109,13 +81,15 @@ int main(int argc,char**argv)
 		return 1;
 	}
 	LOOP=atoi(argv[1]);
+
 	if(strcmp(argv[3],"lru")==0)
 		lru=1;
-	//lru_test();
+
 	vm_init_test(lru);
-	//vm_put_test();
+
 	if(strcmp(argv[2],"put")==0)
-		vm_bulk_put_test();
+		vm_put_test();
+
 	if(strcmp(argv[2],"load")==0)
 		vm_load_data_test();
 

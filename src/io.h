@@ -7,7 +7,7 @@ typedef struct io
 	unsigned int	pos;
 	unsigned int	buflen;
 }io_t;
-
+unsigned int next_power(unsigned int x);
 io_t* io_new(unsigned int reserve);
 void io_putc(io_t* io,char c);
 void io_puti(io_t* io,int i);

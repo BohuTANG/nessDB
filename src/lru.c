@@ -31,16 +31,14 @@ char* lru_find(char* k)
 
 void lru_add(char* k,char* v)
 {
-	char* ktmp,*vtmp;
+	char* vtmp;
 	cache_t* item,*tmp_item;
 	item=(cache_t*)malloc(sizeof(cache_t));
-	ktmp=malloc(strlen(k)+1);
-	strcpy(ktmp,k);
 
 	vtmp=malloc(strlen(v)+1);
 	strcpy(vtmp,v);
 
-	item->k=ktmp;
+	item->k=k;
 	item->v=vtmp;
 
 	HASH_ADD_KEYPTR(hh,_cache,item->k,strlen(item->k),item);
@@ -49,8 +47,6 @@ void lru_add(char* k,char* v)
 		HASH_ITER(hh,_cache,item,tmp_item)
 		{
 			HASH_DELETE(hh,_cache,item);
-			if(item->k)
-				free(item->k);
 			if(item->v)
 				free(item->v);
 			free(item);
