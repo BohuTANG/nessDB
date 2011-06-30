@@ -4,7 +4,6 @@
 #include "debug.h"
 #include "vm.h"
 #include "db.h"
-#include "lru.h"
 #define DBNAME "ness.db"
 #define DBINDEX "ness.idx"
 
@@ -12,10 +11,8 @@
 
 typedef struct pointer
 {
-	char*	k;
 	int		index;
 	int		offset;
-	int		hit_count;
 	UT_hash_handle hh;
 }pointer_t;
 
@@ -24,9 +21,8 @@ static pointer_t* _pointers;
 int _bufsize=0,_db_index=0,_idx_index=0,_lru=0;
 
 void 
-vm_init(int lru)
+vm_init()
 {
-	_lru=lru;
 	_pointers=NULL;
 
 	db_init(DBNAME,DBINDEX);
@@ -69,7 +65,6 @@ vm_put(char* key,char* value)
 		//add table
 		ktmp=malloc(k_len+1);
 		strcpy(ktmp,key);
-		p->k=ktmp;
 		HASH_ADD_KEYPTR(hh,_pointers,ktmp,k_len,p);
 		INFO("vm-put\n");
 	}
@@ -93,7 +88,6 @@ vm_putcache(char* key, int k_len, int v_len)
 
 		s=malloc(k_len+1);
 		strcpy(s,key);
-		v->k=s;
 		HASH_ADD_KEYPTR(hh,_pointers,s,k_len,v);
 	}
 }
@@ -102,7 +96,7 @@ void
 vm_load_data()
 {
 	char k[KLEN__]={0};
-	int k_len=0,v_len=0,idx=0,size=0,db_offset=0,idx_offset=0;
+	int k_len=0,v_len=0,size=0,db_offset=0,idx_offset=0;
 	FILE* fin;
 	fin=fopen(DBINDEX,"rb");
 	if(fin)
@@ -110,7 +104,7 @@ vm_load_data()
 		fseek (fin , 0 , SEEK_END);
 		size = ftell (fin);
 		rewind (fin);
-		while(idx<size)
+		while(_idx_index<size)
 		{
 			fread(&k_len,sizeof(int),1,fin);
 			fread(&v_len,sizeof(int),1,fin);
@@ -124,8 +118,6 @@ vm_load_data()
 			db_offset=v_len;
 			_db_index+=db_offset;
 
-
-			idx+=(db_offset+idx_offset);
 		}
 	}
 	fclose(fin);
@@ -139,24 +131,7 @@ vm_get(char* key,char* value)
 	HASH_FIND_STR(_pointers,key,vtmp);
 	if(vtmp!=NULL)
 	{
-		if(_lru)
-		{
-			vtmp->hit_count++;
-			lru_v=lru_find(key);
-			if(lru_v==NULL)
-			{
-				db_read(vtmp->index,vtmp->offset,value);
-				if(_lru&&(vtmp->hit_count>=MAX_HITS))
-				{
-					vtmp->hit_count=0;
-					lru_add(vtmp->k,value);
-					return 2;
-				}
-			}
-		}
-		else
-				db_read(vtmp->index,vtmp->offset,value);
-			
+		db_read(vtmp->index,vtmp->offset,value);
 		return 1;
 	}
 	return 0;

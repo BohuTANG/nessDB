@@ -7,9 +7,9 @@
 
 static int LOOP=5;
 
-void vm_init_test(int lru)
+void vm_init_test()
 {
-	vm_init(lru);
+	vm_init();
 	INFO("---init---");
 }
 
@@ -51,6 +51,8 @@ void vm_put_test()
 
 void vm_get_test()
 {
+
+	int count=0;
 	double cost;
 	char key[256]="xxxxxxxxxxxxxxxxx2";
 	char value[256]={0};
@@ -62,30 +64,30 @@ void vm_get_test()
 		sprintf(key,"%dxxxxxxxxxx",rand()%i);
 		int  ret=vm_get(key,value);
 		if(ret)
+		{
+			count++;
 			LOG("v is:%s----%s",key,value);
+		}
 		else
 			INFO("nofound!");
 	}
 	end=clock();
     cost=(double)(end-begin);
-	printf("get cost:%lf\n",cost);
+	printf("get cost:%lf,found:%d\n",cost,count);
 }
 
 
 int main(int argc,char**argv)
 {
-	int lru=0;
-	if(argc!=4)
+	if(argc!=3)
 	{
 		printf("arg error,format--->loopcount opt lru...\n");
 		return 1;
 	}
 	LOOP=atoi(argv[1]);
 
-	if(strcmp(argv[3],"lru")==0)
-		lru=1;
 
-	vm_init_test(lru);
+	vm_init_test();
 
 	if(strcmp(argv[2],"put")==0)
 		vm_put_test();
