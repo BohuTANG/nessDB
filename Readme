@@ -5,9 +5,10 @@
    Keys:       ~14 bytes each
    Values:     ~74 bytes each
    Entries:    10000000
-   DB File Size:  723.7MB
-   INDEX File Size: 237.4MB
+   DB File Size:		723.7MB
+   INDEX File Size:		237.4MB
+   Memory used:			553MB
 		        
    write sync: 			~52.1w  writes per sec
-   read random sync:  	~15w  reads per sec
+   read random sync:	~15w  reads per sec
    data load:			~118w  reads per sec
