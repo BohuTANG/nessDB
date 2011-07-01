@@ -8,6 +8,6 @@
    DB File Size:  723.7MB
    INDEX File Size: 237.4MB
 		        
-   write sync: 			~35w  writes per sec
-   read random sync:  	~16w  reads per sec
-   data load:			~59w  reads per sec
+   write sync: 			~52.1w  writes per sec
+   read random sync:  	~15w  reads per sec
+   data load:			~118w  reads per sec
