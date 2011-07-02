@@ -7,7 +7,7 @@
    Entries:    10000000
    DB File Size:		723.7MB
    INDEX File Size:		237.4MB
-   Memory used:			553MB
+   Memory used:			324MB
 		        
    write sync: 			~59w  writes/sec,cost 16960000 cpu's clock
    read random sync:		~19w  reads/sec,cost 51680000 cpu's clock

@@ -14,6 +14,7 @@ typedef struct db
 	FILE*	db_write_ptr;
 	FILE*	db_read_ptr;
 	FILE*	db_write_idx_ptr;
+	FILE*	db_read_idx_ptr;
 }db_t;
 
 typedef struct pointer
@@ -34,14 +35,17 @@ vm_init()
 	_pointers=NULL;
 	_ht=hashtable_create(10000000+31);
 
-	FILE* fread=NULL,*fwrite=NULL,*fwrite_idx=NULL;
+	FILE* fread=NULL,*fwrite=NULL,*fread_idx=NULL,*fwrite_idx=NULL;
 	fread=fopen(DBNAME,"rb");
+	fread_idx=fopen(DBINDEX,"rb");
 	if(fread==NULL)
 	{
 		fwrite=fopen(DBNAME,"wb");
 		fread=fopen(DBNAME,"rb");
 
 		fwrite_idx=fopen(DBINDEX,"wb");
+		fread_idx=fopen(DBINDEX,"wb");
+
 	}
 	else
 	{
@@ -59,6 +63,7 @@ vm_init()
 		_db->db_write_ptr=fwrite;
 
 		_db->db_write_idx_ptr=fwrite_idx;
+		_db->db_read_idx_ptr=fread_idx;
 	}
 	else
 		INFO("db_init error!");
@@ -67,7 +72,6 @@ vm_init()
 int
 vm_put(char* key,char* value)
 {
-	char* ktmp;
 	pointer_t* vtmp=NULL;
 	if(vtmp==NULL)
 	{
@@ -101,9 +105,7 @@ vm_put(char* key,char* value)
 		_db_index+=db_offset;
 		_idx_index+=idx_offset;
 		//add table
-		ktmp=malloc(k_len+1);
-		strcpy(ktmp,key);
-		hashtable_set(_ht,ktmp,p);
+		hashtable_set(_ht,key,p);
 		INFO("vm-put\n");
 	}
 
@@ -134,29 +136,24 @@ vm_load_data()
 {
 	char k[1024]={0};
 	int k_len=0,v_len=0,size=0,db_offset=0,idx_offset=0;
-	FILE* fin;
-	fin=fopen(DBINDEX,"rb");
-	if(fin)
+	FILE* fin=_db->db_read_idx_ptr;
+	fseek (fin , 0 , SEEK_END);
+	size = ftell (fin);
+	rewind (fin);
+	while(_idx_index<size)
 	{
-		fseek (fin , 0 , SEEK_END);
-		size = ftell (fin);
-		rewind (fin);
-		while(_idx_index<size)
-		{
-			fread(&k_len,sizeof(int),1,fin);
-			fread(&v_len,sizeof(int),1,fin);
-			fread(k,k_len,1,fin);
+		fread(&k_len,sizeof(int),1,fin);
+		fread(&v_len,sizeof(int),1,fin);
+		fread(k,k_len,1,fin);
 
-			vm_putcache(k,k_len,v_len);
+		vm_putcache(k,k_len,v_len);
 
-			idx_offset=(sizeof(int)*2+k_len);
-			_idx_index+=idx_offset;
+		idx_offset=(sizeof(int)*2+k_len);
+		_idx_index+=idx_offset;
 
-			db_offset=v_len;
-			_db_index+=db_offset;
-		}
+		db_offset=v_len;
+		_db_index+=db_offset;
 	}
-	fclose(fin);
 }
 
 int
@@ -172,4 +169,12 @@ vm_get(char* key,char* value)
 		return 1;
 	}
 	return 0;
+}
+
+void vm_destroy()
+{
+	fclose(_db->db_read_ptr);	
+	fclose(_db->db_write_ptr);	
+	fclose(_db->db_read_idx_ptr);	
+	fclose(_db->db_write_idx_ptr);	
 }
