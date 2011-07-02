@@ -61,18 +61,22 @@ void hashtable_set(hashtable* t, char* key, void* value)
 	if (t->body[index].key != NULL) {
 		/* Entry exists; update it. */
 		
-		hashtable_entry*  pre=&t->body[index],*nxt;
-		nxt=pre;
-		pre=pre->next;
-		while(pre!=NULL)
-		{
-			nxt=pre;	
-			pre=pre->next;
-		}
 		hashtable_entry* etmp=hashtable_body_allocate(1);
 		etmp->key = key;
 		etmp->value = value;
-		nxt->next=etmp;
+
+		hashtable_entry*  cur=&t->body[index];
+		if(cur->next==NULL)
+		{
+			cur->next=etmp;
+			return;
+		}
+
+		while(cur->next!=NULL)
+			cur=cur->next;
+	
+		cur->next=etmp;
+
 	} else {
 		t->size++;
 		t->body[index].key=key;		
@@ -90,14 +94,17 @@ void hashtable_remove(hashtable* t, char* key)
 	int index = hashtable_find_slot(t, key);
 	if(t->body[index].key!=NULL)
 	{
-		hashtable_entry* cur=&t->body[index],*pre=NULL;	
+		hashtable_entry* cur=&t->body[index];
+		hashtable_entry* pre=cur;	
 		while(cur!=NULL)
 		{
 			if(strcmp(cur->key,key)==0)
 			{
 					t->size--;
-					cur->value=NULL;
 					pre->next=cur->next;
+					if(cur==&t->body[index])
+						t->body[index]=*cur->next;
+					free(cur);
 					return;
 			}
 			pre=cur;
@@ -155,5 +162,10 @@ void hashtable_destroy(hashtable* t)
 {
 	free(t->body);
 	free(t);
+}
+
+int hashtable_count(hashtable *t)
+{
+	return t->size;	
 }
 

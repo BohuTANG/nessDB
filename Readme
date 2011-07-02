@@ -9,6 +9,6 @@
    INDEX File Size:		237.4MB
    Memory used:			553MB
 		        
-   write sync: 			~52.1w  writes per sec
-   read random sync:	~15w  reads per sec
-   data load:			~118w  reads per sec
+   write sync: 			~58w  writes per sec
+   read random sync:	~18.3w  reads per sec
+   data load(seq read):			~135w  reads per sec

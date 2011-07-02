@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include "uthash.h"
+#include "hashtable.h"
 #include "lru.h"
 
 #define MAX_CACHE_SIZE (1024*4*100)
@@ -9,20 +9,21 @@ typedef struct cache
 {
 	char* k;
 	char* v;
-	UT_hash_handle hh;
 }cache_t;
 
-static cache_t* _cache=NULL;
-
+static hashtable* _ht;
+void lru_init()
+{
+		_ht=hashtable_create(MAX_CACHE_SIZE);
+}
 
 char* lru_find(char* k)
 {
-	cache_t* item;
-	HASH_FIND_STR(_cache,k,item);
+	cache_t* item=(cache_t*)hashtable_get(_ht,k);
 	if(item)
 	{
-		HASH_DELETE(hh,_cache,item);
-		HASH_ADD_KEYPTR(hh,_cache,item->k,strlen(item->k),item);
+		hashtable_remove(_ht,k);
+		hashtable_set(_ht,k,item);
 		return item->v;
 	}
 
@@ -41,17 +42,10 @@ void lru_add(char* k,char* v)
 	item->k=k;
 	item->v=vtmp;
 
-	HASH_ADD_KEYPTR(hh,_cache,item->k,strlen(item->k),item);
-	if(HASH_COUNT(_cache)>=MAX_CACHE_SIZE)
+	hashtable_set(_ht,k,item);
+	if(hashtable_count(_ht)>=MAX_CACHE_SIZE)
 	{
-		HASH_ITER(hh,_cache,item,tmp_item)
-		{
-			HASH_DELETE(hh,_cache,item);
-			if(item->v)
-				free(item->v);
-			free(item);
-			break;
-		}
+		//todo delete
 	}
 }
 
