@@ -4,24 +4,25 @@
 #include "debug.h"
 #include "hashtable.h"
 #include "vm.h"
-#include "db.h"
 #define DBNAME "ness.db"
 #define DBINDEX "ness.idx"
 
 #define MAX_HITS (1024)
-/*
-typedef struct pointer
+
+typedef struct db
 {
-	int		index;
-	int		offset;
-	UT_hash_handle hh;
-}pointer_t;*/
+	FILE*	db_write_ptr;
+	FILE*	db_read_ptr;
+	FILE*	db_write_idx_ptr;
+}db_t;
+
 typedef struct pointer
 {
 	int		index;
 	int		offset;
 }pointer_t;
 
+static db_t* _db;
 static pointer_t* _pointers;
 static hashtable*	_ht;
 
@@ -33,7 +34,34 @@ vm_init()
 	_pointers=NULL;
 	_ht=hashtable_create(10000000+31);
 
-	db_init(DBNAME,DBINDEX);
+	FILE* fread=NULL,*fwrite=NULL,*fwrite_idx=NULL;
+	fread=fopen(DBNAME,"rb");
+	if(fread==NULL)
+	{
+		fwrite=fopen(DBNAME,"wb");
+		fread=fopen(DBNAME,"rb");
+
+		fwrite_idx=fopen(DBINDEX,"wb");
+	}
+	else
+	{
+		fwrite=fopen(DBNAME,"ab");
+		fwrite_idx=fopen(DBINDEX,"ab");
+	}
+
+	_db=(db_t*)malloc(sizeof(db_t));
+	if(fread!=NULL
+		&&fwrite!=NULL
+		&&fwrite_idx!=NULL
+		&&_db!=NULL)
+	{
+		_db->db_read_ptr=fread;
+		_db->db_write_ptr=fwrite;
+
+		_db->db_write_idx_ptr=fwrite_idx;
+	}
+	else
+		INFO("db_init error!");
 }
 
 int
@@ -41,7 +69,6 @@ vm_put(char* key,char* value)
 {
 	char* ktmp;
 	pointer_t* vtmp=NULL;
-	//HASH_FIND_STR(_pointers,key,vtmp);
 	if(vtmp==NULL)
 	{
 		 int k_len;
@@ -61,7 +88,10 @@ vm_put(char* key,char* value)
 		db_offset=v_len;
 		idx_offset=sizeof(int)*2+k_len;
 		
-		db_write(key,k_len,value,v_len);
+		fwrite(&k_len,1,sizeof(int),_db->db_write_idx_ptr);
+		fwrite(&v_len,1,sizeof(int),_db->db_write_idx_ptr);
+		fwrite(key,k_len,1,_db->db_write_idx_ptr);
+		fwrite(value,v_len,1,_db->db_write_ptr);
 
 
 		p->index=_db_index;
@@ -73,7 +103,6 @@ vm_put(char* key,char* value)
 		//add table
 		ktmp=malloc(k_len+1);
 		strcpy(ktmp,key);
-		//HASH_ADD_KEYPTR(hh,_pointers,ktmp,k_len,p);
 		hashtable_set(_ht,ktmp,p);
 		INFO("vm-put\n");
 	}
@@ -86,7 +115,6 @@ vm_putcache(char* key, int k_len, int v_len)
 {
 	char* s;
 	pointer_t* vtmp=NULL;
-	//HASH_FIND_STR(_pointers,key,vtmp);
 	if(vtmp==NULL)
 	{
 		pointer_t* v=(pointer_t*)malloc(sizeof(pointer_t));
@@ -97,7 +125,6 @@ vm_putcache(char* key, int k_len, int v_len)
 
 		s=malloc(k_len+1);
 		strcpy(s,key);
-		//HASH_ADD_KEYPTR(hh,_pointers,s,k_len,v);
 		hashtable_set(_ht,s,v);
 	}
 }
@@ -105,7 +132,7 @@ vm_putcache(char* key, int k_len, int v_len)
 void
 vm_load_data()
 {
-	char k[KLEN__]={0};
+	char k[1024]={0};
 	int k_len=0,v_len=0,size=0,db_offset=0,idx_offset=0;
 	FILE* fin;
 	fin=fopen(DBINDEX,"rb");
@@ -127,7 +154,6 @@ vm_load_data()
 
 			db_offset=v_len;
 			_db_index+=db_offset;
-
 		}
 	}
 	fclose(fin);
@@ -138,11 +164,11 @@ vm_get(char* key,char* value)
 {
 	char* lru_v=NULL;
 	pointer_t* vtmp;
-	//HASH_FIND_STR(_pointers,key,vtmp);
 	vtmp=hashtable_get(_ht,key);
 	if(vtmp!=NULL)
 	{
-		db_read(vtmp->index,vtmp->offset,value);
+		fseek(_db->db_read_ptr,vtmp->index,SEEK_SET);
+		fread(value,vtmp->offset,1,_db->db_read_ptr);
 		return 1;
 	}
 	return 0;

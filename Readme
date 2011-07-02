@@ -9,6 +9,6 @@
    INDEX File Size:		237.4MB
    Memory used:			553MB
 		        
-   write sync: 			~58w  writes per sec
-   read random sync:	~18.3w  reads per sec
-   data load(seq read):			~135w  reads per sec
+   write sync: 			~59w  writes/sec,cost 16960000 cpu's clock
+   read random sync:		~19w  reads/sec,cost 51680000 cpu's clock
+   data load(seq read):		~140w  reads/sec,cost 7160000 cpu's clock

@@ -55,21 +55,24 @@ void vm_get_test()
 	int count=0;
 	double cost;
 	char key[256]="xxxxxxxxxxxxxxxxx2";
-	char value[256]={0};
 	int i;
 	clock_t begin,end;
 	begin=clock();
 	for(i=1;i<LOOP;i++)
 	{
+		char* val=malloc(256);
 		sprintf(key,"%dxxxxxxxxxx",rand()%i);
-		int  ret=vm_get(key,value);
+		int ret=vm_get(key,val);
 		if(ret)
 		{
 			count++;
-			LOG("v is:%s----%s",key,value);
+			LOG("k:v is %s:%s\n",key,val);
 		}
 		else
 			INFO("nofound!");
+
+		free(val);
+
 	}
 	end=clock();
     cost=(double)(end-begin);
