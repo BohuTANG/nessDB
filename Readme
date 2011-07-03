@@ -2,7 +2,7 @@
    Date:      2011/06/29
    CPU:       Intel(R) Pentium(R) Dual CPU   T3200  @ 2.0GHz
 	    
-   Keys:       ~25 bytes each
+   Keys:       ~17 bytes each
    Values:     ~74 bytes each
    Entries:    10000000
    DB File Size:		723.7MB
