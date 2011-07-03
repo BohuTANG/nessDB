@@ -72,6 +72,7 @@ vm_init(int capacity)
 int
 vm_put(char* key,char* value)
 {
+	char* s;
 	pointer_t* vtmp=NULL;
 	if(vtmp==NULL)
 	{
@@ -105,7 +106,9 @@ vm_put(char* key,char* value)
 		_db_index+=db_offset;
 		_idx_index+=idx_offset;
 		//add table
-		hashtable_set(_ht,key,p);
+		s=malloc(k_len+1);
+		strcpy(s,key);
+		hashtable_set(_ht,s,p);
 		INFO("vm-put\n");
 	}
 
