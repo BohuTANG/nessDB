@@ -1,6 +1,6 @@
 /**
  * Hashtable implementation
- * (c) 2011 @marekweb
+ * (c) overred based on @marekweb
  *
  * Uses dynamic addressing with linear probing.
  */
@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string.h>
 #include "hashtable.h"
+#include "crc16.h"
 
 
 /**
@@ -26,6 +27,18 @@ unsigned long hashtable_hash(char* str)
 }
 
 /**
+ *compute the crc value for the hash collision
+*/
+
+static  unsigned int hashtable_find_crc(char* str)
+{
+	unsigned int crc= crc16(str,strlen(str));	
+	if(crc==0)
+		crc=1;
+	return crc;
+}
+
+/**
  * Find an available slot for the given key, using linear probing.
  */
 unsigned int hashtable_find_slot(hashtable* t, char* key)
@@ -39,15 +52,17 @@ unsigned int hashtable_find_slot(hashtable* t, char* key)
 void* hashtable_get(hashtable* t, char* key)
 {
 	int index = hashtable_find_slot(t, key);
-	if (t->body[index].key != NULL) {
+	unsigned int crc=hashtable_find_crc(key);
+	if (t->body[index].crc !=0) {
 		hashtable_entry* cur=&t->body[index];
 		while(cur!=NULL)
 		{
-			if(strcmp(cur->key,key)==0)
+			if(cur->crc==crc)
 				return cur->value;
 			cur=cur->next;
 		}
 
+		printf("crc %d,key:%s \n",crc,key);
 		return NULL;
 	}
 }
@@ -58,11 +73,10 @@ void* hashtable_get(hashtable* t, char* key)
 void hashtable_set(hashtable* t, char* key, void* value)
 {
 	int index = hashtable_find_slot(t, key);
-	if (t->body[index].key != NULL) {
-		/* Entry exists; update it. */
-		
+	unsigned int crc=hashtable_find_crc(key);
+	if (t->body[index].crc != 0) {
 		hashtable_entry* etmp=hashtable_body_allocate(1);
-		etmp->key = key;
+		etmp->crc= crc;
 		etmp->value = value;
 
 		hashtable_entry*  cur=&t->body[index];
@@ -79,7 +93,7 @@ void hashtable_set(hashtable* t, char* key, void* value)
 
 	} else {
 		t->size++;
-		t->body[index].key=key;		
+		t->body[index].crc=crc;		
 		t->body[index].value=value;
 
 	}
@@ -90,15 +104,15 @@ void hashtable_set(hashtable* t, char* key, void* value)
  */
 void hashtable_remove(hashtable* t, char* key)
 {
-
 	int index = hashtable_find_slot(t, key);
-	if(t->body[index].key!=NULL)
+	unsigned int crc=hashtable_find_crc(key);
+	if(t->body[index].crc!=0)
 	{
 		hashtable_entry* cur=&t->body[index];
 		hashtable_entry* pre=cur;	
 		while(cur!=NULL)
 		{
-			if(strcmp(cur->key,key)==0)
+			if(cur->crc==crc)
 			{
 					t->size--;
 					pre->next=cur->next;
@@ -135,25 +149,6 @@ hashtable_entry* hashtable_body_allocate(unsigned int capacity)
 	return (hashtable_entry*)calloc(capacity, sizeof(hashtable_entry));
 }
 
-/**
- * Resize the allocated memory.
- * Warning: clears the table of all entries.
- */
-void hashtable_resize(hashtable* t, unsigned int capacity)
-{
-	printf("resize %d\n",t->size);
-	assert(capacity >= t->size);
-	unsigned int old_capacity = t->capacity;
-	hashtable_entry* old_body = t->body;
-	t->body = hashtable_body_allocate(capacity);
-	t->capacity = capacity;
-	int i;
-	for (i = 0; i < old_capacity; i++) {
-		if (old_body[i].key != NULL) {
-			hashtable_set(t, old_body[i].key, old_body[i].value);
-		}
-	}
-}
 
 /**
  * Destroy the table and deallocate it from memory. This does not deallocate the contained items.

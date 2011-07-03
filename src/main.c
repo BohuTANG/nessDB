@@ -58,10 +58,14 @@ void vm_get_test()
 	int i;
 	clock_t begin,end;
 	begin=clock();
-	for(i=1;i<LOOP;i++)
+	for(i=0;i<LOOP;i++)
 	{
 		char* val=malloc(256);
-		sprintf(key,"%dxxxxxxxxxx",rand()%i);
+	
+		if(i==0)
+			sprintf(key,"0xxxxxxxxxx");
+		else
+			sprintf(key,"%dxxxxxxxxxx",rand()%i);
 		int ret=vm_get(key,val);
 		if(ret)
 		{
@@ -69,7 +73,7 @@ void vm_get_test()
 			LOG("k:v is %s:%s\n",key,val);
 		}
 		else
-			INFO("nofound!");
+			printf("nofound!%s\n",key);
 
 		free(val);
 
