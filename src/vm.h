@@ -1,5 +1,5 @@
 
-void 	vm_init();
+void 	vm_init(int capacity);
 void	vm_load_data();
 
 int	    vm_get(char* key,char* value);

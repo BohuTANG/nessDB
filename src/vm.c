@@ -30,10 +30,10 @@ static hashtable*	_ht;
 int _bufsize=0,_db_index=0,_idx_index=0,_lru=0;
 
 void 
-vm_init()
+vm_init(int capacity)
 {
 	_pointers=NULL;
-	_ht=hashtable_create(10000000+31);
+	_ht=hashtable_create(capacity);
 
 	FILE* fread=NULL,*fwrite=NULL,*fread_idx=NULL,*fwrite_idx=NULL;
 	fread=fopen(DBNAME,"rb");

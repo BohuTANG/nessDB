@@ -5,11 +5,11 @@
 #include "lru.h"
 #include "debug.h"
 
-static int LOOP=5;
+static int LOOP=40000000;
 
 void vm_init_test()
 {
-	vm_init();
+	vm_init(LOOP+31);
 	INFO("---init---");
 }
 
@@ -31,7 +31,7 @@ void vm_put_test()
 	clock_t begin,end;
 	begin=clock();
 	char key[256]="key1";
-	char value[256]="val1";
+	char value[1024*4]="val1";
 
 	for(i=0;i<LOOP;i++)
 	{
