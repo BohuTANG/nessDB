@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "hashtable.h"
 #include "vm.h"
+#include "zmalloc.h"
 #define DBNAME "ness.db"
 #define DBINDEX "ness.idx"
 
@@ -79,7 +80,7 @@ vm_put(char* key,char* value)
 		 int v_len;
 		 int db_offset,idx_offset;
 
-		pointer_t* p=(pointer_t*)malloc(sizeof(pointer_t));
+		pointer_t* p=(pointer_t*)zmalloc(sizeof(pointer_t));
 		if(p==NULL)
 		{
 			INFO("mem leak!\n");
@@ -118,7 +119,7 @@ vm_putcache(char* key, int k_len, int v_len)
 	pointer_t* vtmp=NULL;
 	if(vtmp==NULL)
 	{
-		pointer_t* v=(pointer_t*)malloc(sizeof(pointer_t));
+		pointer_t* v=(pointer_t*)zmalloc(sizeof(pointer_t));
 		if(v==NULL)
 			INFO("mem leak!\n");
 		v->index=_db_index;
