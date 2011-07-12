@@ -12,6 +12,11 @@
 #include "hashtable.h"
 #include "crc16.h"
 
+static unsigned long _primes[]={53UL, 97UL, 193UL, 389UL, 769UL, 1543UL, 3079UL, 6151UL, 12289UL,
+			24593UL, 49157UL, 98317UL, 196613UL, 393241UL, 786433UL, 1572869UL,
+			3145739UL, 6291469UL, 12582917UL, 25165843UL, 50331653UL,
+			100663319UL, 201326611UL, 402653189UL, 805306457UL, 1610612741UL,
+			3221225473UL, 4294967291UL};	
 
 /**
  * Compute the hash value for the given string.
@@ -36,6 +41,20 @@ static  unsigned int hashtable_find_crc(char* str)
 	if(crc==0)
 		crc=1;
 	return crc;
+}
+
+static long hashtable_primer(long k)
+{
+	int size=sizeof(_primes)/sizeof(*_primes);
+	int i;
+	for(i=(size-1);i>0;i--)
+	{
+		long p=_primes[i];
+		if(k>=p)
+			break;
+
+	}
+	return _primes[++i];
 }
 
 /**
