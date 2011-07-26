@@ -1,3 +1,4 @@
+   nessDB using Compact-Hash-Tree for Index structure in memorystream. Its features are less-memory and high-performance.
    nessDB:    version 1.3
    Date:      2011/07/03
    CPU:       Intel(R) Pentium(R) Dual CPU   T3200  @ 2.0GHz
@@ -9,6 +10,6 @@
    INDEX File Size:		237.4MB
    Memory used:			324MB
 		        
-   write sync: 			~59w  writes/sec,cost 16960000 cpu's clock
-   read random sync:		~19w  reads/sec,cost 51680000 cpu's clock
-   data load(seq read):		~140w  reads/sec,cost 7160000 cpu's clock
+   write sync: 			~590000  writes/sec,cost 16960000 cpu's clock
+   read random sync:		~190000  reads/sec,cost 51680000 cpu's clock
+   data load(seq read):		~1400000  reads/sec,cost 7160000 cpu's clock
