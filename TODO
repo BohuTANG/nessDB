@@ -1,8 +1,7 @@
 nessDB V1.3  TODO
 -----------
 *1,fixed value's length for OS cache(and test it better performance?)
-   have a test,1000,0000items,random get,cost 64000000 cpu's clock,more slowly than expected.
-   with the fixed-length,DB file increases to 1.2G(double size of un-fixed-length),this is one  reason.
+   have a test, clock,no better than expected.
  2,implement "remove/update"
  3,capacity resize
 *4,change the Index-Structure to B-Tree to save memory.
