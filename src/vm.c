@@ -169,6 +169,18 @@ vm_get(char* key,char* value)
 	return 0;
 }
 
+void
+vm_remove(char* key)
+{
+	pointer_t* vtmp;
+	vtmp=hashtable_get(_ht,key);
+	if(vtmp!=NULL)
+	{
+		//TODO:set NULL to block
+		hashtable_remove(_ht,key);
+	}
+}
+
 void vm_destroy()
 {
 	fclose(_db->db_read_ptr);	

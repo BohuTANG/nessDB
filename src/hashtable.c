@@ -1,6 +1,6 @@
 /**
- * Hashtable implementation
- * (c) overred based on @marekweb
+ *	Compact-Hash-Tree implementation
+ * (c) overred based on @marekweb,thx
  *
  * Uses dynamic addressing with linear probing.
  */
@@ -143,8 +143,6 @@ void hashtable_remove(hashtable* t, char* key)
 			pre=cur;
 			cur=cur->next;
 		}
-
-
 	}
 }
 
