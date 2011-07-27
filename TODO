@@ -1,0 +1,7 @@
+nessDB TODO
+-----------
+1,fixed value's length for OS cache(and test it better performance?)
+2,implement "remove/update"
+3,capacity resize
+4,change the Index-Structure to B-Tree to save memory.
+
