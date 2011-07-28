@@ -1,4 +1,14 @@
    nessDB using Compact-Hash-Tree for Index structure in memorystream. Its features are less-memory and high-performance.
+  
+  
+   Features
+   ========
+   a,Keys&values are arbitrary byte arrays.
+   b,Basic operations are Put(key,value),Get(key),Remove(key).
+   c,Keys are compacted to integer   in memory.
+
+   Benchmark
+   =========
    nessDB:    version 1.3
    Date:      2011/07/03
    CPU:       Intel(R) Pentium(R) Dual CPU   T3200  @ 2.0GHz
