@@ -90,9 +90,7 @@
 	snappyuncomp :       4.053 micros/op; (snappy failure)
 	acquireload  :       0.716 micros/op; (each op is 1000 loads)
 
-<pre>
 	nessDB is 4X faster than LevelDB in "fillseq";
 	nessDB is 4X faster than LevelDB in "readrandom";
 	LevelDB is 2X faster than nessDB in "readseq";
-</pre>
 
