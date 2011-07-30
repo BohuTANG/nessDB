@@ -1,10 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "debug.h"
 #include "hashtable.h"
 #include "vm.h"
-#include "zmalloc.h"
 #define DBNAME "ness.db"
 #define DBINDEX "ness.idx"
 
@@ -67,7 +65,7 @@ vm_init(int capacity)
 		_db->db_read_idx_ptr=fread_idx;
 	}
 	else
-		INFO("db_init error!");
+		printf("db_init error!");
 }
 
 int
@@ -80,10 +78,10 @@ vm_put(char* key,char* value)
 		 int v_len;
 		 int db_offset,idx_offset;
 
-		pointer_t* p=(pointer_t*)zmalloc(sizeof(pointer_t));
+		pointer_t* p=(pointer_t*)malloc(sizeof(pointer_t));
 		if(p==NULL)
 		{
-			INFO("mem leak!\n");
+			printf("mem leak!\n");
 			return (-1);
 		}
 
@@ -107,7 +105,6 @@ vm_put(char* key,char* value)
 		_idx_index+=idx_offset;
 		//add table
 		hashtable_set(_ht,key,p);
-		INFO("vm-put\n");
 	}
 
 	return (1);
@@ -119,9 +116,9 @@ vm_putcache(char* key, int k_len, int v_len)
 	pointer_t* vtmp=NULL;
 	if(vtmp==NULL)
 	{
-		pointer_t* v=(pointer_t*)zmalloc(sizeof(pointer_t));
+		pointer_t* v=(pointer_t*)malloc(sizeof(pointer_t));
 		if(v==NULL)
-			INFO("mem leak!\n");
+			printf("mem leak!\n");
 		v->index=_db_index;
 		v->offset=v_len;
 
@@ -140,9 +137,9 @@ vm_load_data()
 	rewind (fin);
 	while(_idx_index<size)
 	{
-		fread(&k_len,sizeof(int),1,fin);
-		fread(&v_len,sizeof(int),1,fin);
-		fread(k,k_len,1,fin);
+		int r1=fread(&k_len,sizeof(int),1,fin);
+		int r2=fread(&v_len,sizeof(int),1,fin);
+		int r3=fread(k,k_len,1,fin);
 
 		vm_putcache(k,k_len,v_len);
 
@@ -163,7 +160,7 @@ vm_get(char* key,char* value)
 	if(vtmp!=NULL)
 	{
 		fseek(_db->db_read_ptr,vtmp->index,SEEK_SET);
-		fread(value,vtmp->offset,1,_db->db_read_ptr);
+		int i=fread(value,vtmp->offset,1,_db->db_read_ptr);
 		return 1;
 	}
 	return 0;
@@ -176,7 +173,7 @@ vm_remove(char* key)
 	vtmp=hashtable_get(_ht,key);
 	if(vtmp!=NULL)
 	{
-		//TODO:set NULL to block
+		//TODO:set NULL to index-block
 		hashtable_remove(_ht,key);
 	}
 }
