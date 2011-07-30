@@ -13,7 +13,7 @@ OBJS = nessdb_bench.o vm.o hashtable.o
 
 all : nessdb_bench
 
-db_bench : $(OBJS)
+nessdb_bench : $(OBJS)
 	$(CC) $(CFLAGS) -o nessdb_bench $^
 
 debug :
