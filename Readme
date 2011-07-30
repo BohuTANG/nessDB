@@ -1,5 +1,6 @@
    nessDB using Compact-Hash-Tree for Index structure in memorystream. Its features are less-memory and high-performance.
-   Write and read-random are faster than LevelDB.
+   read-random	: 2X faster read-random than LevelDB.
+   write	: (1/3)X faster than LevelDB.
 
    How to do
    =========
@@ -15,8 +16,8 @@
 	b, Basic operations are Put(key,value),Get(key),Remove(key).
 	c, Keys are compacted to integer   in memory.
 
-   Benchmark
-   =========
+   Benchmark(100,0000 entries)
+   ===========================
 	Keys:		16 bytes each
 	Values:		84 bytes each
 	Entries:	1000000
@@ -35,4 +36,29 @@
 	+-----------------------+-------------------+----------------------------------------+-------------------+
 	|readrandom:		4.920000 micros/op; |	203252.032520 reads /sec(estimated); |	17.057589 MB/sec |
 	+-----------------------+-------------------+----------------------------------------+-------------------+
+
+
+
+
+   Benchmark(1000,0000 entries)
+   ===========================
+	Keys:		16 bytes each
+	Values:		84 bytes each
+	Entries:	10000000
+	RawSize:	953.7 MB (estimated)
+	FileSize:	1030.0 MB (estimated)
+	----------------------------------------------------------------------------------------------------------
+	nessDB:		version 1.3
+	Date:		Sat Jul 30 17:12:05 2011
+	CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
+	CPUCache:	1024 KB
+
+	+-----------------------+-------------------+----------------------------------------+-------------------+
+	|write:			1.265000 micros/op; |	790513.833992 writes/sec(estimated); |	81.420416 MB/sec |
+	+-----------------------+-------------------+----------------------------------------+-------------------+
+	|readseq:		1.327000 micros/op; |	753579.502638 reads /sec(estimated); |	63.242909 MB/sec |
+	+-----------------------+-------------------+----------------------------------------+-------------------+
+	|readrandom:		5.123000 micros/op; |	195198.126098 reads /sec(estimated); |	16.381679 MB/sec |
+	+-----------------------+-------------------+----------------------------------------+-------------------+
+
 
