@@ -1,11 +1,11 @@
-   nessDB using Compact-Hash-Tree for Index structure in memorystream. Its features are less-memory and high-performance.
+   nessDB using Compact-Hash-Tree for Index-Structure in memory stream.Its features are Less-Memory and High-Performance.
 
    How to do
    =========
-	1, %cd src
-	2, %make
-	3, %./nessdb_bench
-	4, show the benchmark result
+	a, %cd src
+	b, %make
+	c, %./nessdb_bench
+	d, show the benchmark result
   
   
    Features
