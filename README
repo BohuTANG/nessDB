@@ -35,9 +35,6 @@
 	|readrandom:		4.920000 micros/op; |	203252.032520 reads /sec(estimated); |	17.057589 MB/sec |
 	+-----------------------+-------------------+----------------------------------------+-------------------+
 
-
-
-
    Benchmark(1000,0000 entries)
    ===========================
 	Keys:		16 bytes each
@@ -58,6 +55,8 @@
 	+-----------------------+-------------------+----------------------------------------+-------------------+
 	|readrandom:		5.123000 micros/op; |	195198.126098 reads /sec(estimated); |	16.381679 MB/sec |
 	+-----------------------+-------------------+----------------------------------------+-------------------+
+
+   
 
    Compared with LevelDB
    =====================
@@ -90,7 +89,8 @@
 	snappyuncomp :       4.053 micros/op; (snappy failure)
 	acquireload  :       0.716 micros/op; (each op is 1000 loads)
 
-	nessDB is 4X faster than LevelDB in "fillseq";
-	nessDB is 4X faster than LevelDB in "readrandom";
-	LevelDB is 2X faster than nessDB in "readseq";
-
+       +----------------------------------------------------+
+       / nessDB is 4X faster than LevelDB in "fillseq";     /
+       / nessDB is 4X faster than LevelDB in "readrandom";  /
+       / LevelDB is 2X faster than nessDB in "readseq";     /
+       +----------------------------------------------------+
