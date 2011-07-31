@@ -65,11 +65,11 @@ void print_environment()
 		while(fgets(line,sizeof(line),cpuinfo)!=NULL)
 		{
 			const char* sep=strchr(line,':');
-			if(sep==NULL)
+			if(sep==NULL||strlen(sep)<=2)
 				continue;
 			
-			char key[256]={0};
-			char val[256]={0};
+			char key[1024]={0};
+			char val[1024]={0};
 			strncpy(key,line,sep-1-line);
 			strncpy(val,sep+1,strlen(sep)-1);
 			if(strcmp("model name",key)==0)
