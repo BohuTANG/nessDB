@@ -150,10 +150,9 @@ void vm_read_random_test()
 
 	}
 	end=clock();
-    	cost=(double)(end-begin);
+    cost=(double)(end-begin);
 	printf(LINE);
 	printf("|readrandom:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
-	printf(LINE);
 }
 
 void vm_read_seq_test()
@@ -182,7 +181,7 @@ void vm_read_seq_test()
 
 	}
 	end=clock();
-    	cost=(double)(end-begin);
+	cost=(double)(end-begin);
 	printf(LINE);
 	printf("|readseq:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 	
@@ -194,6 +193,7 @@ void vm_tests()
 	vm_write_test();
 	vm_read_random_test();
 	vm_read_seq_test();
+	printf(LINE);
 }
 
 void nocache_read_random_test()
@@ -201,6 +201,7 @@ void nocache_read_random_test()
 	vm_init_test();
 	vm_load_index();
 	vm_read_random_test();
+	printf(LINE);
 }
 
 

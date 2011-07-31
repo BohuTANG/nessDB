@@ -14,13 +14,13 @@ OBJS = nessdb_bench.o vm.o hashtable.o
 all : nessdb_bench
 
 nessdb_bench : $(OBJS)
-	$(CC) $(CFLAGS) -o nessdb_bench $^
+	$(CC)		$(CFLAGS)		-o		nessdb_bench $^
 
 nocache :
 	make all NOCACHE=1
 
 %.o : %.c
-	$(CC) $(CFLAGS) -o $@ -c $^
+	$(CC)		$(CFLAGS)		-o		$@		-c		$^
 
 
 clean :
