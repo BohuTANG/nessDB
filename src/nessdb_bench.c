@@ -1,11 +1,16 @@
 /*NOTE:
-     Before nocache_read_random_test,make sure the ness.idx and ness.db files exists.
-	 
-	 To have a nocache testing follow:
-	 %make clean
-	 %make nocache
-	 %echo 3 >> /proc/sys/vm/drop_caches
-	 %./nessdb_bench
+	How to do
+	=========
+	 	%cd src
+		%make
+	 	%./nessdb_bench
+
+
+	 To have a nocache testing follow(make sure the ness.idx and ness.db files existsi):
+		%make clean
+	 	%make nocache
+	 	%echo 3 > /proc/sys/vm/drop_caches
+	 	%./nessdb_bench
     
 	The benchmark results without caches almost didn't change. 
 */
