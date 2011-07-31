@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include "vm.h"
+#include "db.h"
 
 #define KEYSIZE 16
 #define VALSIZE 84
@@ -89,13 +89,13 @@ void print_environment()
 	}
 }
 
-void vm_init_test()
+void db_init_test()
 {
 	random_value();
-	vm_init(NUM+31);
+	db_init(NUM+31);
 }
 
-void vm_write_test()
+void db_write_test()
 {
 	int i;
 	double cost;
@@ -106,7 +106,7 @@ void vm_write_test()
 	for(i=0;i<NUM;i++)
 	{
 		sprintf(key,"%dxxxxxxxxxx",i);
-		vm_put(key,value);
+		db_put(key,value);
 		if((i%10000)==0)
 		{
 			fprintf(stderr,"write finished %d ops%30s\r",i,"");
@@ -120,7 +120,7 @@ void vm_write_test()
 	printf("|write:			%lf micros/op; |	%lf writes/sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
 }
 
-void vm_read_random_test()
+void db_read_random_test()
 {
 	int count=0;
 	double cost;
@@ -136,7 +136,7 @@ void vm_read_random_test()
 			sprintf(key,"0xxxxxxxxxx");
 		else
 			sprintf(key,"%dxxxxxxxxxx",rand()%i);
-		int ret=vm_get(key,val);
+		int ret=db_get(key,val);
 		if(ret)
 			count++;
 		else
@@ -155,7 +155,7 @@ void vm_read_random_test()
 	printf("|readrandom:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 }
 
-void vm_read_seq_test()
+void db_read_seq_test()
 {
 	int count=0;
 	double cost;
@@ -167,7 +167,7 @@ void vm_read_seq_test()
 	{
 	  	char val[1024]={0};
 		sprintf(key,"%dxxxxxxxxxx",i);
-		int ret=vm_get(key,val);
+		int ret=db_get(key,val);
 		if(ret)
 			count++;
 		else
@@ -188,20 +188,20 @@ void vm_read_seq_test()
 }
 
 
-void vm_tests()
+void db_tests()
 {
-	vm_init_test();
-	vm_write_test();
-	vm_read_random_test();
-	vm_read_seq_test();
+	db_init_test();
+	db_write_test();
+	db_read_random_test();
+	db_read_seq_test();
 	printf(LINE);
 }
 
 void nocache_read_random_test()
 {
-	vm_init_test();
-	vm_load_index();
-	vm_read_random_test();
+	db_init_test();
+	db_load_index();
+	db_read_random_test();
 	printf(LINE);
 }
 
@@ -213,7 +213,7 @@ int main()
 #ifdef NOCACHE
 	nocache_read_random_test();
 #else
-	vm_tests();
+	db_tests();
 #endif
 	return 1;
 }

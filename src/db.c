@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "hashtable.h"
-#include "vm.h"
+#include "db.h"
 #define DBNAME "ness.db"
 #define DBINDEX "ness.idx"
 
@@ -51,7 +51,7 @@ static int set_H_1(int x)
 }
 
 void 
-vm_init(int capacity)
+db_init(int capacity)
 {
 	_pointers=NULL;
 	_ht=hashtable_create(capacity);
@@ -91,7 +91,7 @@ vm_init(int capacity)
 }
 
 int
-vm_put(char* key,char* value)
+db_put(char* key,char* value)
 {
 	pointer_t* vtmp=NULL;
 	if(vtmp==NULL)
@@ -134,7 +134,7 @@ vm_put(char* key,char* value)
 }
 
 static void
-vm_putcache(char* key, int k_len, int v_len)
+db_putcache(char* key, int k_len, int v_len)
 {
 	pointer_t* vtmp=NULL;
 	if(vtmp==NULL)
@@ -151,7 +151,7 @@ vm_putcache(char* key, int k_len, int v_len)
 }
 
 void
-vm_load_index()
+db_load_index()
 {
 	char k[1024]={0};
 	int k_len=0,v_len=0,size=0,db_offset=0,idx_offset=0;
@@ -166,7 +166,7 @@ vm_load_index()
 		int r3=fread(k,k_len,1,fin);
 
 		if(get_H(k_len)==0)
-			vm_putcache(k,k_len,v_len);
+			db_putcache(k,k_len,v_len);
 		else
 			k_len=set_H_0(k_len);
 
@@ -179,7 +179,7 @@ vm_load_index()
 }
 
 int
-vm_get(char* key,char* value)
+db_get(char* key,char* value)
 {
 	char* lru_v=NULL;
 	pointer_t* vtmp;
@@ -194,7 +194,7 @@ vm_get(char* key,char* value)
 }
 
 void
-vm_remove(char* key)
+db_remove(char* key)
 {
 	pointer_t* vtmp;
 	vtmp=hashtable_get(_ht,key);
@@ -211,7 +211,7 @@ vm_remove(char* key)
 	}
 }
 
-void vm_destroy()
+void db_destroy()
 {
 	fclose(_db->db_read_ptr);	
 	fclose(_db->db_write_ptr);	
