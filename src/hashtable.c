@@ -136,8 +136,9 @@ void hashtable_remove(hashtable* t, char* key)
 					t->size--;
 					pre->next=cur->next;
 					if(cur==&t->body[index])
-						t->body[index]=*cur->next;
-					free(cur);
+						t->body[index]=*(cur->next);
+					/*if(cur)
+						free(cur);*/
 					return;
 			}
 			pre=cur;

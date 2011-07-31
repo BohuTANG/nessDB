@@ -6,7 +6,7 @@
 	 	%./nessdb_bench
 
 
-	 To have a nocache testing follow(make sure the ness.idx and ness.db files existsi):
+	 To have a nocache testing as follows(make sure the ness.idx and ness.db files exists):
 		%make clean
 	 	%make nocache
 	 	%echo 3 > /proc/sys/vm/drop_caches
@@ -187,6 +187,7 @@ void vm_read_seq_test()
 	
 }
 
+
 void vm_tests()
 {
 	vm_init_test();
@@ -214,6 +215,5 @@ int main()
 #else
 	vm_tests();
 #endif
-	
 	return 1;
 }

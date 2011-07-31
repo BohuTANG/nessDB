@@ -20,6 +20,7 @@ typedef struct pointer
 {
 	int		index;
 	int		offset;
+	int     idx_offset;
 }pointer_t;
 
 static db_t* _db;
@@ -27,6 +28,27 @@ static pointer_t* _pointers;
 static hashtable*	_ht;
 
 int _bufsize=0,_db_index=0,_idx_index=0,_lru=0;
+
+//get H bit
+static int get_H(int x)
+{
+	if((x&0x80000000)!=0x80000000)
+		return 0;
+	else
+		return 1;
+}
+
+//set H bit to 0
+static int set_H_0(int x)
+{
+	return	x&=0x3FFFFFFF;
+}
+
+//set H bit to 1
+static int set_H_1(int x)
+{
+	return x|=(0x01<<31);	
+}
 
 void 
 vm_init(int capacity)
@@ -99,6 +121,7 @@ vm_put(char* key,char* value)
 
 		p->index=_db_index;
 		p->offset=db_offset;
+		p->idx_offset=_idx_index;
 
 		//next pointer index
 		_db_index+=db_offset;
@@ -121,6 +144,7 @@ vm_putcache(char* key, int k_len, int v_len)
 			printf("mem leak!\n");
 		v->index=_db_index;
 		v->offset=v_len;
+		v->idx_offset=_idx_index;
 
 		hashtable_set(_ht,key,v);
 	}
@@ -141,7 +165,10 @@ vm_load_index()
 		int r2=fread(&v_len,sizeof(int),1,fin);
 		int r3=fread(k,k_len,1,fin);
 
-		vm_putcache(k,k_len,v_len);
+		if(get_H(k_len)==0)
+			vm_putcache(k,k_len,v_len);
+		else
+			k_len=set_H_0(k_len);
 
 		idx_offset=(sizeof(int)*2+k_len);
 		_idx_index+=idx_offset;
@@ -173,7 +200,13 @@ vm_remove(char* key)
 	vtmp=hashtable_get(_ht,key);
 	if(vtmp!=NULL)
 	{
-		//TODO:set NULL to index-block
+		int k_len=0;
+		fseek(_db->db_read_idx_ptr,vtmp->idx_offset,SEEK_SET);
+		int r1=fread(&k_len,sizeof(int),1,_db->db_read_idx_ptr);
+
+		k_len=set_H_1(k_len);
+		fwrite(&k_len,1,sizeof(int),_db->db_write_idx_ptr);
+
 		hashtable_remove(_ht,key);
 	}
 }
