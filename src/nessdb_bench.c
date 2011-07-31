@@ -1,3 +1,14 @@
+/*NOTE:
+     Before nocache_read_random_test,make sure the ness.idx and ness.db files exists.
+	 
+	 To have a nocache testing follow:
+	 %make clean
+	 %make nocache
+	 %echo 3 >> /proc/sys/vm/drop_caches
+	 %./nessdb_bench
+    
+	The benchmark results without caches almost didn't change. 
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -79,7 +90,7 @@ void vm_init_test()
 	vm_init(NUM+31);
 }
 
-void vm_put_test()
+void vm_write_test()
 {
 	int i;
 	double cost;
@@ -104,7 +115,7 @@ void vm_put_test()
 	printf("|write:			%lf micros/op; |	%lf writes/sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
 }
 
-void vm_get_test()
+void vm_read_random_test()
 {
 	int count=0;
 	double cost;
@@ -140,7 +151,7 @@ void vm_get_test()
 	printf(LINE);
 }
 
-void vm_get_seq_test()
+void vm_read_seq_test()
 {
 	int count=0;
 	double cost;
@@ -172,17 +183,31 @@ void vm_get_seq_test()
 	
 }
 
+void vm_tests()
+{
+	vm_init_test();
+	vm_write_test();
+	vm_read_random_test();
+	vm_read_seq_test();
+}
 
+void nocache_read_random_test()
+{
+	vm_init_test();
+	vm_load_index();
+	vm_read_random_test();
+}
 
 
 int main()
 {
 	print_header();
 	print_environment();
-
-	vm_init_test();
-	vm_put_test();
-	vm_get_seq_test();
-	vm_get_test();
+#ifdef NOCACHE
+	nocache_read_random_test();
+#else
+	vm_tests();
+#endif
+	
 	return 1;
 }

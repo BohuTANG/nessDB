@@ -1,9 +1,9 @@
 CC = gcc 
 LDFLAGS = 
 
-# set DEBUG options
-ifdef DEBUG
-CFLAGS = -Wall -Wextra -ggdb -pg -DDEBUG 
+# set NOCACHE options
+ifdef NOCACHE
+CFLAGS =  -O2  -DNOCACHE 
 else
 CFLAGS =  -O2 
 endif
@@ -16,12 +16,15 @@ all : nessdb_bench
 nessdb_bench : $(OBJS)
 	$(CC) $(CFLAGS) -o nessdb_bench $^
 
-debug :
-	make all DEBUG=1
+nocache :
+	make all NOCACHE=1
 
 %.o : %.c
 	$(CC) $(CFLAGS) -o $@ -c $^
 
 
 clean :
+	rm -rf $(OBJS) nessdb_bench
+
+cleanall : 
 	rm -rf $(OBJS) nessdb_bench ness.*

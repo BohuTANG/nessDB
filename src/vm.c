@@ -127,7 +127,7 @@ vm_putcache(char* key, int k_len, int v_len)
 }
 
 void
-vm_load_data()
+vm_load_index()
 {
 	char k[1024]={0};
 	int k_len=0,v_len=0,size=0,db_offset=0,idx_offset=0;

@@ -1,6 +1,6 @@
 
 void 	vm_init(int capacity);
-void	vm_load_data();
+void	vm_load_index();
 
 int	    vm_get(char* key,char* value);
 int 	vm_put(char* key,char* value);
