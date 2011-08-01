@@ -21,7 +21,7 @@
 #include "db.h"
 
 #define KEYSIZE 16
-#define VALSIZE 84
+#define VALSIZE 100
 #define NUM		1000000
 #define V		"1.3"
 #define LINE "+-----------------------+-------------------+----------------------------------------+-------------------+\n"
@@ -65,7 +65,7 @@ void print_environment()
 		while(fgets(line,sizeof(line),cpuinfo)!=NULL)
 		{
 			const char* sep=strchr(line,':');
-			if(sep==NULL||strlen(sep)<=2)
+			if(sep==NULL||strlen(sep)<10)
 				continue;
 			
 			char key[1024]={0};
