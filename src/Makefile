@@ -8,8 +8,13 @@ else
 CFLAGS =  -O2 
 endif
 
+ifdef DEBUG
+CFLAGS =	-g
+endif
+
+
 #name all the object files
-OBJS = nessdb_bench.o vm.o hashtable.o
+OBJS = nessdb_bench.o db.o hashtable.o
 
 all : nessdb_bench
 
@@ -18,6 +23,9 @@ nessdb_bench : $(OBJS)
 
 nocache :
 	make all NOCACHE=1
+
+debug	:	
+	make all	DEBUG=1
 
 %.o : %.c
 	$(CC)		$(CFLAGS)		-o		$@		-c		$^
