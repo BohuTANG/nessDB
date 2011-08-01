@@ -101,11 +101,11 @@ void db_write_test()
 	double cost;
 	clock_t begin,end;
 	begin=clock();
-	char key[256]="key1";
+	char key[KEYSIZE]={0};
 
 	for(i=0;i<NUM;i++)
 	{
-		sprintf(key,"%dxxxxxxxxxx",i);
+		sprintf(key,"%dxxxxxxxxx",i);
 		db_put(key,value);
 		if((i%10000)==0)
 		{
@@ -124,18 +124,18 @@ void db_read_random_test()
 {
 	int count=0;
 	double cost;
-	char key[256]="xxxxxxxxxxxxxxxxx2";
+	char key[KEYSIZE]={0};
 	int i;
 	clock_t begin,end;
 	begin=clock();
 	for(i=0;i<NUM;i++)
 	{
-	  	char val[1024]={0};
+	  	char val[VALSIZE]={0};
 	
 		if(i==0)
-			sprintf(key,"0xxxxxxxxxx");
+			sprintf(key,"0xxxxxxxxx");
 		else
-			sprintf(key,"%dxxxxxxxxxx",rand()%i);
+			sprintf(key,"%dxxxxxxxxx",rand()%i);
 		int ret=db_get(key,val);
 		if(ret)
 			count++;
@@ -159,14 +159,14 @@ void db_read_seq_test()
 {
 	int count=0;
 	double cost;
-	char key[256]="xxxxxxxxxxxxxxxxx2";
+	char key[KEYSIZE]={0};
 	int i;
 	clock_t begin,end;
 	begin=clock();
 	for(i=0;i<NUM;i++)
 	{
-	  	char val[1024]={0};
-		sprintf(key,"%dxxxxxxxxxx",i);
+	  	char val[VALSIZE]={0};
+		sprintf(key,"%dxxxxxxxxx",i);
 		int ret=db_get(key,val);
 		if(ret)
 			count++;
@@ -192,14 +192,13 @@ void db_remove_random_test()
 {
 	int count=0;
 	double cost;
-	char key[256]="xxxxxxxxxxxxxxxxx2";
+	char key[KEYSIZE]={0};
 	int i;
 	clock_t begin,end;
 	begin=clock();
 	for(i=1;i<NUM;i++)
 	{
-	  	char val[1024]={0};
-		sprintf(key,"%dxxxxxxxxxx",rand()%i);
+		sprintf(key,"%dxxxxxxxxx",rand()%i);
 		db_remove(key);
 
 		if((i%10000)==0)
@@ -221,8 +220,8 @@ void db_tests()
 {
 	db_init_test();
 	db_write_test();
-	db_read_random_test();
 	db_read_seq_test();
+	db_read_random_test();
 	printf(LINE);
 }
 
