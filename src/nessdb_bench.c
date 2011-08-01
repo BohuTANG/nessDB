@@ -33,7 +33,7 @@ void random_value()
 	int i;
 	for(i=0;i<VALSIZE;i++)
 	{
-		value[i]=salt[random()%10];
+		value[i]=salt[rand()%10];
 	}
 }
 
@@ -184,6 +184,35 @@ void db_read_seq_test()
 	cost=(double)(end-begin);
 	printf(LINE);
 	printf("|readseq:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	
+}
+
+
+void db_remove_random_test()
+{
+	int count=0;
+	double cost;
+	char key[256]="xxxxxxxxxxxxxxxxx2";
+	int i;
+	clock_t begin,end;
+	begin=clock();
+	for(i=1;i<NUM;i++)
+	{
+	  	char val[1024]={0};
+		sprintf(key,"%dxxxxxxxxxx",rand()%i);
+		db_remove(key);
+
+		if((i%10000)==0)
+		{
+			fprintf(stderr,"remove finished %d ops %30s\r",i,"");
+			fflush(stderr);
+		}
+
+	}
+	end=clock();
+	cost=(double)(end-begin);
+	printf(LINE);
+	printf("|removerandom:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 	
 }
 

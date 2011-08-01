@@ -80,8 +80,9 @@ void* hashtable_get(hashtable* t, char* key)
 				return cur->value;
 			cur=cur->next;
 		}
-
+#ifdef DEBUG
 		printf("crc %d,key:%s \n",crc,key);
+#endif
 		return NULL;
 	}
 }
@@ -128,21 +129,30 @@ void hashtable_remove(hashtable* t, char* key)
 	if(t->body[index].crc!=0)
 	{
 		hashtable_entry* cur=&t->body[index];
-		hashtable_entry* pre=cur;	
+		hashtable_entry* pre=cur;
+		char c=0;
 		while(cur!=NULL)
 		{
 			if(cur->crc==crc)
 			{
 					t->size--;
 					pre->next=cur->next;
-					if(cur==&t->body[index])
-						t->body[index]=*(cur->next);
-					/*if(cur)
-						free(cur);*/
+					if(c==0)
+					{
+						if(cur->next!=NULL)
+							pre=(cur->next);
+						else
+							pre=NULL;
+					}
+#ifdef DEBUG
+					else if(c>1)
+						printf("remove !0 level:%d  crc:%d\n",c,crc);
+#endif
 					return;
 			}
 			pre=cur;
 			cur=cur->next;
+			c++;
 		}
 	}
 }
