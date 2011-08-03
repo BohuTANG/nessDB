@@ -7,18 +7,20 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
+
 #include "btree.h"
 
-#define L0_DB_NAME "level_0"
-#define L1_DB_NAME "level_1"
+#define L0_IDX_NAME "level_0.idx"
+#define L1_IDX_NAME "level_1.idx"
+#define DB_NAME		"btree_ness.db"
 
-#define BLOCK_NUM 10
 
-// 16 key	+	4 val_offset + 4 val_length
+//key:16bytes	+val_offset:4bytes + val_length:4bytes
 #define BLOCK_SIZE (16+4+4)
 
-//4 used	+	*blocks		+4 next bucket pointer
-#define BUCKET_SIZE (4+(16+4+4)*BLOCK_NUM+4)
+//used:16bytes	+*blocks	+next bucket pointer:4bytes
+#define BUCKET_SIZE (4+BLOCK_SIZE*BLOCK_NUM+4)
 
 static btree_t *_btree;
 
@@ -29,7 +31,22 @@ static unsigned int hash(char* str)
 	int c;
 	while(c=*str++)
 		hash=((hash<<5)+hash)+c;//* hash*33+c */
+
+	int l=hash/BUCKET_SIZE;
+	hash=(l+1)*BUCKET_SIZE;
 	return hash;
+}
+
+static int cmp_key(char* k1,char* k2)
+{
+	int i;
+	for(i=0;i<KEY_SIZE;i++)
+	{
+		if(*k1++!=*k2++)
+			return -1;
+
+	}
+	return 0;
 }
 
 static block_t* blocks_allocate(int capacity)
@@ -39,18 +56,30 @@ static block_t* blocks_allocate(int capacity)
 
 void btree_init(int capacity)
 {
-	int fd0=open(L0_DB_NAME, O_RDWR  | O_CREAT, 0644);
-	if(fd0<-1)
+	int rfd0=open(L0_IDX_NAME, O_RDWR  | O_CREAT, 0644);
+	int wfd0=open(L0_IDX_NAME, O_RDWR  | O_CREAT, 0644);
+
+	
+	int db_rfd=open(DB_NAME, O_RDWR  | O_CREAT, 0644);
+	int db_wfd=open(DB_NAME, O_RDWR  | O_CREAT, 0644);
+
+
+	if(rfd0<-1 || db_rfd<-1)
 	{
 		printf("btree_init error\n");
 		return;
 	}
 
-	pwrite(fd0,0,BUCKET_SIZE*capacity,0);
+	pwrite(wfd0,0,BUCKET_SIZE*capacity,0);
 
 	_btree=(btree_t*)malloc(sizeof(btree_t));
 
-	_btree->fd0=fd0;
+	_btree->idx_wfd0=wfd0;
+	_btree->idx_rfd0=rfd0;
+
+	_btree->db_wfd=db_wfd;
+	_btree->db_rfd=db_rfd;
+
 	_btree->index_offset=0;
 	_btree->db_offset=0;
 	_btree->cap=capacity;
@@ -62,45 +91,70 @@ void btree_add(char *key,char *val)
 	{
 		unsigned int h=hash(key);
 		int used=0,i;
-		pread(_btree->fd0,&used,sizeof(int),h);
-		
-		block_t* b=blocks_allocate(BLOCK_NUM);
+		bucket_t* bucket=(bucket_t*)malloc(sizeof(bucket_t));
+		block_t*  blocks=blocks_allocate(BLOCK_NUM);
+		memset(blocks,0,sizeof(block_t)*BLOCK_NUM);
+
+		pread(_btree->idx_rfd0,&used,sizeof(int),h);
 		if(used>0)
 		{
-				pread(_btree->fd0,b,sizeof(block_t)*used,h+4);
+				if(used>=BLOCK_NUM)
+				{
+					//printf("err used:%d>%d k:%s hash:%d\n",used,BLOCK_NUM,key,h);	
+					return ;
+				}
+
+				pread(_btree->idx_rfd0,blocks,sizeof(block_t)*used,h+4);
 				for(i=0;i<used;i++)
 				{
-					if(strcmp(key,b[i].key)==0)
+					int cmp=cmp_key(key,blocks[i].key);
+					//printf("k1:%s,k2:%s cmp :%d\n",key,blocks[i].key,cmp);
+					if(cmp==0)
 					{
+						//printf("key has exist!\n");
 						//TODO update
 						return;
 					}
 					
 				}
 		}
-
-		memcpy(b[used].key,key,KEY_SIZE);
+	
+		
 		int v_len=strlen(val);
-		b[used].val_offset+=v_len;
-		b[used].val_length=v_len;
-		pwrite(_btree->fd0,b,sizeof(block_t),h+4+BLOCK_SIZE*used);
+		block_t * block=&blocks[used];
+
+		memcpy(block->key,key,KEY_SIZE);
+		block->val_length=v_len;
+		block->val_offset=_btree->db_offset;
+		pwrite(_btree->idx_wfd0,block,sizeof(block_t),h+4+BLOCK_SIZE*used);
 		
 		used+=1;
-		pwrite(_btree->fd0,&used,sizeof(int),h);
-			
-		if(b)
-			free(b);
+		pwrite(_btree->idx_wfd0,&used,sizeof(int),h);
+
+		pwrite(_btree->db_wfd,val,v_len,_btree->db_offset);
+		_btree->db_offset+=v_len;
+
 	}
 }
 
 
 int main()
 {
-	char *k="1234567890123456";
-	char *v="bbc";
+	int loop=500000;
+	char k[16]="1234567890123456";
+	char *v="abddddddddddddddddddddddddddddddddddddddabdddddddddddddddddddddddddddddddddddddd";
 
-	btree_init(3);
-	btree_add(k,v);
+	btree_init(loop+33);
+	int i=0;
+	clock_t begin=clock(),end;
+	for(i=0;i<loop;i++)
+	{
+		sprintf(k,"12345679%d",i);
+		btree_add(k,v);
+	}
+	end=clock();
+	double cost=end-begin;
+	printf("cost:%lf\n",cost);
 
 	return 1;	
 }

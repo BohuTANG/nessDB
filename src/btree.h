@@ -1,4 +1,4 @@
-
+#define BLOCK_NUM 10
 #define KEY_SIZE 16
 
 typedef struct block
@@ -11,15 +11,24 @@ typedef struct block
 typedef struct bucket
 {
 	int used;
-	int level;//level_1=level_0*10
-	block_t *blocks;
+//	int level;//level_1=level_0*10
+	block_t blocks[BLOCK_NUM];
 	int nxt_bucket_offset;
 }bucket_t;
 
 typedef struct btree
 {
-	int fd0;
-	int fd1;
+	//w* write only ;r* read only
+	int idx_wfd0;
+	int idx_rfd0;
+
+/*
+	int idx_wfd1;
+	int idx_rfd1;
+*/
+
+	int db_wfd;
+	int db_rfd;
 
 	int index_offset;
 	int db_offset;
