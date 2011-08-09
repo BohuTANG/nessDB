@@ -3,13 +3,13 @@ LDFLAGS =
 
 # set NOCACHE options
 ifdef NOCACHE
-CFLAGS =  -O2  -DNOCACHE 
+CFLAGS =		-O2  -DNOCACHE 
 else
-CFLAGS =  -O2 
+CFLAGS =		-O2 
 endif
 
 ifdef DEBUG
-CFLAGS =	-g
+CFLAGS =		-g
 endif
 
 
@@ -19,17 +19,13 @@ OBJS = nessdb_bench.o db.o hashtable.o
 all : nessdb_bench
 
 nessdb_bench : $(OBJS)
-	$(CC)		$(CFLAGS)		-o		nessdb_bench $^
+	$(CC) $(CFLAGS)	-o	$@ $(OBJS)
 
 nocache :
 	make all NOCACHE=1
 
 debug	:	
 	make all	DEBUG=1
-
-%.o : %.c
-	$(CC)		$(CFLAGS)		-o		$@		-c		$^
-
 
 clean :
 	rm -rf $(OBJS) nessdb_bench

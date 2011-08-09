@@ -29,12 +29,13 @@ typedef struct btree
 	FILE *db_w;
 
 	int db_offset;
+	int idx_offset;
 	int capacity;
 }btree_t;
 
 static btree_t *_btree;
 
-static unsigned int hash(char* str)
+static unsigned int bucket_hash(char* str)
 {
 	unsigned int hash=5381;
 	int c;
@@ -75,9 +76,9 @@ void btree_init(int capacity)
 static void flush_bucket(bucket_t *bucket,size_t bucket_offset,size_t  i,blob_t *blob)
 {
 	//bucket
-	bucket->used+=1;
 	fseek(_btree->idx_w,bucket_offset,SEEK_SET);
 	fwrite(bucket,sizeof(bucket_t),1,_btree->idx_w);
+	_btree->idx_offset+=sizeof(bucket_t);
 
 	//value	
 	fseek(_btree->db_w,_btree->db_offset,SEEK_SET);
@@ -85,9 +86,32 @@ static void flush_bucket(bucket_t *bucket,size_t bucket_offset,size_t  i,blob_t 
 	_btree->db_offset+=blob->len;
 }
 
-static split_bucket()
+static void  split_bucket(bucket_t *bucket,size_t bucket_offset)
 {
-	//TODO split
+	int new_used=bucket->used/2;
+	int child=_btree->idx_offset;
+
+	
+	//write new child  bucket
+	bucket_t *new_bucket=(bucket_t*)malloc(sizeof(bucket_t));
+	new_bucket->used=(BLOCK_NUM-new_used);
+	memcpy(new_bucket->blocks,&bucket->blocks[new_used],(BLOCK_NUM-new_used)*BLOCK_SIZE);
+	fwrite(new_bucket,sizeof(bucket_t),1,_btree->idx_w);
+	if(new_bucket)
+		free(new_bucket);
+	
+	//update
+	_btree->idx_offset+=sizeof(bucket_t);
+	
+	//write old bucket
+	bucket->used=new_used;
+	bucket->blocks[new_used-1].child=child;
+	memset(&bucket->blocks[new_used],0,(BLOCK_NUM-new_used)*BLOCK_SIZE);
+
+	fseek(_btree->idx_w,bucket_offset,SEEK_SET);
+	fwrite(bucket,sizeof(bucket_t),1,_btree->idx_w);
+
+//	printf("new child bucket offset:%d,new-used:%d\n",child,new_used);
 }
 
 static size_t insert_bucket(size_t bucket_offset,char *key,blob_t *blob)
@@ -96,11 +120,9 @@ static size_t insert_bucket(size_t bucket_offset,char *key,blob_t *blob)
 
 	fseek(_btree->idx_r,bucket_offset,SEEK_SET);
 	fread(bucket,sizeof(bucket_t),1,_btree->idx_r);
-	printf("used:%d\n",bucket->used);
-	int used=bucket->used;
 	block_t* blocks=bucket->blocks;
 
-	int left=0,right=used;
+	int left=0,right=bucket->used;
 	while(left<right)
 	{
 		size_t i=(left+right)/2;
@@ -108,6 +130,7 @@ static size_t insert_bucket(size_t bucket_offset,char *key,blob_t *blob)
 		if(cmp==0)
 		{
 			//TODO update	
+			return i;
 		}
 		if(cmp<0)
 			right=(i-1);
@@ -122,14 +145,10 @@ static size_t insert_bucket(size_t bucket_offset,char *key,blob_t *blob)
 		child=insert_bucket(child,key,blob);			
 	}
 	
-	if(used>=BLOCK_NUM)
-	{
-		//TODO split bucket	
-		printf("=================================over used:%d\n",used);
-		return;
-	}
 
-	memmove(&blocks[i+1],&blocks[i],sizeof(block_t)*(used-i));
+	memmove(&blocks[i+1],&blocks[i],sizeof(block_t)*(bucket->used-i));
+
+	bucket->used+=1;
 
 	block_t *block=&blocks[i];
 	memcpy(block->key,key,KEY_SIZE);
@@ -137,8 +156,11 @@ static size_t insert_bucket(size_t bucket_offset,char *key,blob_t *blob)
 	block->val_length=blob->len;
 	block->child=0;
 
-	//flush
+	//flush index and data to file
 	flush_bucket(bucket,bucket_offset,i,blob);
+
+	if(bucket->used>(BLOCK_NUM-1))
+		split_bucket(bucket,bucket_offset);
 	
 	//free
 	if(bucket)
@@ -149,7 +171,7 @@ static size_t insert_bucket(size_t bucket_offset,char *key,blob_t *blob)
 
 void btree_add(char *key,char *val)
 {
-	unsigned int h=hash(key);
+	unsigned int h=bucket_hash(key);
 		
 	blob_t *blob=(blob_t*)malloc(sizeof(blob_t));
 	blob->len=strlen(val);
@@ -164,7 +186,7 @@ void btree_add(char *key,char *val)
 
 int main()
 {
-	int loop=1000;
+	int loop=100000;
 	char k[16]="88abcdefghigklmn";
 	char *v="abddddddddddddddddddddddddddddddddddddddabdddddddddddddddddddddddddddddddddddddd";
 
