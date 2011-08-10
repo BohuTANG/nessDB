@@ -130,7 +130,6 @@ static size_t insert_bucket(size_t bucket_offset,char *key,blob_t *blob)
 		if(cmp==0)
 		{
 			//TODO update	
-			return i;
 		}
 		if(cmp<0)
 			right=(i-1);
