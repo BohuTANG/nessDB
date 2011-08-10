@@ -56,10 +56,10 @@ static block_t* blocks_allocate(int capacity)
 
 void btree_init(int capacity)
 {
-	FILE *idx_r=fopen(L0_IDX_NAME,"a+");
+	FILE *idx_r=fopen(L0_IDX_NAME,"wb");
 	FILE *idx_w=fopen(L0_IDX_NAME,"wb");
 
-	FILE *db_r=fopen(DB_NAME,"a+");
+	FILE *db_r=fopen(DB_NAME,"wb");
 	FILE *db_w=fopen(DB_NAME,"wb");
 
 	_btree=(btree_t*)malloc(sizeof(btree_t));
@@ -96,6 +96,7 @@ static void  split_bucket(bucket_t *bucket,size_t bucket_offset)
 	bucket_t *new_bucket=(bucket_t*)malloc(sizeof(bucket_t));
 	new_bucket->used=(BLOCK_NUM-new_used);
 	memcpy(new_bucket->blocks,&bucket->blocks[new_used],(BLOCK_NUM-new_used)*BLOCK_SIZE);
+	fseek(_btree->idx_w,0,SEEK_END);
 	fwrite(new_bucket,sizeof(bucket_t),1,_btree->idx_w);
 	if(new_bucket)
 		free(new_bucket);
@@ -185,7 +186,7 @@ void btree_add(char *key,char *val)
 
 int main()
 {
-	int loop=100000;
+	int loop=10000000;
 	char k[16]="88abcdefghigklmn";
 	char *v="abddddddddddddddddddddddddddddddddddddddabdddddddddddddddddddddddddddddddddddddd";
 
