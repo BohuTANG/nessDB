@@ -1,5 +1,5 @@
 /* HASHB-Trees:replace the root-level with hash
-   		Drafted by overred
+   Drafted by overred
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,19 +8,13 @@
 
 #include "btree.h"
 
-#define L0_IDX_NAME 	"dump.idx"
-#define L1_IDX_NAME 	"level_1.idx"
-#define DB_NAME		"dump.db"
+#define L0_IDX_NAME 	"dump_btree.idx"
+#define DB_NAME		"dump_btree.db"
 
 #define PAGE_SIZE 	(sizeof(page_t))
 #define X 		(29989)
 #define ROOT_GAP 	(((X/PAGE_SIZE)+1)*PAGE_SIZE)
 
-typedef struct blob
-{
-	size_t len;
-	char* val;
-}blob_t;
 
 typedef struct btree
 {
@@ -49,148 +43,6 @@ static unsigned int slot_hash(char* str)
 	return mod;
 }
 
-static void flush_data(page_t *page,size_t page_offset,blob_t *blob)
-{
-	//page
-	fseek(_btree->idx_w,page_offset,SEEK_SET);
-	fwrite(page,sizeof(page_t),1,_btree->idx_w);
-	_btree->idx_offset+=sizeof(page_t);
-
-	//value	
-	fseek(_btree->db_w,_btree->db_offset,SEEK_SET);
-	fwrite(blob->val,blob->len,1,_btree->db_w);
-	_btree->db_offset+=blob->len;
-}
-
-static void  split_page(page_t *page,size_t page_offset)
-{
-	int new_used=page->used/2;
-	int child=_btree->idx_offset;
-
-
-	//write new child  page
-	page_t *new_page=(page_t*)malloc(sizeof(page_t));
-	new_page->used=(BLOCK_NUM-new_used);
-	printf("used:%d,new_used:%d",page->used,new_used);
-
-	memcpy(new_page->blocks,&page->blocks[new_used],(BLOCK_NUM-new_used)*BLOCK_SIZE);
-	fseek(_btree->idx_w,0,SEEK_END);
-	fwrite(new_page,sizeof(page_t),1,_btree->idx_w);
-	if(new_page)
-		free(new_page);
-
-	//update
-	_btree->idx_offset+=sizeof(page_t);
-
-	//write old page
-	page->used=new_used;
-	page->blocks[new_used-1].child=child;
-
-	memset(&page->blocks[new_used],0,(BLOCK_NUM-new_used+1)*BLOCK_SIZE);
-
-	fseek(_btree->idx_w,page_offset,SEEK_SET);
-	fwrite(page,sizeof(page_t),1,_btree->idx_w);
-
-//	printf("new child page offset:%d,new-used:%d\n",child,new_used);
-}
-
-
-static size_t insert_page(size_t page_offset,char *key,blob_t *blob)
-{
-	page_t* page=(page_t*)malloc(sizeof(page_t));
-
-	fseek(_btree->idx_r,page_offset,SEEK_SET);
-	fread(page,sizeof(page_t),1,_btree->idx_r);
-	block_t* blocks=page->blocks;
-
-	int left=0,right=page->used-1;
-	while(left<=right)
-	{
-		size_t i=(left+right)/2;
-		int cmp=strcmp(key,blocks[i].key);
-		if(cmp==0)
-		{
-			//TODO update
-		}
-		if(cmp<0)
-			right=(i-1);
-		else
-			left=(i+1);
-	}
-
-	size_t i=left;
-	int child=blocks[i].child;
-	if(child)
-	{
-		child=insert_page(child,key,blob);			
-	}	
-
-	memmove(&blocks[i],&blocks[i],sizeof(block_t)*(page->used-i-1));
-
-	page->used+=1;
-
-	block_t *block=&blocks[i];
-	memcpy(block->key,key,KEY_SIZE);
-	block->val_offset=_btree->db_offset;
-	block->val_length=blob->len;
-	block->child=0;
-
-	//flush index and data to file
-	flush_data(page,page_offset,blob);
-	printf("add-->key:%s,slot:%d,used:%d,val_off:%d\n",key,page_offset,page->used,block->val_offset);
-	if(page->used>(BLOCK_NUM-1))
-	{	
-		printf("BLOCK_NUM:%d\n",BLOCK_NUM);
-		split_page(page,page_offset);
-	}
-	
-	//free
-	if(page)
-	{
-		free(page);
-		page=NULL;
-	}
-
-	return child;
-}
-
-
-static size_t lookup(char *key,size_t page_offset)
-{
-	while(page_offset)
-	{
-		page_t* page=(page_t*)malloc(sizeof(page_t));
-		fseek(_btree->idx_r,page_offset,SEEK_SET);
-		fread(page,sizeof(page_t),1,_btree->idx_r);
-		int used=0;
-		block_t* blocks=page->blocks;
-
-		printf("get-->key:%s,slot:%d,used:%d\n",key,page_offset,page->used);
-		int left=0,right=page->used-1;
-		while(left<=right)
-		{
-			size_t i=(left+right)/2;
-			int cmp=strcmp(key,blocks[i].key);
-			if(cmp==0)
-			{
-				int off=blocks[i].val_offset;
-				if(page)
-					free(page);
-		//		printf("get-->key:%s,slot:%d,used:%d,off:%d\n",key,page_offset,page->used,off);
-				return off;
-			}
-			if(cmp<0)
-				right=(i-1);
-			else
-				left=(i+1);
-		}
-		size_t i=left;
-		page_offset=blocks[i].child;
-		if(page)
-			free(page);
-	}
-	return 0;
-}
 
 void btree_init(int capacity)
 {
@@ -223,14 +75,99 @@ void btree_init(int capacity)
 
 	_btree->capacity=capacity;
 	_btree->db_offset=0;
-	_btree->idx_offset=0;
+	_btree->idx_offset=ROOT_GAP;
 }
 
+
+static void split_page(page_t *page)
+{
+	size_t new_used=page->used/2;
+	//old-page not write then,(+PAGE_SIZE) for gap
+	int idx_offset=_btree->idx_offset+PAGE_SIZE;
+	page_t new_page;
+	memset(&new_page,0,PAGE_SIZE);
+
+	new_page.used=(BLOCK_NUM-new_used);
+	memcpy(new_page.blocks,&page->blocks[new_used],new_page.used*BLOCK_SIZE);
+	fseek(_btree->idx_w,idx_offset,SEEK_SET);
+	fwrite(&new_page,PAGE_SIZE,1,_btree->idx_w);
+//	fflush(_btree->idx_w);
+	_btree->idx_offset+=PAGE_SIZE*2;
+
+	//old page
+	page->used=new_used;
+	page->blocks[new_used-1].child=idx_offset;
+	memset(&page->blocks[new_used],0,new_page.used*BLOCK_SIZE);
+}
+
+static void insert_page(size_t page_offset,char *key,blob_t *blob)
+{
+	size_t i=0;
+	page_t page;
+	block_t *blocks=NULL;
+	while(page_offset)
+	{
+		memset(&page,0,PAGE_SIZE);
+		fseek(_btree->idx_r,page_offset,SEEK_SET);
+		fread(&page,PAGE_SIZE,1,_btree->idx_r);
+		blocks=page.blocks;
+		int left=0,right=page.used;
+		while(left<right)
+		{
+			i=(left+right)/2;
+			int cmp=strcmp(key,page.blocks[i].key);
+			if(cmp<0)
+				right=i;
+			else if(cmp>0)
+				left=i+1;
+			else
+				return;
+		}
+
+		i=left;
+		//ugly:boundary opt,if last block has child ,the i =i+1
+		if(page.used!=0
+			&&i==page.used
+			&&page.blocks[i-1].child!=0)
+			i-=1;
+
+		int child=page.blocks[i].child;
+		if(child>0)
+			page_offset=child;
+		else
+			break;
+	}
+
+	if((page.used)!=i)
+		memmove(&blocks[i+1],&blocks[i],(page.used-i)*BLOCK_SIZE);
+	page.used+=1;
+
+	memcpy(blocks[i].key,key,KEY_SIZE);
+	blocks[i].val_offset=_btree->db_offset;
+	blocks[i].child=0;
+
+	if(page.used>BLOCK_NUM-1)
+		split_page(&page);
+
+	//index
+	fseek(_btree->idx_w,page_offset,SEEK_SET);
+	fwrite(&page,PAGE_SIZE,1,_btree->idx_w);
+	//fflush(_btree->idx_w);
+
+	//data
+	fwrite(&blob->len,sizeof(size_t),1,_btree->db_w);
+	_btree->db_offset+=4;
+	fwrite(blob->val,blob->len,1,_btree->db_w);
+	_btree->db_offset+=blob->len;
+	//fflush(_btree->db_w);
+}
 
 void btree_add(char *key,char *val)
 {
 	unsigned int h=slot_hash(key);
 	blob_t *blob=(blob_t*)malloc(sizeof(blob_t));
+	memset(blob,0,sizeof(blob_t));
+
 	blob->len=strlen(val);
 	blob->val=val;
 
@@ -241,11 +178,62 @@ void btree_add(char *key,char *val)
 }
 
 
+static size_t lookup(size_t page_offset,char *key)
+{
+	while(page_offset)
+	{
+		size_t i=0;
+		page_t page;
+		memset(&page,0,PAGE_SIZE);
+		fseek(_btree->idx_r,page_offset,SEEK_SET);
+		fread(&page,PAGE_SIZE,1,_btree->idx_r);
+		if(page.used==0)
+			return -1;
+
+		int left=0,right=page.used;
+		while(left<right)
+		{
+			int i=(left+right)/2;
+			int cmp=strcmp(key,page.blocks[i].key);
+			if(cmp<0)
+				right=i;
+			else if(cmp>0)
+				left=i+1;
+			else
+				return page.blocks[i].val_offset;
+		}
+
+		i=left;
+
+		//ugly
+		if(page.used!=0&&
+			i==page.used&&
+			page.blocks[i-1].child!=0)
+			i-=1;
+
+		page_offset=page.blocks[i].child;
+		if(page_offset==0)
+				break;
+	}
+
+	return -1;
+}
+
 int btree_get(char *key,char *val)
 {
 	unsigned int h=slot_hash(key);
-	size_t offset=lookup(key,h);
-	printf("get offset:%d\n",offset);
+	int offset=lookup(h,key);
+	if(offset>=0)
+	{
+		size_t len=0;
+		fseek(_btree->db_r,offset,SEEK_SET);
+		fread(&len,sizeof(size_t),1,_btree->db_r);
+
+		fread(val,len,1,_btree->db_r);
+		return 1;
+	}
+
+	return 0;
 }
 
 void btree_destroy()
@@ -258,7 +246,6 @@ void btree_destroy()
 		free(_btree);
 }
 
-
 int main(int argc,char** argv)
 {
 	if(argc!=3)
@@ -268,8 +255,8 @@ int main(int argc,char** argv)
 	}
 
 	int loop=atoi(argv[2]);
-	char k[16]="88abcdefghigklmn";
-	char *v="abddddddddddddddddddddddddddddddddddddddabdddddddddddddddddddddddddddddddddddddd";
+	char k[16]={0};
+	char v[1024]={0};
 
 	btree_init(loop+33);
 	int i=0;
@@ -279,6 +266,7 @@ int main(int argc,char** argv)
 		for(i=0;i<loop;i++)
 		{
 			sprintf(k,"%dabcdefg",i);
+			sprintf(v,"abdcdaddasfasffffffffffffffffffffasdfasddddddddddddddddddddddddddddddddddddddd%d",i);
 			btree_add(k,v);
 			if((i%10000)==0)
 			{
