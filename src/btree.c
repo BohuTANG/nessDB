@@ -141,7 +141,8 @@ void btree_close(struct btree *btree)
 	close(btree->fd);
 
 	size_t i;
-	for (i = 0; i < CACHE_SLOTS; ++i) {
+	for (i = 0; i < CACHE_SLOTS; ++i)
+	{
 		if (btree->cache[i].offset)
 			free(btree->cache[i].table);
 	}
@@ -189,7 +190,8 @@ static size_t alloc_chunk(struct btree *btree, size_t len)
 			assert(round_power2(free_len) == free_len);
 
 			/* free extra space at the end of the chunk */
-			while (free_len > len) {
+			while (free_len > len) 
+			{
 				free_len >>= 1;
 				free_chunk(btree, offset + free_len,
 						  free_len);
@@ -197,7 +199,8 @@ static size_t alloc_chunk(struct btree *btree, size_t len)
 		} else
 			in_allocator = 0;
 	}
-	if (offset == 0) {
+	if (offset == 0) 
+	{
 		/* not found, allocate from the end of the file */
 		offset = btree->alloc;
 		btree->alloc += len;
@@ -217,7 +220,8 @@ static void free_chunk(struct btree *btree, size_t offset, size_t len)
 	len = round_power2(len);
 
 	if (in_allocator) {
-		if (free_queue_len >= FREE_QUEUE_LEN) {
+		if (free_queue_len >= FREE_QUEUE_LEN) 
+		{
 			fprintf(stderr, "btree: free queue overflow\n");
 			return;
 		}
@@ -242,7 +246,8 @@ static void flush_super(struct btree *btree)
 {
 	/* free queued chunks */
 	size_t i;
-	for (i = 0; i < free_queue_len; ++i) {
+	for (i = 0; i < free_queue_len; ++i) 
+	{
 		struct chunk *chunk = &free_queue[i];
 		free_chunk(btree, chunk->offset, chunk->len);
 	}
@@ -411,10 +416,12 @@ static size_t insert_table(struct btree *btree, size_t table_offset,
 	assert(table->size < TABLE_SIZE-1);
 
 	size_t left = 0, right = table->size;
-	while (left < right) {
+	while (left < right) 
+	{
 		size_t i = (left + right) / 2;
 		int cmp = strcmp((const char*)sha1, (const char*)table->items[i].sha1);
-		if (cmp == 0) {
+		if (cmp == 0) 
+		{
 			/* already in the table */
 			size_t ret = from_be32(table->items[i].offset);
 			put_table(btree, table, table_offset);
@@ -431,7 +438,8 @@ static size_t insert_table(struct btree *btree, size_t table_offset,
 	size_t child_offset = from_be32(table->items[i].child);
 	size_t right_child = 0;
 	size_t ret = 0;
-	if (child_offset) {
+	if (child_offset) 
+	{
 		/* recursion */
 		ret = insert_table(btree, child_offset, sha1, data, len);
 
@@ -444,7 +452,8 @@ static size_t insert_table(struct btree *btree, size_t table_offset,
 		}
 		right_child = split_table(btree, child, sha1, &offset);
 		flush_table(btree, child, child_offset);
-	} else {
+	} else 
+	{
 		ret = offset = insert_data(btree, data, len);
 	}
 
@@ -476,7 +485,8 @@ static size_t delete_table(struct btree *btree, size_t table_offset,
 	struct btree_table *table = get_table(btree, table_offset);
 
 	size_t left = 0, right = table->size;
-	while (left < right) {
+	while (left < right) 
+	{
 		size_t i = (left + right) / 2;
 		int cmp = strcmp((const char*)sha1, (const char*)table->items[i].sha1);
 		if (cmp == 0) {
@@ -499,7 +509,8 @@ static size_t delete_table(struct btree *btree, size_t table_offset,
 	if (ret)
 		table->items[i].child = to_be32(collapse(btree, child));
 
-	if (ret == 0 && in_allocator && i < table->size) {
+	if (ret == 0 && in_allocator && i < table->size) 
+	{
 		/* remove the next largest */
 		ret = remove_table(btree, table, i, sha1);
 	}
@@ -521,13 +532,16 @@ size_t insert_toplevel(struct btree *btree, size_t *table_offset,
 
 		/* check if we need to split */
 		struct btree_table *table = get_table(btree, *table_offset);
-		if (table->size < TABLE_SIZE-1) {
+		if (table->size < TABLE_SIZE-1) 
+		{
 			put_table(btree, table, *table_offset);
 			return ret;
 		}
 		right_child = split_table(btree, table, sha1, &offset);
 		flush_table(btree, table, *table_offset);
-	} else {
+	} 
+	else 
+	{
 		ret = offset = insert_data(btree, data, len);
 	}
 
