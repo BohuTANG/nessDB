@@ -71,6 +71,10 @@ void *db_get(char* key)
 		void* entry=hashtable_get(_ht,key);
 		if(entry!=NULL)
 			return btree_get_value(&_btree,(size_t)entry);
+		else
+		{
+				
+		}
 	}
 	else
 		return btree_get(&_btree,key);
