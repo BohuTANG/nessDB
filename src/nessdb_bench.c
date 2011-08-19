@@ -139,7 +139,7 @@ void db_read_random_test()
 		if(data)
 			count++;
 		else
-			//printf("nofound!%s\n",key);
+			printf("nofound!%s\n",key);
 		free(data);
 
 		if((i%10000)==0)
@@ -170,7 +170,7 @@ void db_read_seq_test()
 		if(data)
 			count++;
 		else
-			//printf("nofound!%s\n",key);
+			printf("nofound!%s\n",key);
 		free(data);
 
 		if((i%10000)==0)

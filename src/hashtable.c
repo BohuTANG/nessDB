@@ -1,5 +1,5 @@
 /**
- *	Compact-Hash-Tree implementation
+ * Compact-Hash-Tree implementation
  * (c) overred based on @marekweb,thx
  *
  * Uses dynamic addressing with linear probing.
@@ -72,7 +72,8 @@ void* hashtable_get(hashtable* t, char* key)
 {
 	int index = hashtable_find_slot(t, key);
 	unsigned int crc=hashtable_find_crc(key);
-	if (t->body[index].crc !=0) {
+	if (t->body[index].crc !=0) 
+	{
 		hashtable_entry* cur=&t->body[index];
 		while(cur!=NULL)
 		{
@@ -80,11 +81,8 @@ void* hashtable_get(hashtable* t, char* key)
 				return cur->value;
 			cur=cur->next;
 		}
-#ifdef DEBUG
-		printf("crc %d,key:%s \n",crc,key);
-#endif
-		return NULL;
 	}
+	return NULL;
 }
 
 /**

@@ -43,23 +43,13 @@ void db_init(int capacity)
 
 int db_add(char* key,char* value)
 {
-	pointer_t* vtmp=NULL;
-	//vtmp=hashtable_get(_ht,key);
-	if(vtmp==NULL)
+	void* entry=hashtable_get(_ht,key);
+	if(entry==NULL)
 	{	
-		pointer_t* p=(pointer_t*)malloc(sizeof(pointer_t));
-		if(p==NULL)
-		{
-			printf("mem leak!\n");
-			return (-1);
-		}
-
-		int val_offset=btree_insert(&_btree,key,value,strlen(value));
-		p->val_offset=val_offset;
+		size_t val_offset=btree_insert(&_btree,key,value,strlen(value));
 		//add table
-		hashtable_set(_ht,key,p);
+		hashtable_set(_ht,key,(void*)val_offset);
 	}
-
 	return (1);
 }
 
@@ -73,10 +63,9 @@ db_load_index()
 void *db_get(char* key)
 {
 	char* lru_v=NULL;
-	pointer_t* vtmp;
-	vtmp=hashtable_get(_ht,key);
-	if(vtmp!=NULL)
-		return btree_get_value(&_btree,vtmp->val_offset);
+	void* entry=hashtable_get(_ht,key);
+	if(entry!=NULL)
+		return btree_get_value(&_btree,(size_t)entry);
 	else
 		return btree_get(&_btree,key);
 }
