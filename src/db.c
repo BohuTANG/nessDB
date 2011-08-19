@@ -10,13 +10,9 @@
 #define DBNAME "ness.ndb"
 #define MAX_HITS (1024)
 
-typedef struct pointer
-{
-	int	val_offset;
-}pointer_t;
-
 static hashtable*	_ht;
 struct btree 		_btree;
+static int _lru=0;
 
 
 static int file_exists(const char *path)
@@ -26,8 +22,9 @@ static int file_exists(const char *path)
 }
 
 
-void db_init(int capacity)
+void db_init(int capacity,int lru)
 {
+	_lru=lru;
 	_ht=hashtable_create(capacity);
 	if (file_exists(DBNAME))
 	{
@@ -43,12 +40,19 @@ void db_init(int capacity)
 
 int db_add(char* key,char* value)
 {
-	void* entry=hashtable_get(_ht,key);
-	if(entry==NULL)
-	{	
+	if(_lru)
+	{
+		void* entry=hashtable_get(_ht,key);
+		if(entry==NULL)
+		{	
+			size_t val_offset=btree_insert(&_btree,key,value,strlen(value));
+			//add table
+			hashtable_set(_ht,key,(void*)val_offset);
+		}
+	}
+	else
+	{
 		size_t val_offset=btree_insert(&_btree,key,value,strlen(value));
-		//add table
-		hashtable_set(_ht,key,(void*)val_offset);
 	}
 	return (1);
 }
@@ -62,10 +66,12 @@ db_load_index()
 
 void *db_get(char* key)
 {
-	char* lru_v=NULL;
-	void* entry=hashtable_get(_ht,key);
-	if(entry!=NULL)
-		return btree_get_value(&_btree,(size_t)entry);
+	if(_lru)
+	{
+		void* entry=hashtable_get(_ht,key);
+		if(entry!=NULL)
+			return btree_get_value(&_btree,(size_t)entry);
+	}
 	else
 		return btree_get(&_btree,key);
 }

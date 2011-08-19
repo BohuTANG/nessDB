@@ -1,5 +1,5 @@
 
-void 	db_init(int capacity);
+void 	db_init(int capacity,int lru);
 void	db_load_index();
 
 void*	db_get(char* key);

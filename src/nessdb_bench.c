@@ -26,6 +26,7 @@
 #define V		"1.4"
 #define LINE "+-----------------------+-------------------+----------------------------------------+-------------------+\n"
 
+static int lru=0;
 static char value[VALSIZE+1]={0};
 void random_value()
 {
@@ -50,7 +51,12 @@ void print_header()
 
 void print_environment()
 {
-	printf("nessDB:		version %s\n",V);
+	printf("nessDB:		version %s(B+Tree)\n",V);
+	if(!lru)
+		printf("LRU:		closed....\n");
+	else
+		printf("LRU:		opened....\n");		
+
 	time_t now=time(NULL);
 	printf("Date:		%s",(char*)ctime(&now));
 	
@@ -92,7 +98,7 @@ void print_environment()
 void db_init_test()
 {
 	random_value();
-	db_init(NUM+31);
+	db_init(NUM+31,lru);
 }
 
 void db_write_test()
@@ -117,7 +123,7 @@ void db_write_test()
 	end=clock();
 	cost=(double)(end-begin);
 	printf(LINE);
-	printf("|write:			%lf micros/op; |	%lf writes/sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
+	printf("|write:		%lf micros/op;	%lf writes/sec(estimated);	%lf MB/sec \n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
 }
 
 void db_read_random_test()
@@ -152,7 +158,7 @@ void db_read_random_test()
 	end=clock();
     cost=(double)(end-begin);
 	printf(LINE);
-	printf("|readrandom:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	printf("readrandom:	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec \n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 }
 
 void db_read_seq_test()
@@ -183,7 +189,7 @@ void db_read_seq_test()
 	end=clock();
 	cost=(double)(end-begin);
 	printf(LINE);
-	printf("|readseq:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	printf("|readseq:	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 	
 }
 
@@ -211,7 +217,7 @@ void db_remove_random_test()
 	end=clock();
 	cost=(double)(end-begin);
 	printf(LINE);
-	printf("|removerandom:		%lf micros/op; |	%lf reads /sec(estimated); |	%lf MB/sec |\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	printf("|removerandom:	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec \n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 	
 }
 
