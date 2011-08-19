@@ -23,7 +23,7 @@
 #define KEYSIZE 16
 #define VALSIZE 100
 #define NUM		1000000
-#define V		"1.3"
+#define V		"1.4"
 #define LINE "+-----------------------+-------------------+----------------------------------------+-------------------+\n"
 
 static char value[VALSIZE+1]={0};
@@ -106,7 +106,7 @@ void db_write_test()
 	for(i=0;i<NUM;i++)
 	{
 		sprintf(key,"%dxxxxxxxxx",i);
-		db_put(key,value);
+		db_add(key,value);
 		if((i%10000)==0)
 		{
 			fprintf(stderr,"write finished %d ops%30s\r",i,"");
@@ -130,17 +130,17 @@ void db_read_random_test()
 	begin=clock();
 	for(i=0;i<NUM;i++)
 	{
-	  	char val[VALSIZE]={0};
 	
 		if(i==0)
 			sprintf(key,"0xxxxxxxxx");
 		else
 			sprintf(key,"%dxxxxxxxxx",rand()%i);
-		int ret=db_get(key,val);
-		if(ret)
+		void* data=db_get(key);
+		if(data)
 			count++;
 		else
-			printf("nofound!%s\n",key);
+			//printf("nofound!%s\n",key);
+		free(data);
 
 		if((i%10000)==0)
 		{
@@ -165,13 +165,13 @@ void db_read_seq_test()
 	begin=clock();
 	for(i=0;i<NUM;i++)
 	{
-	  	char val[VALSIZE]={0};
 		sprintf(key,"%dxxxxxxxxx",i);
-		int ret=db_get(key,val);
-		if(ret)
+		void* data=db_get(key);
+		if(data)
 			count++;
 		else
-			printf("nofound!%s\n",key);
+			//printf("nofound!%s\n",key);
+		free(data);
 
 		if((i%10000)==0)
 		{

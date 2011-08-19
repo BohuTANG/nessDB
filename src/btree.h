@@ -1,29 +1,75 @@
-#define BLOCK_SIZE (sizeof(block_t))
-#define BLOCK_NUM ((1024*4-1)/BLOCK_SIZE)
-#define KEY_SIZE 16
+#ifndef _BTREE_H
+#define _BTREE_H
 
-typedef struct block
+#ifdef __CHECKER__
+#define FORCE           __attribute__((force))
+#else
+#define FORCE
+#endif
+
+#ifdef __CHECKER__
+#define BITWISE         __attribute__((bitwise))
+#else
+#define BITWISE
+#endif
+
+#include <stdio.h>
+#include <stdint.h>
+
+typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
+typedef uint32_t BITWISE __be32; /* big endian, 32 bits */
+
+#define SHA1_LENGTH	20
+
+#define CACHE_SLOTS	23 /* prime */
+
+struct btree_item 
 {
-	char key[KEY_SIZE];	
-	int child;
+	uint8_t sha1[SHA1_LENGTH];
+	__be32 offset;
+	__be32 child;
+} __attribute__((packed));
 
-	int val_offset;
-}block_t;
+#define TABLE_SIZE	((4096 - 1) / sizeof(struct btree_item))
 
-typedef struct page
+struct btree_table 
 {
-	int used;
-	block_t blocks[BLOCK_NUM];
-}page_t;
+	struct btree_item items[TABLE_SIZE];
+	uint8_t size;
+} __attribute__((packed));
 
-typedef struct blob
+struct btree_cache 
 {
-	size_t	len;
-	char	*val;
-}blob_t;
+	size_t offset;
+	struct btree_table *table;
+};
 
+struct blob_info 
+{
+	__be32 len;
+};
 
-void 	btree_init(int capacity);
-void 	btree_add(char *key,char *value);
-int		btree_get(char *key,char *value);
-void	btree_destroy();
+struct btree_super
+ {
+	__be32 top;
+	__be32 free_top;
+};
+
+struct btree 
+{
+	size_t top;
+	size_t free_top;
+	size_t alloc;
+	int fd;
+	struct btree_cache cache[CACHE_SLOTS];
+};
+
+int btree_open(struct btree *btree,const char* dbname);
+int btree_creat(struct btree *btree,const char* dbname);
+void btree_close(struct btree *btree);
+size_t btree_insert(struct btree *btree, const uint8_t *sha1, const void *data,size_t len);
+void *btree_get(struct btree *btree, const uint8_t *sha1);
+void *btree_get_value(struct btree *btree,size_t val_offset);
+int btree_delete(struct btree *btree, const uint8_t *sha1);
+
+#endif

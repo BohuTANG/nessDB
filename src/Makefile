@@ -14,7 +14,7 @@ endif
 
 
 #name all the object files
-OBJS = nessdb_bench.o db.o hashtable.o
+OBJS = nessdb_bench.o db.o hashtable.o btree.o
 
 all : nessdb_bench
 
