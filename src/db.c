@@ -45,14 +45,14 @@ int db_add(char* key,char* value)
 		void* entry=hashtable_get(_ht,key);
 		if(entry==NULL)
 		{	
-			size_t val_offset=btree_insert(&_btree,key,value,strlen(value));
+			uint64_t val_offset=btree_insert(&_btree,key,value,strlen(value));
 			//add table
 			hashtable_set(_ht,key,(void*)val_offset);
 		}
 	}
 	else
 	{
-		size_t val_offset=btree_insert(&_btree,key,value,strlen(value));
+		uint64_t val_offset=btree_insert(&_btree,key,value,strlen(value));
 	}
 	return (1);
 }

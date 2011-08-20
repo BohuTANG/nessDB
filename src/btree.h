@@ -17,9 +17,9 @@
 #include <stdint.h>
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
-typedef uint32_t BITWISE __be32; /* big endian, 32 bits */
+typedef uint64_t BITWISE __be32; /* big endian, 32 bits */
 
-#define SHA1_LENGTH	20
+#define SHA1_LENGTH	32
 
 #define CACHE_SLOTS	23 /* prime */
 
@@ -40,7 +40,7 @@ struct btree_table
 
 struct btree_cache 
 {
-	size_t offset;
+	uint64_t  offset;
 	struct btree_table *table;
 };
 
@@ -57,9 +57,9 @@ struct btree_super
 
 struct btree 
 {
-	size_t top;
-	size_t free_top;
-	size_t alloc;
+	uint64_t  top;
+	uint64_t  free_top;
+	uint64_t alloc;
 	int fd;
 	struct btree_cache cache[CACHE_SLOTS];
 };
@@ -67,9 +67,9 @@ struct btree
 int btree_open(struct btree *btree,const char* dbname);
 int btree_creat(struct btree *btree,const char* dbname);
 void btree_close(struct btree *btree);
-size_t btree_insert(struct btree *btree, const uint8_t *sha1, const void *data,size_t len);
+uint64_t  btree_insert(struct btree *btree, const uint8_t *sha1, const void *data,size_t len);
 void *btree_get(struct btree *btree, const uint8_t *sha1);
-void *btree_get_value(struct btree *btree,size_t val_offset);
+void *btree_get_value(struct btree *btree,uint64_t val_offset);
 int btree_delete(struct btree *btree, const uint8_t *sha1);
 
 #endif

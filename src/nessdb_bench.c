@@ -16,6 +16,7 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
 #include <string.h>
 #include "db.h"
@@ -44,8 +45,8 @@ void print_header()
 	printf("Keys:		%d bytes each\n",KEYSIZE);
 	printf("Values:		%d bytes each\n",VALSIZE);
 	printf("Entries:	%d\n",NUM);
-	printf("RawSize:	%.1f MB (estimated)\n",(double)((KEYSIZE+VALSIZE)*NUM)/1048576.0);
-	printf("FileSize:	%.1f MB (estimated)\n",(double)((KEYSIZE+VALSIZE+4*2)*NUM)/1048576.0);
+	printf("RawSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE)*NUM)/1048576.0);
+	printf("FileSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE+4*2)*NUM)/1048576.0);
 	printf("----------------------------------------------------------------------------------------------------------\n");
 }
 
