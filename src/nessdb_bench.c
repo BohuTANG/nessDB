@@ -20,9 +20,9 @@
 #include <string.h>
 #include "db.h"
 
-#define KEYSIZE 16
+#define KEYSIZE 32
 #define VALSIZE 100
-#define NUM		1000000
+#define NUM		5000000
 #define V		"1.4"
 #define LINE "+-----------------------+-------------------+----------------------------------------+-------------------+\n"
 
