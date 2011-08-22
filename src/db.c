@@ -45,14 +45,14 @@ int db_add(char* key,char* value)
 		void* entry=hashtable_get(_ht,key);
 		if(entry==NULL)
 		{	
-			uint64_t val_offset=btree_insert(&_btree,key,value,strlen(value));
+			uint64_t val_offset=btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
 			//add table
-			hashtable_set(_ht,key,(void*)val_offset);
+			hashtable_set(_ht,key,&val_offset);
 		}
 	}
 	else
 	{
-		uint64_t val_offset=btree_insert(&_btree,key,value,strlen(value));
+		uint64_t val_offset=btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
 	}
 	return (1);
 }
@@ -66,6 +66,7 @@ db_load_index()
 
 void *db_get(char* key)
 {
+	size_t len;
 	if(_lru)
 	{
 		void* entry=hashtable_get(_ht,key);
@@ -77,7 +78,7 @@ void *db_get(char* key)
 		}
 	}
 	else
-		return btree_get(&_btree,key);
+		return btree_get(&_btree,key,&len);
 }
 
 void
