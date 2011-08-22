@@ -150,7 +150,7 @@ int btree_open(struct btree *btree, const char *fname)
 	btree->top = from_be64(super.top);
 	btree->free_top = from_be64(super.free_top);
 
-	btree->alloc = lseek64(btree->fd, 0, SEEK_END);
+	btree->alloc =lseek64(btree->fd, 0, SEEK_END);
 	return 0;
 }
 
@@ -166,7 +166,8 @@ int btree_creat(struct btree *btree, const char *fname)
 
 	flush_super(btree);
 
-	btree->alloc = lseek64(btree->fd, 0, SEEK_END);
+	btree->alloc =sizeof(struct btree_super);
+	lseek64(btree->fd, 0, SEEK_END);
 	return 0;
 }
 
@@ -495,8 +496,8 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 
 	size_t left = 0, right = table->size;
 	while (left < right) {
-		size_t i = (right+left) / 2;
-		int cmp = strcmp(sha1, table->items[i].sha1);
+		size_t i = (right - left) / 2 + left;
+		int cmp = cmp_sha1(sha1, table->items[i].sha1);
 		if (cmp == 0) {
 			/* already in the table */
 			uint64_t ret = from_be64(table->items[i].offset);
@@ -569,8 +570,8 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 
 	size_t left = 0, right = table->size;
 	while (left < right) {
-		size_t i = (right+left) / 2;
-		int cmp = strcmp(sha1, table->items[i].sha1);
+		size_t i = (right - left) / 2 + left;
+		int cmp = cmp_sha1(sha1, table->items[i].sha1);
 		if (cmp == 0) {
 			/* found */
 			uint64_t ret = remove_table(btree, table, i, sha1);
@@ -641,15 +642,15 @@ uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	return ret;
 }
 
-uint64_t btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,size_t len)
+void btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,
+		  size_t len)
 {
 	/* SHA-1 must be in writable memory */
 	uint8_t sha1[SHA1_LENGTH];
 	memcpy(sha1, c_sha1, sizeof sha1);
 
-	uint64_t ret=insert_toplevel(btree, &btree->top, sha1, data, len);
+	insert_toplevel(btree, &btree->top, sha1, data, len);
 	flush_super(btree);
-	return ret;
 }
 
 /*
@@ -659,30 +660,28 @@ uint64_t btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *da
 static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 		    const uint8_t *sha1)
 {
-	if (table_offset == 0)
-		return 0;
-	struct btree_table *table = get_table(btree, table_offset);
-
-	size_t left = 0, right = table->size;
-	while (left < right) {
-		size_t i = (right+left) / 2;
-		int cmp = strcmp(sha1, table->items[i].sha1);
-		if (cmp == 0) {
-			/* found */
-			uint64_t ret = from_be64(table->items[i].offset);
-			put_table(btree, table, table_offset);
-			return ret;
+	while (table_offset) {
+		struct btree_table *table = get_table(btree, table_offset);
+		uint64_t left = 0, right = table->size, i;
+		while (left < right) {
+			i = (right - left) / 2 + left;
+			int cmp = strcmp((const char*)sha1, (const char*)table->items[i].sha1);
+			if (cmp == 0) {
+				/* found */
+				uint64_t ret = from_be64(table->items[i].offset);
+				put_table(btree, table, table_offset);
+				return ret;
+			}
+			if (cmp < 0)
+				right = i;
+			else
+				left = i + 1;
 		}
-		if (cmp < 0)
-			right = i;
-		else
-			left = i + 1;
+		uint64_t child = from_be64(table->items[left].child);
+		put_table(btree, table, table_offset);
+		table_offset = child;
 	}
-
-	size_t i = left;
-	uint64_t child = from_be64(table->items[i].child);
-	put_table(btree, table, table_offset);
-	return lookup(btree, child, sha1);
+	return 0;
 }
 
 void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len)
@@ -728,28 +727,5 @@ int btree_delete(struct btree *btree, const uint8_t *c_sha1)
 	free_chunk(btree, offset, sizeof info + from_be32(info.len));
 	flush_super(btree);
 	return 0;
-}
-
-
-
-void *btree_get_value(struct btree *btree,uint64_t offset)
-{
-	if (offset == 0)
-		return NULL;
-
-	lseek64(btree->fd, offset, SEEK_SET);
-	struct blob_info info;
-	if (read(btree->fd, &info, sizeof info) != sizeof info)
-		return NULL;
-	size_t len = from_be32(info.len);
-
-	void *data = malloc(len);
-	if (data == NULL)
-		return NULL;
-	if (read(btree->fd, data, len) != len) {
-		free(data);
-		data = NULL;
-	}
-	return data;
 }
 
