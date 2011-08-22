@@ -17,15 +17,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <time.h>
 #include <string.h>
 #include "db.h"
 
-#define KEYSIZE 32
+#define KEYSIZE 20
 #define VALSIZE 100
-#define NUM		5000000
+#define NUM		1000000
 #define V		"1.4"
-#define LINE "+-----------------------+-------------------+----------------------------------------+-------------------+\n"
+#define LINE "+-----------------------+---------------------------+----------------------------------------+-----------------------------------+\n"
 
 static int lru=0;
 static char value[VALSIZE+1]={0};
@@ -47,7 +48,7 @@ void print_header()
 	printf("Entries:	%d\n",NUM);
 	printf("RawSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE)*NUM)/1048576.0);
 	printf("FileSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE+4*2)*NUM)/1048576.0);
-	printf("----------------------------------------------------------------------------------------------------------\n");
+	printf("-------------------------------------------------------------------------------------------------------------------------------\n");
 }
 
 void print_environment()
@@ -104,16 +105,18 @@ void db_init_test()
 
 void db_write_test()
 {
-	int i;
+	int i,count=0;
 	double cost;
 	clock_t begin,end;
 	begin=clock();
-	char key[KEYSIZE]={0};
+	uint8_t key[KEYSIZE];
 
 	for(i=0;i<NUM;i++)
 	{
-		sprintf(key,"%dxxxxxxxxx",i);
-		db_add(key,value);
+		memset(key,0,sizeof(key));
+		sprintf(key,"%dkey",i);
+		if(db_add(key,value))
+			count++;
 		if((i%10000)==0)
 		{
 			fprintf(stderr,"write finished %d ops%30s\r",i,"");
@@ -124,24 +127,22 @@ void db_write_test()
 	end=clock();
 	cost=(double)(end-begin);
 	printf(LINE);
-	printf("|write:		%lf micros/op;	%lf writes/sec(estimated);	%lf MB/sec \n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
+	printf("|write		(succ:%d):		%lf micros/op;	%lf writes/sec(estimated);	%lf MB/sec \n",count,(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
 }
 
 void db_read_random_test()
 {
 	int count=0;
 	double cost;
-	char key[KEYSIZE]={0};
+	uint8_t key[KEYSIZE]={0};
 	int i;
 	clock_t begin,end;
 	begin=clock();
 	for(i=0;i<NUM;i++)
 	{
-	
-		if(i==0)
-			sprintf(key,"0xxxxxxxxx");
-		else
-			sprintf(key,"%dxxxxxxxxx",rand()%i);
+
+		memset(key,0,sizeof(key));
+		sprintf(key,"%dkey",rand()%(i+1));
 		void* data=db_get(key);
 		if(data)
 			count++;
@@ -157,22 +158,23 @@ void db_read_random_test()
 
 	}
 	end=clock();
-    cost=(double)(end-begin);
+   	cost=(double)(end-begin);
 	printf(LINE);
-	printf("readrandom:	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec \n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	printf("|readrandom	(found:%d):	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec \n",count,(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 }
 
 void db_read_seq_test()
 {
 	int count=0;
 	double cost;
-	char key[KEYSIZE]={0};
+	uint8_t key[KEYSIZE]={0};
 	int i;
 	clock_t begin,end;
 	begin=clock();
 	for(i=0;i<NUM;i++)
 	{
-		sprintf(key,"%dxxxxxxxxx",i);
+		memset(key,0,sizeof(key));
+		sprintf(key,"%dkey",i);
 		void* data=db_get(key);
 		if(data)
 			count++;
@@ -190,37 +192,10 @@ void db_read_seq_test()
 	end=clock();
 	cost=(double)(end-begin);
 	printf(LINE);
-	printf("|readseq:	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec\n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	printf("|readseq	(found:%d):	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec\n",count,(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
 	
 }
 
-
-void db_remove_random_test()
-{
-	int count=0;
-	double cost;
-	char key[KEYSIZE]={0};
-	int i;
-	clock_t begin,end;
-	begin=clock();
-	for(i=1;i<NUM;i++)
-	{
-		sprintf(key,"%dxxxxxxxxx",rand()%i);
-		db_remove(key);
-
-		if((i%10000)==0)
-		{
-			fprintf(stderr,"remove finished %d ops %30s\r",i,"");
-			fflush(stderr);
-		}
-
-	}
-	end=clock();
-	cost=(double)(end-begin);
-	printf(LINE);
-	printf("|removerandom:	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec \n",(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
-	
-}
 
 
 void db_tests()
@@ -235,7 +210,6 @@ void db_tests()
 void nocache_read_random_test()
 {
 	db_init_test();
-	db_load_index();
 	db_read_random_test();
 	printf(LINE);
 }
