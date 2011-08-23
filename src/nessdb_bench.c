@@ -6,13 +6,12 @@
 	 	%./nessdb_bench
 
 
-	 To have a nocache testing as follows(make sure the ness.idx and ness.db files exists):
+	 To have a nocache testing as follows(make sure the ness.ndb files exists):
 		%make clean
 	 	%make nocache
 	 	%echo 3 > /proc/sys/vm/drop_caches
 	 	%./nessdb_bench
     
-	The benchmark results without caches almost didn't change. 
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,9 +23,29 @@
 
 #define KEYSIZE 20
 #define VALSIZE 100
-#define NUM		1000000
+#define NUM		3000000
+
+//random read num
+#define R_NUM		300000
 #define V		"1.4"
 #define LINE "+-----------------------+---------------------------+----------------------------------------+-----------------------------------+\n"
+
+
+static struct timespec start;
+
+static void start_timer(void)
+{
+        clock_gettime(CLOCK_MONOTONIC, &start);
+}
+
+static double get_timer(void)
+{
+        struct timespec end;
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        long seconds  = end.tv_sec  - start.tv_sec;
+        long nseconds = end.tv_nsec - start.tv_nsec;
+        return seconds + (double) nseconds / 1.0e9;
+}
 
 static int lru=0;
 static char value[VALSIZE+1]={0};
@@ -47,7 +66,7 @@ void print_header()
 	printf("Values:		%d bytes each\n",VALSIZE);
 	printf("Entries:	%d\n",NUM);
 	printf("RawSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE)*NUM)/1048576.0);
-	printf("FileSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE+4*2)*NUM)/1048576.0);
+	printf("FileSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE+8*2+4)*NUM)/1048576.0);
 	printf("-------------------------------------------------------------------------------------------------------------------------------\n");
 }
 
@@ -105,44 +124,45 @@ void db_init_test()
 
 void db_write_test()
 {
-	int i,count=0;
+	long i,count=0;
 	double cost;
-	clock_t begin,end;
-	begin=clock();
 	uint8_t key[KEYSIZE];
-
+	start_timer();
 	for(i=0;i<NUM;i++)
 	{
 		memset(key,0,sizeof(key));
-		sprintf(key,"%dkey",i);
+		sprintf(key,"%ldkey",i);
 		if(db_add(key,value))
 			count++;
 		if((i%10000)==0)
 		{
-			fprintf(stderr,"write finished %d ops%30s\r",i,"");
+			fprintf(stderr,"write finished %ld ops%30s\r",i,"");
 			fflush(stderr);
 		}
 	}
 	
-	end=clock();
-	cost=(double)(end-begin);
+	cost=get_timer();
 	printf(LINE);
-	printf("|write		(succ:%d):		%lf micros/op;	%lf writes/sec(estimated);	%lf MB/sec \n",count,(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
+	printf("|write		(succ:%ld):		%lf sec/op;	%lf writes/sec(estimated);	%lf MB/sec \n"
+		,count,(double)(cost/NUM)
+		,(double)(NUM/cost)
+		,(double)((KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
 }
 
 void db_read_random_test()
 {
-	int count=0;
+	long i,count=0;
+	long r_start=NUM/2;
+	long r_end=r_start+R_NUM;
+
 	double cost;
 	uint8_t key[KEYSIZE]={0};
-	int i;
-	clock_t begin,end;
-	begin=clock();
-	for(i=0;i<NUM;i++)
+	start_timer();
+	for(i=r_start;i<r_end;i++)
 	{
 
 		memset(key,0,sizeof(key));
-		sprintf(key,"%dkey",rand()%(i+1));
+		sprintf(key,"%ldkey",rand()%i);
 		void* data=db_get(key);
 		if(data)
 			count++;
@@ -150,31 +170,35 @@ void db_read_random_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((i%10000)==0)
+		if((count%1000)==0)
 		{
-			fprintf(stderr,"readrandom finished %d ops%30s\r",i,"");
+			fprintf(stderr,"readrandom finished %ld ops%30s\r",count,"");
 			fflush(stderr);
 		}
 
 	}
-	end=clock();
-   	cost=(double)(end-begin);
+   	cost=get_timer();
 	printf(LINE);
-	printf("|readrandom	(found:%d):	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec \n",count,(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	printf("|readrandom	(found:%ld):		%lf sec/op;	%lf reads /sec(estimated);	%lf MB/sec \n"
+		,count
+		,(double)(cost/R_NUM)
+		,(double)(R_NUM/cost)
+		,(double)((VALSIZE+KEYSIZE+8+8)*R_NUM/1048576.0/cost));
 }
 
 void db_read_seq_test()
 {
-	int count=0;
+	long i, count=0;
+	long r_start=NUM/3;
+	long r_end=r_start+R_NUM;
+
 	double cost;
 	uint8_t key[KEYSIZE]={0};
-	int i;
-	clock_t begin,end;
-	begin=clock();
-	for(i=0;i<NUM;i++)
+	start_timer();
+	for(i=r_start;i<r_end;i++)
 	{
 		memset(key,0,sizeof(key));
-		sprintf(key,"%dkey",i);
+		sprintf(key,"%ldkey",i);
 		void* data=db_get(key);
 		if(data)
 			count++;
@@ -182,17 +206,20 @@ void db_read_seq_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((i%10000)==0)
+		if((count%1000)==0)
 		{
-			fprintf(stderr,"readseq finished %d ops %30s\r",i,"");
+			fprintf(stderr,"readseq finished %ld ops %30s\r",count,"");
 			fflush(stderr);
 		}
 
 	}
-	end=clock();
-	cost=(double)(end-begin);
+	cost=get_timer();
 	printf(LINE);
-	printf("|readseq	(found:%d):	%lf micros/op;	%lf reads /sec(estimated);	%lf MB/sec\n",count,(double)(cost/NUM),(double)(NUM/cost)*1000000.0,(double)(1000000.0*(VALSIZE+4)*NUM/1048576.0/cost));
+	printf("|readseq	(found:%ld):		%lf sec/op;	%lf reads /sec(estimated);	%lf MB/sec\n"
+		,count
+		,(double)(cost/R_NUM)
+		,(double)(R_NUM/cost)
+		,(double)((VALSIZE+KEYSIZE+8+8)*R_NUM/1048576.0/cost));
 	
 }
 
@@ -217,6 +244,7 @@ void nocache_read_random_test()
 
 int main()
 {
+	srand(time(NULL));
 	print_header();
 	print_environment();
 #ifdef NOCACHE
