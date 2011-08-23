@@ -1,16 +1,14 @@
 /*NOTE:
 	How to do
 	=========
-	 	%cd src
-		%make
-	 	%./nessdb_bench
+	 	$cd src
+		$make
+	 	$./nessdb_bench add
 
 
 	 To have a nocache testing as follows(make sure the ness.ndb files exists):
-		%make clean
-	 	%make nocache
-	 	%echo 3 > /proc/sys/vm/drop_caches
-	 	%./nessdb_bench
+	 	#echo 3 > /proc/sys/vm/drop_caches
+	 	$./nessdb_bench <op>
     
 */
 #include <stdio.h>
@@ -21,15 +19,17 @@
 #include <string.h>
 #include "db.h"
 
+#define OP_ADD 1
+#define OP_GET 2
+#define OP_WALK 3
+
+
 #define KEYSIZE 20
 #define VALSIZE 100
-#define NUM		3000000
-
-//random read num
-#define R_NUM		300000
+#define NUM 1000000
+#define R_NUM 50000
 #define V		"1.4"
 #define LINE "+-----------------------+---------------------------+----------------------------------------+-----------------------------------+\n"
-
 
 static struct timespec start;
 
@@ -66,7 +66,7 @@ void print_header()
 	printf("Values:		%d bytes each\n",VALSIZE);
 	printf("Entries:	%d\n",NUM);
 	printf("RawSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE)*NUM)/1048576.0);
-	printf("FileSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE+8*2+4)*NUM)/1048576.0);
+	printf("FileSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE+8*2+4)*NUM*1.5)/1048576.0);
 	printf("-------------------------------------------------------------------------------------------------------------------------------\n");
 }
 
@@ -170,7 +170,7 @@ void db_read_random_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((count%1000)==0)
+		if((count%10000)==0)
 		{
 			fprintf(stderr,"readrandom finished %ld ops%30s\r",count,"");
 			fflush(stderr);
@@ -206,7 +206,7 @@ void db_read_seq_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((count%1000)==0)
+		if((count%10000)==0)
 		{
 			fprintf(stderr,"readseq finished %ld ops %30s\r",count,"");
 			fflush(stderr);
@@ -224,7 +224,6 @@ void db_read_seq_test()
 }
 
 
-
 void db_tests()
 {
 	db_init_test();
@@ -234,23 +233,38 @@ void db_tests()
 	printf(LINE);
 }
 
-void nocache_read_random_test()
-{
-	db_init_test();
-	db_read_random_test();
-	printf(LINE);
-}
 
-
-int main()
+int main(int argc,char** argv)
 {
+	long i,count,op;
+	if(argc!=2)
+	{
+		fprintf(stderr,"Usage: nessdb_benchmark <op>\n");
+        	exit(1);
+	}
+
+	if(strcmp(argv[1],"add")==0)
+		op=OP_ADD;
+	else if(strcmp(argv[1],"get")==0)
+		op=OP_GET;
+	else if(strcmp(argv[1],"walk")==0)
+		op=OP_WALK;
+	else
+	{
+		printf("not supported op %s\n", argv[1]);
+        	exit(1);
+    	}
+	
 	srand(time(NULL));
 	print_header();
 	print_environment();
-#ifdef NOCACHE
-	nocache_read_random_test();
-#else
-	db_tests();
-#endif
+	
+	db_init_test();
+	if(op==OP_ADD)
+		db_tests();
+	else if(op==OP_WALK)
+		db_read_seq_test();
+	else if(op==OP_GET)
+		db_read_random_test();
 	return 1;
 }

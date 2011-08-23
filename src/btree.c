@@ -65,18 +65,7 @@ static inline uint64_t from_be64(__be64 x)
 /* 15 times faster than gcc's memcmp on x86-64 */
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
 {
-	/* first 16 bytes */
-	const __be64 *ap = (const void *) a;
-	const __be64 *bp = (const void *) b;
-	if (*ap != *bp)
-		return from_be64(*ap) < from_be64(*bp) ? -1 : 1;
-	if (ap[1] != bp[1])
-		return from_be64(ap[1]) < from_be64(bp[1]) ? -1 : 1;
-
-	/* final 4 bytes */
-	const __be32 *af = (const void *) (a + 16);
-	const __be32 *bf = (const void *) (b + 16);
-	return from_be32(*bf) - from_be32(*af);
+	return strcmp(a,b);
 }
 
 static struct btree_table *alloc_table(struct btree *btree)
@@ -660,28 +649,30 @@ void btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,
 static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 		    const uint8_t *sha1)
 {
-	while (table_offset) {
-		struct btree_table *table = get_table(btree, table_offset);
-		uint64_t left = 0, right = table->size, i;
-		while (left < right) {
-			i = (right - left) / 2 + left;
-			int cmp = strcmp((const char*)sha1, (const char*)table->items[i].sha1);
-			if (cmp == 0) {
-				/* found */
-				uint64_t ret = from_be64(table->items[i].offset);
-				put_table(btree, table, table_offset);
-				return ret;
-			}
-			if (cmp < 0)
-				right = i;
-			else
-				left = i + 1;
+	if (table_offset == 0)
+		return 0;
+	struct btree_table *table = get_table(btree, table_offset);
+
+	size_t left = 0, right = table->size;
+	while (left < right) {
+		size_t i = (right - left) / 2 + left;
+		int cmp = cmp_sha1(sha1, table->items[i].sha1);
+		if (cmp == 0) {
+			/* found */
+			off_t ret = from_be64(table->items[i].offset);
+			put_table(btree, table, table_offset);
+			return ret;
 		}
-		uint64_t child = from_be64(table->items[left].child);
-		put_table(btree, table, table_offset);
-		table_offset = child;
+		if (cmp < 0)
+			right = i;
+		else
+			left = i + 1;
 	}
-	return 0;
+
+	size_t i = left;
+	off_t child = from_be64(table->items[i].child);
+	put_table(btree, table, table_offset);
+	return lookup(btree, child, sha1);
 }
 
 void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len)

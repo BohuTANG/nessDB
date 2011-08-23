@@ -1,39 +1,32 @@
-   nessDB 1.4 using B+Trees for Disk-Storage Engine,and a Powerful-LRU(fast and less-memory)
+   nessDB 1.4 using B+ Trees for Disk-Storage Engine,and a Powerful-LRU(fast and less-memory)
 
    How to do
    =========
 	a, %cd src
 	b, %make
-	c, %./nessdb_bench
+	c, %./nessdb_bench add
 	d, show the benchmark result
-  
-  
-   Features
-   ========
-	a, Keys&values are arbitrary byte arrays.
-	b, Basic operations are Put(key,value),Get(key),Remove(key).
-	c, Keys are compacted to integer   in memory.
-	d, Keys&values are stored in disk with B+Tree structure.
 
    Benchmark(100,0000 entries)
    ===========================
-	Keys:		16 bytes each
+	Keys:		20 bytes each
 	Values:		100 bytes each
 	Entries:	1000000
-	RawSize:	110.6 MB (estimated)
-	FileSize:	118.3 MB (estimated)
-	----------------------------------------------------------------------------------------------------------
+	RawSize:	114.4 MB (estimated)
+	FileSize:	200.3 MB (estimated)
+	-------------------------------------------------------------------------------------------------------------------------------
 	nessDB:		version 1.4(B+Tree)
 	LRU:		closed....
-	Date:		Fri Aug 19 21:13:56 2011
+	Date:		Tue Aug 23 14:05:24 2011
 	CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
 	CPUCache:	1024 KB
 
-	+-----------------------+-------------------+----------------------------------------+-------------------+
-	|write:		18.760000 micros/op;	53304.904051 writes/sec(estimated);	6.303604 MB/sec 
-	+-----------------------+-------------------+----------------------------------------+-------------------+
-	|readseq:	4.310000 micros/op;	232018.561485 reads /sec(estimated);	23.012095 MB/sec
-	+-----------------------+-------------------+----------------------------------------+-------------------+
-	readrandom:	12.290000 micros/op;	81366.965012 reads /sec(estimated);	8.070149 MB/sec 
-	+-----------------------+-------------------+----------------------------------------+-------------------+
+	+-----------------------+---------------------------+----------------------------------------+-----------------------------------+
+	|write		(succ:1000000):		0.000021 sec/op;	47003.116557 writes/sec(estimated);	5.737685 MB/sec 
+	+-----------------------+---------------------------+----------------------------------------+-----------------------------------+
+	|readseq	(found:50000):		0.000004 sec/op;	244191.091954 reads /sec(estimated);	31.671513 MB/sec
+	+-----------------------+---------------------------+----------------------------------------+-----------------------------------+
+	|readrandom	(found:50000):		0.000012 sec/op;	80862.299519 reads /sec(estimated);	10.487817 MB/sec 
+	+-----------------------+---------------------------+----------------------------------------+-----------------------------------+
+
 
