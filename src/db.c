@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <assert.h>
 
 #include "btree.h"
 #include "hashtable.h"
@@ -12,7 +13,7 @@
 
 static hashtable*	_ht;
 struct btree 		_btree;
-static int _lru=0;
+static int 		_lru=0;
 
 
 static int file_exists(const char *path)
@@ -22,14 +23,19 @@ static int file_exists(const char *path)
 }
 
 
-void db_init(int capacity,int lru)
+void db_init(int lru_maxnum)
 {
-	_lru=lru;
-	_ht=hashtable_create(capacity);
+	if(lru_maxnum>0)
+	 	_lru=1;
+		
+	_ht=hashtable_create(lru_maxnum);
 	if (file_exists(DBNAME))
 	{
 		if (btree_open(&_btree,DBNAME)) 
+		{
 			printf("Unable to open database\n");
+			abort();
+		}
 	} 
 	else 
 	{
@@ -40,51 +46,38 @@ void db_init(int capacity,int lru)
 
 int db_add(char* key,char* value)
 {
-	if(_lru)
-	{
-		void* entry=hashtable_get(_ht,key);
-		if(entry==NULL)
-		{	
-			uint64_t val_offset=btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
-			//add table
-			hashtable_set(_ht,key,&val_offset);
-		}
-	}
-	else
-	{
-		uint64_t val_offset=btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
-	}
+	btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
 	return (1);
 }
 
 
-void
-db_load_index()
-{
-	//todo
-}
-
 void *db_get(char* key)
 {
 	size_t len;
+	uint64_t val_offset;
 	if(_lru)
 	{
-		void* entry=hashtable_get(_ht,key);
-		if(entry!=NULL)
-			return btree_get_value(&_btree,(size_t)entry);
+		uint64_t entry=hashtable_get(_ht,key);
+		if(entry>0)
+		{
+			return btree_get_byoffset(&_btree,entry,&len);
+		}
 		else
 		{
-				
+			uint64_t val_offset;
+			void *data=btree_get(&_btree,key,&len,&val_offset);
+			hashtable_set(_ht,key,val_offset);
+			return data;
 		}
 	}
 	else
-		return btree_get(&_btree,key,&len);
+		return btree_get(&_btree,key,&len,&val_offset);
 }
 
-void
-db_remove(char* key)
+void db_remove(char* key)
 {
-	//todo
+	btree_delete(&_btree,key);
+	hashtable_remove(_ht,key);
 }
 
 void db_destroy()

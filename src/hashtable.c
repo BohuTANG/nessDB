@@ -1,8 +1,5 @@
 /**
- * Compact-Hash-Tree implementation
- * (c) overred based on @marekweb,thx
- *
- * Uses dynamic addressing with linear probing.
+ * Compact-Hash-Tree implementation,used for LRU
  */
 
 #include <stdlib.h>
@@ -12,17 +9,21 @@
 #include "hashtable.h"
 #include "crc16.h"
 
-static unsigned long _primes[]={53UL, 97UL, 193UL, 389UL, 769UL, 1543UL, 3079UL, 6151UL, 12289UL,
-			24593UL, 49157UL, 98317UL, 196613UL, 393241UL, 786433UL, 1572869UL,
-			3145739UL, 6291469UL, 12582917UL, 25165843UL, 50331653UL,
-			100663319UL, 201326611UL, 402653189UL, 805306457UL, 1610612741UL,
-			3221225473UL, 4294967291UL};	
+//if over this num,entry will be long alive on index slot.
+#define G 16
 
-/**
- * Compute the hash value for the given string.
- * Implements the djb k=33 hash function.
- */
-unsigned long hashtable_hash(char* str)
+
+static unsigned int _primes[28]={53, 97, 193, 389, 769, 1543, 3079, 6151, 12289,
+				24593, 49157, 98317, 196613, 393241, 786433, 1572869,
+				3145739, 6291469, 12582917, 25165843, 50331653,
+				100663319, 201326611, 402653189, 805306457, 1610612741};	
+
+static unsigned int hashtable_get_prime(int maxnum)
+{
+	return (maxnum+23);
+}
+
+ unsigned long hashtable_hash(char* str)
 {
 	unsigned long hash = 5381;
 	int c;
@@ -30,10 +31,6 @@ unsigned long hashtable_hash(char* str)
 		hash = ((hash << 5) + hash) + c;  /* hash * 33 + c */
 	return hash;
 }
-
-/**
- *compute the crc value for the hash collision
-*/
 
 static  unsigned int hashtable_find_crc(char* str)
 {
@@ -43,142 +40,79 @@ static  unsigned int hashtable_find_crc(char* str)
 	return crc;
 }
 
-static long hashtable_primer(long k)
-{
-	int size=sizeof(_primes)/sizeof(*_primes);
-	int i;
-	for(i=(size-1);i>0;i--)
-	{
-		long p=_primes[i];
-		if(k>=p)
-			break;
 
-	}
-	return _primes[++i];
-}
-
-/**
- * Find an available slot for the given key, using linear probing.
- */
 unsigned int hashtable_find_slot(hashtable* t, char* key)
 {
 	return  hashtable_hash(key) % t->capacity;
 }
 
-/**
- * Return the item associated with the given key, or NULL if not found.
- */
-void* hashtable_get(hashtable* t, char* key)
+
+uint64_t hashtable_get(hashtable* t, char* key)
 {
 	int index = hashtable_find_slot(t, key);
-	unsigned int crc=hashtable_find_crc(key);
-	if (t->body[index].crc !=0) 
-	{
-		hashtable_entry* cur=&t->body[index];
-		while(cur!=NULL)
-		{
-			if(cur->crc==crc)
-				return cur->value;
-			cur=cur->next;
-		}
-	}
-	return NULL;
+	if (t->body[index].value !=0 && strcmp(t->body[index].key,key)==0) 
+		return t->body[index].value;
+
+	return 0;
 }
 
-/**
- * Assign a value to the given key in the table.
- */
-void hashtable_set(hashtable* t, char* key, void* value)
+
+void hashtable_set(hashtable* t, char* key, uint64_t value)
 {
 	int index = hashtable_find_slot(t, key);
-	unsigned int crc=hashtable_find_crc(key);
-	if (t->body[index].crc != 0) {
-		hashtable_entry* etmp=hashtable_body_allocate(1);
-		etmp->crc= crc;
-		etmp->value = value;
-
-		hashtable_entry*  cur=&t->body[index];
-		if(cur->next==NULL)
-		{
-			cur->next=etmp;
-			return;
-		}
-
-		while(cur->next!=NULL)
-			cur=cur->next;
-	
-		cur->next=etmp;
-
-	} else {
-		t->size++;
-		t->body[index].crc=crc;		
-		t->body[index].value=value;
-
-	}
-}
-
-/**
- * Remove a key from the table
- */
-void hashtable_remove(hashtable* t, char* key)
-{
-	int index = hashtable_find_slot(t, key);
-	unsigned int crc=hashtable_find_crc(key);
-	if(t->body[index].crc!=0)
+	if (t->body[index].value !=0) 
 	{
-		hashtable_entry* cur=&t->body[index];
-		hashtable_entry* pre=cur;
-		char c=0;
-		while(cur!=NULL)
+		if(strcmp(t->body[index].key,key)==0)
+			t->body[index].touch++;
+		else
 		{
-			if(cur->crc==crc)
+			if(t->body[index].touch>G)
+				return;
+			else
 			{
-					t->size--;
-					pre->next=cur->next;
-					if(c==0)
-					{
-						if(cur->next!=NULL)
-							pre=(cur->next);
-						else
-							pre=NULL;
-					}
-#ifdef DEBUG
-					else if(c>1)
-						printf("remove !0 level:%d  crc:%d\n",c,crc);
-#endif
-					return;
+				strcpy(t->body[index].key,key);		
+				t->body[index].value=value;
 			}
-			pre=cur;
-			cur=cur->next;
-			c++;
+				
 		}
+	} 
+	else 
+	{
+		t->size++;
+		strcpy(t->body[index].key,key);	
+		t->body[index].value=value;
 	}
 }
 
-/**
- * Create a new, empty hashtable
- */
+void hashtable_remove(hashtable *t,char *key)
+{
+	int index = hashtable_find_slot(t, key);
+	if (t->body[index].value !=0) 
+	{
+		memset(&t->body[index].key,sizeof(char),KEYSIZE);
+		t->body[index].touch=0;
+		t->body[index].value=0;
+		t->size--;	
+	}
+}
+
 hashtable* hashtable_create(int cap)
 {
 	hashtable* new_ht = malloc(sizeof(hashtable));
 	new_ht->size = 0;
-	new_ht->capacity = cap;//HASHTABLE_INITIAL_CAPACITY;
+	new_ht->capacity = hashtable_get_prime(cap);
 	new_ht->body = hashtable_body_allocate(new_ht->capacity);
 	return new_ht;
 }
 
-/**
- * Allocate a new memory block with the given capacity.
- */
+
 hashtable_entry* hashtable_body_allocate(unsigned int capacity)
 {
 	return (hashtable_entry*)calloc(capacity, sizeof(hashtable_entry));
 }
 
 
-/**
- * Destroy the table and deallocate it from memory. This does not deallocate the contained items.
- */
+
 void hashtable_destroy(hashtable* t)
 {
 	free(t->body);

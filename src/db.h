@@ -1,6 +1,6 @@
 
-void 	db_init(int capacity,int lru);
-void	db_load_index();
+//if lru_maxnum<=0,LRU closed
+void 	db_init(int lru_maxnum);
 
 void*	db_get(char* key);
 int 	db_add(char* key,char* value);

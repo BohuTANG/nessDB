@@ -79,7 +79,7 @@ void btree_close(struct btree *btree);
  * Insert a new item with key 'sha1' with the contents in 'data' to the
  * database file.
  */
-uint64_t btree_insert(struct btree *btree, const uint8_t *sha1, const void *data,
+void btree_insert(struct btree *btree, const uint8_t *sha1, const void *data,
 		  size_t len);
 
 /*
@@ -87,12 +87,13 @@ uint64_t btree_insert(struct btree *btree, const uint8_t *sha1, const void *data
  * item is stored in 'len'. Returns a pointer to the contents of the item.
  * The returned pointer should be released with free() after use.
  */
-void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len);
+void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len,uint64_t *val_offset);
+void *btree_get_byoffset(struct btree *btree,uint64_t offset,size_t *len);
 
 /*
  * Remove item with the given key 'sha1' from the database file.
  */
 int btree_delete(struct btree *btree, const uint8_t *sha1);
-void *btree_get_value(struct btree *btree,uint64_t val_offset);
 
 #endif
+

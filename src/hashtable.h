@@ -1,12 +1,18 @@
+#include <stdint.h>
+#define KEYSIZE 64
+
 typedef struct hashtable hashtable;
 typedef struct hashtable_entry hashtable_entry;
 
+hashtable *hashtable_create(int capacity);
+void hashtable_set(hashtable *t,char *key,uint64_t value);
+uint64_t hashtable_get(hashtable *t,char *key);
+void hashtable_remove(hashtable *t,char *key);
+
+
 void hashtable_destroy(hashtable *t);
 hashtable_entry *hashtable_body_allocate(unsigned int capacity);
-hashtable *hashtable_create(int cap);
-void hashtable_remove(hashtable *t,char *key);
-void hashtable_set(hashtable *t,char *key,void *value);
-void *hashtable_get(hashtable *t,char *key);
+
 unsigned int hashtable_find_slot(hashtable *t,char *key);
 unsigned long hashtable_hash(char *str);
 int hashtable_count(hashtable* t);
@@ -20,9 +26,7 @@ struct hashtable
 
 struct hashtable_entry 
 {
-	//char* key;
-	void* value;
-	int crc;
-	struct hashtable_entry* next;
-
+	char key[KEYSIZE];
+	int touch;
+	uint64_t value;
 };

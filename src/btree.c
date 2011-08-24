@@ -649,35 +649,55 @@ void btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,
 static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 		    const uint8_t *sha1)
 {
-	if (table_offset == 0)
-		return 0;
-	struct btree_table *table = get_table(btree, table_offset);
-
-	size_t left = 0, right = table->size;
-	while (left < right) {
-		size_t i = (right - left) / 2 + left;
-		int cmp = cmp_sha1(sha1, table->items[i].sha1);
-		if (cmp == 0) {
-			/* found */
-			off_t ret = from_be64(table->items[i].offset);
-			put_table(btree, table, table_offset);
-			return ret;
+	while (table_offset) {
+		struct btree_table *table = get_table(btree, table_offset);
+		size_t left = 0, right = table->size, i;
+		while (left < right) {
+			i = (right - left) / 2 + left;
+			int cmp = cmp_sha1(sha1, table->items[i].sha1);
+			if (cmp == 0) {
+				/* found */
+				uint64_t ret = from_be64(table->items[i].offset);
+				put_table(btree, table, table_offset);
+				return ret;
+			}
+			if (cmp < 0)
+				right = i;
+			else
+				left = i + 1;
 		}
-		if (cmp < 0)
-			right = i;
-		else
-			left = i + 1;
+		uint64_t  child = from_be64(table->items[left].child);
+		put_table(btree, table, table_offset);
+		table_offset = child;
 	}
-
-	size_t i = left;
-	off_t child = from_be64(table->items[i].child);
-	put_table(btree, table, table_offset);
-	return lookup(btree, child, sha1);
+	return 0;
 }
 
-void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len)
+void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len,uint64_t *val_offset)
 {
 	uint64_t offset = lookup(btree, btree->top, sha1);
+	if (offset == 0)
+		return NULL;
+
+	*val_offset=offset;
+	lseek64(btree->fd, offset, SEEK_SET);
+	struct blob_info info;
+	if (read(btree->fd, &info, sizeof info) != (ssize_t) sizeof info)
+		return NULL;
+	*len = from_be32(info.len);
+
+	void *data = malloc(*len);
+	if (data == NULL)
+		return NULL;
+	if (read(btree->fd, data, *len) != (ssize_t) *len) {
+		free(data);
+		data = NULL;
+	}
+	return data;
+}
+
+void *btree_get_byoffset(struct btree *btree,uint64_t offset,size_t *len)
+{
 	if (offset == 0)
 		return NULL;
 

@@ -24,10 +24,11 @@
 #define OP_WALK 3
 
 
-#define KEYSIZE 20
-#define VALSIZE 100
-#define NUM 1000000
-#define R_NUM 50000
+#define KEYSIZE 	20
+#define VALSIZE 	100
+#define NUM 		2000000
+#define R_NUM 		50000
+#define LRU_MAXNUM 	0
 #define V		"1.4"
 #define LINE "+-----------------------+---------------------------+----------------------------------------+-----------------------------------+\n"
 
@@ -73,10 +74,10 @@ void print_header()
 void print_environment()
 {
 	printf("nessDB:		version %s(B+Tree)\n",V);
-	if(!lru)
+	if(LRU_MAXNUM==0)
 		printf("LRU:		closed....\n");
 	else
-		printf("LRU:		opened....\n");		
+		printf("LRU:		opened LRU-MAX-NUM:%d....\n",LRU_MAXNUM);		
 
 	time_t now=time(NULL);
 	printf("Date:		%s",(char*)ctime(&now));
@@ -119,7 +120,7 @@ void print_environment()
 void db_init_test()
 {
 	random_value();
-	db_init(NUM+31,lru);
+	db_init(LRU_MAXNUM);
 }
 
 void db_write_test()
