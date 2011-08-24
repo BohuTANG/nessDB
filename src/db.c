@@ -18,8 +18,13 @@ static int 		_lru=0;
 
 static int file_exists(const char *path)
 {
-        struct stat st;
-        return stat(path, &st) == 0;
+	int fd=open64(path, O_RDWR);
+	if(fd>-1)
+	{
+		close(fd);
+		return 0;
+	}
+	return -1;
 }
 
 
@@ -29,13 +34,11 @@ void db_init(int lru_maxnum)
 	 	_lru=1;
 		
 	_ht=hashtable_create(lru_maxnum);
-	if (file_exists(DBNAME))
+	int exist=file_exists(DBNAME);
+	if (exist==0)
 	{
 		if (btree_open(&_btree,DBNAME)) 
-		{
 			printf("Unable to open database\n");
-			abort();
-		}
 	} 
 	else 
 	{
@@ -77,7 +80,8 @@ void *db_get(char* key)
 void db_remove(char* key)
 {
 	btree_delete(&_btree,key);
-	hashtable_remove(_ht,key);
+	if(_lru)
+		hashtable_remove(_ht,key);
 }
 
 void db_destroy()

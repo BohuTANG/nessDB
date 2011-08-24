@@ -4,11 +4,6 @@
 	 	$cd src
 		$make
 	 	$./nessdb_bench add
-
-
-	 To have a nocache testing as follows(make sure the ness.ndb files exists):
-	 	#echo 3 > /proc/sys/vm/drop_caches
-	 	$./nessdb_bench <op>
     
 */
 #include <stdio.h>
@@ -22,15 +17,17 @@
 #define OP_ADD 1
 #define OP_GET 2
 #define OP_WALK 3
-
+#define OP_REMOVE 4
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
 #define NUM 		2000000
 #define R_NUM 		50000
+#define REMOVE_NUM	10000
 #define LRU_MAXNUM 	0
 #define V		"1.4"
-#define LINE "+-----------------------+---------------------------+----------------------------------------+-----------------------------------+\n"
+#define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
+#define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
 
 static struct timespec start;
 
@@ -60,15 +57,16 @@ void random_value()
 	}
 }
 
-
+double _file_size=(double)((double)(KEYSIZE+VALSIZE+8*2+4)*NUM*1.5)/1048576.0;
+double _query_size=(double)((double)(KEYSIZE+VALSIZE+8*2+4)*R_NUM*1.5)/1048576.0;
 void print_header()
 {
 	printf("Keys:		%d bytes each\n",KEYSIZE);
 	printf("Values:		%d bytes each\n",VALSIZE);
 	printf("Entries:	%d\n",NUM);
 	printf("RawSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE)*NUM)/1048576.0);
-	printf("FileSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE+8*2+4)*NUM*1.5)/1048576.0);
-	printf("-------------------------------------------------------------------------------------------------------------------------------\n");
+	printf("FileSize:	%.1f MB (estimated)\n",_file_size);
+	printf(LINE1);
 }
 
 void print_environment()
@@ -144,10 +142,11 @@ void db_write_test()
 	
 	cost=get_timer();
 	printf(LINE);
-	printf("|write		(succ:%ld):		%lf sec/op;	%lf writes/sec(estimated);	%lf MB/sec \n"
+	printf("|write		(succ:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count,(double)(cost/NUM)
 		,(double)(NUM/cost)
-		,(double)((KEYSIZE+VALSIZE+4*2)*NUM/1048576.0/cost));	
+		,(_file_size/cost)
+		,cost);	
 }
 
 void db_read_random_test()
@@ -180,11 +179,12 @@ void db_read_random_test()
 	}
    	cost=get_timer();
 	printf(LINE);
-	printf("|readrandom	(found:%ld):		%lf sec/op;	%lf reads /sec(estimated);	%lf MB/sec \n"
+	printf("|readrandom	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
 		,(double)(cost/R_NUM)
 		,(double)(R_NUM/cost)
-		,(double)((VALSIZE+KEYSIZE+8+8)*R_NUM/1048576.0/cost));
+		,(_query_size/cost)
+		,cost);
 }
 
 void db_read_seq_test()
@@ -216,12 +216,47 @@ void db_read_seq_test()
 	}
 	cost=get_timer();
 	printf(LINE);
-	printf("|readseq	(found:%ld):		%lf sec/op;	%lf reads /sec(estimated);	%lf MB/sec\n"
+	printf("|readseq	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
 		,(double)(cost/R_NUM)
 		,(double)(R_NUM/cost)
-		,(double)((VALSIZE+KEYSIZE+8+8)*R_NUM/1048576.0/cost));
+		,(_query_size/cost)
+		,cost);
 	
+}
+
+void db_remove_test()
+{
+/*		
+	long i,count=0;
+	long r_start=NUM/6;
+	long r_end=r_start+REMOVE_NUM;
+
+	double cost;
+	uint8_t key[KEYSIZE]={0};
+	start_timer();
+	for(i=r_start;i<r_end;i++)
+	{
+
+		memset(key,0,sizeof(key));
+		sprintf(key,"%ldkey",rand()%i);
+		db_remove(key);
+		count++;
+		if((count%1000)==0)
+		{
+			fprintf(stderr,"remove random finished %ld ops%30s\r",count,"");
+			fflush(stderr);
+		}
+
+	}
+   	cost=get_timer();
+	printf(LINE);
+	printf("|removerandom	(found:%ld):	%.6f sec/op;	%.1f reads /sec(estimated);	%.1f MB/sec \n"
+		,count
+		,(double)(cost/R_NUM)
+		,(double)(R_NUM/cost)
+		,(_query_size/cost));
+*/
 }
 
 
@@ -250,6 +285,8 @@ int main(int argc,char** argv)
 		op=OP_GET;
 	else if(strcmp(argv[1],"walk")==0)
 		op=OP_WALK;
+	else if(strcmp(argv[1],"remove")==0)
+		op=OP_REMOVE;
 	else
 	{
 		printf("not supported op %s\n", argv[1]);
@@ -267,5 +304,7 @@ int main(int argc,char** argv)
 		db_read_seq_test();
 	else if(op==OP_GET)
 		db_read_random_test();
+	else if(op==OP_REMOVE)
+		db_remove_test();
 	return 1;
 }
