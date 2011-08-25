@@ -8,7 +8,7 @@
 	d, show the benchmark result
 	
 
-   Benchmark(100,0000 entries,hot-start query 50000 entries)
+   Benchmark(100,0000 entries,cold-start query 50000 entries)
    =========================================================
 	Keys:		20 bytes each
 	Values:		100 bytes each
