@@ -1,6 +1,10 @@
-This benchmark results is shown that who has better performance when DB-file is ONE-DATABASE-FILE mode or are INDEX-FILE&DATA-FILE mode under B+ Tree Structured.
-Tested conclusions are Read and Write performance is almost no difference between them.But it is easier to DELETE or UPDATE operate on INDEX-FILE&DATA-FILE mode.
-So nessDB v1.5 is INDEX-FILE&DATA-FILE mode.
+This benchmark results is shown that:
+who has better performance when DB-file is ONE-DATABASE-FILE mode or  INDEX-FILE&DATA-FILE mode under B+ Tree Structured.
+
+Tested conclusions are:
+Read and Write performance is almost no difference between them.
+But it is easier to DELETE or UPDATE operate in INDEX-FILE&DATA-FILE mode.
+So nessDB v1.5 is using INDEX-FILE&DATA-FILE mode.
 
 Test Environment informations:
 Keys:		20 bytes each
