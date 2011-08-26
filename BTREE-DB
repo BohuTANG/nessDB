@@ -1,0 +1,52 @@
+This benchmark results is shown that who has better performance when DB-file is ONE-DATABASE-FILE mode or are INDEX-FILE&DATA-FILE mode under B+ Tree Structured.
+Tested conclusions are Read and Write performance is almost no difference between them.But it is easier to DELETE or UPDATE operate on INDEX-FILE&DATA-FILE mode.
+So nessDB v1.5 is INDEX-FILE&DATA-FILE mode.
+
+Test Environment informations:
+Keys:		20 bytes each
+Values:		100 bytes each
+Entries:	20000000
+--------------------------------------------------------------------------------------------------------------
+nessDB:		version 1.4(B+Tree)
+LRU:		closed....
+Date:		Fri Aug 26 15:19:21 2011
+CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
+CPUCache:	1024 KB
+
+
+1)ONE-DATABASE-FILE mode
+========================
+
+Database size:	4G(data is byte-alignment)
++-----------------------+---------------------------+----------------------------------+---------------------+
+|write		(succ:20000000): 0.000018 sec/op; 54314.9 writes/sec(estimated); 10.9 MB/sec; cost:368.223(sec)
++-----------------------+---------------------------+----------------------------------+---------------------+
+|readseq	(found:10000): 0.000008 sec/op; 125257.7 reads /sec(estimated); 25.1 MB/sec; cost:0.080(sec)
++-----------------------+---------------------------+----------------------------------+---------------------+
+|readrandom	(found:10000): 0.013128 sec/op; 76.2 reads /sec(estimated); 0.0 MB/sec; cost:131.276(sec)  
++-----------------------+---------------------------+----------------------------------+---------------------+
+
+Completely Cold-Start:
++-----------------------+---------------------------+----------------------------------+---------------------+
+|readrandom	(found:10000): 0.017638 sec/op; 56.7 reads /sec(estimated); 0.0 MB/sec; cost:176.382(sec)
++-----------------------+---------------------------+----------------------------------+---------------------+
+
+
+2)INDEX-FILE&DB-FILE mode
+========================
+
+Index size:	1.3G(data is byte-alignment)
+Data  size:	2.4G
++-----------------------+---------------------------+----------------------------------+---------------------+
+|write		(succ:20000000): 0.000017 sec/op; 59002.3 writes/sec(estimated); 11.8 MB/sec; cost:338.970(sec)
++-----------------------+---------------------------+----------------------------------+---------------------+
+|readseq	(found:10000): 0.000009 sec/op; 112184.2 reads /sec(estimated); 22.5 MB/sec; cost:0.089(sec)
++-----------------------+---------------------------+----------------------------------+---------------------+
+|readrandom	(found:10000): 0.014942 sec/op; 66.9 reads /sec(estimated); 0.0 MB/sec; cost:149.422(sec)
++-----------------------+---------------------------+----------------------------------+---------------------+
+
+Completely Cold-Start:
++-----------------------+---------------------------+----------------------------------+---------------------+
+|readrandom	(found:10000): 0.019901 sec/op; 50.2 reads /sec(estimated); 0.0 MB/sec; cost:199.009(sec)
++-----------------------+---------------------------+----------------------------------+---------------------+
+

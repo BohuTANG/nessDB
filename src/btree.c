@@ -14,6 +14,9 @@
 
 #define FREE_QUEUE_LEN	64
 
+#define IDXNAME	"ness.idx"
+#define DBNAME	"ness.db"
+
 struct chunk {
 	uint64_t offset;
 	uint64_t len;
@@ -125,12 +128,14 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 	put_table(btree, table, offset);
 }
 
-int btree_open(struct btree *btree, const char *fname)
+static int btree_open(struct btree *btree)
 {
 	memset(btree, 0, sizeof *btree);
 
-	btree->fd = open64(fname, O_RDWR | O_BINARY);
-	if (btree->fd < 0)
+	btree->fd = open64(IDXNAME, O_RDWR | O_BINARY);
+	btree->db_fd = open64(DBNAME, O_RDWR | O_BINARY);
+
+	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
 
 	struct btree_super super;
@@ -140,17 +145,20 @@ int btree_open(struct btree *btree, const char *fname)
 	btree->free_top = from_be64(super.free_top);
 
 	btree->alloc =lseek64(btree->fd, 0, SEEK_END);
+	btree->db_alloc =lseek64(btree->db_fd, 0, SEEK_END);
 	return 0;
 }
 
 static void flush_super(struct btree *btree);
 
-int btree_creat(struct btree *btree, const char *fname)
+static int btree_creat(struct btree *btree)
 {
 	memset(btree, 0, sizeof *btree);
 
-	btree->fd = open64(fname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	if (btree->fd < 0)
+	btree->fd = open64(IDXNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	btree->db_fd = open64(DBNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+
+	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
 
 	flush_super(btree);
@@ -160,9 +168,29 @@ int btree_creat(struct btree *btree, const char *fname)
 	return 0;
 }
 
+static int file_exists(const char *path)
+{
+	int fd=open64(path, O_RDWR);
+	if(fd>-1)
+	{
+		close(fd);
+		return 1;
+	}
+	return 0;
+}
+
+int btree_init(struct btree *btree)
+{
+	if(file_exists(IDXNAME))
+		btree_open(btree);
+	else
+		btree_creat(btree);
+}
+
 void btree_close(struct btree *btree)
 {
 	close(btree->fd);
+	close(btree->db_fd);
 
 	size_t i;
 	for (i = 0; i < CACHE_SLOTS; ++i) {
@@ -190,7 +218,7 @@ static size_t round_power2(size_t val)
 
 static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
 
-/* Allocate a chunk from the database file */
+/* Allocate a chunk from the index file */
 static uint64_t alloc_chunk(struct btree *btree, size_t len)
 {
 	assert(len > 0);
@@ -246,6 +274,19 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 		}
 		btree->alloc = offset + len;
 	}
+	return offset;
+}
+
+
+/* Allocate a chunk from the database file */
+static uint64_t alloc_db_chunk(struct btree *btree, size_t len)
+{
+	assert(len > 0);
+
+	len = round_power2(len);
+
+	uint64_t offset  = btree->db_alloc;
+	btree->db_alloc = offset + len;
 	return offset;
 }
 
@@ -334,14 +375,14 @@ static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 	memset(&info, 0, sizeof info);
 	info.len = to_be32(len);
 
-	uint64_t offset = alloc_chunk(btree, sizeof info + len);
+	uint64_t offset = alloc_db_chunk(btree, sizeof info + len);
 
-	lseek64(btree->fd, offset, SEEK_SET);
-	if (write(btree->fd, &info, sizeof info) != sizeof info) {
+	lseek64(btree->db_fd, offset, SEEK_SET);
+	if (write(btree->db_fd, &info, sizeof info) != sizeof info) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
 	}
-	if (write(btree->fd, data, len) != (ssize_t) len) {
+	if (write(btree->db_fd, data, len) != (ssize_t) len) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
 	}
@@ -680,16 +721,16 @@ void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len,uint64_t *
 		return NULL;
 
 	*val_offset=offset;
-	lseek64(btree->fd, offset, SEEK_SET);
+	lseek64(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
-	if (read(btree->fd, &info, sizeof info) != (ssize_t) sizeof info)
+	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
 	*len = from_be32(info.len);
 
 	void *data = malloc(*len);
 	if (data == NULL)
 		return NULL;
-	if (read(btree->fd, data, *len) != (ssize_t) *len) {
+	if (read(btree->db_fd, data, *len) != (ssize_t) *len) {
 		free(data);
 		data = NULL;
 	}
@@ -701,16 +742,16 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset,size_t *len)
 	if (offset == 0)
 		return NULL;
 
-	lseek64(btree->fd, offset, SEEK_SET);
+	lseek64(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
-	if (read(btree->fd, &info, sizeof info) != (ssize_t) sizeof info)
+	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
 	*len = from_be32(info.len);
 
 	void *data = malloc(*len);
 	if (data == NULL)
 		return NULL;
-	if (read(btree->fd, data, *len) != (ssize_t) *len) {
+	if (read(btree->db_fd, data, *len) != (ssize_t) *len) {
 		free(data);
 		data = NULL;
 	}

@@ -21,8 +21,8 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		2000000
-#define R_NUM 		50000
+#define NUM 		20000000
+#define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define LRU_MAXNUM 	0
 #define V		"1.4"
@@ -262,7 +262,6 @@ void db_remove_test()
 
 void db_tests()
 {
-	db_init_test();
 	db_write_test();
 	db_read_seq_test();
 	db_read_random_test();

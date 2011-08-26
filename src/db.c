@@ -8,24 +8,11 @@
 #include "hashtable.h"
 #include "db.h"
 
-#define DBNAME "ness.ndb"
 #define MAX_HITS (1024)
 
 static hashtable*	_ht;
 struct btree 		_btree;
 static int 		_lru=0;
-
-
-static int file_exists(const char *path)
-{
-	int fd=open64(path, O_RDWR);
-	if(fd>-1)
-	{
-		close(fd);
-		return 0;
-	}
-	return -1;
-}
 
 
 void db_init(int lru_maxnum)
@@ -34,17 +21,7 @@ void db_init(int lru_maxnum)
 	 	_lru=1;
 		
 	_ht=hashtable_create(lru_maxnum);
-	int exist=file_exists(DBNAME);
-	if (exist==0)
-	{
-		if (btree_open(&_btree,DBNAME)) 
-			printf("Unable to open database\n");
-	} 
-	else 
-	{
-		if (btree_creat(&_btree,DBNAME))
-			printf("Unable to create database\n");
-	}
+	btree_init(&_btree);
 }
 
 int db_add(char* key,char* value)

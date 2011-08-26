@@ -1,32 +1,36 @@
-   nessDB 1.4 using B+ Trees for Disk-Storage Engine.
+   nessDB 1.5 using B+ Trees for Disk-Storage Engine.
 
    How to do
    =========
 	a, $cd src
 	b, $make
 	c, $./nessdb_bench add
-	d, show the benchmark result
 	
 
-   Benchmark(100,0000 entries,cold-start query 50000 entries)
+   Benchmark(200,0000 entries, 10000 queries)
    =========================================================
 	Keys:		20 bytes each
 	Values:		100 bytes each
 	Entries:	20000000
-	RawSize:	2288.8 MB (estimated)
-	FileSize:	4005.4 MB (estimated)
+	Index size:	1.3G(estimated,data is byte-alignment)
+	Data  size:	2.4G(estimated)
 	--------------------------------------------------------------------------------------------------------------
-	nessDB:		version 1.4(B+Tree)
+	nessDB:		version 1.5(B+Tree)
 	LRU:		closed....
 	Date:		Wed Aug 24 14:37:47 2011
 	CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
 	CPUCache:	1024 KB
 
 	+-----------------------+---------------------------+----------------------------------+---------------------+
-	|write		(succ:20000000): 0.000025 sec/op; 40350.2 writes/sec(estimated); 8.1 MB/sec; cost:495.661(sec)
+	|write		(succ:20000000): 0.000017 sec/op; 59002.3 writes/sec(estimated); 11.8 MB/sec; cost:338.970(sec)
 	+-----------------------+---------------------------+----------------------------------+---------------------+
-	|readseq	(found:50000): 0.000012 sec/op; 85876.7 reads /sec(estimated); 17.2 MB/sec; cost:0.582(sec)
+	|readseq	(found:10000): 0.000009 sec/op; 112184.2 reads /sec(estimated); 22.5 MB/sec; cost:0.089(sec)
 	+-----------------------+---------------------------+----------------------------------+---------------------+
-	|readrandom	(found:50000): 0.010251 sec/op; 97.5 reads /sec(estimated); 0.0 MB/sec; cost:512.565(sec)
+	|readrandom	(found:10000): 0.014942 sec/op; 66.9 reads /sec(estimated); 0.0 MB/sec; cost:149.422(sec)
+	+-----------------------+---------------------------+----------------------------------+---------------------+
+
+	Completely Cold-Start:
+	+-----------------------+---------------------------+----------------------------------+---------------------+
+	|readrandom	(found:10000): 0.019901 sec/op; 50.2 reads /sec(estimated); 0.0 MB/sec; cost:199.009(sec)
 	+-----------------------+---------------------------+----------------------------------+---------------------+
 

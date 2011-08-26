@@ -56,19 +56,16 @@ struct btree {
 	uint64_t top;
 	uint64_t free_top;
 	uint64_t alloc;
+	uint64_t db_alloc;
+
 	int fd;
+	int db_fd;
 	struct btree_cache cache[CACHE_SLOTS];
 };
 
-/*
- * Open an existing database file.
- */
-int btree_open(struct btree *btree, const char *file);
 
-/*
- * Create and initialize a new database file.
- */
-int btree_creat(struct btree *btree, const char *file);
+//open or creat a data file
+int btree_init(struct btree *btree);
 
 /*
  * Close a database file opened with btree_creat() or btree_open().
