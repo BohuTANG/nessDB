@@ -22,7 +22,7 @@ struct chunk {
 	uint64_t len;
 };
 
-static struct chunk free_queue[FREE_QUEUE_LEN];
+static struct chunk free_queues[FREE_QUEUE_LEN];
 static size_t free_queue_len = 0;
 
 static inline __be32 to_be32(uint32_t x)
@@ -209,7 +209,6 @@ static size_t round_power2(size_t val)
 	return i;
 }
 
-static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
 
 /* Allocate a chunk from the index file */
 static uint64_t alloc_chunk(struct btree *btree, size_t len)
@@ -238,60 +237,10 @@ static uint64_t alloc_db_chunk(struct btree *btree, size_t len)
 	return offset;
 }
 
-static uint64_t lookup(struct btree *btree, uint64_t table_offset,
-		    const uint8_t *sha1);
-uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
-		      uint8_t *sha1, const void *data, size_t len);
 
-/* Mark a chunk as unused in the database file */
-static void free_chunk(struct btree *btree, uint64_t offset, size_t len)
-{
-	assert(len > 0);
-	assert(offset != 0);
-	len = round_power2(len);
-	assert((offset & (len - 1)) == 0);
-
-	if (in_allocator) {
-		/* add to queue to avoid entering the allocator again */
-		if (free_queue_len >= FREE_QUEUE_LEN) {
-			fprintf(stderr, "btree: free queue overflow\n");
-			return;
-		}
-		struct chunk *chunk = &free_queue[free_queue_len++];
-		chunk->offset = offset;
-		chunk->len = len;
-		return;
-	}
-
-	/* create fake offset SHA-1 for buddy allocation */
-	uint8_t sha1[SHA1_LENGTH];
-
-	in_allocator = 1;
-
-	/* add buddy information */
-	memset(sha1, 0, sizeof sha1);
-	*(__be64 *) sha1 = to_be64(offset);
-	insert_toplevel(btree, &btree->free_top, sha1, NULL, len);
-
-	/* add allocation information */
-	memset(sha1, 0, sizeof sha1);
-	*(uint32_t *) sha1 = -1;
-	((__be32 *) sha1)[1] = to_be32(len);
-	((uint32_t *) sha1)[2] = rand(); /* to make SHA-1 unique */
-	((uint32_t *) sha1)[3] = rand();
-	insert_toplevel(btree, &btree->free_top, sha1, NULL, offset);
-	in_allocator = 0;
-}
 
 static void flush_super(struct btree *btree)
 {
-	/* free queued chunks */
-	size_t i;
-	for (i = 0; i < free_queue_len; ++i) {
-		struct chunk *chunk = &free_queue[i];
-		free_chunk(btree, chunk->offset, chunk->len);
-	}
-	free_queue_len = 0;
 
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
@@ -587,7 +536,6 @@ int btree_delete(struct btree *btree, const uint8_t *c_sha1)
 	if (read(btree->fd, &info, sizeof info) != sizeof info)
 		return 0;
 
-	free_chunk(btree, offset, sizeof info + from_be32(info.len));
 	flush_super(btree);
 	return 0;
 }

@@ -7,30 +7,36 @@
 	c, $./nessdb_bench add
 	
 
-   Benchmark(200,0000 entries, 10000 queries)
+   Benchmark(100,0000 entries, 10000 queries)
    =========================================================
 	Keys:		20 bytes each
 	Values:		100 bytes each
-	Entries:	20000000
-	Index size:	1.3G(estimated,data is byte-alignment)
-	Data  size:	2.4G(estimated)
+	Entries:	10000000
+	IndexSize:	648.5 MB (estimated)
+	DataSize:	1030.0 MB (estimated)
 	--------------------------------------------------------------------------------------------------------------
-	nessDB:		version 1.5(B+Tree)
+	nessDB:		version 1.5(B+ Tree)
 	LRU:		closed....
-	Date:		Wed Aug 24 14:37:47 2011
+	Date:		Sat Aug 27 14:47:04 2011
 	CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
 	CPUCache:	1024 KB
 
 	+-----------------------+---------------------------+----------------------------------+---------------------+
-	|write		(succ:20000000): 0.000017 sec/op; 59002.3 writes/sec(estimated); 11.8 MB/sec; cost:338.970(sec)
+	|write		(succ:10000000): 0.000016 sec/op; 63728.0 writes/sec(estimated); 10.7 MB/sec; cost:156.917(sec)
 	+-----------------------+---------------------------+----------------------------------+---------------------+
-	|readseq	(found:10000): 0.000009 sec/op; 112184.2 reads /sec(estimated); 22.5 MB/sec; cost:0.089(sec)
+	|readseq	(found:10000): 0.000007 sec/op; 133891.6 reads /sec(estimated); 22.5 MB/sec; cost:0.075(sec)
 	+-----------------------+---------------------------+----------------------------------+---------------------+
-	|readrandom	(found:10000): 0.014942 sec/op; 66.9 reads /sec(estimated); 0.0 MB/sec; cost:149.422(sec)
+	|readrandom	(found:10000): 0.006636 sec/op; 150.7 reads /sec(estimated); 0.0 MB/sec; cost:66.361(sec)
 	+-----------------------+---------------------------+----------------------------------+---------------------+
 
-	Completely Cold-Start:
+
+
+	Completely Cold-Start(echo 3 > /proc/sys/vm/drop_caches):
 	+-----------------------+---------------------------+----------------------------------+---------------------+
-	|readrandom	(found:10000): 0.019901 sec/op; 50.2 reads /sec(estimated); 0.0 MB/sec; cost:199.009(sec)
+	|readseq	(found:10000): 0.000022 sec/op; 44915.5 reads /sec(estimated); 7.5 MB/sec; cost:0.223(sec)
+	+-----------------------+---------------------------+----------------------------------+---------------------+
+	|readrandom	(found:10000): 0.012902 sec/op; 77.5 reads /sec(estimated); 0.0 MB/sec; cost:129.019(sec)
+	+-----------------------+---------------------------+----------------------------------+---------------------+
+	|removerandom	(found:10000):	0.006539 sec/op;	152.9 reads /sec(estimated);	0.0 MB/sec 
 	+-----------------------+---------------------------+----------------------------------+---------------------+
 

@@ -21,11 +21,11 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		20000000
+#define NUM 		10000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define LRU_MAXNUM 	0
-#define V		"1.4"
+#define V		"1.5"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
 
@@ -57,21 +57,23 @@ void random_value()
 	}
 }
 
-double _file_size=(double)((double)(KEYSIZE+VALSIZE+8*2+4)*NUM*1.5)/1048576.0;
-double _query_size=(double)((double)(KEYSIZE+VALSIZE+8*2+4)*R_NUM*1.5)/1048576.0;
+double _index_size=(double)((double)(KEYSIZE+48)*NUM)/1048576.0;
+double _data_size=(double)((double)(VALSIZE+8)*NUM)/1048576.0;
+double _query_size=(double)((double)(KEYSIZE+48+VALSIZE+8)*R_NUM)/1048576.0;
+
 void print_header()
 {
 	printf("Keys:		%d bytes each\n",KEYSIZE);
 	printf("Values:		%d bytes each\n",VALSIZE);
 	printf("Entries:	%d\n",NUM);
-	printf("RawSize:	%.1f MB (estimated)\n",(double)((double)(KEYSIZE+VALSIZE)*NUM)/1048576.0);
-	printf("FileSize:	%.1f MB (estimated)\n",_file_size);
+	printf("IndexSize:	%.1f MB (estimated)\n",_index_size);
+	printf("DataSize:	%.1f MB (estimated)\n",_data_size);
 	printf(LINE1);
 }
 
 void print_environment()
 {
-	printf("nessDB:		version %s(B+Tree)\n",V);
+	printf("nessDB:		version %s(B+ Tree)\n",V);
 	if(LRU_MAXNUM==0)
 		printf("LRU:		closed....\n");
 	else
@@ -145,7 +147,7 @@ void db_write_test()
 	printf("|write		(succ:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count,(double)(cost/NUM)
 		,(double)(NUM/cost)
-		,(_file_size/cost)
+		,((_index_size+_data_size)/cost)
 		,cost);	
 }
 
@@ -170,7 +172,7 @@ void db_read_random_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((count%10000)==0)
+		if((count%100)==0)
 		{
 			fprintf(stderr,"readrandom finished %ld ops%30s\r",count,"");
 			fflush(stderr);
@@ -207,7 +209,7 @@ void db_read_seq_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((count%10000)==0)
+		if((count%1000)==0)
 		{
 			fprintf(stderr,"readseq finished %ld ops %30s\r",count,"");
 			fflush(stderr);
@@ -227,7 +229,7 @@ void db_read_seq_test()
 
 void db_remove_test()
 {
-/*		
+		
 	long i,count=0;
 	long r_start=NUM/6;
 	long r_end=r_start+REMOVE_NUM;
@@ -242,7 +244,7 @@ void db_remove_test()
 		sprintf(key,"%ldkey",rand()%i);
 		db_remove(key);
 		count++;
-		if((count%1000)==0)
+		if((count%100)==0)
 		{
 			fprintf(stderr,"remove random finished %ld ops%30s\r",count,"");
 			fflush(stderr);
@@ -256,7 +258,7 @@ void db_remove_test()
 		,(double)(cost/R_NUM)
 		,(double)(R_NUM/cost)
 		,(_query_size/cost));
-*/
+
 }
 
 
@@ -296,7 +298,9 @@ int main(int argc,char** argv)
 	print_header();
 	print_environment();
 	
+	//init
 	db_init_test();
+
 	if(op==OP_ADD)
 		db_tests();
 	else if(op==OP_WALK)
@@ -305,5 +309,7 @@ int main(int argc,char** argv)
 		db_read_random_test();
 	else if(op==OP_REMOVE)
 		db_remove_test();
+	//destroy
+	db_destroy();
 	return 1;
 }

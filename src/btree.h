@@ -64,7 +64,7 @@ struct btree {
 };
 
 
-//open or creat a data file
+//open or creat index&data files
 int btree_init(struct btree *btree);
 
 /*
