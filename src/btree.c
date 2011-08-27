@@ -200,13 +200,6 @@ void btree_close(struct btree *btree)
 }
 
 static int in_allocator = 0;
-static int delete_larger = 0;
-
-static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
-			   uint8_t *sha1);
-
-static uint64_t collapse(struct btree *btree, uint64_t table_offset);
-
 /* Return a value that is greater or equal to 'val' and is power-of-two. */
 static size_t round_power2(size_t val)
 {
@@ -224,56 +217,11 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 	assert(len > 0);
 
 	len = round_power2(len);
-
-	uint64_t offset = 0;
-	if (!in_allocator) {
-		/* create fake size SHA-1 */
-		uint8_t sha1[SHA1_LENGTH];
-		memset(sha1, 0, sizeof sha1);
-		*(uint32_t *) sha1 = -1;
-		((__be32 *) sha1)[1] = to_be32(len);
-
-		/* find free chunk with the larger or the same size/SHA-1 */
-		in_allocator = 1;
-		delete_larger = 1;
-		offset = delete_table(btree, btree->free_top, sha1);
-		delete_larger = 0;
-		if (offset) {
-			assert(*(uint32_t *) sha1 == (uint32_t) -1);
-			size_t free_len = from_be32(((__be32 *) sha1)[1]);
-			assert(round_power2(free_len) == free_len);
-			assert(free_len >= len);
-
-			/* delete buddy information */
-			memset(sha1, 0, sizeof sha1);
-			*(__be64 *) sha1 = to_be64(offset);
-			uint64_t buddy_len =
-				delete_table(btree, btree->free_top, sha1);
-			assert(buddy_len == len);
-
-			btree->free_top = collapse(btree, btree->free_top);
-
-			in_allocator = 0;
-
-			/* free extra space at the end of the chunk */
-			while (free_len > len) {
-				free_len >>= 1;
-				free_chunk(btree, offset + free_len,
-						  free_len);
-			}
-		} else {
-			in_allocator = 0;
-		}
+	uint64_t offset = btree->alloc;
+	if (offset & (len - 1)) {
+		offset += len - (offset & (len - 1));
 	}
-	if (offset == 0) {
-		/* not found, allocate from the end of the file */
-		offset = btree->alloc;
-		/* TODO: this wastes memory.. */
-		if (offset & (len - 1)) {
-			offset += len - (offset & (len - 1));
-		}
-		btree->alloc = offset + len;
-	}
+	btree->alloc = offset + len;
 	return offset;
 }
 
@@ -317,15 +265,6 @@ static void free_chunk(struct btree *btree, uint64_t offset, size_t len)
 
 	/* create fake offset SHA-1 for buddy allocation */
 	uint8_t sha1[SHA1_LENGTH];
-#if 0
-	memset(sha1, 0, sizeof sha1);
-	*(__be64 *) sha1 = to_be64(offset ^ len);
-	uint64_t buddy_len = lookup(btree, btree->free_top, sha1);
-	if (buddy_len != 0) {
-		assert(len == buddy_len);
-		/* TODO: combine with buddy (recursively!) */
-	}
-#endif
 
 	in_allocator = 1;
 
@@ -412,109 +351,6 @@ static uint64_t split_table(struct btree *btree, struct btree_table *table,
 	return new_table_offset;
 }
 
-/* Try to collapse the given table. Returns a new table offset. */
-static uint64_t collapse(struct btree *btree, uint64_t table_offset)
-{
-	struct btree_table *table = get_table(btree, table_offset);
-	if (table->size == 0) {
-		uint64_t ret = from_be64(table->items[0].child);
-		free_chunk(btree, table_offset, sizeof *table);
-		put_table(btree, table, table_offset);
-		return ret;
-	}
-	put_table(btree, table, table_offset);
-	return table_offset;
-}
-
-static uint64_t remove_table(struct btree *btree, struct btree_table *table,
-			   size_t i, uint8_t *sha1);
-
-/* Find and remove the smallest item from the given table. The key of the item
-   is stored to 'sha1'. Returns offset to the item */
-static uint64_t take_smallest(struct btree *btree, uint64_t table_offset,
-			      uint8_t *sha1)
-{
-	struct btree_table *table = get_table(btree, table_offset);
-	assert(table->size > 0);
-
-	uint64_t offset = 0;
-	uint64_t child = from_be64(table->items[0].child);
-	if (child == 0) {
-		offset = remove_table(btree, table, 0, sha1);
-	} else {
-		/* recursion */
-		offset = take_smallest(btree, child, sha1);
-		table->items[0].child = to_be64(collapse(btree, child));
-	}
-	flush_table(btree, table, table_offset);
-	return offset;
-}
-
-/* Find and remove the largest item from the given table. The key of the item
-   is stored to 'sha1'. Returns offset to the item */
-static uint64_t take_largest(struct btree *btree, uint64_t table_offset,
-			     uint8_t *sha1)
-{
-	struct btree_table *table = get_table(btree, table_offset);
-	assert(table->size > 0);
-
-	uint64_t offset = 0;
-	uint64_t child = from_be64(table->items[table->size].child);
-	if (child == 0) {
-		offset = remove_table(btree, table, table->size - 1, sha1);
-	} else {
-		/* recursion */
-		offset = take_largest(btree, child, sha1);
-		table->items[table->size].child =
-			to_be64(collapse(btree, child));
-	}
-	flush_table(btree, table, table_offset);
-	return offset;
-}
-
-/* Remove an item in position 'i' from the given table. The key of the
-   removed item is stored to 'sha1'. Returns offset to the item. */
-static uint64_t remove_table(struct btree *btree, struct btree_table *table,
-			     size_t i, uint8_t *sha1)
-{
-	assert(i < table->size);
-
-	if (sha1)
-		memcpy(sha1, table->items[i].sha1, SHA1_LENGTH);
-
-	uint64_t offset = from_be64(table->items[i].offset);
-	uint64_t left_child = from_be64(table->items[i].child);
-	uint64_t right_child = from_be64(table->items[i + 1].child);
-
-	if (left_child != 0 && right_child != 0) {
-	        /* replace the removed item by taking an item from one of the
-	           child tables */
-		uint64_t new_offset;
-		if (rand() & 1) {
-			new_offset = take_largest(btree, left_child,
-						  table->items[i].sha1);
-			table->items[i].child =
-				to_be64(collapse(btree, left_child));
-		} else {
-			new_offset = take_smallest(btree, right_child,
-						   table->items[i].sha1);
-			table->items[i + 1].child =
-				to_be64(collapse(btree, right_child));
-		}
-		table->items[i].offset = to_be64(new_offset);
-
-	} else {
-		memmove(&table->items[i], &table->items[i + 1],
-			(table->size - i) * sizeof(struct btree_item));
-		table->size--;
-
-		if (left_child != 0)
-			table->items[i].child = to_be64(left_child);
-		else
-			table->items[i].child = to_be64(right_child);
-	}
-	return offset;
-}
 
 /* Insert a new item with key 'sha1' with the contents in 'data' to the given
    table. Returns offset to the new item. */
@@ -577,14 +413,6 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 	return ret;
 }
 
-#if 0
-static void dump_sha1(const uint8_t *sha1)
-{
-	size_t i;
-	for (i = 0; i < SHA1_LENGTH; i++)
-		printf("%02x", sha1[i]);
-}
-#endif
 
 /*
  * Remove a item with key 'sha1' from the given table. The offset to the
@@ -594,45 +422,29 @@ static void dump_sha1(const uint8_t *sha1)
 static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 			   uint8_t *sha1)
 {
-	if (table_offset == 0)
-		return 0;
-	struct btree_table *table = get_table(btree, table_offset);
-
-	size_t left = 0, right = table->size;
-	while (left < right) {
-		size_t i = (right - left) / 2 + left;
-		int cmp = cmp_sha1(sha1, table->items[i].sha1);
-		if (cmp == 0) {
-			/* found */
-			uint64_t ret = remove_table(btree, table, i, sha1);
-			flush_table(btree, table, table_offset);
-			return ret;
+	
+	while (table_offset) {
+		struct btree_table *table = get_table(btree, table_offset);
+		size_t left = 0, right = table->size, i;
+		while (left < right) {
+			i = (right - left) / 2 + left;
+			int cmp = cmp_sha1(sha1, table->items[i].sha1);
+			if (cmp == 0) {
+				/* found */
+				//TODO:mark unused
+				put_table(btree, table, table_offset);
+				return 1;
+			}
+			if (cmp < 0)
+				right = i;
+			else
+				left = i + 1;
 		}
-		if (cmp < 0)
-			right = i;
-		else
-			left = i + 1;
-	}
-
-	/* not found - recursion */
-	size_t i = left;
-	uint64_t child = from_be64(table->items[i].child);
-	uint64_t ret = delete_table(btree, child, sha1);
-	if (ret != 0) {
-		table->items[i].child = to_be64(collapse(btree, child));
-	}
-
-	if (ret == 0 && delete_larger && i < table->size) {
-		/* remove the next largest */
-		ret = remove_table(btree, table, i, sha1);
-	}
-	if (ret != 0) {
-		/* flush just in case changes happened */
-		flush_table(btree, table, table_offset);
-	} else {
+		uint64_t  child = from_be64(table->items[left].child);
 		put_table(btree, table, table_offset);
+		table_offset = child;
 	}
-	return ret;
+	return 0;
 }
 
 uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
@@ -768,7 +580,6 @@ int btree_delete(struct btree *btree, const uint8_t *c_sha1)
 	if (offset == 0)
 		return -1;
 
-	btree->top = collapse(btree, btree->top);
 	flush_super(btree);
 
 	lseek64(btree->fd, offset, SEEK_SET);
