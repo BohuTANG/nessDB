@@ -1,0 +1,13 @@
+nessDB TODO
+-----------
+WARNING:these todo-lists are suit for nessDB v1.5 only.
+
+
+WRITE
+======
+* Use Log-Structured-Merge-Tree(LSM-Tree) for INSERT/DELETE/UPDATE.
+
+
+RANDOM
+======
+* Use LRU/Record-Cache.
