@@ -65,7 +65,28 @@ static inline uint64_t from_be64(__be64 x)
 #endif
 }
 
-/* 15 times faster than gcc's memcmp on x86-64 */
+//get H bit
+static int get_H(uint64_t x)
+{
+	if(((x>>63)&0x01)!=0x01)
+		return 0;
+	else
+		return 1;
+}
+
+//set H bit to 0
+static uint64_t set_H_0(uint64_t x)
+{
+	return	x&=0x3FFFFFFFFFFFFFFF;
+}
+
+//set H bit to 1
+static uint64_t set_H_1(uint64_t x)
+{
+	return x|=0x8000000000000000;	
+}
+
+
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
 {
 	return strcmp(a,b);
@@ -380,8 +401,10 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 			int cmp = cmp_sha1(sha1, table->items[i].sha1);
 			if (cmp == 0) {
 				/* found */
-				//TODO:mark unused
-				put_table(btree, table, table_offset);
+				//mark unused
+				uint64_t off = from_be64(table->items[i].offset);
+				table->items[i].offset=to_be64(set_H_1(off));
+				flush_table(btree, table, table_offset);
 				return 1;
 			}
 			if (cmp < 0)
@@ -454,12 +477,18 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
-		while (left < right) {
+		while (left < right) 
+		{
 			i = (right - left) / 2 + left;
 			int cmp = cmp_sha1(sha1, table->items[i].sha1);
-			if (cmp == 0) {
+			if (cmp == 0) 
+			{
 				/* found */
-				uint64_t ret = from_be64(table->items[i].offset);
+				uint64_t ret=from_be64(table->items[i].offset);
+				//unused
+				if(get_H(ret)==1)
+					ret = 0;	
+			
 				put_table(btree, table, table_offset);
 				return ret;
 			}
