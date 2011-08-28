@@ -83,7 +83,7 @@ static uint64_t set_H_0(uint64_t x)
 //set H bit to 1
 static uint64_t set_H_1(uint64_t x)
 {
-	return x|=0x8000000000000000;	
+	return  x|=0x8000000000000000;	
 }
 
 
@@ -170,7 +170,6 @@ static int btree_open(struct btree *btree)
 	return 0;
 }
 
-static void flush_super(struct btree *btree);
 
 static int btree_creat(struct btree *btree)
 {
@@ -485,7 +484,7 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 			{
 				/* found */
 				uint64_t ret=from_be64(table->items[i].offset);
-				//unused
+				//unused-mark is true
 				if(get_H(ret)==1)
 					ret = 0;	
 			
@@ -550,22 +549,12 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset,size_t *len)
 
 int btree_delete(struct btree *btree, const uint8_t *c_sha1)
 {
-	/* SHA-1 must be in writable memory */
 	uint8_t sha1[SHA1_LENGTH];
 	memcpy(sha1, c_sha1, sizeof sha1);
 
 	uint64_t offset = delete_table(btree, btree->top, sha1);
 	if (offset == 0)
 		return -1;
-
-	flush_super(btree);
-
-	lseek64(btree->fd, offset, SEEK_SET);
-	struct blob_info info;
-	if (read(btree->fd, &info, sizeof info) != sizeof info)
-		return 0;
-
-	flush_super(btree);
 	return 0;
 }
 
