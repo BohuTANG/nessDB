@@ -1,4 +1,4 @@
-This benchmark results is shown that:
+This benchmark  is shown that:
 who has better performance when DB-file is ONE-DATABASE-FILE mode or  INDEX-FILE&DATA-FILE mode under B+ Tree Structured.
 
 Tested conclusions are:
