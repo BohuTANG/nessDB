@@ -21,6 +21,8 @@ struct hashtable
 {
 	unsigned int size;
 	unsigned int capacity;
+	unsigned int (*hashfunc)  (const char *k);
+	unsigned int (*hashfunc1) (const char *k);
 	hashtable_entry* body;
 };
 

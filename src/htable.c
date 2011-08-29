@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <string.h>
 #include "hashtable.h"
-#include "crc16.h"
+#include "hashes.h"
 
 //if over this num,entry will be long alive on index slot.
 #define G 16
@@ -23,27 +23,10 @@ static unsigned int hashtable_get_prime(int maxnum)
 	return (maxnum+23);
 }
 
- unsigned long hashtable_hash(char* str)
-{
-	unsigned long hash = 5381;
-	int c;
-	while ((c = *str++))
-		hash = ((hash << 5) + hash) + c;  /* hash * 33 + c */
-	return hash;
-}
-
-static  unsigned int hashtable_find_crc(char* str)
-{
-	unsigned int crc= crc16(str,strlen(str));	
-	if(crc==0)
-		crc=1;
-	return crc;
-}
-
 
 unsigned int hashtable_find_slot(hashtable* t, char* key)
 {
-	return  hashtable_hash(key) % t->capacity;
+	return  t->hashfunc(key) % t->capacity;
 }
 
 
@@ -102,6 +85,8 @@ hashtable* hashtable_create(int cap)
 	new_ht->size = 0;
 	new_ht->capacity = hashtable_get_prime(cap);
 	new_ht->body = hashtable_body_allocate(new_ht->capacity);
+	new_ht->hashfunc=jdb_hash;
+	new_ht->hashfunc1=sdbm_hash;
 	return new_ht;
 }
 

@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS =	-O2 -g
 
 #name all the object files
-OBJS = nessdb_bench.o db.o hashtable.o btree.o
+OBJS = nessdb_bench.o db.o htable.o btree.o
 
 all : nessdb_bench
 

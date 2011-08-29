@@ -149,6 +149,23 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 	put_table(btree, table, offset);
 }
 
+static void flush_super(struct btree *btree)
+{
+
+	struct btree_super super;
+	memset(&super, 0, sizeof super);
+	super.top = to_be64(btree->top);
+	super.free_top = to_be64(btree->free_top);
+
+
+	lseek64(btree->fd, 0, SEEK_SET);
+	if (write(btree->fd, &super, sizeof super) != sizeof super) {
+		fprintf(stderr, "btree: I/O error\n");
+		abort();
+	}
+}
+
+
 static int btree_open(struct btree *btree)
 {
 	memset(btree, 0, sizeof *btree);
@@ -258,21 +275,6 @@ static uint64_t alloc_db_chunk(struct btree *btree, size_t len)
 }
 
 
-
-static void flush_super(struct btree *btree)
-{
-
-	struct btree_super super;
-	memset(&super, 0, sizeof super);
-	super.top = to_be64(btree->top);
-	super.free_top = to_be64(btree->free_top);
-
-	lseek64(btree->fd, 0, SEEK_SET);
-	if (write(btree->fd, &super, sizeof super) != sizeof super) {
-		fprintf(stderr, "btree: I/O error\n");
-		abort();
-	}
-}
 
 static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 {
