@@ -5,7 +5,7 @@
 #include <assert.h>
 
 #include "btree.h"
-#include "hashtable.h"
+#include "htable.h"
 #include "db.h"
 
 #define MAX_HITS (1024)

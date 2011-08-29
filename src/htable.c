@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "hashtable.h"
+#include "htable.h"
 #include "hashes.h"
 
 //if over this num,entry will be long alive on index slot.
