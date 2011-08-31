@@ -21,7 +21,7 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		10000000
+#define NUM 		2000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define LRU_MAXNUM 	0

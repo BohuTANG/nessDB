@@ -1,4 +1,4 @@
-#include "btree.h"
+#include "storage.h"
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -165,6 +165,12 @@ static void flush_super(struct btree *btree)
 	}
 }
 
+static uint64_t getsize(int fd) {
+    struct stat sb;
+
+    if (fstat(fd,&sb) == -1) return 0;
+    return (uint64_t) sb.st_size;
+}
 
 static int btree_open(struct btree *btree)
 {
@@ -182,8 +188,8 @@ static int btree_open(struct btree *btree)
 	btree->top = from_be64(super.top);
 	btree->free_top = from_be64(super.free_top);
 
-	btree->alloc =lseek64(btree->fd, 0, SEEK_END);
-	btree->db_alloc =lseek64(btree->db_fd, 0, SEEK_END);
+	btree->alloc =getsize(btree->fd);
+	btree->db_alloc =getsize(btree->db_fd);
 	return 0;
 }
 
@@ -252,11 +258,11 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 {
 	assert(len > 0);
 
-	len = round_power2(len);
+	//len = round_power2(len);
 	uint64_t offset = btree->alloc;
-	if (offset & (len - 1)) {
+	/*if (offset & (len - 1)) {
 		offset += len - (offset & (len - 1));
-	}
+	}*/
 	btree->alloc = offset + len;
 	return offset;
 }
@@ -504,6 +510,7 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 	}
 	return 0;
 }
+
 
 void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len,uint64_t *val_offset)
 {

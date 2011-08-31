@@ -39,7 +39,7 @@ void bloom_add(struct bloom *bloom,const char *k)
 int bloom_get(struct bloom *bloom,const char *k)
 {
 	if(!k)
-		return 0;
+		return -1;
 
 	int i;
 	for(i=0;i<HFUNCNUM;i++)

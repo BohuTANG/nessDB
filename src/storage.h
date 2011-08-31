@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include "bloom.h"
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */
@@ -66,6 +67,7 @@ struct btree {
 
 //open or creat index&data files
 int btree_init(struct btree *btree);
+
 
 /*
  * Close a database file opened with btree_creat() or btree_open().
