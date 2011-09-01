@@ -1,16 +1,10 @@
-#include "storage.h"
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-#ifdef _WIN32
-#include <winsock.h>
-#else
-/* Unix */
-#include <arpa/inet.h> /* htonl/ntohl */
-#define O_BINARY 0
-#endif
+
+#include "storage.h"
 
 #define FREE_QUEUE_LEN	64
 
@@ -24,67 +18,6 @@ struct chunk {
 
 static struct chunk free_queues[FREE_QUEUE_LEN];
 static size_t free_queue_len = 0;
-
-static inline __be32 to_be32(uint32_t x)
-{
-	return (FORCE __be32) htonl(x);
-}
-
-static inline __be16 to_be16(uint16_t x)
-{
-	return (FORCE __be16) htons(x);
-}
-
-static inline __be64 to_be64(uint64_t x)
-{
-#if (BYTE_ORDER == LITTLE_ENDIAN)
-	return (FORCE __be64) (((uint64_t) htonl((uint32_t) x) << 32) |
-			       htonl((uint32_t) (x >> 32)));
-#else
-	return (FORCE __be64) x;
-#endif
-}
-
-static inline uint32_t from_be32(__be32 x)
-{
-	return ntohl((FORCE uint32_t) x);
-}
-
-static inline uint16_t from_be16(__be16 x)
-{
-	return ntohs((FORCE uint16_t) x);
-}
-
-static inline uint64_t from_be64(__be64 x)
-{
-#if (BYTE_ORDER == LITTLE_ENDIAN)
-	return ((uint64_t) ntohl((uint32_t) (FORCE uint64_t) x) << 32) |
-		ntohl((uint32_t) ((FORCE uint64_t) x >> 32));
-#else
-	return (FORCE uint64_t) x;
-#endif
-}
-
-//get H bit
-static int get_H(uint64_t x)
-{
-	if(((x>>63)&0x01)!=0x01)
-		return 0;
-	else
-		return 1;
-}
-
-//set H bit to 0
-static uint64_t set_H_0(uint64_t x)
-{
-	return	x&=0x3FFFFFFFFFFFFFFF;
-}
-
-//set H bit to 1
-static uint64_t set_H_1(uint64_t x)
-{
-	return  x|=0x8000000000000000;	
-}
 
 
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
@@ -243,14 +176,6 @@ void btree_close(struct btree *btree)
 }
 
 static int in_allocator = 0;
-/* Return a value that is greater or equal to 'val' and is power-of-two. */
-static size_t round_power2(size_t val)
-{
-	size_t i = 1;
-	while (i < val)
-		i <<= 1;
-	return i;
-}
 
 
 /* Allocate a chunk from the index file */

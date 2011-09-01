@@ -1,15 +1,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include "hashes.h"
+#include "bitwise.h"
 #include "bloom.h"
 
+
 #define HFUNCNUM 4
-#define CHAR_BIT 8
-
-#define SETBIT_1(bitset,i) (bitset[i / CHAR_BIT] |=  (1<<(i % CHAR_BIT)))
-#define SETBIT_0(bitset,i) (bitset[i / CHAR_BIT] &=  (~(1<<(i % CHAR_BIT))))
-#define GETBIT(bitset,i) (bitset[i / CHAR_BIT] &   (1<<(i % CHAR_BIT)))
-
 void bloom_init(struct bloom *bloom,int size)
 {
 	bloom->size=size;

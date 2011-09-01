@@ -1,26 +1,12 @@
 #ifndef _BTREE_H
 #define _BTREE_H
 
-#ifdef __CHECKER__
-#define FORCE           __attribute__((force))
-#else
-#define FORCE
-#endif
-
-#ifdef __CHECKER__
-#define BITWISE         __attribute__((bitwise))
-#else
-#define BITWISE
-#endif
 
 #include <stdio.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include "bitwise.h"
 #include "bloom.h"
-
-typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
-typedef uint32_t BITWISE __be32; /* big endian, 32 bits */
-typedef uint64_t BITWISE __be64; /* big endian, 64 bits */
 
 #define SHA1_LENGTH	20
 
