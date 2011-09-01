@@ -7,7 +7,3 @@ WRITE
 ======
 * Use Log-Structured-Merge-Tree(LSM-Tree) for INSERT/DELETE/UPDATE.
 
-
-RANDOM
-======
-* Use LRU/Record-Cache.
