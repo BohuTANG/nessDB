@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "bitwise.h"
 #include "storage.h"
-#include "htable.h"
+#include "lru.h"
 #include "bloom.h"
 #include "db.h"
 
@@ -13,9 +13,9 @@
 #define MAX_HITS 	(1024)
 
 static struct bloom 	_bloom;
-static hashtable*	_ht;
-struct btree 		_btree;
-static int 		_lru=0;
+static struct lru	_lru;
+static struct btree 	_btree;
+static int 		_islru=0;
 
 
 
@@ -49,9 +49,9 @@ static void db_load_bloom()
 void db_init(int lru_maxnum)
 {
 	if(lru_maxnum>0)
-	 	_lru=1;
+	 	_islru=1;
 		
-	_ht=hashtable_create(lru_maxnum);
+	lru_init(&_lru,lru_maxnum);
 
 	btree_init(&_btree);
 	db_load_bloom();	
@@ -71,20 +71,19 @@ void *db_get(char* key)
 {
 	if(bloom_get(&_bloom,key)!=0)
 		return NULL;
-	
 
 	size_t len;
 	uint64_t val_offset;
-	if(_lru)
+	if(_islru)
 	{
-		uint64_t entry=hashtable_get(_ht,key);
+		uint64_t entry=lru_get(&_lru,key);
 		if(entry>0)
 			return btree_get_byoffset(&_btree,entry,&len);
 		else
 		{
 			uint64_t val_offset;
 			void *data=btree_get(&_btree,key,&len,&val_offset);
-			hashtable_set(_ht,key,val_offset);
+			lru_set(&_lru,key,val_offset);
 			return data;
 		}
 	}
@@ -95,11 +94,14 @@ void *db_get(char* key)
 void db_remove(char* key)
 {
 	btree_delete(&_btree,key);
-	if(_lru)
-		hashtable_remove(_ht,key);
+	if(_islru)
+		lru_remove(&_lru,key);
 }
 
 void db_destroy()
 {
+	if(_islru)
+		lru_free(&_lru);
+	bloom_free(&_bloom);
 	btree_close(&_btree);
 }
