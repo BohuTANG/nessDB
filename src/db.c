@@ -39,6 +39,9 @@ static void db_load_bloom()
 			for(l=0;l<table->size;l++)
 			{
 				bloom_add(&_bloom,table->items[l].sha1);
+				if(_islru)
+					lru_set(&_lru,table->items[l].sha1,table->items[l].offset);
+					
 			}
 		}
 		free(table);
