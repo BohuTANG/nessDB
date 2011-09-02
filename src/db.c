@@ -32,10 +32,9 @@ static void db_load_bloom()
 	while(alloc>0)
 	{
 		struct btree_table *table=malloc(newsize);
-		int readr=read(_btree.fd,table, newsize) ;
+		int r=read(_btree.fd,table, newsize) ;
 		if(table->size>0)
 		{
-			c+=table->size;
 			for(l=0;l<table->size;l++)
 			{
 				bloom_add(&_bloom,table->items[l].sha1);
@@ -79,9 +78,9 @@ void *db_get(char* key)
 	uint64_t val_offset;
 	if(_islru)
 	{
-		uint64_t entry=lru_get(&_lru,key);
-		if(entry>0)
-			return btree_get_byoffset(&_btree,entry,&len);
+		uint64_t l_off=lru_get(&_lru,key);
+		if(l_off>0)
+			return btree_get_byoffset(&_btree,l_off,&len);
 		else
 		{
 			uint64_t val_offset;

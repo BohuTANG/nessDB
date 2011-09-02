@@ -1,5 +1,6 @@
 #ifndef _HASHES_H
 #define _HASHES_H
+#include <string.h>
 /**
  * SAX hash function
  */
@@ -85,6 +86,9 @@ static unsigned jenkins_hash(const char *key)
     return hash;
 }
 
+/**
+ * Jdb hash function
+ */
 static unsigned int jdb_hash(const char* key)
 {
     if (!key) {
