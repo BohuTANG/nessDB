@@ -1,0 +1,47 @@
+= The Log-Structured Merge-BTree =
+		----Drafted by BohuTANG
+
+LSM Lifecycle
+=============
+  		+--------------+   (new memtable)       
+ add/del/up---->|   memtable   |  <------------------.
+		+--------------+                      |
+			|		              |	     
+			| (write to disk)             |        
+			v                             |
+		+--------------+                      |
+		|  *.log file  |                      |
+		+--------------+                      |
+			|                             |
+			| (>10M)                      |           
+			v                             |
+		+--------------+                      |
+		|   sstable    |                      |
+		+--------------+                      |
+			|                             |
+			| (add to B+ Tree)            |            
+			v                             |
+	      +--------------------+                  |
+	      |  stroage(B+ Tree)  |                  |
+	      +--------------------+                  |
+                       |                              |
+                       |                              |
+                       |                              | 
+                       |                              |
+                 [delete log file]                    |
+                       |                              |
+                       |  remove                      |
+                        `--------> *memtable*--------.
+
+memtable
+========
+ A memory table which stores recent add/delete/update  entries.
+
+*.log file
+==========
+ A AOF log file on disk,memtable's snapshot on disk.
+
+sstable
+=======
+ A sorted table reading log  into memory stores a sequence of entries sorted by key. 
+
