@@ -67,6 +67,9 @@ void btree_close(struct btree *btree);
 void btree_insert(struct btree *btree, const uint8_t *sha1, const void *data,
 		  size_t len);
 
+uint64_t btree_insert_data(struct btree *btree, const void *data,
+		  size_t len);
+
 /*
  * Look up item with the given key 'sha1' in the database file. Length of the
  * item is stored in 'len'. Returns a pointer to the contents of the item.

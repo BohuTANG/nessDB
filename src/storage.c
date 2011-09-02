@@ -391,12 +391,18 @@ uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 void btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,
 		  size_t len)
 {
-	/* SHA-1 must be in writable memory */
 	uint8_t sha1[SHA1_LENGTH];
 	memcpy(sha1, c_sha1, sizeof sha1);
 
 	insert_toplevel(btree, &btree->top, sha1, data, len);
 	flush_super(btree);
+}
+
+
+uint64_t btree_insert_data(struct btree *btree, const void *data,
+		  size_t len)
+{
+	return insert_data(btree, data, len);
 }
 
 /*
