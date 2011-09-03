@@ -76,7 +76,6 @@ int db_add(char* key,char* value)
 
 void *db_get(char* key)
 {
-	size_t len;
 	uint64_t val_offset;
 
 	if(bloom_get(&_bloom,key)!=0)
@@ -84,7 +83,7 @@ void *db_get(char* key)
 
 	val_offset=idx_get(&_idx,key);
 	if(val_offset>0)
-		return btree_get_byoffset(&_btree,val_offset,&len);
+		return btree_get_byoffset(&_btree,val_offset);
 	return NULL;
 }
 
