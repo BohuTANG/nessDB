@@ -21,7 +21,7 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		5000000
+#define NUM 		10000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define V		"1.6"
@@ -114,7 +114,21 @@ void print_environment()
 void db_init_test()
 {
 	random_value();
+
+	double cost;
+	start_timer();
+   	cost=get_timer();
+	fprintf(stderr,"loading index......%30s\r","");
 	db_init();
+	fflush(stderr);
+
+   	cost=get_timer();
+	printf(LINE);
+	printf("|loadindex	(load:%d): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
+		,NUM
+		,(double)(cost/R_NUM)
+		,(double)(NUM/cost)
+		,cost);
 }
 
 void db_write_test()
