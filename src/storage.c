@@ -1,3 +1,15 @@
+#ifndef __USE_FILE_OFFSET64
+#define __USE_FILE_OFFSET64
+#endif
+
+#ifndef __USE_LARGEFILE64
+#define __USE_LARGEFILE64
+#endif
+
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE
+#endif
+
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -99,7 +111,7 @@ static void flush_super(struct btree *btree)
 }
 
 static uint64_t getsize(int fd) {
-    struct stat sb;
+    struct stat64 sb;
 
     if (fstat64(fd,&sb) == -1) return 0;
     return (uint64_t) sb.st_size;
@@ -109,8 +121,8 @@ static int btree_open(struct btree *btree)
 {
 	memset(btree, 0, sizeof *btree);
 
-	btree->fd = open64(IDXNAME, O_RDWR | O_BINARY);
-	btree->db_fd = open64(DBNAME, O_RDWR | O_BINARY);
+	btree->fd = open(IDXNAME, O_RDWR | O_BINARY | O_LARGEFILE);
+	btree->db_fd = open(DBNAME, O_RDWR | O_BINARY | O_LARGEFILE);
 
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
@@ -131,8 +143,8 @@ static int btree_creat(struct btree *btree)
 {
 	memset(btree, 0, sizeof *btree);
 
-	btree->fd = open64(IDXNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	btree->db_fd = open64(DBNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	btree->fd = open(IDXNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
+	btree->db_fd = open(DBNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
 
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
@@ -388,14 +400,15 @@ uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	return ret;
 }
 
-void btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,
+uint64_t btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,
 		  size_t len)
 {
 	uint8_t sha1[SHA1_LENGTH];
 	memcpy(sha1, c_sha1, sizeof sha1);
 
-	insert_toplevel(btree, &btree->top, sha1, data, len);
+	uint64_t ret=insert_toplevel(btree, &btree->top, sha1, data, len);
 	flush_super(btree);
+	return ret;
 }
 
 
@@ -443,30 +456,29 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 }
 
 
-void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len,uint64_t *val_offset)
+void *btree_get(struct btree *btree, const uint8_t *sha1)
 {
 	uint64_t offset = lookup(btree, btree->top, sha1);
 	if (offset == 0)
 		return NULL;
 
-	*val_offset=offset;
 	lseek64(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
-	*len = from_be32(info.len);
+	size_t len = from_be32(info.len);
 
-	void *data = malloc(*len);
+	void *data = malloc(len);
 	if (data == NULL)
 		return NULL;
-	if (read(btree->db_fd, data, *len) != (ssize_t) *len) {
+	if (read(btree->db_fd, data, len) != (ssize_t)len) {
 		free(data);
 		data = NULL;
 	}
 	return data;
 }
 
-void *btree_get_byoffset(struct btree *btree,uint64_t offset,size_t *len)
+void *btree_get_byoffset(struct btree *btree,uint64_t offset)
 {
 	if (offset == 0)
 		return NULL;
@@ -475,12 +487,12 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset,size_t *len)
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
-	*len = from_be32(info.len);
+	size_t len = from_be32(info.len);
 
-	void *data = malloc(*len);
+	void *data = malloc(len);
 	if (data == NULL)
 		return NULL;
-	if (read(btree->db_fd, data, *len) != (ssize_t) *len) {
+	if (read(btree->db_fd, data, len) != (ssize_t) len) {
 		free(data);
 		data = NULL;
 	}

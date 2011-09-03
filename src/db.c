@@ -5,17 +5,17 @@
 #include <assert.h>
 #include "bitwise.h"
 #include "storage.h"
-#include "lru.h"
+#include "idx.h"
 #include "bloom.h"
 #include "db.h"
 
 #define BF_BIT_SIZE 	(1024*1024*8)
 #define MAX_HITS 	(1024)
+#define IDX_PRIME	(16785407)
 
 static struct bloom 	_bloom;
-static struct lru	_lru;
+static struct idx	_idx;
 static struct btree 	_btree;
-static int 		_islru=0;
 
 
 
@@ -38,14 +38,7 @@ static void db_load_bloom()
 			for(l=0;l<table->size;l++)
 			{
 				bloom_add(&_bloom,table->items[l].sha1);
-				if(_islru)
-					lru_set(&_lru,table->items[l].sha1,from_be64(table->items[l].offset));
-				if((count++%100000)==0)
-				{
-					fprintf(stderr,"%llu:bloom finished %d ops%30s\r",alloc,count,"");
-					fflush(stderr);
-				}
-					
+				idx_set(&_idx,table->items[l].sha1,from_be64(table->items[l].offset));
 			}
 		}
 		free(table);
@@ -53,12 +46,9 @@ static void db_load_bloom()
 	}
 }
 
-void db_init(int lru_maxnum)
+void db_init()
 {
-	if(lru_maxnum>0)
-	 	_islru=1;
-		
-	lru_init(&_lru,lru_maxnum);
+	idx_init(&_idx,IDX_PRIME);
 
 	btree_init(&_btree);
 	db_load_bloom();	
@@ -67,48 +57,46 @@ void db_init(int lru_maxnum)
 
 int db_add(char* key,char* value)
 {
-	bloom_add(&_bloom,key);
+	
+	uint64_t off=btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
+	if(off==0)
+		return (0);
 
-	btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
+	uint64_t l_off=idx_get(&_idx,key);
+	if(l_off==0)	
+		idx_set(&_idx,key,off);
+	else {
+		idx_remove(&_idx,key);
+		idx_set(&_idx,key,off);
+	}
+	bloom_add(&_bloom,key);
 	return (1);
 }
 
 
 void *db_get(char* key)
 {
+	size_t len;
+	uint64_t val_offset;
+
 	if(bloom_get(&_bloom,key)!=0)
 		return NULL;
 
-	size_t len;
-	uint64_t val_offset;
-	if(_islru)
-	{
-		uint64_t l_off=lru_get(&_lru,key);
-		if(l_off>0)
-			return btree_get_byoffset(&_btree,l_off,&len);
-		else
-		{
-			uint64_t val_offset;
-			void *data=btree_get(&_btree,key,&len,&val_offset);
-			lru_set(&_lru,key,val_offset);
-			return data;
-		}
-	}
-	else
-		return btree_get(&_btree,key,&len,&val_offset);
+	val_offset=idx_get(&_idx,key);
+	if(val_offset>0)
+		return btree_get_byoffset(&_btree,val_offset,&len);
+	return NULL;
 }
 
 void db_remove(char* key)
 {
 	btree_delete(&_btree,key);
-	if(_islru)
-		lru_remove(&_lru,key);
+	idx_remove(&_idx,key);
 }
 
 void db_destroy()
 {
-	if(_islru)
-		lru_free(&_lru);
+	idx_free(&_idx);
 	bloom_free(&_bloom);
 	btree_close(&_btree);
 }

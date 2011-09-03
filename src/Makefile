@@ -4,7 +4,7 @@ CFLAGS =	-O2  -g
 
 
 #name all the object files
-OBJS = nessdb_bench.o db.o lru.o storage.o bloom.o
+OBJS = nessdb_bench.o db.o idx.o storage.o bloom.o
 
 all : nessdb_bench
 

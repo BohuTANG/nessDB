@@ -24,8 +24,7 @@
 #define NUM 		5000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
-#define LRU_MAXNUM 	0
-#define V		"1.5"
+#define V		"1.6"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
 
@@ -74,11 +73,6 @@ void print_header()
 void print_environment()
 {
 	printf("nessDB:		version %s(B+ Tree)\n",V);
-	if(LRU_MAXNUM==0)
-		printf("LRU:		closed....\n");
-	else
-		printf("LRU:		opened LRU-MAX-NUM:%d....\n",LRU_MAXNUM);		
-
 	time_t now=time(NULL);
 	printf("Date:		%s",(char*)ctime(&now));
 	
@@ -120,7 +114,7 @@ void print_environment()
 void db_init_test()
 {
 	random_value();
-	db_init(LRU_MAXNUM);
+	db_init();
 }
 
 void db_write_test()
