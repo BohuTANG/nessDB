@@ -25,7 +25,7 @@ static int 		_islru=0;
 static void db_load_bloom()
 {
 	bloom_init(&_bloom,BF_BIT_SIZE);
-	int i,l,super_size=sizeof(struct btree_super),c=0;
+	int i,l,super_size=sizeof(struct btree_super),count=0;
 	uint64_t alloc=_btree.alloc-super_size;
 	int newsize=(sizeof(struct btree_table));
 	lseek64(_btree.fd,super_size, SEEK_SET);
@@ -39,7 +39,12 @@ static void db_load_bloom()
 			{
 				bloom_add(&_bloom,table->items[l].sha1);
 				if(_islru)
-					lru_set(&_lru,table->items[l].sha1,table->items[l].offset);
+					lru_set(&_lru,table->items[l].sha1,from_be64(table->items[l].offset));
+				if((count++%100000)==0)
+				{
+					fprintf(stderr,"%llu:bloom finished %d ops%30s\r",alloc,count,"");
+					fflush(stderr);
+				}
 					
 			}
 		}

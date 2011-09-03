@@ -101,7 +101,7 @@ static void flush_super(struct btree *btree)
 static uint64_t getsize(int fd) {
     struct stat sb;
 
-    if (fstat(fd,&sb) == -1) return 0;
+    if (fstat64(fd,&sb) == -1) return 0;
     return (uint64_t) sb.st_size;
 }
 
