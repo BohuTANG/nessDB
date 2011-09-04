@@ -21,7 +21,7 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		10000000
+#define NUM 		50000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define V		"1.6"
@@ -82,11 +82,9 @@ void print_environment()
 	char cache_size[256]={0};
 
 	FILE* cpuinfo=fopen("/proc/cpuinfo","r");
-	if(cpuinfo)
-	{
+	if(cpuinfo){
 		char line[1024]={0};
-		while(fgets(line,sizeof(line),cpuinfo)!=NULL)
-		{
+		while(fgets(line,sizeof(line),cpuinfo)!=NULL){
 			const char* sep=strchr(line,':');
 			if(sep==NULL||strlen(sep)<10)
 				continue;
@@ -95,15 +93,12 @@ void print_environment()
 			char val[1024]={0};
 			strncpy(key,line,sep-1-line);
 			strncpy(val,sep+1,strlen(sep)-1);
-			if(strcmp("model name",key)==0)
-			{
+			if(strcmp("model name",key)==0){
 				num_cpus++;
 				strcpy(cpu_type,val);
 			}
 			else if(strcmp("cache size",key)==0)
-			{
 				strncpy(cache_size,val+1,strlen(val)-1);	
-			}
 		}
 
 		fclose(cpuinfo);
@@ -142,14 +137,12 @@ void db_write_test()
 	double cost;
 	uint8_t key[KEYSIZE];
 	start_timer();
-	for(i=0;i<NUM;i++)
-	{
+	for(i=0;i<NUM;i++){
 		memset(key,0,sizeof(key));
 		sprintf(key,"%ldkey",i);
 		if(db_add(key,value))
 			count++;
-		if((i%10000)==0)
-		{
+		if((i%10000)==0){
 			fprintf(stderr,"write finished %ld ops%30s\r",i,"");
 			fflush(stderr);
 		}
@@ -173,8 +166,7 @@ void db_read_random_test()
 	double cost;
 	uint8_t key[KEYSIZE]={0};
 	start_timer();
-	for(i=r_start;i<r_end;i++)
-	{
+	for(i=r_start;i<r_end;i++){
 
 		memset(key,0,sizeof(key));
 		sprintf(key,"%ldkey",rand()%i);
@@ -185,8 +177,7 @@ void db_read_random_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((count%100)==0)
-		{
+		if((count%100)==0){
 			fprintf(stderr,"readrandom finished %ld ops%30s\r",count,"");
 			fflush(stderr);
 		}
@@ -211,8 +202,7 @@ void db_read_seq_test()
 	double cost;
 	uint8_t key[KEYSIZE]={0};
 	start_timer();
-	for(i=r_start;i<r_end;i++)
-	{
+	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
 		sprintf(key,"%ldkey",i);
 		void* data=db_get(key);
@@ -222,8 +212,7 @@ void db_read_seq_test()
 			printf("nofound!%s\n",key);
 		free(data);
 
-		if((count%1000)==0)
-		{
+		if((count%1000)==0){
 			fprintf(stderr,"readseq finished %ld ops %30s\r",count,"");
 			fflush(stderr);
 		}
@@ -250,15 +239,12 @@ void db_remove_test()
 	double cost;
 	uint8_t key[KEYSIZE]={0};
 	start_timer();
-	for(i=r_start;i<r_end;i++)
-	{
-
+	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
 		sprintf(key,"%ldkey",rand()%i);
 		db_remove(key);
 		count++;
-		if((count%100)==0)
-		{
+		if((count%100)==0){
 			fprintf(stderr,"remove random finished %ld ops%30s\r",count,"");
 			fflush(stderr);
 		}
@@ -288,8 +274,7 @@ int main(int argc,char** argv)
 {
 	long i,count,op;
 	int show=1;
-	if(argc!=2)
-	{
+	if(argc!=2){
 		fprintf(stderr,"Usage: nessdb_benchmark <op>\n");
         	exit(1);
 	}
@@ -304,8 +289,7 @@ int main(int argc,char** argv)
 		op=OP_WALK;
 	else if(strcmp(argv[1],"remove")==0)
 		op=OP_REMOVE;
-	else
-	{
+	else{
 		printf("not supported op %s\n", argv[1]);
         	exit(1);
     	}
