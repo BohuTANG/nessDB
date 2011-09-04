@@ -193,13 +193,7 @@ static int in_allocator = 0;
 /* Allocate a chunk from the index file */
 static uint64_t alloc_chunk(struct btree *btree, size_t len)
 {
-	assert(len > 0);
-
-	//len = round_power2(len);
 	uint64_t offset = btree->alloc;
-	/*if (offset & (len - 1)) {
-		offset += len - (offset & (len - 1));
-	}*/
 	btree->alloc = offset + len;
 	return offset;
 }
@@ -208,8 +202,6 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 /* Allocate a chunk from the database file */
 static uint64_t alloc_db_chunk(struct btree *btree, size_t len)
 {
-	assert(len > 0);
-
 	len = round_power2(len);
 
 	uint64_t offset  = btree->db_alloc;

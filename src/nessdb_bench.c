@@ -4,7 +4,6 @@
 	 	$cd src
 		$make
 	 	$./nessdb_bench add
-    
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,9 +18,10 @@
 #define OP_WALK 3
 #define OP_REMOVE 4
 
+
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		5000000
+#define NUM 		10000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define V		"1.6"
@@ -43,6 +43,7 @@ static double get_timer(void)
         long nseconds = end.tv_nsec - start.tv_nsec;
         return seconds + (double) nseconds / 1.0e9;
 }
+
 
 static int lru=0;
 static char value[VALSIZE+1]={0};
@@ -111,7 +112,7 @@ void print_environment()
 	}
 }
 
-void db_init_test()
+void db_init_test(int show)
 {
 	random_value();
 
@@ -119,16 +120,20 @@ void db_init_test()
 	start_timer();
    	cost=get_timer();
 	fprintf(stderr,"loading index......%30s\r","");
-	db_init();
-	fflush(stderr);
 
+	db_init();
+
+	fflush(stderr);
+	
    	cost=get_timer();
-	printf(LINE);
-	printf("|loadindex	(load:%d): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
-		,NUM
-		,(double)(cost/R_NUM)
-		,(double)(NUM/cost)
-		,cost);
+	if(show){
+		printf(LINE);
+		printf("|loadindex	(load:%d): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
+			,NUM
+			,(double)(cost/R_NUM)
+			,(double)(NUM/cost)
+			,cost);
+	}
 }
 
 void db_write_test()
@@ -282,14 +287,17 @@ void db_tests()
 int main(int argc,char** argv)
 {
 	long i,count,op;
+	int show=1;
 	if(argc!=2)
 	{
 		fprintf(stderr,"Usage: nessdb_benchmark <op>\n");
         	exit(1);
 	}
 
-	if(strcmp(argv[1],"add")==0)
+	if(strcmp(argv[1],"add")==0){
 		op=OP_ADD;
+		show=0;
+	}
 	else if(strcmp(argv[1],"get")==0)
 		op=OP_GET;
 	else if(strcmp(argv[1],"walk")==0)
@@ -307,7 +315,7 @@ int main(int argc,char** argv)
 	print_environment();
 	
 	//init
-	db_init_test();
+	db_init_test(show);
 
 	if(op==OP_ADD)
 		db_tests();
