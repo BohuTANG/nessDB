@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../idx.h"
+#include "../src/idx.h"
 #include "ct/ct.h"
 
 void cttest_idx_init()

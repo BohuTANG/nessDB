@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../bloom.h"
+#include "../src/bloom.h"
 #include "ct/ct.h"
 
 void cttest_bloom_init()

@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS =	-O2  -g -Werror
 
 #CT unit test
-TO_TEST_LIBS = ../bloom.c ../idx.c
+TO_TEST_LIBS = ../src/bloom.c ../src/idx.c
 TO_TEST_OBJS= $(TO_TEST_LIBS:.c=.o)
 
 TESTS = $(wildcard *-test.c)
