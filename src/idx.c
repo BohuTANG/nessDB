@@ -79,18 +79,3 @@ void 	idx_free(struct idx *idx)
 	free(idx->nodes);
 }
 
-/*
-int main()
-{
-	struct idx _idx;
-	idx_init(&_idx,10000);
-	idx_set(&_idx,"ab",100UL);
-	idx_set(&_idx,"cd",5000000000UL);
-	uint64_t  v=idx_get(&_idx,"cd");
-	if(v!=0)
-		printf("value is:%llu \n",v);
-	
-	idx_destroy(&_idx);	
-}
-*/
-

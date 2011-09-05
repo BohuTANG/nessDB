@@ -56,16 +56,3 @@ void bloom_free(struct bloom *bloom)
 		free(bloom->hashfuncs);
 }
 
-/*
-int main()
-{
-	const char *k="yes";	
-	struct bloom _b;
-	bloom_init(&_b,1000);
-	bloom_add(&_b,k);
-	int ret=bloom_get(&_b,k);
-	printf("kk:%d\n",ret);
-	printf("kk:%d\n",bloom_get(&_b,"no"));
-	return 1;
-}
-*/
