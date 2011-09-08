@@ -3,22 +3,17 @@
 
 LSM Lifecycle
 =============
-  		+--------------+   (new memtable)       
- add/del/up---->|   memtable   |  <------------------.
+  		+--------------+          
+ add/del/up---->|  indextable  |  <------------------.
 		+--------------+                      |
 			|		              |	     
-			| (write to disk)             |        
+			| (AOF to disk)               |        
 			v                             |
 		+--------------+                      |
 		|  *.log file  |                      |
 		+--------------+                      |
 			|                             |
-			| (>10M)                      |           
-			v                             |
-		+--------------+                      |
-		|   sstable    |                      |
-		+--------------+                      |
-			|                             |
+			| (other thread)              |           
 			| (add to B+ Tree)            |            
 			v                             |
 	      +--------------------+                  |
@@ -30,18 +25,24 @@ LSM Lifecycle
                        |                              |
                  [delete log file]                    |
                        |                              |
-                       |  remove                      |
-                        `--------> *memtable*--------.
+                       |                              |
+                        `-------->-------------------.
 
-memtable
-========
- A memory table which stores recent add/delete/update  entries.
+indextable
+==========
+ A memory table which stores all indexes.
 
 *.log file
 ==========
- A AOF log file on disk,memtable's snapshot on disk.
 
-sstable
-=======
- A sorted table reading log  into memory stores a sequence of entries sorted by key. 
-
+ A AOF log file on disk,structure is:
+ +--------+--------+--------+--------+
+ |  key-len  |  key  |val-len|  val  |
+ +-----------------------------------+
+ /                                   /
+ /           more items              /
+ /                                   /
+ +--------+--------------------------+
+ | item N |
+ +--------+
+ 
