@@ -7,18 +7,19 @@
 #include "storage.h"
 #include "idx.h"
 #include "db.h"
+#include "llru.h"
 
 #define IDX_PRIME	(16785407)
 
 static struct idx	_idx;
 static struct btree 	_btree;
-
+static struct bloom	_bloom;
 
 
 /*Sequential read,and mark keys in BloomFilter
 * This is very important to preheat datas.
 */
-static void db_load2mem()
+static void db_loadbloom()
 {
 	int i,l,super_size=sizeof(struct btree_super);
 	uint64_t alloc=_btree.alloc-super_size,offset;
@@ -29,9 +30,8 @@ static void db_load2mem()
 		int r=read(_btree.fd,table, newsize) ;
 		if(table->size>0){
 			for(l=0;l<table->size;l++){
-				offset=from_be64(table->items[l].offset);
 				if(get_H(offset)==0)
-					idx_set(&_idx,table->items[l].sha1,offset);
+					bloom_add(&_bloom,table->items[l].sha1);
 			}
 		}
 		free(table);
@@ -39,40 +39,40 @@ static void db_load2mem()
 	}
 }
 
-void db_init()
+void db_init(int bufferpool_size)
 {
-	idx_init(&_idx,IDX_PRIME);
-
 	btree_init(&_btree);
-	db_load2mem();	
+	llru_init(bufferpool_size);
+	bloom_init(&_bloom,IDX_PRIME);
+	db_loadbloom();	
 }
 
 
 int db_add(char* key,char* value)
 {
-	
 	uint64_t off=btree_insert(&_btree,(const uint8_t*)key,(const void*)value,strlen(value));
 	if(off==0)
 		return (0);
-
-	uint64_t l_off=idx_get(&_idx,key);
-	if(l_off==0)	
-		idx_set(&_idx,key,off);
-	else {
-		idx_remove(&_idx,key);
-		idx_set(&_idx,key,off);
-	}
+	bloom_add(&_bloom,key);
 	return (1);
 }
 
 
 void *db_get(char* key)
 {
-	uint64_t val_offset=idx_get(&_idx,key);
-	if(val_offset>0)
-			return btree_get_byoffset(&_btree,val_offset);
+	void *v=llru_get((const char*)key);
+	if(v==NULL){
+		v=btree_get(&_btree,key);
+		char *k_tmp=strdup(key);
+		char *v_tmp=strdup((char*)v);
+		int ret=llru_set(k_tmp,v_tmp,strlen(k_tmp),strlen(v_tmp));
+		if(ret==0){
+			free(k_tmp);
+			free(v_tmp);
+		}
+	}
 
-	return btree_get(&_btree,key);
+	return v;
 }
 
 void db_remove(char* key)

@@ -10,13 +10,19 @@
 #define PRIME	(16785407)
 #define RATIO	(0.618)
 
-static struct ht *_ht;
+static struct ht _ht;
 static struct level *_level_old;
 static struct level *_level_new;
-
+static int	_buffer=0;
 void llru_init(size_t buffer_size)
 {
-	ht_init(_ht,PRIME);
+	if(buffer_size>1024)
+		_buffer=1;
+
+	ht_init(&_ht,PRIME);
+
+	_level_old=calloc(1,sizeof(struct level));
+	_level_new=calloc(1,sizeof(struct level));
 	
 	size_t size_n=buffer_size*RATIO;
 	size_t size_o=buffer_size-size_n;
@@ -26,14 +32,14 @@ void llru_init(size_t buffer_size)
 	_level_old->used_size=0;
 	_level_old->first=NULL;
 	_level_old->last=NULL;
-	_level_old->ht=_ht;
+	_level_old->ht=&_ht;
 	
 	_level_new->count=0;
 	_level_new->allow_size=size_n;
 	_level_new->used_size=0;
 	_level_new->first=NULL;
 	_level_new->last=NULL;
-	_level_new->ht=_ht;
+	_level_new->ht=&_ht;
 }
 
 static void llru_set_node(struct level_node *n)
@@ -63,9 +69,12 @@ static void llru_set_node(struct level_node *n)
 }
 
 
-void llru_set(const char *k,void *v,int k_len,int v_len)
+int llru_set(const char *k,void *v,int k_len,int v_len)
 {
-	struct level_node *n=ht_get(_ht,k);
+	if(_buffer==0)
+		return 0;
+	int ret=0;
+	struct level_node *n=ht_get(&_ht,k);
 	if(n==NULL){
 		_level_old->used_size+=(k_len+v_len);
 		_level_old->count++;
@@ -77,15 +86,19 @@ void llru_set(const char *k,void *v,int k_len,int v_len)
 		n->hits=1;
 		n->pre=NULL;
 		n->nxt=NULL;
+		ret=1;
 	}
-
 	llru_set_node(n);
+	return ret;
 }
 
 
 void* llru_get(const char *k)
 {
-	struct level_node *n=ht_get(_ht,k);
+	if(_buffer==0)
+		return NULL;
+
+	struct level_node *n=ht_get(&_ht,k);
 	if(n!=NULL){
 		llru_set_node(n);
 		return n->value;
@@ -95,10 +108,13 @@ void* llru_get(const char *k)
 
 void llru_remove(const char* k)
 {
-	struct level_node *n=ht_get(_ht,k);
+	if(_buffer==0)
+		return;
+
+	struct level_node *n=ht_get(&_ht,k);
 	if(n!=NULL){
 
-		ht_remove(_ht,k);
+		ht_remove(&_ht,k);
 		if(n->hits==-1)
 			level_free_node(_level_new,n);
 		else

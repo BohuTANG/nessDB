@@ -1,7 +1,7 @@
 #ifndef _DB_H
 #define _DB_H
 
-void 	db_init();
+void 	db_init(int bufferpool_size);
 
 void*	db_get(char* key);
 int 	db_add(char* key,char* value);
