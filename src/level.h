@@ -3,8 +3,9 @@
 #include "ht.h"
 
 struct level{
-	size_t size;
 	size_t count;
+	size_t allow_size;
+	size_t used_size;
 
 	struct level_node *first;
 	struct level_node *last;
@@ -16,6 +17,7 @@ struct level_node{
 	char*	key;
 	void*	value;
 	int	hits;
+	int	size;
 
 	struct level_node *nxt;
 	struct level_node *pre;
