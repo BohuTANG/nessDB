@@ -1,6 +1,6 @@
 nessDB v1.7
 
-  Levle-LRU
+  Level-LRU
   ========
     * Level-LRU pool size is configurable(unit is byte),as with InnoDB's bufferpool
     * Inlcude new-level and old-level two levels
