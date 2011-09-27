@@ -7,8 +7,7 @@ void level_set_head(struct level *level,struct level_node *n)
 	level->count++;
 	if(level->first==NULL){
 		level->first=n;
-	}
-	else{
+	}else{
 		n->pre=NULL;
 		n->nxt=level->first;
 		level->first=n;
@@ -21,13 +20,11 @@ void level_remove_link(struct level *level,struct level_node *n)
 	if(n->pre==NULL){
 		level->first=n->nxt;
 		n->nxt=NULL;
-	}
-	else{
+	}else{
 		if(n->nxt==NULL){
 			level->last=n->pre;
 			n->pre=NULL;
-		}
-		else{
+		}else{
 			n->pre->nxt=n->nxt;
 			n->nxt=NULL;
 			n->pre=NULL;
@@ -36,25 +33,6 @@ void level_remove_link(struct level *level,struct level_node *n)
 
 }	
 
-void level_free_last(struct level *level)
-{
-	struct level_node *n=level->last;
-	if(n->pre==NULL){
-		level->first=level->last=NULL;
-	}
-	else{
-		level->last=n->pre;
-	}
-	//remove from hashtable
-	ht_remove(level->ht,n->key);
-	
-	if(n->key)
-		free(n->key);
-	if(n->value)
-		free(n->value);
-	if(n)
-		free(n);
-}
 
 void level_free_node(struct level *level,struct level_node *n)
 {
@@ -66,4 +44,10 @@ void level_free_node(struct level *level,struct level_node *n)
 			free(n->value);
 		free(n);
 	}
+}
+
+void level_free_last(struct level *level)
+{
+	struct level_node *n=level->last;
+        level_free_node(level,n);
 }
