@@ -5,13 +5,11 @@
 #include <assert.h>
 #include "bitwise.h"
 #include "storage.h"
-#include "idx.h"
 #include "db.h"
 #include "llru.h"
 
 #define IDX_PRIME	(16785407)
 
-static struct idx	_idx;
 static struct btree 	_btree;
 static struct bloom	_bloom;
 
@@ -60,29 +58,30 @@ int db_add(char* key,char* value)
 
 void *db_get(char* key)
 {
+	int b=bloom_get(&_bloom,(const char*)key);
+	if(b!=0)
+		return NULL;
+
 	void *v=llru_get((const char*)key);
 	if(v==NULL){
 		v=btree_get(&_btree,key);
 		char *k_tmp=strdup(key);
 		char *v_tmp=strdup((char*)v);
-		int ret=llru_set(k_tmp,v_tmp,strlen(k_tmp),strlen(v_tmp));
-		if(ret==0){
-			free(k_tmp);
-			free(v_tmp);
-		}
+		llru_set(k_tmp,v_tmp,strlen(k_tmp),strlen(v_tmp));
+		return v;
+	}else{
+		return strdup((char*)v);
 	}
-
-	return v;
 }
 
 void db_remove(char* key)
 {
 	btree_delete(&_btree,key);
-	idx_remove(&_idx,key);
+	llru_remove(key);
 }
 
 void db_destroy()
 {
-	idx_free(&_idx);
+	llru_free();
 	btree_close(&_btree);
 }

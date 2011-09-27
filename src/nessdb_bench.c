@@ -21,10 +21,11 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		5000000
+#define NUM 		10000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
-#define V		"1.6"
+#define BUFFERPOOL	(1024*1024*1024)
+#define V		"1.7"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
 
@@ -73,7 +74,7 @@ void print_header()
 
 void print_environment()
 {
-	printf("nessDB:		version %s(B+ Tree)\n",V);
+	printf("nessDB:		version %s(B+Tree and Level-LRU)\n",V);
 	time_t now=time(NULL);
 	printf("Date:		%s",(char*)ctime(&now));
 	
@@ -114,9 +115,9 @@ void db_init_test(int show)
 	double cost;
 	start_timer();
    	cost=get_timer();
-	fprintf(stderr,"loading index......%30s\r","");
+	fprintf(stderr,"loading bloom filter......%30s\r","");
 
-	db_init();
+	db_init(BUFFERPOOL);
 
 	fflush(stderr);
 	
@@ -169,13 +170,18 @@ void db_read_random_test()
 	for(i=r_start;i<r_end;i++){
 
 		memset(key,0,sizeof(key));
-		sprintf(key,"%ldkey",rand()%i);
-		void* data=db_get(key);
-		if(data)
-			count++;
+		long long rid=rand()%5;
+		if(rid==0)
+			sprintf(key,"%ldkey",500000UL);
 		else
+			sprintf(key,"%ldkey",rand()%i);
+
+		void* data=db_get(key);
+		if(data){
+			count++;
+			free(data);
+		}else
 			printf("nofound!%s\n",key);
-		free(data);
 
 		if((count%100)==0){
 			fprintf(stderr,"readrandom finished %ld ops%30s\r",count,"");
@@ -206,11 +212,11 @@ void db_read_seq_test()
 		memset(key,0,sizeof(key));
 		sprintf(key,"%ldkey",i);
 		void* data=db_get(key);
-		if(data)
+		if(data){
 			count++;
-		else
+			free(data);
+		}else
 			printf("nofound!%s\n",key);
-		free(data);
 
 		if((count%1000)==0){
 			fprintf(stderr,"readseq finished %ld ops %30s\r",count,"");

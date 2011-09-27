@@ -1,6 +1,15 @@
-  
-   How to do
-   =========
+nessDB v1.7
+
+  Levle-LRU
+  ========
+    * Level-LRU pool size is configurable(unit is byte),as with InnoDB's bufferpool
+    * Inlcude new-level and old-level two levels
+    * If one's hits >MAX,it will be moved to new-level,
+      and if new-level is FULL,move the last items to the head of old-level
+    * It's a real non-dirty shit,and likely atomic energy level transition
+ 
+  How to do
+  =========
 	a, $cd src
 	b, $make
 	c, $./nessdb_bench add
