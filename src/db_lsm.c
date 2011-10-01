@@ -25,6 +25,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#define _LARGEFILE64_SOURCE
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,18 +41,14 @@
 #include "db_lsm.h"
 #include "llru.h"
 
-#define LOG_0	"ness.log0"
-#define LOG_1	"ness.log1"
-
+#define LOG_0		"ness.log0"
+#define LOG_1		"ness.log1"
 #define LOG_MAXSIZE	(1024*1024*2)
-
 #define IDX_PRIME	(16785407)
-
 #define LOG(format,...) fprintf(stderr," -> " format "\n",__VA_ARGS__)
 
 static struct btree 	_btree;
 static struct bloom	_bloom;
-
 volatile short		_status;
 static int		_cur_used;
 static int		_flag;
@@ -57,6 +56,7 @@ static int		_flag;
 static struct log	**_logs;
 static struct log	*_cur_log;
 static pthread_t	_bgmerge;
+void *bgmerge_func();
 
 /*Sequential read,and mark keys in BloomFilter
 * This is very important to preheat datas.
@@ -83,16 +83,16 @@ static void db_loadbloom()
 
 static uint32_t getsize(int fd) {
     struct stat sb;
-
     if (fstat(fd,&sb) == -1) return 0;
     return sb.st_size;
 }
 
-void *bgmerge_func();
 void *bgmerge_func()
 {
 	while(1)
 	{
+		int i=0;
+		uint32_t fsize,tmp_size,nsize;
 		struct log *log;
 		if((_status&0x01)==0x01&&_logs[0]->used>0)
 			log=_logs[0];
@@ -101,14 +101,13 @@ void *bgmerge_func()
 		else
 			continue;
 
-		int klen=0,vlen=0;
-		uint32_t fsize=getsize(log->fd);
-		uint32_t tmp_size=fsize;
-		uint32_t nsize=sizeof(struct log_node);
+		fsize=getsize(log->fd);
+		tmp_size=fsize;
+		nsize=sizeof(struct log_node);
 
 		lseek(log->fd,0,SEEK_SET);
-		int i=0;
 		while(tmp_size>0){
+			char *value;
 			struct log_node *node=malloc(nsize);
 			if(read(log->fd,node,nsize)!= nsize){
 				fprintf(stderr, "read log: I/O error\n");
@@ -116,14 +115,14 @@ void *bgmerge_func()
 			}
 
 			//LOG("klen:[%d] vlen:[%d] voff:[%d] key:%s ",node->k_len,node->v_len,node->v_offset,node->key);
-			char *value=malloc(node->v_len+1);
+			value=malloc(node->v_len+1);
 			if(read(log->fd,value,node->v_len)!=node->v_len){
 				fprintf(stderr, "read log: I/O error\n");
 				abort();
 			}
 
 			if((i%10000)==0){
-				fprintf(stderr,"btree insert %ld ops%30s\r",i,"");
+				fprintf(stderr,"btree insert %d ops%30s\r",i,"");
 				fflush(stderr);
 			}
 			btree_insert(&_btree,(const uint8_t*)(node->key),value,node->v_len);
@@ -142,17 +141,19 @@ void *bgmerge_func()
 
 static void log_init()
 {
+	pthread_t t1;
+	struct log *log0,*log1;
 	_logs=calloc(2,sizeof(struct log*));
 
-	struct log *log1=calloc(1,sizeof(struct log));
-	_logs[0]=log1;
+	log0=calloc(1,sizeof(struct log));
+	_logs[0]=log0;
 	_logs[0]->fd= open(LOG_0,O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	_logs[0]->used=0;
 	_logs[0]->flag=0;
 	_logs[0]->magic=0x01;
 
-	struct log *log2=calloc(1,sizeof(struct log));
-	_logs[1]=log2;
+	log1=calloc(1,sizeof(struct log));
+	_logs[1]=log1;
 	_logs[1]->fd = open(LOG_1,O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	_logs[1]->used=0;
 	_logs[1]->flag=1;
@@ -163,8 +164,8 @@ static void log_init()
 	_status=0;
 	_flag=0;
 
-	int t1=pthread_create(&_bgmerge,NULL,bgmerge_func,NULL);
-	pthread_join(&t1,NULL);
+	t1=pthread_create(&_bgmerge,NULL,bgmerge_func,NULL);
+	pthread_join(t1,NULL);
 }
 
 static void log_add(char *key,char *value)
@@ -225,15 +226,17 @@ int db_add(char* key,char* value)
 
 void *db_get(char* key)
 {
+	void *v=NULL;
 	int b=bloom_get(&_bloom,(const char*)key);
 	if(b!=0)
 		return NULL;
 
-	void *v=llru_get((const char*)key);
+	v=llru_get((const char*)key);
 	if(v==NULL){
+		char *k_tmp,*v_tmp;
 		v=btree_get(&_btree,key);
-		char *k_tmp=strdup(key);
-		char *v_tmp=strdup((char*)v);
+		k_tmp=strdup(key);
+		v_tmp=strdup((char*)v);
 		llru_set(k_tmp,v_tmp,strlen(k_tmp),strlen(v_tmp));
 		return v;
 	}else{
