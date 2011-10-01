@@ -41,10 +41,12 @@
 #define _LARGEFILE64_SOURCE
 #endif
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h>
 
 #include "storage.h"
@@ -65,7 +67,7 @@ static size_t free_queue_len = 0;
 
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
 {
-	return strcmp(a,b);
+	return strcmp((const char*)a,(const char*)b);
 }
 
 static struct btree_table *alloc_table(struct btree *btree)
