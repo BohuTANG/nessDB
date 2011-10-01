@@ -91,15 +91,15 @@ void *bgmerge_func()
 {
 	while(1)
 	{
-		int i=0;
 		uint32_t fsize,tmp_size,nsize;
 		struct log *log;
 		if((_status&0x01)==0x01&&_logs[0]->used>0)
 			log=_logs[0];
 		else if(((_status>>1)&0x01)==0x01&&_logs[1]->used>0)
 			log=_logs[1];
-		else
+		else{
 			continue;
+		}
 
 		fsize=getsize(log->fd);
 		tmp_size=fsize;
@@ -107,33 +107,18 @@ void *bgmerge_func()
 
 		lseek(log->fd,0,SEEK_SET);
 		while(tmp_size>0){
-			char *value;
 			struct log_node *node=malloc(nsize);
 			if(read(log->fd,node,nsize)!= nsize){
 				fprintf(stderr, "read log: I/O error\n");
 				abort();
 			}
-
 			//LOG("klen:[%d] vlen:[%d] voff:[%d] key:%s ",node->k_len,node->v_len,node->v_offset,node->key);
-			value=malloc(node->v_len+1);
-			if(read(log->fd,value,node->v_len)!=node->v_len){
-				fprintf(stderr, "read log: I/O error\n");
-				abort();
-			}
-
-			if((i%10000)==0){
-				fprintf(stderr,"btree insert %d ops%30s\r",i,"");
-				fflush(stderr);
-			}
-			btree_insert(&_btree,(const uint8_t*)(node->key),value,node->v_len);
-			i++;
-			tmp_size-=(nsize+node->v_len);
+			btree_insert_index(&_btree,(const uint8_t*)(node->key),&node->v_offset);
+			tmp_size-=nsize;
 			free(node);
-			free(value);
 		}
 		log->fd= open(LOG_0,O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 		log->used=0;
-		LOG("...fd%d truncate....",log->flag);
 		_status&=log->magic;
 	}
 }
@@ -172,24 +157,18 @@ static void log_add(char *key,char *value)
 {
 	int k_len=strlen(key);
 	int v_len=strlen(value);
-//	uint64_t v_offset=btree_insert_data(&_btree,value,v_len);
+	uint64_t v_offset=btree_insert_data(&_btree,value,v_len);
 
 	uint32_t nsize=sizeof(struct log_node);
 	struct log_node *node=calloc(1,nsize);
 	node->k_len=k_len;
 	node->v_len=v_len;
-//	node->v_offset=v_offset;
+	node->v_offset=v_offset;
 	memcpy(node->key,key,20);
 	if (write(_cur_log->fd,node,nsize) != nsize) {
 		fprintf(stderr, "log: I/O error\n");
 		abort();
 	}
-	
-	if (write(_cur_log->fd,value,v_len) != v_len) {
-		fprintf(stderr, "log: I/O error\n");
-		abort();
-	}
-
 	free(node);
 
 	_cur_log->used+=(nsize+v_len);
@@ -235,6 +214,9 @@ void *db_get(char* key)
 	if(v==NULL){
 		char *k_tmp,*v_tmp;
 		v=btree_get(&_btree,key);
+		if(v==NULL)
+			return NULL;
+
 		k_tmp=strdup(key);
 		v_tmp=strdup((char*)v);
 		llru_set(k_tmp,v_tmp,strlen(k_tmp),strlen(v_tmp));

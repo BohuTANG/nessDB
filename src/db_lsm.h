@@ -10,7 +10,7 @@ struct log{
 struct log_node{
 	int 	k_len;
 	int	v_len;
-//	uint64_t v_offset;
+	uint64_t v_offset;
 
 	char key[20];
 };

@@ -32,8 +32,8 @@
 #include "bitwise.h"
 #include "bloom.h"
 
-
 #define HFUNCNUM 4
+
 void bloom_init(struct bloom *bloom,int size)
 {
 	bloom->size=size;
@@ -48,12 +48,11 @@ void bloom_init(struct bloom *bloom,int size)
 
 void bloom_add(struct bloom *bloom,const char *k)
 {
+	int i;
 	if(!k)
 		return;
 
-	int i;
-	for(i=0;i<HFUNCNUM;i++)
-	{
+	for(i=0;i<HFUNCNUM;i++){
 		int bit=bloom->hashfuncs[i](k)%bloom->size;
 		SETBIT_1(bloom->bitset,bit);
 	}
@@ -62,12 +61,11 @@ void bloom_add(struct bloom *bloom,const char *k)
 
 int bloom_get(struct bloom *bloom,const char *k)
 {
+	int i;
 	if(!k)
 		return -1;
 
-	int i;
-	for(i=0;i<HFUNCNUM;i++)
-	{
+	for(i=0;i<HFUNCNUM;i++){
 		int bit=bloom->hashfuncs[i](k)%bloom->size;
 		if(GETBIT(bloom->bitset,bit)==0)
 			return -1;

@@ -51,8 +51,6 @@
 
 #include "storage.h"
 
-#define FREE_QUEUE_LEN	64
-
 #define IDXNAME	"ness.idx"
 #define DBNAME	"ness.db"
 
@@ -61,8 +59,6 @@ struct chunk {
 	uint64_t len;
 };
 
-static struct chunk free_queues[FREE_QUEUE_LEN];
-static size_t free_queue_len = 0;
 
 
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
@@ -137,7 +133,7 @@ static void flush_super(struct btree *btree)
 
 
 	lseek64(btree->fd, 0, SEEK_SET);
-	if (write(btree->fd, &super, sizeof super) != sizeof super) {
+	if (write(btree->fd, &super, sizeof super) != sizeof super){
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
 	}
@@ -192,8 +188,7 @@ static int btree_creat(struct btree *btree)
 static int file_exists(const char *path)
 {
 	int fd=open64(path, O_RDWR);
-	if(fd>-1)
-	{
+	if(fd>-1){
 		close(fd);
 		return 1;
 	}
@@ -294,7 +289,7 @@ static uint64_t split_table(struct btree *btree, struct btree_table *table,
 /* Insert a new item with key 'sha1' with the contents in 'data' to the given
    table. Returns offset to the new item. */
 static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
-			 uint8_t *sha1, const void *data, size_t len)
+			 uint8_t *sha1, const void *data, size_t len,const uint64_t *v_off)
 {
 	struct btree_table *table = get_table(btree, table_offset);
 	assert(table->size < TABLE_SIZE-1);
@@ -322,7 +317,7 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 	uint64_t ret = 0;
 	if (left_child != 0) {
 		/* recursion */
-		ret = insert_table(btree, left_child, sha1, data, len);
+		ret = insert_table(btree, left_child, sha1, data, len,v_off);
 
 		/* check if we need to split */
 		struct btree_table *child = get_table(btree, left_child);
@@ -337,7 +332,10 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 		/* flush just in case changes happened */
 		flush_table(btree, child, left_child);
 	} else {
-		ret = offset = insert_data(btree, data, len);
+		if(v_off)
+			ret=offset=*v_off;
+		else
+			ret = offset = insert_data(btree, data, len);
 	}
 
 	table->size++;
@@ -361,7 +359,6 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 			   uint8_t *sha1)
 {
-	
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -389,13 +386,13 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 }
 
 uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
-			uint8_t *sha1, const void *data, size_t len)
+			uint8_t *sha1, const void *data, size_t len,const uint64_t *v_off)
 {
 	uint64_t offset = 0;
 	uint64_t ret = 0;
 	uint64_t right_child = 0;
 	if (*table_offset != 0) {
-		ret = insert_table(btree, *table_offset, sha1, data, len);
+		ret = insert_table(btree, *table_offset, sha1, data, len,v_off);
 
 		/* check if we need to split */
 		struct btree_table *table = get_table(btree, *table_offset);
@@ -407,7 +404,10 @@ uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 		right_child = split_table(btree, table, sha1, &offset);
 		flush_table(btree, table, *table_offset);
 	} else {
-		ret = offset = insert_data(btree, data, len);
+		if(v_off)
+			ret=offset=*v_off;
+		else
+			ret = offset = insert_data(btree, data, len);
 	}
 
 	/* create new top level table */
@@ -431,11 +431,19 @@ uint64_t btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *da
 	uint8_t sha1[SHA1_LENGTH];
 	memcpy(sha1, c_sha1, sizeof sha1);
 
-	uint64_t ret=insert_toplevel(btree, &btree->top, sha1, data, len);
+	uint64_t ret=insert_toplevel(btree, &btree->top, sha1, data, len,NULL);
 	flush_super(btree);
 	return ret;
 }
 
+uint64_t btree_insert_index(struct btree *btree,const uint8_t *c_sha1,const uint64_t *v_off)
+{
+	uint8_t sha1[SHA1_LENGTH];
+	memcpy(sha1,c_sha1,sizeof sha1);
+
+	uint64_t ret=insert_toplevel(btree,&btree->top,sha1,NULL,0,v_off);
+	return ret;
+}
 
 uint64_t btree_insert_data(struct btree *btree, const void *data,
 		  size_t len)
@@ -453,12 +461,10 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
-		while (left < right) 
-		{
+		while (left < right) {
 			i = (right - left) / 2 + left;
 			int cmp = cmp_sha1(sha1, table->items[i].sha1);
-			if (cmp == 0) 
-			{
+			if (cmp == 0) {
 				/* found */
 				uint64_t ret=from_be64(table->items[i].offset);
 				//unused-mark is true

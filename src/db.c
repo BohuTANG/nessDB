@@ -93,6 +93,9 @@ void *db_get(char* key)
 	void *v=llru_get((const char*)key);
 	if(v==NULL){
 		v=btree_get(&_btree,key);
+		if(v==NULL)
+			return NULL;
+
 		char *k_tmp=strdup(key);
 		char *v_tmp=strdup((char*)v);
 		llru_set(k_tmp,v_tmp,strlen(k_tmp),strlen(v_tmp));
