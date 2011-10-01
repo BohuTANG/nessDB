@@ -48,17 +48,48 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "storage.h"
 
 #define IDXNAME	"ness.idx"
 #define DBNAME	"ness.db"
 
+static pthread_t	_bgsync;
+void *bgsync_func(void *arg);
+
 struct chunk {
 	uint64_t offset;
 	uint64_t len;
 };
 
+
+void *bgsync_func(void *arg)
+{
+	struct btree * btree=(struct btree*)arg;
+	if(btree==NULL){
+		abort();
+	}
+
+	long long iter=0;
+	while(1){
+		if(iter>10000){
+			iter=0;
+			usleep(1000);
+		}else
+			iter++;
+		fdatasync(btree->fd);
+		fdatasync(btree->db_fd);
+	}
+}
+
+static void bgsync_init(struct btree *btree)
+{
+	pthread_t t1;
+	if((t1=pthread_create(&_bgsync,NULL,bgsync_func,(void*)btree))!=0)
+		abort();
+	pthread_join(t1,NULL);
+}
 
 
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
@@ -164,6 +195,8 @@ static int btree_open(struct btree *btree)
 
 	btree->alloc =getsize(btree->fd);
 	btree->db_alloc =getsize(btree->db_fd);
+
+	bgsync_init(btree);
 	return 0;
 }
 
@@ -182,6 +215,7 @@ static int btree_creat(struct btree *btree)
 
 	btree->alloc =sizeof(struct btree_super);
 	lseek64(btree->fd, 0, SEEK_END);
+	bgsync_init(btree);
 	return 0;
 }
 
