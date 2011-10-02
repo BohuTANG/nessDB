@@ -49,10 +49,11 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		1000000
+#define NUM 		2000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define BUFFERPOOL	(1024*1024*1024)
+#define BGSYNC		(0)
 #define V		"1.7"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
@@ -81,9 +82,7 @@ void random_value()
 	char salt[10]={'1','2','3','4','5','6','7','8','a','b'};
 	int i;
 	for(i=0;i<VALSIZE;i++)
-	{
 		value[i]=salt[rand()%10];
-	}
 }
 
 double _index_size=(double)((double)(KEYSIZE+48)*NUM)/1048576.0;
@@ -102,7 +101,7 @@ void print_header()
 
 void print_environment()
 {
-	printf("nessDB:		version %s(B+Tree and Level-LRU)\n",V);
+	printf("nessDB:		version %s(Multiple && Distributable B+Tree with Level-LRU,Background IO Sync)\n",V);
 	time_t now=time(NULL);
 	printf("Date:		%s",(char*)ctime(&now));
 	
@@ -145,7 +144,7 @@ void db_init_test(int show)
    	cost=get_timer();
 	fprintf(stderr,"loading bloom filter......%30s\r","");
 
-	db_init(BUFFERPOOL);
+	db_init(BUFFERPOOL,BGSYNC);
 
 	fflush(stderr);
 	
@@ -166,20 +165,20 @@ void db_write_test()
 	double cost;
 	uint8_t key[KEYSIZE];
 	start_timer();
-	for(i=0;i<NUM;i++){
+	for(i=1;i<NUM;i++){
 		memset(key,0,sizeof(key));
-		sprintf(key,"%ldkey",i);
+		sprintf(key,"%ldkey",rand()%i);
 		if(db_add(key,value))
 			count++;
 		if((i%10000)==0){
-			fprintf(stderr,"write finished %ld ops%30s\r",i,"");
+			fprintf(stderr,"random write finished %ld ops%30s\r",i,"");
 			fflush(stderr);
 		}
 	}
 	
 	cost=get_timer();
 	printf(LINE);
-	printf("|write		(succ:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
+	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count,(double)(cost/NUM)
 		,(double)(NUM/cost)
 		,((_index_size+_data_size)/cost)
@@ -208,18 +207,17 @@ void db_read_random_test()
 		if(data){
 			count++;
 			free(data);
-		}else
-			printf("nofound!%s\n",key);
+		}
 
 		if((count%100)==0){
-			fprintf(stderr,"readrandom finished %ld ops%30s\r",count,"");
+			fprintf(stderr,"random read finished %ld ops%30s\r",count,"");
 			fflush(stderr);
 		}
 
 	}
    	cost=get_timer();
 	printf(LINE);
-	printf("|readrandom	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
+	printf("|Random-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
 		,(double)(cost/R_NUM)
 		,(double)(R_NUM/cost)
@@ -243,18 +241,17 @@ void db_read_seq_test()
 		if(data){
 			count++;
 			free(data);
-		}else
-			printf("nofound!%s\n",key);
+		}
 
 		if((count%1000)==0){
-			fprintf(stderr,"readseq finished %ld ops %30s\r",count,"");
+			fprintf(stderr,"sequential read finished %ld ops %30s\r",count,"");
 			fflush(stderr);
 		}
 
 	}
 	cost=get_timer();
 	printf(LINE);
-	printf("|readseq	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
+	printf("|Seq-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
 		,(double)(cost/R_NUM)
 		,(double)(R_NUM/cost)
@@ -279,14 +276,14 @@ void db_remove_test()
 		db_remove(key);
 		count++;
 		if((count%100)==0){
-			fprintf(stderr,"remove random finished %ld ops%30s\r",count,"");
+			fprintf(stderr,"random remove  finished %ld ops%30s\r",count,"");
 			fflush(stderr);
 		}
 
 	}
    	cost=get_timer();
 	printf(LINE);
-	printf("|removerandom	(found:%ld):	%.6f sec/op;	%.1f reads /sec(estimated);	%.1f MB/sec \n"
+	printf("|Rand-Remove	(done:%ld):	%.6f sec/op;	%.1f reads /sec(estimated);	%.1f MB/sec \n"
 		,count
 		,(double)(cost/R_NUM)
 		,(double)(R_NUM/cost)

@@ -48,49 +48,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <pthread.h>
-
 #include "storage.h"
 
-#define IDXNAME	"ness.idx"
-#define DBNAME	"ness.db"
-
-static pthread_t	_bgsync;
-void *bgsync_func(void *arg);
+#define IDXEXT	".idx"
+#define DBEXT	".db"
 
 struct chunk {
 	uint64_t offset;
 	uint64_t len;
 };
-
-
-void *bgsync_func(void *arg)
-{
-	struct btree * btree=(struct btree*)arg;
-	if(btree==NULL){
-		abort();
-	}
-
-	long long iter=0;
-	while(1){
-		if(iter>10000){
-			iter=0;
-			usleep(1000);
-		}else
-			iter++;
-		fdatasync(btree->fd);
-		fdatasync(btree->db_fd);
-	}
-}
-
-static void bgsync_init(struct btree *btree)
-{
-	pthread_t t1;
-	if((t1=pthread_create(&_bgsync,NULL,bgsync_func,(void*)btree))!=0)
-		abort();
-	pthread_join(t1,NULL);
-}
-
 
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
 {
@@ -177,12 +143,12 @@ static uint64_t getsize(int fd) {
     return (uint64_t) sb.st_size;
 }
 
-static int btree_open(struct btree *btree)
+static int btree_open(struct btree *btree,const char *idx,const char *db)
 {
 	memset(btree, 0, sizeof *btree);
 
-	btree->fd = open(IDXNAME, O_RDWR | O_BINARY | O_LARGEFILE);
-	btree->db_fd = open(DBNAME, O_RDWR | O_BINARY | O_LARGEFILE);
+	btree->fd = open(idx, O_RDWR | O_BINARY | O_LARGEFILE);
+	btree->db_fd = open(db, O_RDWR | O_BINARY | O_LARGEFILE);
 
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
@@ -196,17 +162,16 @@ static int btree_open(struct btree *btree)
 	btree->alloc =getsize(btree->fd);
 	btree->db_alloc =getsize(btree->db_fd);
 
-	bgsync_init(btree);
 	return 0;
 }
 
 
-static int btree_creat(struct btree *btree)
+static int btree_creat(struct btree *btree,const char *idx,const char *db)
 {
 	memset(btree, 0, sizeof *btree);
 
-	btree->fd = open(IDXNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
-	btree->db_fd = open(DBNAME, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
+	btree->fd = open(idx, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
+	btree->db_fd = open(db, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
 
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
@@ -215,7 +180,6 @@ static int btree_creat(struct btree *btree)
 
 	btree->alloc =sizeof(struct btree_super);
 	lseek64(btree->fd, 0, SEEK_END);
-	bgsync_init(btree);
 	return 0;
 }
 
@@ -229,12 +193,19 @@ static int file_exists(const char *path)
 	return 0;
 }
 
-int btree_init(struct btree *btree)
+int btree_init(struct btree *btree,const char *dbname,int isbgsync)
 {
-	if(file_exists(IDXNAME))
-		btree_open(btree);
+	char idx[256]={0};
+	char db[256]={0};
+
+	sprintf(idx,"%s%s",dbname,IDXEXT);
+	sprintf(db,"%s%s",dbname,DBEXT);
+
+	if(file_exists(idx))
+		btree_open(btree,idx,db);
 	else
-		btree_creat(btree);
+		btree_creat(btree,idx,db);
+
 }
 
 void btree_close(struct btree *btree)
@@ -248,8 +219,6 @@ void btree_close(struct btree *btree)
 			free(btree->cache[i].table);
 	}
 }
-
-static int in_allocator = 0;
 
 
 /* Allocate a chunk from the index file */

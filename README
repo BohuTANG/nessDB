@@ -1,5 +1,9 @@
 nessDB v1.7
 
+  Multiple && Distributable B+Tree
+  ================================
+    * N B+Tree-(Index-Database) pairs,all pairs persist on "ndbs" folder,and N is configurable.
+
   Level-LRU
   ========
     * Level-LRU pool size is configurable(unit is byte),as with InnoDB's bufferpool
@@ -7,11 +11,23 @@ nessDB v1.7
     * If one's hits >MAX,it will be moved to new-level,
       and if new-level is FULL,move the last items to the head of old-level
     * It's a real non-dirty shit,and likely atomic energy level transition
+
+  Interface
+  ==========
+    * db_init(int bufferpool_size,int isbgsync)
+    * db_get(const char* key)
+    * db_add(const char* key,const char* value)
+    * db_remove(const char* key)
+
+    Very simple.
+
  
-  How to do
-  =========
+  How to do TEST
+  ==============
 	a, $cd src
 	b, $make
 	c, $./nessdb_bench add
+
+	If you want to remove all indexes and datas,please use "$make cleanall" command.
 	
 

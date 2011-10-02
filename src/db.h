@@ -1,11 +1,15 @@
 #ifndef _DB_H
 #define _DB_H
 
-void 	db_init(int bufferpool_size);
+/*
+ * bufferpool:lru memory size allow,unit is BYTE
+ * isbgsync:if TRUE,"fdatasync" will run on the background thread,otherwise will do nothing.
+ */
+void 	db_init(int bufferpool_size,int isbgsync);
 
-void*	db_get(char* key);
-int 	db_add(char* key,char* value);
-void	db_remove(char* key);
+void*	db_get(const char* key);
+int 	db_add(const char* key,const char* value);
+void	db_remove(const char* key);
 void 	db_destroy();
 
 #endif
