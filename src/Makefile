@@ -1,18 +1,18 @@
 CC = gcc 
-
-CFLAGS =	  -g
-
+CFLAGS =	  -g -Wall 
 
 #name all the object files
-OBJS = nessdb_bench.o db.o  storage.o bloom.o ht.o level.o llru.o
+TEST_OBJS = db.o  storage.o bloom.o ht.o level.o llru.o nessdb_bench.o
+LIB_OBJS = db.o  storage.o bloom.o ht.o level.o llru.o
 
 all : nessdb_bench
 
-nessdb_bench : $(OBJS)
-	$(CC) $(CFLAGS)  -lrt -pthread -o $@ $(OBJS)
+nessdb_bench : $(TEST_OBJS)
+	$(CC) $(CFLAGS)  -lrt -pthread -o $@ $(TEST_OBJS) 
+	$(CC) $(CFLAGS) $(LIB_OBJS) -shared -o libnessdb.so
 
 clean :
-	rm -rf $(OBJS) nessdb_bench
+	rm -rf $(TEST_OBJS) $(LIB_BJS)  nessdb_bench libnessdb.so
 
 cleanall : 
-	rm -rf $(OBJS) nessdb_bench ndbs/*.idx ndbs/*.db
+	rm -rf $(TEST_OBJS) $(LIB_OBJS)  nessdb_bench libnessdb.so ndbs/*.idx ndbs/*.db

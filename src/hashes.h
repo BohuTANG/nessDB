@@ -4,7 +4,7 @@
 /**
  * SAX hash function
  */
-static unsigned int sax_hash(const char *key)
+static inline unsigned int sax_hash(const char *key)
 {
     unsigned int h = 0;
     while (*key) {
@@ -17,7 +17,7 @@ static unsigned int sax_hash(const char *key)
 /**
  * SDBM hash function
  */
-static unsigned int sdbm_hash(const char *key)
+static inline unsigned int sdbm_hash(const char *key)
 {
     unsigned int h = 0;
     while (*key) {
@@ -30,7 +30,7 @@ static unsigned int sdbm_hash(const char *key)
 /**
  * Murmur2 hash function
  */
-static unsigned murmur_hash(const char *key)
+static inline unsigned murmur_hash(const char *key)
 {
     if (!key) {
         return 0;
@@ -68,7 +68,7 @@ static unsigned murmur_hash(const char *key)
 /**
  * Jenkins hash function
  */
-static unsigned jenkins_hash(const char *key)
+static inline unsigned jenkins_hash(const char *key)
 {
     if (!key) {
         return 0;
@@ -89,7 +89,7 @@ static unsigned jenkins_hash(const char *key)
 /**
  * Jdb hash function
  */
-static unsigned int jdb_hash(const char* key)
+static inline unsigned int jdb_hash(const char* key)
 {
     if (!key) {
         return 0;
@@ -98,13 +98,14 @@ static unsigned int jdb_hash(const char* key)
     unsigned int c;
     while ((c = *key++))
 	hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
+
    return hash;
 }
 
 /**
  * zend hash function
  */
-static unsigned long int zend_hash(const char *key)
+static inline unsigned long int zend_hash(const char *key)
 {
     register unsigned long int hash = 5381;
     size_t len=strlen(key);

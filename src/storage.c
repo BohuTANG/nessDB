@@ -58,9 +58,9 @@ struct chunk {
 	uint64_t len;
 };
 
-static int cmp_sha1(const uint8_t *a, const uint8_t *b)
+static int cmp_sha1(const char *a,const char *b)
 {
-	return strcmp((const char*)a,(const char*)b);
+	return strcmp(a,b);
 }
 
 static struct btree_table *alloc_table(struct btree *btree)
@@ -191,7 +191,7 @@ static int btree_creat(struct btree *btree,const char *idx,const char *db)
 	btree->alloc =sizeof(struct btree_super);
 	lseek64(btree->fd, 0, SEEK_END);
 
-	flush_super(btree);
+	flush_magic(btree);
 	btree->db_alloc=sizeof(int);
 	return 0;
 }
@@ -218,7 +218,7 @@ int btree_init(struct btree *btree,const char *dbname,int isbgsync)
 		btree_open(btree,idx,db);
 	else
 		btree_creat(btree,idx,db);
-
+	return (1);
 }
 
 void btree_close(struct btree *btree)
@@ -282,7 +282,7 @@ static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 /* Split a table. The pivot item is stored to 'sha1' and 'offset'.
    Returns offset to the new table. */
 static uint64_t split_table(struct btree *btree, struct btree_table *table,
-			  uint8_t *sha1, uint64_t *offset)
+			  char *sha1, uint64_t *offset)
 {
 	memcpy(sha1, table->items[TABLE_SIZE / 2].sha1, SHA1_LENGTH);
 	*offset = from_be64(table->items[TABLE_SIZE / 2].offset);
@@ -310,7 +310,7 @@ uint64_t btree_insert_data(struct btree *btree, const void *data,
 /* Insert a new item with key 'sha1' with the contents in 'data' to the given
    table. Returns offset to the new item. */
 static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
-			 uint8_t *sha1, const void *data, size_t len,const uint64_t *v_off)
+			 char *sha1, const void *data, size_t len,const uint64_t *v_off)
 {
 	struct btree_table *table = get_table(btree, table_offset);
 	assert(table->size < TABLE_SIZE-1);
@@ -379,7 +379,7 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
  * Please note that 'sha1' is overwritten when called inside the allocator.
  */
 static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
-			   uint8_t *sha1)
+			   char *sha1)
 {
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
@@ -408,7 +408,7 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 }
 
 uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
-			uint8_t *sha1, const void *data, size_t len,const uint64_t *v_off)
+			char *sha1, const void *data, size_t len,const uint64_t *v_off)
 {
 	uint64_t offset = 0;
 	uint64_t ret = 0;
@@ -447,10 +447,9 @@ uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	return ret;
 }
 
-uint64_t btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *data,
-		  size_t len)
+uint64_t btree_insert(struct btree *btree, const char *c_sha1, const void *data,size_t len)
 {
-	uint8_t sha1[SHA1_LENGTH];
+	char sha1[SHA1_LENGTH];
 	memcpy(sha1, c_sha1, sizeof sha1);
 
 	uint64_t ret=insert_toplevel(btree, &btree->top, sha1, data, len,NULL);
@@ -458,9 +457,9 @@ uint64_t btree_insert(struct btree *btree, const uint8_t *c_sha1, const void *da
 	return ret;
 }
 
-uint64_t btree_insert_index(struct btree *btree,const uint8_t *c_sha1,const uint64_t *v_off)
+uint64_t btree_insert_index(struct btree *btree,const char *c_sha1,const uint64_t *v_off)
 {
-	uint8_t sha1[SHA1_LENGTH];
+	char sha1[SHA1_LENGTH];
 	memcpy(sha1,c_sha1,sizeof sha1);
 
 	uint64_t ret=insert_toplevel(btree,&btree->top,sha1,NULL,0,v_off);
@@ -474,14 +473,14 @@ uint64_t btree_insert_index(struct btree *btree,const uint8_t *c_sha1,const uint
  * to the item.
  */
 static uint64_t lookup(struct btree *btree, uint64_t table_offset,
-		    const uint8_t *sha1)
+		    const char *sha1)
 {
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
 		while (left < right) {
 			i = (right - left) / 2 + left;
-			int cmp = cmp_sha1(sha1, table->items[i].sha1);
+			int cmp = cmp_sha1((const char*)sha1, table->items[i].sha1);
 			if (cmp == 0) {
 				/* found */
 				uint64_t ret=from_be64(table->items[i].offset);
@@ -505,7 +504,7 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 }
 
 
-void *btree_get(struct btree *btree, const uint8_t *sha1)
+void *btree_get(struct btree *btree, const char *sha1)
 {
 	uint64_t offset = lookup(btree, btree->top, sha1);
 	if (offset == 0)
@@ -548,9 +547,9 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset)
 	return data;
 }
 
-int btree_delete(struct btree *btree, const uint8_t *c_sha1)
+int btree_delete(struct btree *btree, const char *c_sha1)
 {
-	uint8_t sha1[SHA1_LENGTH];
+	char sha1[SHA1_LENGTH];
 	memcpy(sha1, c_sha1, sizeof sha1);
 
 	uint64_t offset = delete_table(btree, btree->top, sha1);

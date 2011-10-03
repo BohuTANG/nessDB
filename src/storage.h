@@ -11,7 +11,7 @@
 #define CACHE_SLOTS	23 /* prime */
 
 struct btree_item {
-	uint8_t sha1[SHA1_LENGTH];
+	char sha1[SHA1_LENGTH];
 	__be64 offset;
 	__be64 child;
 } __attribute__((packed));
@@ -62,26 +62,24 @@ void btree_close(struct btree *btree);
  * Insert a new item with key 'sha1' with the contents in 'data' to the
  * database file.
  */
-uint64_t btree_insert(struct btree *btree, const uint8_t *sha1, const void *data,
-		  size_t len);
+uint64_t btree_insert(struct btree *btree, const char *sha1, const void *data,size_t len);
 
-uint64_t btree_insert_index(struct btree *btree, const uint8_t *sha1,const uint64_t *v_off);
+uint64_t btree_insert_index(struct btree *btree, const char *sha1,const uint64_t *v_off);
 
-uint64_t btree_insert_data(struct btree *btree, const void *data,
-		  size_t len);
+uint64_t btree_insert_data(struct btree *btree, const void *data,size_t len);
 
 /*
  * Look up item with the given key 'sha1' in the database file. Length of the
  * item is stored in 'len'. Returns a pointer to the contents of the item.
  * The returned pointer should be released with free() after use.
  */
-void *btree_get(struct btree *btree, const uint8_t *sha1);
+void *btree_get(struct btree *btree, const char *sha1);
 void *btree_get_byoffset(struct btree *btree,uint64_t offset);
 
 /*
  * Remove item with the given key 'sha1' from the database file.
  */
-int btree_delete(struct btree *btree, const uint8_t *sha1);
+int btree_delete(struct btree *btree, const char *sha1);
 
 #endif
 

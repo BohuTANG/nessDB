@@ -78,7 +78,7 @@ static inline uint64_t from_be64(__be64 x)
 
 
 //get H bit
-static int get_H(uint64_t x)
+static inline int get_H(uint64_t x)
 {
 	if(((x>>63)&0x01)!=0x01)
 		return 0;
@@ -87,19 +87,19 @@ static int get_H(uint64_t x)
 }
 
 //set H bit to 0
-static uint64_t set_H_0(uint64_t x)
+static inline uint64_t set_H_0(uint64_t x)
 {
 	return	x&=0x3FFFFFFFFFFFFFFF;
 }
 
 //set H bit to 1
-static uint64_t set_H_1(uint64_t x)
+static inline uint64_t set_H_1(uint64_t x)
 {
 	return  x|=0x8000000000000000;	
 }
 
 /* Return a value that is greater or equal to 'val' and is power-of-two. */
-static size_t round_power2(size_t val)
+static inline size_t round_power2(size_t val)
 {
 	size_t i = 1;
 	while (i < val)

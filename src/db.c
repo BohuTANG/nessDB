@@ -26,11 +26,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _LARGEFILE64_SOURCE
+#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <unistd.h>
 #include <pthread.h>
 #include "bitwise.h"
 #include "storage.h"
@@ -58,7 +61,6 @@ void *bgsync_func();
 void *bgsync_func()
 {
 	int i;
-	long long iter=0;
 	while(1){
 /*
 		if(iter>10000){
@@ -89,16 +91,17 @@ static void bgsync_init()
 static void db_loadbloom(struct btree *btree)
 {
 	int i,super_size=sizeof(struct btree_super);
-	uint64_t alloc=btree->alloc-super_size,offset;
+	uint64_t alloc=btree->alloc-super_size;
 	int newsize=(sizeof(struct btree_table));
 	lseek64(btree->fd,super_size, SEEK_SET);
 	while(alloc>0){
 		struct btree_table *table=malloc(newsize);
-		int r=read(btree->fd,table, newsize) ;
+		read(btree->fd,table, newsize) ;
 		if(table->size>0){
 			for(i=0;i<table->size;i++){
+				uint64_t offset=from_be64(table->items[i].offset);
 				if(get_H(offset)==0)
-					bloom_add(&_bloom,table->items[i].sha1);
+					bloom_add(&_bloom,(const char*)table->items[i].sha1);
 			}
 		}
 		free(table);
@@ -127,8 +130,8 @@ void db_init(int bufferpool_size,int isbgsync)
 int db_add(const char *key,const char *value)
 {
 	uint64_t off;
-	int slot=jdb_hash(key)%DB_SLOT;
-	off=btree_insert(&_btrees[slot],(const uint8_t*)key,(const void*)value,strlen(value));
+	unsigned int slot=jdb_hash(key)%DB_SLOT;
+	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
 		return (0);
 	bloom_add(&_bloom,key);
@@ -147,7 +150,7 @@ void *db_get(const char *key)
 	v=llru_get(key);
 	if(v==NULL){
 		char *k_tmp,*v_tmp;
-		int slot=jdb_hash(key)%DB_SLOT;
+		unsigned int slot=jdb_hash(key)%DB_SLOT;
 		v=btree_get(&_btrees[slot],key);
 		if(v==NULL)
 			return NULL;
@@ -163,7 +166,7 @@ void *db_get(const char *key)
 
 void db_remove(const char *key)
 {
-	int slot=jdb_hash(key)%DB_SLOT;
+	unsigned int slot=jdb_hash(key)%DB_SLOT;
 	btree_delete(&_btrees[slot],key);
 	llru_remove(key);
 }

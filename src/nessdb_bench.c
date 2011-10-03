@@ -49,7 +49,7 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		2000000
+#define NUM 		3000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define BUFFERPOOL	(1024*1024*1024)
@@ -75,7 +75,6 @@ static double get_timer(void)
 }
 
 
-static int lru=0;
 static char value[VALSIZE+1]={0};
 void random_value()
 {
@@ -163,7 +162,7 @@ void db_write_test()
 {
 	long i,count=0;
 	double cost;
-	uint8_t key[KEYSIZE];
+	char key[KEYSIZE];
 	start_timer();
 	for(i=1;i<NUM;i++){
 		memset(key,0,sizeof(key));
@@ -192,7 +191,7 @@ void db_read_random_test()
 	long r_end=r_start+R_NUM;
 
 	double cost;
-	uint8_t key[KEYSIZE]={0};
+	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 
@@ -232,7 +231,7 @@ void db_read_seq_test()
 	long r_end=r_start+R_NUM;
 
 	double cost;
-	uint8_t key[KEYSIZE]={0};
+	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
@@ -260,6 +259,7 @@ void db_read_seq_test()
 	
 }
 
+
 void db_remove_test()
 {
 		
@@ -268,7 +268,7 @@ void db_remove_test()
 	long r_end=r_start+REMOVE_NUM;
 
 	double cost;
-	uint8_t key[KEYSIZE]={0};
+	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
@@ -303,7 +303,7 @@ void db_tests()
 
 int main(int argc,char** argv)
 {
-	long i,count,op;
+	long op;
 	int show=1;
 	if(argc!=2){
 		fprintf(stderr,"Usage: nessdb_benchmark <op>\n");
