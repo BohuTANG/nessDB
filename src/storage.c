@@ -135,6 +135,16 @@ static void flush_super(struct btree *btree)
 		abort();
 	}
 }
+static void flush_magic(struct btree *btree)
+{
+	int magic=2011;
+	if (write(btree->db_fd, &magic, sizeof magic) != sizeof magic){
+		fprintf(stderr, "btree: I/O error\n");
+		abort();
+	}
+}
+
+
 
 static uint64_t getsize(int fd) {
     struct stat64 sb;
@@ -180,6 +190,9 @@ static int btree_creat(struct btree *btree,const char *idx,const char *db)
 
 	btree->alloc =sizeof(struct btree_super);
 	lseek64(btree->fd, 0, SEEK_END);
+
+	flush_super(btree);
+	btree->db_alloc=sizeof(int);
 	return 0;
 }
 
