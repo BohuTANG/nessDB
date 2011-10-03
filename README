@@ -15,9 +15,10 @@ nessDB v1.7
   Interface
   ==========
     * db_init(int bufferpool_size,int isbgsync)
-    * db_get(const char* key)
-    * db_add(const char* key,const char* value)
-    * db_remove(const char* key)
+    * db_get(const char *key)
+    * db_add(const char *key,const char *value)
+    * db_update(const char *key,const char *value)
+    * db_remove(const char *key)
 
     Very simple.
 
