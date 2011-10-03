@@ -301,6 +301,11 @@ static uint64_t split_table(struct btree *btree, struct btree_table *table,
 	return new_table_offset;
 }
 
+uint64_t btree_insert_data(struct btree *btree, const void *data,
+		  size_t len)
+{
+	return insert_data(btree, data, len);
+}
 
 /* Insert a new item with key 'sha1' with the contents in 'data' to the given
    table. Returns offset to the new item. */
@@ -315,9 +320,10 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 		size_t i = (right - left) / 2 + left;
 		int cmp = cmp_sha1(sha1, table->items[i].sha1);
 		if (cmp == 0) {
-			/* already in the table */
-			uint64_t ret = from_be64(table->items[i].offset);
-			put_table(btree, table, table_offset);
+			/* already in the table update it*/
+			uint64_t ret=btree_insert_data(btree,data,len);
+			table->items[i].offset= to_be64(ret);
+			flush_table(btree,table,table_offset);
 			return ret;
 		}
 		if (cmp < 0)
@@ -461,11 +467,7 @@ uint64_t btree_insert_index(struct btree *btree,const uint8_t *c_sha1,const uint
 	return ret;
 }
 
-uint64_t btree_insert_data(struct btree *btree, const void *data,
-		  size_t len)
-{
-	return insert_data(btree, data, len);
-}
+
 
 /*
  * Look up item with the given key 'sha1' in the given table. Returns offset

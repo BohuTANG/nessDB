@@ -46,7 +46,7 @@
  100663319UL, 201326611UL, 402653189UL, 805306457UL, 1610612741UL,
  3221225473UL, 4294967291UL
 */
-#define DB_SLOT		(53)
+#define DB_SLOT		(17)
 #define DB_PREFIX 	"ndbs/ness"
 #define IDX_PRIME	(16785407)
 static struct btree 	_btrees[DB_SLOT];
@@ -60,12 +60,14 @@ void *bgsync_func()
 	int i;
 	long long iter=0;
 	while(1){
+/*
 		if(iter>10000){
 			iter=0;
 			usleep(1000);
 		}else
 			iter++;
-
+*/
+		sleep(5);
 		for(i=0;i<DB_SLOT;i++){
 			fdatasync(_btrees[i].fd);
 			fdatasync(_btrees[i].db_fd);
@@ -122,7 +124,7 @@ void db_init(int bufferpool_size,int isbgsync)
 }
 
 
-int db_add(const char* key,const char* value)
+int db_add(const char *key,const char *value)
 {
 	uint64_t off;
 	int slot=jdb_hash(key)%DB_SLOT;
@@ -134,7 +136,7 @@ int db_add(const char* key,const char* value)
 }
 
 
-void *db_get(const char* key)
+void *db_get(const char *key)
 {
 	void *v;
 	int b;
@@ -159,11 +161,23 @@ void *db_get(const char* key)
 	}
 }
 
-void db_remove(const char* key)
+void db_remove(const char *key)
 {
 	int slot=jdb_hash(key)%DB_SLOT;
 	btree_delete(&_btrees[slot],key);
 	llru_remove(key);
+}
+
+void db_update(const char *key,const char *value)
+{
+	void *v=db_get(key);
+	if(v){
+		db_remove(key);
+		db_add(key,value);
+		free(v);
+	}else{
+		db_add(key,value);
+	}
 }
 
 void db_destroy()
