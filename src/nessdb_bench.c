@@ -49,11 +49,11 @@
 
 #define KEYSIZE 	20
 #define VALSIZE 	100
-#define NUM 		3000000
+#define NUM 		1000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
 #define BUFFERPOOL	(1024*1024*1024)
-#define BGSYNC		(0)
+#define BGSYNC		(1)
 #define V		"1.7"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
@@ -95,6 +95,7 @@ void print_header()
 	printf("Entries:	%d\n",NUM);
 	printf("IndexSize:	%.1f MB (estimated)\n",_index_size);
 	printf("DataSize:	%.1f MB (estimated)\n",_data_size);
+	printf("BG SYNC:	%s\n",(BGSYNC==1)?"on...":"close...");
 	printf(LINE1);
 }
 
@@ -136,6 +137,7 @@ void print_environment()
 
 void db_init_test(int show)
 {
+	uint64_t sum;
 	random_value();
 
 	double cost;
@@ -143,15 +145,15 @@ void db_init_test(int show)
    	cost=get_timer();
 	fprintf(stderr,"loading bloom filter......%30s\r","");
 
-	db_init(BUFFERPOOL,BGSYNC);
+	db_init(BUFFERPOOL,BGSYNC,&sum);
 
 	fflush(stderr);
 	
    	cost=get_timer();
 	if(show){
 		printf(LINE);
-		printf("|loadindex	(load:%d): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
-			,NUM
+		printf("|loadindex	(load:%lld): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
+			,sum
 			,(double)(cost/R_NUM)
 			,(double)(NUM/cost)
 			,cost);
@@ -166,7 +168,7 @@ void db_write_test()
 	start_timer();
 	for(i=1;i<NUM;i++){
 		memset(key,0,sizeof(key));
-		sprintf(key,"%ldkey",rand()%i);
+		sprintf(key,"%dkey",rand()%NUM);
 		if(db_add(key,value))
 			count++;
 		if((i%10000)==0){
@@ -178,8 +180,8 @@ void db_write_test()
 	cost=get_timer();
 	printf(LINE);
 	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
-		,count,(double)(cost/NUM)
-		,(double)(NUM/cost)
+		,count,(double)(cost/count)
+		,(double)(count/cost)
 		,((_index_size+_data_size)/cost)
 		,cost);	
 }
@@ -196,11 +198,7 @@ void db_read_random_test()
 	for(i=r_start;i<r_end;i++){
 
 		memset(key,0,sizeof(key));
-		long long rid=rand()%5;
-		if(rid==0)
-			sprintf(key,"%ldkey",(long)(NUM/2));
-		else
-			sprintf(key,"%ldkey",rand()%i);
+		sprintf(key,"%dkey",rand()%NUM);
 
 		void* data=db_get(key);
 		if(data){
@@ -272,7 +270,7 @@ void db_remove_test()
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
-		sprintf(key,"%ldkey",rand()%i);
+		sprintf(key,"%dkey",rand()%NUM);
 		db_remove(key);
 		count++;
 		if((count%100)==0){

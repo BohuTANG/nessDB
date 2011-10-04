@@ -74,6 +74,7 @@ uint64_t btree_insert_data(struct btree *btree, const void *data,size_t len);
  * The returned pointer should be released with free() after use.
  */
 void *btree_get(struct btree *btree, const char *sha1);
+int btree_get_index(struct btree *btree, const char *sha1);
 void *btree_get_byoffset(struct btree *btree,uint64_t offset);
 
 /*

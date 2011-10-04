@@ -526,6 +526,14 @@ void *btree_get(struct btree *btree, const char *sha1)
 	return data;
 }
 
+int btree_get_index(struct btree *btree, const char *sha1)
+{
+	uint64_t offset = lookup(btree, btree->top, sha1);
+	if (offset == 0)
+		return (0);
+	return (1);
+}
+
 void *btree_get_byoffset(struct btree *btree,uint64_t offset)
 {
 	if (offset == 0)

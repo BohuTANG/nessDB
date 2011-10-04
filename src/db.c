@@ -49,7 +49,7 @@
  100663319UL, 201326611UL, 402653189UL, 805306457UL, 1610612741UL,
  3221225473UL, 4294967291UL
 */
-#define DB_SLOT		(17)
+#define DB_SLOT		(11)
 #define DB_PREFIX 	"ndbs/ness"
 #define IDX_PRIME	(16785407)
 static struct btree 	_btrees[DB_SLOT];
@@ -88,8 +88,9 @@ static void bgsync_init()
 /*Sequential read,and mark keys in BloomFilter
 * This is very important to preheat datas.
 */
-static void db_loadbloom(struct btree *btree)
+static int db_loadbloom(struct btree *btree)
 {
+	int sum=0;
 	int i,super_size=sizeof(struct btree_super);
 	uint64_t alloc=btree->alloc-super_size;
 	int newsize=(sizeof(struct btree_table));
@@ -98,6 +99,7 @@ static void db_loadbloom(struct btree *btree)
 		struct btree_table *table=malloc(newsize);
 		read(btree->fd,table, newsize) ;
 		if(table->size>0){
+			sum+=table->size;
 			for(i=0;i<table->size;i++){
 				uint64_t offset=from_be64(table->items[i].offset);
 				if(get_H(offset)==0)
@@ -107,10 +109,12 @@ static void db_loadbloom(struct btree *btree)
 		free(table);
 		alloc-=newsize;
 	}
+	return sum;
 }
 
-void db_init(int bufferpool_size,int isbgsync)
+void db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
 {
+	uint64_t s=0UL;
 	int i;	
 	llru_init(bufferpool_size);
 	bloom_init(&_bloom,IDX_PRIME);
@@ -119,9 +123,9 @@ void db_init(int bufferpool_size,int isbgsync)
 		char pre[256]={0};
 		sprintf(pre,"%s%d",DB_PREFIX,i);
 		btree_init(&_btrees[i],pre,isbgsync);
-		db_loadbloom(&_btrees[i]);	
+		s+=db_loadbloom(&_btrees[i]);	
 	}
-	
+	*sum=s;
 	if(isbgsync)
 		bgsync_init();
 }
@@ -131,6 +135,10 @@ int db_add(const char *key,const char *value)
 {
 	uint64_t off;
 	unsigned int slot=jdb_hash(key)%DB_SLOT;
+	int isin=btree_get_index(&_btrees[slot],key);
+	if(isin)
+		return (0);
+
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
 		return (0);
@@ -173,11 +181,11 @@ void db_remove(const char *key)
 
 void db_update(const char *key,const char *value)
 {
-	void *v=db_get(key);
-	if(v){
+	unsigned int slot=jdb_hash(key)%DB_SLOT;
+	int isin=btree_get_index(&_btrees[slot],key);
+	if(isin){
 		db_remove(key);
 		db_add(key,value);
-		free(v);
 	}else{
 		db_add(key,value);
 	}
