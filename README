@@ -9,6 +9,7 @@
   * Level-LRU for hot data caching,improve Random-Read 
   * Distributable B+Tree-Structured-Indexes 
   * Background IO for data flush to disk
+  * Support range queries
 
   Directory Tree
   ==================
@@ -24,6 +25,7 @@
   ==========
     * db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
     * db_get(const char *key)
+    * db_get_range(const char *begin,const char *end,struct nobj *obj,int *retcount)
     * db_add(const char *key,const char *value)
     * db_update(const char *key,const char *value)
     * db_remove(const char *key)
