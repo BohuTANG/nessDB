@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include "bitwise.h"
 #include "bloom.h"
+#include "ness.h"
 
 #define SHA1_LENGTH	20
 
@@ -76,7 +77,7 @@ uint64_t btree_insert_data(struct btree *btree, const void *data,size_t len);
 void *btree_get(struct btree *btree, const char *sha1);
 int btree_get_index(struct btree *btree, const char *sha1);
 void *btree_get_byoffset(struct btree *btree,uint64_t offset);
-void *btree_get_range(struct btree *btree, const char *begin,const char *end);
+void btree_get_range(struct btree *btree, const char *begin,const char *end,struct nobj *obj,int *retcount);
 
 /*
  * Remove item with the given key 'sha1' from the database file.

@@ -172,13 +172,12 @@ void *db_get(const char *key)
 	}
 }
 
-void *db_get_range(const char *begin,const char *end)
+void db_get_range(const char *begin,const char *end,struct nobj *obj,int *retcount)
 {
 	int i;	
 	for(i=0;i<DB_SLOT;i++){
-		btree_get_range(&_btrees[i], begin,end);
+		btree_get_range(&_btrees[i], begin,end,obj,retcount);
 	}
-	return NULL;
 }
 
 

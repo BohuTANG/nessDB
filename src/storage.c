@@ -527,7 +527,7 @@ void *btree_get(struct btree *btree, const char *sha1)
 }
 
 
-static void lookup_range(struct btree *btree,const char *begin,const char *end,uint64_t table_offset)
+static void lookup_range(struct btree *btree,const char *begin,const char *end,uint64_t table_offset,struct nobj *obj,int *retcount)
 {
 	if (table_offset == 0)
 		return;
@@ -537,19 +537,52 @@ static void lookup_range(struct btree *btree,const char *begin,const char *end,u
 		int cmp_l=cmp_sha1(begin,table->items[i].sha1);
 		int cmp_r=cmp_sha1(end,table->items[i].sha1);
 		if(cmp_l<=0 && cmp_r >=0){
-		//	printf(" key:%s\n",table->items[i].sha1);
+			struct nobj *o;
+			uint64_t voff;
+			size_t len;
+			void *data;
+			struct blob_info info;
+			
+			voff=from_be64(table->items[i].offset);
+			if(get_H(voff)==1)
+				continue;
+
+
+			lseek64(btree->db_fd, voff, SEEK_SET);
+			if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info){
+				fprintf(stderr, "lookup_range: I/O error\n");
+				abort();
+			}
+
+			len = from_be32(info.len);
+			data = malloc(len);		
+			if (read(btree->db_fd, data, len) != (ssize_t) len) {
+				fprintf(stderr, "lookup_range read data: I/O error\n");
+				free(data);
+				abort();
+			}
+
+			o=calloc(1,sizeof(struct nobj));
+			o->k=strdup(table->items[i].sha1);
+			o->v=(void*)data;
+
+			o->refcount=1;
+			o->next=obj->next;
+			obj->next=o;
+			//printf("k:%s v:%s\n",obj->k,obj->v);
+
+			(*retcount)++;
 		}
 
 		uint64_t child= from_be64(table->items[i].child);
 		if(child>0)
-			 lookup_range(btree,begin,end,child);
+			 lookup_range(btree,begin,end,child,obj,retcount);
 	}
 }
 
-void *btree_get_range(struct btree *btree,const char *begin,const char *end)
+void btree_get_range(struct btree *btree,const char *begin,const char *end,struct nobj *obj,int *retcount)
 {
-	lookup_range(btree,begin,end, btree->top);
-	return NULL;	
+	lookup_range(btree,begin,end, btree->top,obj,retcount);
 }
 
 int btree_get_index(struct btree *btree, const char *sha1)
