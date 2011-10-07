@@ -526,6 +526,32 @@ void *btree_get(struct btree *btree, const char *sha1)
 	return data;
 }
 
+
+static void lookup_range(struct btree *btree,const char *begin,const char *end,uint64_t table_offset)
+{
+	if (table_offset == 0)
+		return;
+	struct btree_table *table = get_table(btree, table_offset);
+	int i;
+	for(i=0;i<table->size;i++){
+		int cmp_l=cmp_sha1(begin,table->items[i].sha1);
+		int cmp_r=cmp_sha1(end,table->items[i].sha1);
+		if(cmp_l<=0 && cmp_r >=0){
+		//	printf(" key:%s\n",table->items[i].sha1);
+		}
+
+		uint64_t child= from_be64(table->items[i].child);
+		if(child>0)
+			 lookup_range(btree,begin,end,child);
+	}
+}
+
+void *btree_get_range(struct btree *btree,const char *begin,const char *end)
+{
+	lookup_range(btree,begin,end, btree->top);
+	return NULL;	
+}
+
 int btree_get_index(struct btree *btree, const char *sha1)
 {
 	uint64_t offset = lookup(btree, btree->top, sha1);

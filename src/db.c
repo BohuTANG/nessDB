@@ -49,7 +49,7 @@
  100663319UL, 201326611UL, 402653189UL, 805306457UL, 1610612741UL,
  3221225473UL, 4294967291UL
 */
-#define DB_SLOT		(11)
+#define DB_SLOT		(13)
 #define DB_PREFIX 	"ndbs/ness"
 #define IDX_PRIME	(16785407)
 static struct btree 	_btrees[DB_SLOT];
@@ -171,6 +171,16 @@ void *db_get(const char *key)
 		return strdup((char*)v);
 	}
 }
+
+void *db_get_range(const char *begin,const char *end)
+{
+	int i;	
+	for(i=0;i<DB_SLOT;i++){
+		btree_get_range(&_btrees[i], begin,end);
+	}
+	return NULL;
+}
+
 
 void db_remove(const char *key)
 {
