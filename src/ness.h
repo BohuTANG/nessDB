@@ -8,4 +8,8 @@ struct nobj{
 	struct nobj *next;
 };
 
+#define FOR_EACH(NOBJ,LIST) \
+	struct nobj *NOBJ;\
+	for((NOBJ)=LIST;(NOBJ);(NOBJ)=(NOBJ)->next)\
+
 #endif
