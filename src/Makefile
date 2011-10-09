@@ -9,7 +9,8 @@ all : nessdb_bench
 
 nessdb_bench : $(TEST_OBJS)
 	$(CC) $(CFLAGS)  -lrt -pthread -o $@ $(TEST_OBJS) 
-	$(CC) $(CFLAGS) $(LIB_OBJS) -shared -o libnessdb.so
+	$(CC) $(CFLAGS) $(LIB_OBJS) -shared -fPIC -o libnessdb.so
+
 
 clean :
 	rm -rf $(TEST_OBJS) $(LIB_BJS)  nessdb_bench libnessdb.so
