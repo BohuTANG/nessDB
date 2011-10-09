@@ -1,0 +1,5 @@
+*.o
+*~
+src/libnessdb.so
+src/nessdb_bench
+src/ndbs/
