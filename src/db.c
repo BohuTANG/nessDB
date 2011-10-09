@@ -82,7 +82,7 @@ static void bgsync_init()
 	pthread_t t1;
 	if((t1=pthread_create(&_bgsync,NULL,bgsync_func,NULL))!=0)
 		abort();
-	pthread_join(t1,NULL);
+	//pthread_join(t1,NULL);
 }
 
 /*Sequential read,and mark keys in BloomFilter
