@@ -170,7 +170,7 @@ void db_init_test(int show)
 	if(show){
 		printf(LINE);
 		printf("|loadindex	(load:%lld): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
-			,sum
+			,(unsigned long long)sum
 			,(double)(cost/R_NUM)
 			,(double)(NUM/cost)
 			,cost);
