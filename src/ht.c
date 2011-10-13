@@ -31,51 +31,71 @@
 #include "hashes.h"
 #include "ht.h"
 
-static size_t find_slot(struct ht *ht,const char* key)
+static int key_cmp(struct ht *ht,void *a,void *b)
 {
-	return  ht->hashfunc(key) % ht->cap;
+		switch(ht->key_type){
+		case INT:{
+				 int x=*(int*)a;
+				 int y=*(int*)b;
+				return (x-y);
+			 }
+		default:
+			return  strcmp((const char*)a,(const char*)b);
+	}
+
 }
 
-void	ht_init(struct ht *ht,size_t cap)
+static size_t find_slot(struct ht *ht,void* key)
+{
+	switch(ht->key_type){
+		case INT:
+			return (*(int*)key) % ht->cap;
+		default:
+			return  ht->hashfunc((const char*)key) % ht->cap;
+	}
+}
+
+void	ht_init(struct ht *ht,size_t cap,KEYTYPE key_type)
 {
 	ht->size = 0;
 	ht->cap = cap;
 	ht->nodes =calloc(cap, sizeof(struct ht_node*));
 	ht->hashfunc=jdb_hash;
+	ht->key_type=key_type;
 }
 
-void	ht_set(struct ht *ht,const char* k,void* v)
+void	ht_set(struct ht *ht,void * k,void* v)
 {
 	size_t slot=find_slot(ht,k);
 	struct ht_node *node=calloc(1, sizeof(struct ht_node));
 	node->next=ht->nodes[slot];
-	node->k=(char*)k;
+	node->k=k;
 	node->v=v;
 
 	ht->nodes[slot]=node;
 	ht->size++;
 }
 
-void* ht_get(struct ht *ht,const char* k)
+void* ht_get(struct ht *ht,void * k)
 {
 	size_t slot=find_slot(ht,k);
 
 	struct ht_node *node=ht->nodes[slot];
 	while(node){
-		if(strcmp(k,node->k)==0)
+		if(key_cmp(ht,k,node->k)==0)
 			return node->v;
 		node=node->next;
 	}
 	return NULL;
 }
 
-void	ht_remove(struct ht *ht,const char *k)
+void	ht_remove(struct ht *ht,void *k)
 {
 	size_t slot=find_slot(ht,k);
 
 	struct ht_node *node=ht->nodes[slot],*prev=NULL;
 	while(node){
-		if(strcmp(k,node->k)==0){
+		if(key_cmp(ht,k,node->k)==0){
 			if(prev!=NULL)
 				prev->next=node->next;
 			else

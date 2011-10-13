@@ -309,6 +309,7 @@ uint64_t btree_insert_data(struct btree *btree, const void *data,
 
 /* Insert a new item with key 'sha1' with the contents in 'data' to the given
    table. Returns offset to the new item. */
+
 static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 			 char *sha1, const void *data, size_t len,const uint64_t *v_off)
 {
@@ -516,7 +517,7 @@ void *btree_get(struct btree *btree, const char *sha1)
 		return NULL;
 	size_t len = from_be32(info.len);
 
-	void *data = malloc(len);
+	void *data = calloc(1,len);
 	if (data == NULL)
 		return NULL;
 	if (read(btree->db_fd, data, len) != (ssize_t)len) {
@@ -555,7 +556,7 @@ static void lookup_range(struct btree *btree,const char *begin,const char *end,u
 			}
 
 			len = from_be32(info.len);
-			data = malloc(len);		
+			data = calloc(1,len);		
 			if (read(btree->db_fd, data, len) != (ssize_t) len) {
 				fprintf(stderr, "lookup_range read data: I/O error\n");
 				free(data);
@@ -604,7 +605,7 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset)
 		return NULL;
 	size_t len = from_be32(info.len);
 
-	void *data = malloc(len);
+	void *data = calloc(1,len);
 	if (data == NULL)
 		return NULL;
 	if (read(btree->db_fd, data, len) != (ssize_t) len) {

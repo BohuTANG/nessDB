@@ -47,6 +47,8 @@ struct btree {
 	int fd;
 	int db_fd;
 	struct btree_cache cache[CACHE_SLOTS];
+
+	int fd_rep;
 };
 
 

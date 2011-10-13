@@ -90,14 +90,14 @@ static void bgsync_init()
 */
 static int db_loadbloom(struct btree *btree)
 {
-	int sum=0;
+	int sum=0,r_ret;
 	int i,super_size=sizeof(struct btree_super);
 	uint64_t alloc=btree->alloc-super_size;
 	int newsize=(sizeof(struct btree_table));
 	lseek64(btree->fd,super_size, SEEK_SET);
 	while(alloc>0){
 		struct btree_table *table=malloc(newsize);
-		read(btree->fd,table, newsize) ;
+		r_ret=read(btree->fd,table, newsize) ;
 		if(table->size>0){
 			sum+=table->size;
 			for(i=0;i<table->size;i++){
