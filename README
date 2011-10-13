@@ -15,7 +15,6 @@
   ==================
   ./
   ./src/ 	- sources of nessDB
-  ./uint-test/	- unit-test cases
   ./BENCHMARK	- benchmark results of nessDB
   ./LEVEL-LRU	- nessDB's level-lru doc
   ./TODO	- nessDB's todo list
@@ -40,6 +39,7 @@
 	c, $./nessdb_bench add
 
 	If you want to remove all indexes and datas,please use "$make cleanall" command.
+	It's a good idea to RUN "make test" first!
 	
 
 nessDB was written by BohuTANG.You can contact me by e-mail <overred.shuttler at gmail dot com>.
