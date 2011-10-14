@@ -615,6 +615,44 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset)
 	return data;
 }
 
+int btree_dump_keys(struct btree *btree,struct nobj *obj,int count)
+{
+	int sum=0,r,i,super_size,table_size;
+	uint64_t alloc;
+	
+	super_size=sizeof(struct btree_super);
+	alloc=btree->alloc-super_size;
+	table_size=(sizeof(struct btree_table));
+
+	lseek64(btree->fd,super_size, SEEK_SET);
+	while(alloc>0){
+		struct btree_table *table;
+		if(count!=0){
+			if(sum>=count)
+				break;
+		}
+
+		table=malloc(table_size);
+		r=read(btree->fd,table, table_size) ;
+		if(table->size>0){
+			for(i=0;i<table->size;i++){
+				uint64_t offset=from_be64(table->items[i].offset);
+				if(get_H(offset)==0){
+					struct nobj *o=calloc(1,sizeof(struct nobj));
+					o->k=strdup(table->items[i].sha1);
+					o->v=(void*)(&offset);
+					o->next=obj->next;
+					obj->next=o;
+					sum++;
+				}
+			}
+		}
+		free(table);
+		alloc-=table_size;
+	}
+	return sum;
+}
+
 int btree_delete(struct btree *btree, const char *c_sha1)
 {
 	char sha1[SHA1_LENGTH];

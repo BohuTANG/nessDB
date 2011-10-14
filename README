@@ -25,6 +25,7 @@
     * db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
     * db_get(const char *key)
     * db_get_range(const char *begin,const char *end,struct nobj *obj,int *retcount)
+    * db_dump_keys(struct nobj *obj)
     * db_add(const char *key,const char *value)
     * db_update(const char *key,const char *value)
     * db_remove(const char *key)

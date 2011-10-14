@@ -81,6 +81,9 @@ int btree_get_index(struct btree *btree, const char *sha1);
 void *btree_get_byoffset(struct btree *btree,uint64_t offset);
 void btree_get_range(struct btree *btree, const char *begin,const char *end,struct nobj *obj,int *retcount);
 
+//if count==0,means unlimited,all entries wil be returned
+int btree_dump_keys(struct btree *btree,struct nobj *obj,int count);
+
 /*
  * Remove item with the given key 'sha1' from the database file.
  */

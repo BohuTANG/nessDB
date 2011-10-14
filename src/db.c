@@ -56,6 +56,7 @@ static struct btree 	_btrees[DB_SLOT];
 static struct bloom	_bloom;
 
 static pthread_t	_bgsync;
+
 void *bgsync_func();
 
 void *bgsync_func()
@@ -82,33 +83,38 @@ static void bgsync_init()
 	pthread_t t1;
 	if((t1=pthread_create(&_bgsync,NULL,bgsync_func,NULL))!=0)
 		abort();
-	//pthread_join(t1,NULL);
 }
 
 /*Sequential read,and mark keys in BloomFilter
 * This is very important to preheat datas.
+* There is 'db_dump_keys' interface,but this is faster than it to load.
 */
 static int db_loadbloom(struct btree *btree)
 {
-	int sum=0,r_ret;
-	int i,super_size=sizeof(struct btree_super);
-	uint64_t alloc=btree->alloc-super_size;
-	int newsize=(sizeof(struct btree_table));
+	int sum=0,r,i,super_size,table_size;
+	uint64_t total;
+
+	super_size=sizeof(struct btree_super);
+	table_size=(sizeof(struct btree_table));
+	total=btree->alloc-super_size;
 	lseek64(btree->fd,super_size, SEEK_SET);
-	while(alloc>0){
-		struct btree_table *table=malloc(newsize);
-		r_ret=read(btree->fd,table, newsize) ;
+
+	while(total>0){
+		struct btree_table *table=malloc(table_size);
+		r=read(btree->fd,table, table_size) ;
 		if(table->size>0){
-			sum+=table->size;
 			for(i=0;i<table->size;i++){
 				uint64_t offset=from_be64(table->items[i].offset);
-				if(get_H(offset)==0)
+				if(get_H(offset)==0){
 					bloom_add(&_bloom,(const char*)table->items[i].sha1);
+					sum++;
+				}
 			}
 		}
 		free(table);
-		alloc-=newsize;
+		total-=table_size;
 	}
+
 	return sum;
 }
 
@@ -123,9 +129,10 @@ void db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
 		char pre[256]={0};
 		sprintf(pre,"%s%d",DB_PREFIX,i);
 		btree_init(&_btrees[i],pre,isbgsync);
-		s+=db_loadbloom(&_btrees[i]);	
+		s+=db_loadbloom(&_btrees[i]);
 	}
-	*sum=s;
+
+	*sum=s;	
 	if(isbgsync)
 		bgsync_init();
 }
@@ -197,6 +204,14 @@ void db_update(const char *key,const char *value)
 		db_add(key,value);
 	}else{
 		db_add(key,value);
+	}
+}
+
+void db_dump_keys(struct nobj *obj)
+{
+	int i;	
+	for(i=0;i<DB_SLOT;i++){
+		btree_dump_keys(&_btrees[i], obj,0);
 	}
 }
 
