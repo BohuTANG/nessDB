@@ -9,7 +9,7 @@ TEST_OBJS = $(LIB_OBJS) nessdb_bench.o
 all : nessdb_bench
 
 nessdb_bench : $(TEST_OBJS)
-	$(CC) $(CFLAGS)  -lrt -pthread -o $@ $(TEST_OBJS) 
+	$(CC) $(CFLAGS)  -lpthread -o $@ $(TEST_OBJS) 
 	$(CC) $(CFLAGS) $(LIB_OBJS) -shared -fPIC -o libnessdb.so
 
 test : $(TEST_OBJS)

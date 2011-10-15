@@ -56,6 +56,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include "storage.h"
+#include "platform.h"
 
 #define IDXEXT	".idx"
 #define DBEXT	".db"
@@ -90,7 +91,7 @@ static struct btree_table *get_table(struct btree *btree, uint64_t offset)
 
 	struct btree_table *table = malloc(sizeof *table);
 
-	lseek64(btree->fd, offset, SEEK_SET);
+	lseek(btree->fd, offset, SEEK_SET);
 	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -119,7 +120,7 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 {
 	assert(offset != 0);
 
-	lseek64(btree->fd, offset, SEEK_SET);
+  lseek(btree->fd, offset, SEEK_SET);
 	if (write(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -135,8 +136,7 @@ static void flush_super(struct btree *btree)
 	super.top = to_be64(btree->top);
 	super.free_top = to_be64(btree->free_top);
 
-
-	lseek64(btree->fd, 0, SEEK_SET);
+	lseek(btree->fd, 0, SEEK_SET);
 	if (write(btree->fd, &super, sizeof super) != sizeof super){
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -151,12 +151,14 @@ static void flush_magic(struct btree *btree)
 	}
 }
 
-
-
 static uint64_t getsize(int fd) {
+#if defined(__linux__)
     struct stat64 sb;
+#else
+    struct stat sb;
+#endif
 
-    if (fstat64(fd,&sb) == -1) return 0;
+    if (fstat(fd,&sb) == -1) return 0;
     return (uint64_t) sb.st_size;
 }
 
@@ -164,8 +166,8 @@ static int btree_open(struct btree *btree,const char *idx,const char *db)
 {
 	memset(btree, 0, sizeof *btree);
 
-	btree->fd = open(idx, O_RDWR | O_BINARY | O_LARGEFILE);
-	btree->db_fd = open(db, O_RDWR | O_BINARY | O_LARGEFILE);
+	btree->fd = open(idx, BTREE_OPEN_FLAGS);
+	btree->db_fd = open(db, BTREE_OPEN_FLAGS);
 
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
@@ -187,16 +189,20 @@ static int btree_creat(struct btree *btree,const char *idx,const char *db)
 {
 	memset(btree, 0, sizeof *btree);
 
+#if defined(__linux__)
 	btree->fd = open(idx, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
 	btree->db_fd = open(db, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
-
+#else
+	btree->fd = open(idx, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	btree->db_fd = open(db, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+#endif
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
 
 	flush_super(btree);
 
 	btree->alloc =sizeof(struct btree_super);
-	lseek64(btree->fd, 0, SEEK_END);
+	lseek(btree->fd, 0, SEEK_END);
 
 	flush_magic(btree);
 	btree->db_alloc=sizeof(int);
@@ -273,7 +279,7 @@ static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 
 	uint64_t offset = alloc_db_chunk(btree, sizeof info + len);
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
+	lseek(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof info) != sizeof info) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -518,7 +524,7 @@ void *btree_get(struct btree *btree, const char *sha1)
 	if (offset == 0)
 		return NULL;
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
+	lseek(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
@@ -556,7 +562,7 @@ static void lookup_range(struct btree *btree,const char *begin,const char *end,u
 				continue;
 
 
-			lseek64(btree->db_fd, voff, SEEK_SET);
+			lseek(btree->db_fd, voff, SEEK_SET);
 			if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info){
 				fprintf(stderr, "lookup_range: I/O error\n");
 				abort();
@@ -606,7 +612,7 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset)
 	if (offset == 0)
 		return NULL;
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
+	lseek(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
@@ -631,7 +637,7 @@ int btree_dump_keys(struct btree *btree,struct nobj *obj,int count)
 	alloc=btree->alloc-super_size;
 	table_size=(sizeof(struct btree_table));
 
-	lseek64(btree->fd,super_size, SEEK_SET);
+	lseek(btree->fd,super_size, SEEK_SET);
 	while(alloc>0){
 		struct btree_table *table;
 		if(count!=0){
