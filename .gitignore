@@ -1,0 +1,5 @@
+*.o
+.*.swp
+src/ndbs/
+src/*.so
+nessdb_bench
