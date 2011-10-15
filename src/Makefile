@@ -21,7 +21,7 @@ nessdb_bench : $(TEST_OBJS)
 	$(CC) $(CFLAGS) $(LIB_OBJS) -shared -fPIC -o libnessdb.so
 
 test : $(TEST_OBJS)
-	$(CC) $(CFLAGS)  -lrt -pthread $(LIB_OBJS) unit-test.c  -o unit-test
+	$(CC) $(CFLAGS) $(LDLIBS) $(LIB_OBJS) unit-test.c  -o unit-test
 	./unit-test
 	$(MAKE) cleanall
 
