@@ -18,6 +18,7 @@
   ./BENCHMARK	- benchmark results of nessDB
   ./LEVEL-LRU	- nessDB's level-lru doc
   ./TODO	- nessDB's todo list
+  ./x/		- nessDB's server-client test mode,very high-performance.
 
 
   Interface
@@ -30,7 +31,7 @@
     * db_update(const char *key,const char *value)
     * db_remove(const char *key)
 
-    Very simple.
+    Very simple to use.
 
  
   How to do TEST

@@ -1,0 +1,8 @@
+This is a very simple high-performance server-client mode test framework,network mode is epoll.
+
+*socket server
+*request parse using DFA
+*socket client(work in progress)
+
+Please look forward to nessDB-x!
+
