@@ -1,4 +1,11 @@
  /*Based on Japeq's btree(https://github.com/japeq/btree_db)
+ *BohuTANG did  a lot of changes, including:
+ * 1) Separate the index and data files
+ * 2) Background thread to data flush
+ * 3) Delete operation optimization,improve performance
+ * 4) Range queries support
+ * 5) Code abridged
+ * 6) And other dream will go on if need.
  *
  * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
