@@ -180,8 +180,8 @@ void db_write_test()
 	cost=get_timer();
 	printf(LINE);
 	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
-		,count,(double)(cost/count)
-		,(double)(count/cost)
+		,count,(double)(cost/NUM)
+		,(double)(NUM/cost)
 		,((_index_size+_data_size)/cost)
 		,cost);	
 }
