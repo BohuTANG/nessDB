@@ -2,4 +2,5 @@
 .*.swp
 src/ndbs/
 src/*.so
-nessdb_bench
+src/nessdb_bench
+src/unit-test
