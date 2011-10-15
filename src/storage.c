@@ -189,13 +189,8 @@ static int btree_creat(struct btree *btree,const char *idx,const char *db)
 {
 	memset(btree, 0, sizeof *btree);
 
-#if defined(__linux__)
-	btree->fd = open(idx, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
-	btree->db_fd = open(db, O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE, 0644);
-#else
-	btree->fd = open(idx, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	btree->db_fd = open(db, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-#endif
+	btree->fd = open(idx, BTREE_CREAT_FLAGS, 0644);
+	btree->db_fd = open(db, BTREE_CREAT_FLAGS, 0644);
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
 
