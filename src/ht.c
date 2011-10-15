@@ -55,7 +55,7 @@ static size_t find_slot(struct ht *ht,void* key)
 	}
 }
 
-void	ht_init(struct ht *ht,size_t cap,KEYTYPE key_type)
+void ht_init(struct ht *ht,size_t cap,KEYTYPE key_type)
 {
 	ht->size = 0;
 	ht->cap = cap;
@@ -64,12 +64,22 @@ void	ht_init(struct ht *ht,size_t cap,KEYTYPE key_type)
 	ht->key_type=key_type;
 }
 
-void	ht_set(struct ht *ht,void * k,void* v)
+void ht_set(struct ht *ht,void * k,void* v)
 {
-	size_t slot=find_slot(ht,k);
-	struct ht_node *node=calloc(1, sizeof(struct ht_node));
+	size_t slot;
+	struct ht_node *node;
+
+	slot=find_slot(ht,k);
+	node=calloc(1, sizeof(struct ht_node));
 	node->next=ht->nodes[slot];
-	node->k=k;
+	if(ht->key_type==INT){
+		int* copy;
+		copy=calloc(1,sizeof(int));
+		memcpy(copy,k,sizeof(int));
+		node->k=copy;
+	}else
+		node->k=k;
+
 	node->v=v;
 
 	ht->nodes[slot]=node;
@@ -78,9 +88,11 @@ void	ht_set(struct ht *ht,void * k,void* v)
 
 void* ht_get(struct ht *ht,void * k)
 {
-	size_t slot=find_slot(ht,k);
+	size_t slot;
+	struct ht_node *node;
 
-	struct ht_node *node=ht->nodes[slot];
+	slot=find_slot(ht,k);
+	node=ht->nodes[slot];
 	while(node){
 		if(key_cmp(ht,k,node->k)==0)
 			return node->v;
@@ -89,11 +101,13 @@ void* ht_get(struct ht *ht,void * k)
 	return NULL;
 }
 
-void	ht_remove(struct ht *ht,void *k)
+void ht_remove(struct ht *ht,void *k)
 {
-	size_t slot=find_slot(ht,k);
-
-	struct ht_node *node=ht->nodes[slot],*prev=NULL;
+	size_t slot;
+	struct ht_node *node,*prev=NULL;
+	
+	slot=find_slot(ht,k);
+	node=ht->nodes[slot];
 	while(node){
 		if(key_cmp(ht,k,node->k)==0){
 			if(prev!=NULL)
@@ -102,8 +116,11 @@ void	ht_remove(struct ht *ht,void *k)
 				ht->nodes[slot]=node->next;
 			ht->size--;
 
-			if(node)
+			if(node){
+				if(ht->key_type==INT)
+					free(node->k);
 				free(node);
+			}
 		}
 		prev=node;
 		node=node->next;	
@@ -112,8 +129,20 @@ void	ht_remove(struct ht *ht,void *k)
 
 
 
-void 	ht_free(struct ht *ht)
+void ht_free(struct ht *ht)
 {
-	free(ht->nodes);
+	if(ht->key_type==INT){
+		int i;
+		for(i=0;i<ht->cap;i++){
+			struct ht_node *cur,*nxt;
+			cur=ht->nodes[i];
+			while(cur!=NULL){
+				nxt=cur->next;
+				free(cur->k);
+				free(cur);
+				cur=nxt;
+			}
+		}
+	}
 }
 
