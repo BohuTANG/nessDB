@@ -75,8 +75,8 @@ void read_cb(struct event *event,struct event_node *node,struct epoll_event ev)
 	char req_buf[BUF_SIZE]={0};
 	int r;
     	r=read(node->fd,req_buf,BUF_SIZE);
-	//if(r==0)
-	//	return;
+	if(r==0)
+		return;
 
 	request=request_new();
 
