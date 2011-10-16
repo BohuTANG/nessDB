@@ -40,6 +40,7 @@
 #include <time.h>
 #include <string.h>
 #include "db.h"
+#include "platform.h"
 
 #define OP_ADD 1
 #define OP_GET 2
@@ -58,19 +59,35 @@
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
 
+#ifdef HAVE_CLOCK_GETTIME
 static struct timespec start;
+#else
+#include <sys/time.h>
+static struct timeval  start;
+#endif
 
 static void start_timer(void)
 {
+#ifdef HAVE_CLOCK_GETTIME
         clock_gettime(CLOCK_MONOTONIC, &start);
+#else
+        gettimeofday(&start, NULL);
+#endif
 }
 
 static double get_timer(void)
 {
+#ifdef HAVE_CLOCK_GETTIME
         struct timespec end;
         clock_gettime(CLOCK_MONOTONIC, &end);
         long seconds  = end.tv_sec  - start.tv_sec;
         long nseconds = end.tv_nsec - start.tv_nsec;
+#else
+        struct timeval end;
+        gettimeofday(&end, NULL);
+        long seconds = end.tv_sec - start.tv_sec;
+        long nseconds = (end.tv_usec - start.tv_usec) * 1000;
+#endif
         return seconds + (double) nseconds / 1.0e9;
 }
 
@@ -153,7 +170,7 @@ void db_init_test(int show)
 	if(show){
 		printf(LINE);
 		printf("|loadindex	(load:%lld): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
-			,sum
+			,(unsigned long long)sum
 			,(double)(cost/R_NUM)
 			,(double)(NUM/cost)
 			,cost);

@@ -89,7 +89,7 @@ static inline unsigned jenkins_hash(const char *key)
 /**
  * Jdb hash function
  */
-static inline unsigned int jdb_hash(const char* key)
+static inline size_t jdb_hash(const char* key)
 {
     if (!key) {
         return 0;
@@ -99,7 +99,7 @@ static inline unsigned int jdb_hash(const char* key)
     while ((c = *key++))
 	hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
 
-   return hash;
+   return (size_t) hash;
 }
 
 /**
