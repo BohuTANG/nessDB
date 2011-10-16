@@ -40,6 +40,7 @@
 #include "llru.h"
 #include "hashes.h"
 #include "db.h"
+#include "platform.h"
 
 /*primes are:
  3UL, 5UL, 7UL, 11UL, 13UL, 17UL, 19UL, 23UL, 29UL, 31UL, 37UL,41UL, 43UL, 47UL,
@@ -72,16 +73,15 @@ void *bgsync_func()
 */
 		sleep(5);
 		for(i=0;i<DB_SLOT;i++){
-			fdatasync(_btrees[i].fd);
-			fdatasync(_btrees[i].db_fd);
+			fsync(_btrees[i].fd);
+			fsync(_btrees[i].db_fd);
 		}
 	}
 }
 
 static void bgsync_init()
 {
-	pthread_t t1;
-	if((t1=pthread_create(&_bgsync,NULL,bgsync_func,NULL))!=0)
+	if(pthread_create(&_bgsync,NULL,bgsync_func,NULL))
 		abort();
 }
 
@@ -97,7 +97,7 @@ static int db_loadbloom(struct btree *btree)
 	super_size=sizeof(struct btree_super);
 	table_size=(sizeof(struct btree_table));
 	total=btree->alloc-super_size;
-	lseek64(btree->fd,super_size, SEEK_SET);
+  lseek(btree->fd, super_size, SEEK_SET);
 
 	while(total>0){
 		struct btree_table *table=malloc(table_size);
