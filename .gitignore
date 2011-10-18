@@ -3,4 +3,4 @@
 src/ndbs/
 src/*.so
 src/nessdb_bench
-x/
+x/*.o

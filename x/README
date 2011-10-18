@@ -1,4 +1,4 @@
-nessDB-x is a very simple and high-performance server-client  test framework,network mode is epoll.
+nessDB-x is a very simple and high-performance server-client  test framework,network mode is redis-net(Drafted by BohuTANG).
 
 *socket server
 *request parse using DFA
