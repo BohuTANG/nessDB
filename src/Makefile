@@ -12,13 +12,17 @@ endif
 #name all the object files
 LIB_OBJS = db.o  storage.o bloom.o ht.o level.o llru.o 
 TEST_OBJS = $(LIB_OBJS) nessdb_bench.o
+SVR_OBJS =  $(LIB_OBJS) ../x/ae.o  ../x/anet.o ../x/zmalloc.o request.o response.o  nessdb_server.o
 
 
-all : nessdb_bench
+all : nessdb-bench nessdb-server
 
-nessdb_bench : $(TEST_OBJS)
+nessdb-bench : $(TEST_OBJS)
 	$(CC) $(CFLAGS) $(LDLIBS) -o $@ $(TEST_OBJS) 
-	$(CC) $(CFLAGS) $(LIB_OBJS) -shared -fPIC -o libnessdb.so
+
+nessdb-server : $(SVR_OBJS)
+	$(CC) $(CFLAGS) $(LDLIBS) -o $@ $(SVR_OBJS) 
+
 
 test : $(TEST_OBJS)
 	$(CC) $(CFLAGS) $(LDLIBS) $(LIB_OBJS) unit-test.c  -o unit-test
@@ -27,7 +31,7 @@ test : $(TEST_OBJS)
 
 
 clean :
-	rm -rf $(TEST_OBJS) $(LIB_BJS)  nessdb_bench libnessdb.so unit-test
+	rm -rf $(TEST_OBJS) $(SVR_OBJS)  nessdb-bench nessdb-server libnessdb.so unit-test
 
 cleanall : 
-	rm -rf $(TEST_OBJS) $(LIB_OBJS)  nessdb_bench libnessdb.so ndbs/*.idx ndbs/*.db unit-test
+	rm -rf $(TEST_OBJS) $(SVR_OBJS)   nessdb-bench nessdb-server  ndbs/*.idx ndbs/*.db unit-test
