@@ -1,5 +1,5 @@
 ================================================================
-			nessDB v1.7
+			nessDB v1.7(NOT ONLY DATABASE ENGINE)
 		Copyright (C) 2011 BohuTANG
 ================================================================	
 
@@ -10,6 +10,7 @@
   * Distributable B+Tree-Structured-Indexes 
   * Background IO for data flush to disk
   * Support range queries
+  * Server support
 
   Directory Tree
   ==================
@@ -18,7 +19,7 @@
   ./BENCHMARK	- benchmark results of nessDB
   ./LEVEL-LRU	- nessDB's level-lru doc
   ./TODO	- nessDB's todo list
-  ./x/		- nessDB's server-client test mode,very high-performance.
+  ./x/		- nessDB's network layer(via redis),very high-performance.
 
 
   Interface
@@ -38,13 +39,19 @@
   ==============
 	a, $cd src
 	b, $make
-	c, $./nessdb_bench add
+	c, $./nessdb-bench add
 
 	If you want to remove all indexes and datas,please use "$make cleanall" command.
 	It's a good idea to RUN "make test" first!
+
+  Start as server
+  ==============
+  	* $./nessdb-server
+
+	using redis-cli(or other redis's clients) to do some operations.
 	
 
-nessDB was written by BohuTANG.You can contact me by e-mail <overred.shuttler at gmail dot com>.
+nessDB was written by BohuTANG.You can contact  by e-mail <overred.shuttler at gmail dot com>.
 Thanks.
 
 == END OF FILE ==
