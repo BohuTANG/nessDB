@@ -173,7 +173,6 @@ int request_parse(struct request *req)
 					v[k]+=32;
 			}
 
-			printf("cmd:%s\n",v);
 			if(strcmp(v,"ping")==0){
 				req->cmd=CMD_PING;
 			}else if(strcmp(v,"get")==0){

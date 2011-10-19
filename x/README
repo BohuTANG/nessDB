@@ -1,9 +1,0 @@
-nessDB-x is a very simple and high-performance server-client  test framework,network mode is redis-net(Drafted by BohuTANG).
-
-*socket server
-*request parse using DFA
-*socket client(work in progress)
-
-Please look forward to nessDB-x.
-B.T.W,I need you to fork and DIY it!
-

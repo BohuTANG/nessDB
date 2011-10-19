@@ -47,11 +47,8 @@
   Start as server
   ==============
   	* $./nessdb-server
-
 	using redis-cli(or other redis's clients) to do some operations.
 	
-
-nessDB was written by BohuTANG.You can contact  by e-mail <overred.shuttler at gmail dot com>.
 Thanks.
 
 == END OF FILE ==
