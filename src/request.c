@@ -142,7 +142,7 @@ int request_parse(struct request *req)
 	char sb[BUF_SIZE]={0};
 
 	if(req_state_len(req,sb)!=STATE_CONTINUE){
-		fprintf(stderr,"argc format ***ERROR***,packet:%s",sb);
+		fprintf(stderr,"argc format ***ERROR***,buffer:%s,len-buf:%s\n",req->querybuf,sb);
 		return 0;
 	}
 	req->argc=atoi(sb);
@@ -155,7 +155,7 @@ int request_parse(struct request *req)
 		/*parse argv len*/
 		memset(sb,0,BUF_SIZE);
 		if(req_state_len(req,sb)!=STATE_CONTINUE){
-			fprintf(stderr,"argv's length format ***ERROR***,packet:%s",sb);
+			fprintf(stderr,"argv's length format ***ERROR***,packet:%s\n",sb);
 			return 0;
 		}
 		argv_len=atoi(sb);
