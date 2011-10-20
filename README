@@ -3,7 +3,8 @@
 		(NOT ONLY DATABASE ENGINE)
 		Copyright (C) 2011 BohuTANG
 ================================================================	
-
+  nessDB is written in ANSI C and works in most POSIX systems like Linux, *BSD, OS X and Solaris without external dependencies.
+ 
   Key Features
   =============
   * Bloom filters for record presence detection 
