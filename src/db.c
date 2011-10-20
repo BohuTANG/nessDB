@@ -134,14 +134,15 @@ void db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
 		bgsync_init();
 }
 
-
+void db_remove(const char *key);
 int db_add(const char *key,const char *value)
 {
 	uint64_t off;
 	unsigned int slot=jdb_hash(key)%DB_SLOT;
 	int isin=btree_get_index(&_btrees[slot],key);
-	if(isin)
-		return (0);
+	if(isin){
+		db_remove(key);
+	}
 
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
