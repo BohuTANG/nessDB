@@ -1,7 +1,13 @@
-CC = gcc 
-CFLAGS =	  -g -Wall -fPIC -std=c99
+UNAME := $(shell uname)
 
-LDLIBS =  -lpthread
+CC = gcc 
+CFLAGS =-Wall -std=c99
+LDLIBS = -lpthread
+ifeq ($(UNAME), Linux)
+	DEBUG = -g -rdynamic -ggdb 
+else
+	DEBUG =	-g -ggdb 
+endif
 
 #name all the object files
 LIB_OBJS = db.o  storage.o bloom.o ht.o level.o llru.o 
@@ -12,10 +18,10 @@ SVR_OBJS =  $(LIB_OBJS) ../x/ae.o  ../x/anet.o ../x/zmalloc.o request.o response
 all : nessdb-bench nessdb-server
 
 nessdb-bench : $(TEST_OBJS)
-	$(CC) $(CFLAGS) $(LDLIBS) -o $@ $(TEST_OBJS) 
+	$(CC) $(CFLAGS) $(DEBUG) $(LDLIBS) -o $@ $(TEST_OBJS) 
 
 nessdb-server : $(SVR_OBJS)
-	$(CC) $(CFLAGS) $(LDLIBS) -o $@ $(SVR_OBJS) 
+	$(CC) $(CFLAGS) $(DEBUG) $(LDLIBS) -o $@ $(SVR_OBJS) 
 
 
 test : $(TEST_OBJS)

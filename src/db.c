@@ -25,8 +25,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#define _GNU_SOURCE
-#define _LARGEFILE64_SOURCE
+#ifndef _GNU_SOURCE
+	#define _GNU_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
+	#define _LARGEFILE64_SOURCE
+#endif
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
