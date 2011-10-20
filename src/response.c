@@ -63,7 +63,7 @@ void response_detch(struct response *res,char *ackbuf)
 			return;	
 		
 		case ERR:
-			strcat(ackbuf,"-OK\r\n");
+			strcat(ackbuf,"-ERROR\r\n");
 			return;;
 	}
 

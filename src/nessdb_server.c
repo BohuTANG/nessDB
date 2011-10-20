@@ -53,7 +53,7 @@ struct server _svr;
 
 void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 {
-	char buf[1024];
+	char buf[10240];
 	int nread;
 
 	nread=read(fd,buf,1024);
