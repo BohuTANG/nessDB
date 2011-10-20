@@ -25,7 +25,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #define _LARGEFILE64_SOURCE
 #include <sys/types.h>
 #include <stdlib.h>
@@ -33,14 +32,12 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <assert.h>
-#include <unistd.h>
 #include <pthread.h>
 #include "bitwise.h"
 #include "storage.h"
 #include "llru.h"
 #include "hashes.h"
 #include "db.h"
-#include "platform.h"
 
 /*primes are:
  3UL, 5UL, 7UL, 11UL, 13UL, 17UL, 19UL, 23UL, 29UL, 31UL, 37UL,41UL, 43UL, 47UL,
@@ -60,17 +57,11 @@ static pthread_t	_bgsync;
 
 void *bgsync_func();
 
+#include <unistd.h>
 void *bgsync_func()
 {
 	int i;
 	while(1){
-/*
-		if(iter>10000){
-			iter=0;
-			usleep(1000);
-		}else
-			iter++;
-*/
 		sleep(5);
 		for(i=0;i<DB_SLOT;i++){
 			fsync(_btrees[i].fd);
@@ -157,25 +148,33 @@ int db_add(const char *key,const char *value)
 void *db_get(const char *key)
 {
 	void *v;
-	int b;
+	int b,k_l,v_l;
+	char *k_tmp,*v_tmp;
 	b=bloom_get(&_bloom,key);
 	if(b!=0)
 		return NULL;
 
 	v=llru_get(key);
 	if(v==NULL){
-		char *k_tmp,*v_tmp;
 		unsigned int slot=jdb_hash(key)%DB_SLOT;
 		v=btree_get(&_btrees[slot],key);
 		if(v==NULL)
 			return NULL;
+		k_l=strlen(key);
+		v_l=strlen((char*)v);
 
-		k_tmp=strdup(key);
-		v_tmp=strdup((char*)v);
-		llru_set(k_tmp,v_tmp,strlen(k_tmp),strlen(v_tmp));
+		k_tmp=calloc(k_l,sizeof(char));
+		memcpy(k_tmp,key,k_l);
+
+		v_tmp=calloc(v_l,sizeof(char));
+		memcpy(v_tmp,(const char*)v,v_l);
+		llru_set(k_tmp,v_tmp,k_l,v_l);
 		return v;
 	}else{
-		return strdup((char*)v);
+		v_l=strlen((char*)v);
+		v_tmp=calloc(v_l,sizeof(char));
+		memcpy(v_tmp,(const char*)v,v_l);
+		return v_tmp;
 	}
 }
 

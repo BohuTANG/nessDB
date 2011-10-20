@@ -572,7 +572,8 @@ static void lookup_range(struct btree *btree,const char *begin,const char *end,u
 			}
 
 			o=calloc(1,sizeof(struct nobj));
-			o->k=strdup(table->items[i].sha1);
+			o->k=calloc(SHA1_LENGTH,sizeof(char));
+			memcpy(o->k,table->items[i].sha1,SHA1_LENGTH);
 			o->v=(void*)data;
 
 			o->refcount=1;
@@ -647,7 +648,9 @@ int btree_dump_keys(struct btree *btree,struct nobj *obj,int count)
 				uint64_t offset=from_be64(table->items[i].offset);
 				if(get_H(offset)==0){
 					struct nobj *o=calloc(1,sizeof(struct nobj));
-					o->k=strdup(table->items[i].sha1);
+
+					o->k=calloc(SHA1_LENGTH,sizeof(char));
+					memcpy(o->k,table->items[i].sha1,SHA1_LENGTH);
 					o->v=(void*)(&offset);
 					o->next=obj->next;
 					obj->next=o;

@@ -1,13 +1,7 @@
-UNAME := $(shell uname)
-
 CC = gcc 
-CFLAGS =	  -g -Wall -fPIC
+CFLAGS =	  -g -Wall -fPIC -std=c99
 
-ifeq ($(UNAME), Linux)
-LDLIBS = -lrt -lpthread
-else
-LDLIBS = -lpthread
-endif
+LDLIBS =  -lpthread
 
 #name all the object files
 LIB_OBJS = db.o  storage.o bloom.o ht.o level.o llru.o 
