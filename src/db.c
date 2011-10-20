@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
 #include "bitwise.h"
@@ -38,6 +39,7 @@
 #include "llru.h"
 #include "hashes.h"
 #include "db.h"
+#include "platform.h"
 
 /*primes are:
  3UL, 5UL, 7UL, 11UL, 13UL, 17UL, 19UL, 23UL, 29UL, 31UL, 37UL,41UL, 43UL, 47UL,
@@ -57,7 +59,6 @@ static pthread_t	_bgsync;
 
 void *bgsync_func();
 
-#include <unistd.h>
 void *bgsync_func()
 {
 	int i;
