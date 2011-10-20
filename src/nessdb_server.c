@@ -32,9 +32,11 @@
 #ifndef __USE_GNU
 #define __USE_GNU
 #endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
 
 #include <execinfo.h>
-#include <signal.h>
 #include <ucontext.h>
 
 #include <stdio.h>
@@ -43,12 +45,14 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "../x/anet.h"
 #include "../x/ae.h"
 #include "request.h"
 #include "response.h"
 #include "db.h"
+#include "platform.h"
 
 
 struct server{
@@ -60,37 +64,54 @@ struct server{
 	char neterr[1024];
 };
 
-/* This structure mirrors the one found in /usr/include/asm/ucontext.h */
-typedef struct _sig_ucontext {
- 	unsigned long     uc_flags;
- 	struct ucontext   *uc_link;
- 	stack_t           uc_stack;
- 	struct sigcontext uc_mcontext;
- 	sigset_t          uc_sigmask;
-} sig_ucontext_t;
+static void *get_mcontext_eip(ucontext_t *uc) {
+#if defined(__FreeBSD__)
+    return (void*) uc->uc_mcontext.mc_eip;
+#elif defined(__dietlibc__)
+    return (void*) uc->uc_mcontext.eip;
+#elif defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_6)
+  #if __x86_64__
+    return (void*) uc->uc_mcontext->__ss.__rip;
+  #elif __i386__
+    return (void*) uc->uc_mcontext->__ss.__eip;
+  #else
+    return (void*) uc->uc_mcontext->__ss.__srr0;
+  #endif
+#elif defined(__APPLE__) && defined(MAC_OS_X_VERSION_10_6)
+  #if defined(_STRUCT_X86_THREAD_STATE64) && !defined(__i386__)
+    return (void*) uc->uc_mcontext->__ss.__rip;
+  #else
+    return (void*) uc->uc_mcontext->__ss.__eip;
+  #endif
+#elif defined(__i386__)
+    return (void*) uc->uc_mcontext.gregs[14]; /* Linux 32 */
+#elif defined(__X86_64__) || defined(__x86_64__)
+    return (void*) uc->uc_mcontext.gregs[16]; /* Linux 64 */
+#elif defined(__ia64__) /* Linux IA64 */
+    return (void*) uc->uc_mcontext.sc_ip;
+#else
+    return NULL;
+#endif
+}
 
 void back_trace(int sig_num, siginfo_t * info, void * ucontext)
 {
  	 void *             array[50];
-	 void *             caller_address;
 	 char **            messages;
 	 int                size, i;
-	 sig_ucontext_t *   uc;
+	 ucontext_t *   uc;
 
-	 uc = (sig_ucontext_t *)ucontext;
+	 uc = (ucontext_t *)ucontext;
 
-	 /* Get the address at the time the signal was raised from the EIP (x86) */
-	 caller_address = (void *) uc->uc_mcontext.eip;   
-
-	 fprintf(stderr, "signal %d (%s), address is %p from %p\n", 
-	 sig_num, strsignal(sig_num), info->si_addr, 
-	 (void *)caller_address);
+	 fprintf(stderr, "signal %d (%s), address is %p\n", 
+	 sig_num, strsignal(sig_num), info->si_addr);
 
 	 size = backtrace(array, 50);
 
 	 /* overwrite sigaction with caller's address */
-	 array[1] = caller_address;
-
+	if(get_mcontext_eip(uc) != NULL){
+        	array[1] = get_mcontext_eip(uc);
+   	 }
 	 messages = backtrace_symbols(array, size);
 
 	 /* skip first stack frame (points here) */
