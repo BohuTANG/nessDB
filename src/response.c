@@ -84,13 +84,12 @@ void response_dump(struct response *res)
 	if(!res)
 		return;
 
-	printf("response-dump--->");
+	printf("response-dump--->{");
 	printf("argc:<%d>\n",res->argc);
-	printf("cmd:<%d>\n",res->status);
 	for(i=0;i<res->argc;i++){
 		printf("		argv[%d]:<%s>\n",i,res->argv[i]);
 	}
-	printf("\n");
+	printf("		}\r\n");
 }
 
 void response_free(struct response *res)

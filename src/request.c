@@ -78,6 +78,17 @@ unsigned char _table[256]={
 
 #define BUF_SIZE (1024*10)
 
+/*support commands collection
+ *if support one,to add it here
+ */
+static const struct cmds _cmds[]=
+{
+	{"ping",CMD_PING},
+	{"get",CMD_GET},
+	{"set",CMD_SET},
+	{"del",CMD_DEL}
+};
+
 enum{
 	STATE_CONTINUE,
 	STATE_FAIL
@@ -167,22 +178,19 @@ int request_parse(struct request *req)
 		req->pos+=(argv_len+2);
 
 		if(i==0){
-			int k;
+			int k,cmd_size;
 			for(k=0;k<argv_len;k++){
 				if(v[k]>='A' && v[k]<='Z')
 					v[k]+=32;
 			}
 
-			if(strcmp(v,"ping")==0){
-				req->cmd=CMD_PING;
-			}else if(strcmp(v,"get")==0){
-				req->cmd=CMD_GET;
-			}else if(strcmp(v,"set")==0){
-				req->cmd=CMD_SET;
-			}else if(strcmp(v,"del")==0){
-				req->cmd=CMD_DEL;
-			}else{
-				req->cmd=CMD_UNKNOW;
+			cmd_size=sizeof(_cmds)/sizeof(struct cmds);
+			req->cmd=CMD_UNKNOW;
+			for(int l=0;l<cmd_size;l++){
+				if(strcmp(v,_cmds[l].method)==0){
+					req->cmd=_cmds[l].cmd;
+					break;
+				}
 			}
 		}
 	}
@@ -195,13 +203,13 @@ void request_dump(struct request *req)
 	if(!req)
 		return;
 
-	printf("request-dump--->");
+	printf("request-dump--->{");
 	printf("argc:<%d>\n",req->argc);
-	printf("cmd:<%d>\n",req->cmd);
+	printf("		cmd:<%s>\n",_cmds[req->cmd].method);
 	for(i=0;i<req->argc;i++){
 		printf("		argv[%d]:<%s>\n",i,req->argv[i]);
 	}
-	printf("\n");
+	printf("		}\r\n");
 }
 
 void request_free(struct request *req)

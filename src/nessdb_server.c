@@ -198,7 +198,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						break;
 					     }
 				case CMD_DEL:{
-						for(int i=1;i<req->argc-1;i++)
+						for(int i=1;i<req->argc;i++)
 					     		db_remove(req->argv[i]);
 
 						resp=response_new(0,OK);
