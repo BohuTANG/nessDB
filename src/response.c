@@ -89,7 +89,7 @@ void response_dump(struct response *res)
 	for(i=0;i<res->argc;i++){
 		printf("		argv[%d]:<%s>\n",i,res->argv[i]);
 	}
-	printf("		}\r\n");
+	printf("}\n\n");
 }
 
 void response_free(struct response *res)

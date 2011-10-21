@@ -209,7 +209,7 @@ void request_dump(struct request *req)
 	for(i=0;i<req->argc;i++){
 		printf("		argv[%d]:<%s>\n",i,req->argv[i]);
 	}
-	printf("		}\r\n");
+	printf("}\n\n");
 }
 
 void request_free(struct request *req)

@@ -175,6 +175,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						resp=response_new(0,OK);
 						response_detch(resp,sent_buf);
 						write(fd,sent_buf,strlen(sent_buf));
+						response_dump(resp);
 						response_free(resp);
 						break;
 					     }
