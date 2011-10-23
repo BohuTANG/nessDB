@@ -1,5 +1,5 @@
-Benchmark of nessDB1.7 engine(with nessDB's benchmark client
-============================================================
+Benchmark of nessDB1.7 engine(with nessDB's benchmark client)
+=============================================================
 
  Keys:		20 bytes each
  Values:		100 bytes each
