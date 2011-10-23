@@ -139,6 +139,7 @@ void signal_init()
 
 
 struct server _svr;
+static int _clicount;
 
 #define BUF_SIZE (10240)
 void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
@@ -151,6 +152,9 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 		return;
 
 	if(nread==0){
+		aeDeleteFileEvent(el, fd, AE_WRITABLE);
+		aeDeleteFileEvent(el, fd, AE_READABLE);
+		_clicount--;
 		return;
 	}else{
 		int ret;
@@ -249,8 +253,15 @@ void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 		printf("accept....\n");
 		return;
 	}
+	_clicount++;
 
 	aeCreateFileEvent(_svr.el,cfd,AE_READABLE,read_handler,NULL);
+}
+
+int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
+{
+	printf("%d clients connected\n ",_clicount);
+	return 3000;
 }
 
 #define BUFFERPOOL	(1024*1024*1024)
@@ -270,6 +281,8 @@ int main()
 	
 	_svr.el=aeCreateEventLoop();
 	_svr.fd=anetTcpServer(_svr.neterr,_svr.port,_svr.bindaddr);
+
+	aeCreateTimeEvent(_svr.el, 3000, server_cron, NULL, NULL);
 
 	/*handler*/
  	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE,accept_handler, NULL) == AE_ERR) 
