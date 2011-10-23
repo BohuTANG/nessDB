@@ -90,6 +90,8 @@ static void llru_set_node(struct level_node *n)
 			if(n->hits>MAXHITS){
 				level_set_head(_level_new,n);
 				n->hits=-1;
+				_level_old->used_size-=n->size;
+				_level_new->used_size+=n->size;
 			}else
 				level_set_head(_level_old,n);
 		}
@@ -99,17 +101,18 @@ static void llru_set_node(struct level_node *n)
 
 void llru_set(const char *k,void *v,int k_len,int v_len)
 {
+	int size=(k_len+v_len);
 	if(_buffer==0)
 		return;
 	struct level_node *n=ht_get(&_ht,(void*)k);
 	if(n==NULL){
-		_level_old->used_size+=(k_len+v_len);
+		_level_old->used_size+=size;
 		_level_old->count++;
 
 		n=calloc(1,sizeof(struct level_node));
 		n->key=(char*)k;
 		n->value=v;
-		n->size=(k_len+v_len);
+		n->size=size;
 		n->hits=1;
 		n->pre=NULL;
 		n->nxt=NULL;
