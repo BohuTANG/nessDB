@@ -122,12 +122,11 @@ void test_ht_string()
 
 void test_db_test()
 {
-	uint64_t sum;
 	char k1[20]={0},k2[20]={0};
 	char v1[100]={0},v2[20]={0},v3[20]={0};
 
 	//init test
-	db_init(1024*1024,0,&sum);
+	db_init(1024*1024,0);
 
 	sprintf(k1,"%s","key1");
 	sprintf(v1,"%s","value1");
