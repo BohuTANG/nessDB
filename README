@@ -7,12 +7,12 @@
  
   Key Features
   =============
-  * Bloom filters for record presence detection 
-  * Level-LRU for hot data caching,improve Random-Read 
+  * Bloom filter for record presence detection 
+  * Level-LRU for hot data caching,improving Random-Read 
   * Distributable B+Tree-Structured-Indexes 
   * Background IO for data flush to disk
-  * Support range queries
-  * Redis protocols support
+  * Range query support
+  * Redis protocol support
 
   Directory Tree
   ==================
@@ -43,12 +43,12 @@
 	b, $make
 	c, $./nessdb-bench add
 
-	If you want to remove all indexes and datas,please use "$make cleanall" shell command.
+	If you want to remove all indexes&datas,please use "$make cleanall"  command.
 
   Start as server
   ===============
   	* $./nessdb-server
-	using redis-cli(or other redis's clients) to do some operations(Now support:PING,SET,GET,DEL commands).
+	Now you can use redis-cli(or other redis's clients) to do some "COMMAND" operations(Now support:PING,SET,GET,DEL,INFO commands).
 	
 Thanks.
 

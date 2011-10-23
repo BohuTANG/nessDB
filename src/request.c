@@ -160,7 +160,6 @@ int request_parse(struct request *req)
 	}
 	req->argc=atoi(sb);
 
-	printf("IIII %d\n",req->argc);
 	req->argv=(char**)calloc(req->argc,sizeof(char*));
 	for(i=0;i<req->argc;i++){
 		int argv_len;
