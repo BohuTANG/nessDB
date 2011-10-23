@@ -1,7 +1,7 @@
 #ifndef _REQUEST_H
 #define _REQUEST_H
 
-typedef enum{CMD_PING,CMD_GET,CMD_SET,CMD_DEL,CMD_UNKNOW}CMD;
+typedef enum{CMD_PING,CMD_GET,CMD_SET,CMD_DEL,CMD_INFO,CMD_UNKNOW}CMD;
 
 struct  cmds{
 	char method[256];

@@ -26,7 +26,7 @@
 
   Interface
   ==========
-    * db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
+    * db_init(int bufferpool_size,int isbgsync)
     * db_get(const char *key)
     * db_get_range(const char *begin,const char *end,struct nobj *obj,int *retcount)
     * db_dump_keys(struct nobj *obj)

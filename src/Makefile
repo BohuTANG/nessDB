@@ -11,8 +11,8 @@ endif
 
 #name all the object files
 LIB_OBJS = db.o  storage.o bloom.o ht.o level.o llru.o 
-TEST_OBJS = $(LIB_OBJS) nessdb_bench.o
-SVR_OBJS =  $(LIB_OBJS) ../x/ae.o  ../x/anet.o ../x/zmalloc.o request.o response.o  nessdb_server.o
+TEST_OBJS = $(LIB_OBJS) nessdb-bench.o
+SVR_OBJS =  $(LIB_OBJS) ../x/ae.o  ../x/anet.o ../x/zmalloc.o request.o response.o  nessdb-server.o
 
 
 all : nessdb-bench nessdb-server

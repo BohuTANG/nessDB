@@ -46,6 +46,11 @@
 #include "db.h"
 #include "platform.h"
 
+struct info{
+	int64_t used;
+	int64_t unused;	
+};
+
 /*primes are:
  3UL, 5UL, 7UL, 11UL, 13UL, 17UL, 19UL, 23UL, 29UL, 31UL, 37UL,41UL, 43UL, 47UL,
  53UL, 97UL, 193UL, 389UL, 769UL, 1543UL, 3079UL, 6151UL, 12289UL,
@@ -58,11 +63,10 @@
 #define DB_PREFIX 	"ndbs/ness"
 #define IDX_PRIME	(16785407)
 static struct btree 	_btrees[DB_SLOT];
+static struct info	_infos[DB_SLOT];
 static struct bloom	_bloom;
 
 static pthread_t	_bgsync;
-
-void *bgsync_func();
 
 void *bgsync_func()
 {
@@ -86,15 +90,17 @@ static void bgsync_init()
 * This is very important to preheat datas.
 * There is 'db_dump_keys' interface,but this is faster than it to load.
 */
-static int db_loadbloom(struct btree *btree)
+static void db_loadbloom(int idx)
 {
-	int sum=0,r,i,super_size,table_size;
+	int r,i,super_size,table_size;
 	uint64_t total;
+	struct btree *btree=&_btrees[idx];
+	struct info *info=&_infos[idx];
 
 	super_size=sizeof(struct btree_super);
 	table_size=(sizeof(struct btree_table));
 	total=btree->alloc-super_size;
-  lseek(btree->fd, super_size, SEEK_SET);
+  	lseek(btree->fd, super_size, SEEK_SET);
 
 	while(total>0){
 		struct btree_table *table=malloc(table_size);
@@ -104,20 +110,19 @@ static int db_loadbloom(struct btree *btree)
 				uint64_t offset=from_be64(table->items[i].offset);
 				if(get_H(offset)==0){
 					bloom_add(&_bloom,(const char*)table->items[i].sha1);
-					sum++;
-				}
+					info->used++;
+				}else
+					info->unused++;
 			}
 		}
 		free(table);
 		total-=table_size;
 	}
 
-	return sum;
 }
 
-void db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
+void db_init(int bufferpool_size,int isbgsync)
 {
-	uint64_t s=0UL;
 	int i;	
 	llru_init(bufferpool_size);
 	bloom_init(&_bloom,IDX_PRIME);
@@ -126,10 +131,9 @@ void db_init(int bufferpool_size,int isbgsync,uint64_t *sum)
 		char pre[256]={0};
 		sprintf(pre,"%s%d",DB_PREFIX,i);
 		btree_init(&_btrees[i],pre,isbgsync);
-		s+=db_loadbloom(&_btrees[i]);
+		db_loadbloom(i);
 	}
 
-	*sum=s;	
 	if(isbgsync)
 		bgsync_init();
 }
@@ -142,11 +146,15 @@ int db_add(const char *key,const char *value)
 	int isin=btree_get_index(&_btrees[slot],key);
 	if(isin){
 		db_remove(key);
+		_infos[slot].used--;
 	}
 
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
 		return (0);
+
+	_infos[slot].used++;
+
 	bloom_add(&_bloom,key);
 	return (1);
 }
@@ -196,9 +204,14 @@ void db_get_range(const char *begin,const char *end,struct nobj *obj,int *retcou
 
 void db_remove(const char *key)
 {
+	int result;
 	unsigned int slot=jdb_hash(key)%DB_SLOT;
-	btree_delete(&_btrees[slot],key);
-	llru_remove(key);
+	result=btree_delete(&_btrees[slot],key);
+	if(result==0){
+		_infos[slot].used--;
+		_infos[slot].unused++;
+		llru_remove(key);
+	}
 }
 
 void db_update(const char *key,const char *value)
@@ -219,6 +232,29 @@ void db_dump_keys(struct nobj *obj)
 	for(i=0;i<DB_SLOT;i++){
 		btree_dump_keys(&_btrees[i], obj,0);
 	}
+}
+
+void db_info(char *infos)
+{
+	char str[256];
+	struct llru_info linfo;
+	for(int i=0;i<DB_SLOT;i++){
+		memset(str,0,256);
+		sprintf(str,"	db%d:used:<%llu>;unused:<%llu>;dbsize:<%llu>bytes\n",i,_infos[i].used,_infos[i].unused,_btrees[i].db_alloc);
+		strcat(infos,str);
+	}
+	strcat(infos,"\n");
+
+	llru_info(&linfo);
+	memset(str,0,256);
+	sprintf(str,"	new-level-lru: count:<%d>;allow-size:<%llu>bytes;used-size:<%llu>bytes\n	old-level-lru: count:<%d>;allow-size:<%llu>bytes;used-size:<%llu>bytes\n"
+				,linfo.nl_count,
+				linfo.nl_allowsize,
+				linfo.nl_used,
+				linfo.ol_count,
+				linfo.ol_allowsize,
+				linfo.ol_used);
+	strcat(infos,str);
 }
 
 void db_destroy()

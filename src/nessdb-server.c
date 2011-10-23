@@ -139,12 +139,14 @@ void signal_init()
 
 
 struct server _svr;
+
+#define BUF_SIZE (10240)
 void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 {
-	char buf[10240];
+	char buf[BUF_SIZE]={0};
 	int nread;
 
-	nread=read(fd,buf,1024);
+	nread=read(fd,buf,BUF_SIZE);
 	if(nread==-1)
 		return;
 
@@ -155,8 +157,8 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 		struct request *req=request_new(buf);
 		struct response *resp;
 		ret=request_parse(req);
-		if(ret){
-			char sent_buf[1024]={0};
+		if(ret==1){
+			char sent_buf[BUF_SIZE]={0};
 			request_dump(req);
 
 			switch(req->cmd){
@@ -198,6 +200,18 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 							free(result);
 						break;
 					     }
+				case CMD_INFO:{
+						char infos[BUF_SIZE]={0};	
+						db_info(infos);
+						resp=response_new(1,OK_200);
+					 	resp->argv[0]=infos;
+						response_detch(resp,sent_buf);
+						write(fd,sent_buf,strlen(sent_buf));
+						response_dump(resp);
+						response_free(resp);
+						break;
+					      }
+
 				case CMD_DEL:{
 						for(int i=1;i<req->argc;i++)
 					     		db_remove(req->argv[i]);
@@ -243,8 +257,7 @@ void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 #define BGSYNC		(1)
 void nessdb_init()
 {
-	uint64_t sum;
-	db_init(BUFFERPOOL,BGSYNC,&sum);
+	db_init(BUFFERPOOL,BGSYNC);
 }
 
 int main()

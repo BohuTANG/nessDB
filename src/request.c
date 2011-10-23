@@ -86,7 +86,9 @@ static const struct cmds _cmds[]=
 	{"ping",CMD_PING},
 	{"get",CMD_GET},
 	{"set",CMD_SET},
-	{"del",CMD_DEL}
+	{"del",CMD_DEL},
+	{"info",CMD_INFO},
+	{"unknow cmd",CMD_UNKNOW}
 };
 
 enum{
@@ -158,6 +160,7 @@ int request_parse(struct request *req)
 	}
 	req->argc=atoi(sb);
 
+	printf("IIII %d\n",req->argc);
 	req->argv=(char**)calloc(req->argc,sizeof(char*));
 	for(i=0;i<req->argc;i++){
 		int argv_len;

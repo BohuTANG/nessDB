@@ -148,6 +148,18 @@ void llru_remove(const char* k)
 	}
 }
 
+void llru_info(struct llru_info *llru_info)
+{
+	llru_info->nl_count=_level_new->count;
+	llru_info->ol_count=_level_old->count;
+
+	llru_info->nl_used=_level_new->used_size;
+	llru_info->ol_used=_level_old->used_size;
+
+	llru_info->nl_allowsize=_level_new->allow_size;
+	llru_info->ol_allowsize=_level_old->allow_size;
+}
+
 void llru_free()
 {
 	ht_free(&_ht);

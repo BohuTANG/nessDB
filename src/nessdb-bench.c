@@ -140,7 +140,6 @@ void print_environment()
 
 void db_init_test(int show)
 {
-	uint64_t sum;
 	random_value();
 
 	double cost;
@@ -148,15 +147,14 @@ void db_init_test(int show)
    	cost=get_timer();
 	fprintf(stderr,"loading bloom filter......%30s\r","");
 
-	db_init(BUFFERPOOL,BGSYNC,&sum);
+	db_init(BUFFERPOOL,BGSYNC);
 
 	fflush(stderr);
 	
    	cost=get_timer();
 	if(show){
 		printf(LINE);
-		printf("|loadindex	(load:%lld): %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
-			,(unsigned long long)sum
+		printf("|loadindex	: %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
 			,(double)(cost/R_NUM)
 			,(double)(NUM/cost)
 			,cost);
