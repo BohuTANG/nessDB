@@ -87,6 +87,13 @@ void random_value()
 		value[i]=salt[rand()%10];
 }
 
+void random_key(char *key,int length) {
+    	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
+	memset(key,0,length);
+	for (int i = 0; i < length; i++)
+		key[i] = salt[rand() % length];
+}
+
 double _index_size=(double)((double)(KEYSIZE+48)*NUM)/1048576.0;
 double _data_size=(double)((double)(VALSIZE+8)*NUM)/1048576.0;
 double _query_size=(double)((double)(KEYSIZE+48+VALSIZE+8)*R_NUM)/1048576.0;
@@ -168,8 +175,7 @@ void db_write_test()
 	char key[KEYSIZE];
 	start_timer();
 	for(i=1;i<NUM;i++){
-		memset(key,0,sizeof(key));
-		sprintf(key,"%dkey",rand()%NUM);
+		random_key(key,KEYSIZE);
 		if(db_add(key,value))
 			count++;
 		if((i%10000)==0){
@@ -197,10 +203,7 @@ void db_read_random_test()
 	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
-
-		memset(key,0,sizeof(key));
-		sprintf(key,"%dkey",rand()%NUM);
-
+		random_key(key,KEYSIZE);
 		void* data=db_get(key);
 		if(data){
 			count++;
