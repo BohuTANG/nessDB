@@ -240,15 +240,27 @@ void db_info(char *infos)
 	struct llru_info linfo;
 	for(int i=0;i<DB_SLOT;i++){
 		memset(str,0,256);
-		sprintf(str,"	db%d:used:<%llu>;unused:<%llu>;dbsize:<%llu>bytes\n",i,_infos[i].used,_infos[i].unused,_btrees[i].db_alloc);
+		sprintf(str,"	db%d:used:<%llu>;unused:<%llu>;dbsize:<%llu>bytes\n",
+				i,
+				_infos[i].used,
+				_infos[i].unused,
+				_btrees[i].db_alloc);
+
 		strcat(infos,str);
 	}
 	strcat(infos,"\n");
 
 	llru_info(&linfo);
 	memset(str,0,256);
-	sprintf(str,"	new-level-lru: count:<%d>;allow-size:<%llu>bytes;used-size:<%llu>bytes\n	old-level-lru: count:<%d>;allow-size:<%llu>bytes;used-size:<%llu>bytes\n"
-				,linfo.nl_count,
+	sprintf(str,
+			"	new-level-lru: count:<%d>;"
+			"allow-size:<%llu>bytes;"
+			"used-size:<%llu>bytes\n"
+			"	old-level-lru: count:<%d>;"
+			"allow-size:<%llu>bytes;"
+			"used-size:<%llu>bytes\n",
+			
+			linfo.nl_count,
 				linfo.nl_allowsize,
 				linfo.nl_used,
 				linfo.ol_count,
