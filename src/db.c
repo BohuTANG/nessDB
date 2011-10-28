@@ -193,15 +193,6 @@ void *db_get(const char *key)
 	}
 }
 
-void db_get_range(const char *begin,const char *end,struct nobj *obj,int *retcount)
-{
-	int i;	
-	for(i=0;i<DB_SLOT;i++){
-		btree_get_range(&_btrees[i], begin,end,obj,retcount);
-	}
-}
-
-
 void db_remove(const char *key)
 {
 	int result;
@@ -223,14 +214,6 @@ void db_update(const char *key,const char *value)
 		db_add(key,value);
 	}else{
 		db_add(key,value);
-	}
-}
-
-void db_dump_keys(struct nobj *obj)
-{
-	int i;	
-	for(i=0;i<DB_SLOT;i++){
-		btree_dump_keys(&_btrees[i], obj,0);
 	}
 }
 

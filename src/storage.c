@@ -5,7 +5,7 @@
  * 3) Delete operation optimization,improve performance
  * 4) Range queries support
  * 5) Code abridged
- * 6) And other dream will go on if need.
+ * 6) And other dreams will go on if needed.
  *
  * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
@@ -536,65 +536,6 @@ void *btree_get(struct btree *btree, const char *sha1)
 }
 
 
-static void lookup_range(struct btree *btree,const char *begin,const char *end,uint64_t table_offset,struct nobj *obj,int *retcount)
-{
-	if (table_offset == 0)
-		return;
-	struct btree_table *table = get_table(btree, table_offset);
-	int i;
-	for(i=0;i<table->size;i++){
-		int cmp_l=cmp_sha1(begin,table->items[i].sha1);
-		int cmp_r=cmp_sha1(end,table->items[i].sha1);
-		if(cmp_l<=0 && cmp_r >=0){
-			struct nobj *o;
-			uint64_t voff;
-			size_t len;
-			void *data;
-			struct blob_info info;
-			
-			voff=from_be64(table->items[i].offset);
-			if(get_H(voff)==1)
-				continue;
-
-
-			lseek(btree->db_fd, voff, SEEK_SET);
-			if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info){
-				fprintf(stderr, "lookup_range: I/O error\n");
-				abort();
-			}
-
-			len = from_be32(info.len);
-			data = calloc(1,len);		
-			if (read(btree->db_fd, data, len) != (ssize_t) len) {
-				fprintf(stderr, "lookup_range read data: I/O error\n");
-				free(data);
-				abort();
-			}
-
-			o=calloc(1,sizeof(struct nobj));
-			o->k=calloc(SHA1_LENGTH,sizeof(char));
-			memcpy(o->k,table->items[i].sha1,SHA1_LENGTH);
-			o->v=(void*)data;
-
-			o->refcount=1;
-			o->next=obj->next;
-			obj->next=o;
-			//printf("k:%s v:%s\n",obj->k,obj->v);
-
-			(*retcount)++;
-		}
-
-		uint64_t child= from_be64(table->items[i].child);
-		if(child>0)
-			 lookup_range(btree,begin,end,child,obj,retcount);
-	}
-}
-
-void btree_get_range(struct btree *btree,const char *begin,const char *end,struct nobj *obj,int *retcount)
-{
-	lookup_range(btree,begin,end, btree->top,obj,retcount);
-}
-
 int btree_get_index(struct btree *btree, const char *sha1)
 {
 	uint64_t offset = lookup(btree, btree->top, sha1);
@@ -624,45 +565,6 @@ void *btree_get_byoffset(struct btree *btree,uint64_t offset)
 	return data;
 }
 
-int btree_dump_keys(struct btree *btree,struct nobj *obj,int count)
-{
-	int sum=0,r,i,super_size,table_size;
-	uint64_t alloc;
-	
-	super_size=sizeof(struct btree_super);
-	alloc=btree->alloc-super_size;
-	table_size=(sizeof(struct btree_table));
-
-	lseek(btree->fd,super_size, SEEK_SET);
-	while(alloc>0){
-		struct btree_table *table;
-		if(count!=0){
-			if(sum>=count)
-				break;
-		}
-
-		table=malloc(table_size);
-		r=read(btree->fd,table, table_size) ;
-		if(table->size>0){
-			for(i=0;i<table->size;i++){
-				uint64_t offset=from_be64(table->items[i].offset);
-				if(get_H(offset)==0){
-					struct nobj *o=calloc(1,sizeof(struct nobj));
-
-					o->k=calloc(SHA1_LENGTH,sizeof(char));
-					memcpy(o->k,table->items[i].sha1,SHA1_LENGTH);
-					o->v=(void*)(&offset);
-					o->next=obj->next;
-					obj->next=o;
-					sum++;
-				}
-			}
-		}
-		free(table);
-		alloc-=table_size;
-	}
-	return sum;
-}
 
 int btree_delete(struct btree *btree, const char *c_sha1)
 {
