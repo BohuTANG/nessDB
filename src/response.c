@@ -66,15 +66,24 @@ void response_detch(struct response *res,char *ackbuf)
 			strcat(ackbuf,"-ERROR\r\n");
 			return;;
 	}
+	if(res->argc>1){
+		char buf[BUF_SIZE]={0};
+		sprintf(buf,"*%d\r\n",res->argc);
+		strcat(ackbuf,buf);
+	}
 
 	for(i=0;i<res->argc;i++){
 		char ls[BUF_SIZE]={0};
-		int l=strlen(res->argv[i]);
-		sprintf(ls,"$%d\r\n",l);
-		strcat(ackbuf,ls);
+		if(res->argv[i]==NULL){
+			strcat(ackbuf,"$-1\r\n");
+		}else{
+			int l=strlen(res->argv[i]);
+			sprintf(ls,"$%d\r\n",l);
+			strcat(ackbuf,ls);
 
-		strcat(ackbuf,res->argv[i]);
-		strcat(ackbuf,"\r\n");
+			strcat(ackbuf,res->argv[i]);
+			strcat(ackbuf,"\r\n");
+		}
 	}
 }
 

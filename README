@@ -45,7 +45,7 @@
   Start as server
   ===============
   	* $./nessdb-server
-	Now you can use redis-cli(or other redis's clients) to do some "COMMAND" operations(Now support:PING,SET,GET,DEL,INFO commands).
+	Now you can use redis-cli(or other redis's clients) to do some "COMMAND" operations(Now support:PING,SET,MSET,GET,MGET,DEL,INFO commands).
 	
 Thanks.
 

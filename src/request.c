@@ -85,7 +85,9 @@ static const struct cmds _cmds[]=
 {
 	{"ping",CMD_PING},
 	{"get",CMD_GET},
+	{"mget",CMD_MGET},
 	{"set",CMD_SET},
+	{"mset",CMD_MSET},
 	{"del",CMD_DEL},
 	{"info",CMD_INFO},
 	{"unknow cmd",CMD_UNKNOW}

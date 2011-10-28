@@ -185,6 +185,20 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						response_free(resp);
 						break;
 					     }
+				case CMD_MSET:{
+					      	int i;
+						int c=req->argc;
+						for(i=1;i<c;i+=2){
+							db_add(req->argv[i],req->argv[i+1]);	
+						}
+
+						resp=response_new(0,OK);
+						response_detch(resp,sent_buf);
+						write(fd,sent_buf,strlen(sent_buf));
+						response_dump(resp);
+						response_free(resp);
+						break;
+					      }
 
 				case CMD_GET:{
 						void* result;
@@ -204,6 +218,30 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 							free(result);
 						break;
 					     }
+				case CMD_MGET:{
+						int c=req->argc;
+						int sub_c=c-1;
+						char **vals=calloc(c,sizeof(char*));
+					        int i;
+						resp=response_new(sub_c,OK_200);
+
+						for(i=1;i<c;i++){
+							vals[i-1]=db_get(req->argv[i]);	
+							resp->argv[i-1]=vals[i-1];
+						}
+
+						response_detch(resp,sent_buf);
+						write(fd,sent_buf,strlen(sent_buf));
+						response_dump(resp);
+						response_free(resp);
+
+						for(i=0;i<sub_c;i++){
+							if(vals[i])
+								free(vals[i]);	
+						}
+						free(vals);
+					      	break;
+					      }
 				case CMD_INFO:{
 						char infos[BUF_SIZE]={0};	
 						db_info(infos);
