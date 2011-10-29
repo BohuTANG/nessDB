@@ -31,7 +31,7 @@
 	=========
 	 	$cd src
 		$make
-	 	$./nessdb_bench add
+	 	$./nessdb-bench add
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,8 +51,8 @@
 #define KEYSIZE 	16
 #define VALSIZE 	80
 #define NUM 		1000000
-#define R_NUM 		10000
-#define REMOVE_NUM	10000
+#define R_NUM 		20000
+#define REMOVE_NUM	20000
 #define BUFFERPOOL	(1024*1024*1024)
 #define BGSYNC		(0)
 #define V		"1.7"
@@ -176,7 +176,7 @@ void db_write_test()
 	start_timer();
 	for(i=1;i<NUM;i++){
 		sprintf(key,"abc_%ld_efg",rand()%i);
-		if(db_add(key,value))
+		if(db_add(key,value)==1)
 			count++;
 		if((i%1000)==0){
 			fprintf(stderr,"random write finished %ld ops%30s\r",i,"");
@@ -188,7 +188,7 @@ void db_write_test()
 	printf(LINE);
 	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count,(double)(cost/NUM)
-		,(double)(NUM/cost)
+		,(double)(count/cost)
 		,((_index_size+_data_size)/cost)
 		,cost);	
 }

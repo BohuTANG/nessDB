@@ -141,12 +141,14 @@ void db_init(int bufferpool_size,int isbgsync)
 void db_remove(const char *key);
 int db_add(const char *key,const char *value)
 {
+	int ret=1;
 	uint64_t off;
 	unsigned int slot=jdb_hash(key)%DB_SLOT;
 	int isin=btree_get_index(&_btrees[slot],key);
 	if(isin){
 		db_remove(key);
 		_infos[slot].used--;
+		ret=2;
 	}
 
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
@@ -156,7 +158,7 @@ int db_add(const char *key,const char *value)
 	_infos[slot].used++;
 
 	bloom_add(&_bloom,key);
-	return (1);
+	return ret;
 }
 
 
@@ -225,6 +227,7 @@ void db_update(const char *key,const char *value)
 
 void db_info(char *infos)
 {
+	uint64_t all_used=0,all_unused=0;
 	char str[256];
 	struct llru_info linfo;
 	for(int i=0;i<DB_SLOT;i++){
@@ -236,8 +239,11 @@ void db_info(char *infos)
 				_btrees[i].db_alloc);
 
 		strcat(infos,str);
+		all_used+=_infos[i].used;
+		all_unused+=_infos[i].unused;
 	}
-	strcat(infos,"\n");
+	sprintf(str,"	all-used:<%llu>;all-unused:<%llu>\n",all_used,all_unused);
+	strcat(infos,str);
 
 	llru_info(&linfo);
 	memset(str,0,256);
