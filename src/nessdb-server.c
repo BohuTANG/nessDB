@@ -265,6 +265,14 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						response_free(resp);
 						break;
 					     }
+				case CMD_EXISTS:{
+						 int ret= db_exists(req->argv[1]);
+						 if(ret)
+							write(fd,":1\r\n",4);
+						 else
+							write(fd,":-1\r\n",5);
+						}
+						break;
 
 				default:{
 						resp=response_new(0,ERR);

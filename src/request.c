@@ -90,6 +90,7 @@ static const struct cmds _cmds[]=
 	{"mset",CMD_MSET},
 	{"del",CMD_DEL},
 	{"info",CMD_INFO},
+	{"exists",CMD_EXISTS},
 	{"unknow cmd",CMD_UNKNOW}
 };
 

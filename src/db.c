@@ -193,6 +193,12 @@ void *db_get(const char *key)
 	}
 }
 
+int db_exists(const char *key)
+{
+	unsigned int slot=jdb_hash(key)%DB_SLOT;
+	return btree_get_index(&_btrees[slot],key);
+}
+
 void db_remove(const char *key)
 {
 	int result;
