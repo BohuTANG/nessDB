@@ -48,8 +48,8 @@
 #define OP_REMOVE 4
 
 
-#define KEYSIZE 	20
-#define VALSIZE 	100
+#define KEYSIZE 	16
+#define VALSIZE 	80
 #define NUM 		1000000
 #define R_NUM 		10000
 #define REMOVE_NUM	10000
@@ -94,7 +94,7 @@ void random_key(char *key,int length) {
 		key[i] = salt[rand() % length];
 }
 
-double _index_size=(double)((double)(KEYSIZE+48)*NUM)/1048576.0;
+double _index_size=(double)((double)(KEYSIZE+16)*NUM)/1048576.0;
 double _data_size=(double)((double)(VALSIZE+8)*NUM)/1048576.0;
 double _query_size=(double)((double)(KEYSIZE+48+VALSIZE+8)*R_NUM)/1048576.0;
 
@@ -175,10 +175,10 @@ void db_write_test()
 	char key[KEYSIZE];
 	start_timer();
 	for(i=1;i<NUM;i++){
-		random_key(key,KEYSIZE);
+		sprintf(key,"abc_%ld_efg",rand()%i);
 		if(db_add(key,value))
 			count++;
-		if((i%10000)==0){
+		if((i%1000)==0){
 			fprintf(stderr,"random write finished %ld ops%30s\r",i,"");
 			fflush(stderr);
 		}
@@ -203,7 +203,7 @@ void db_read_random_test()
 	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
-		random_key(key,KEYSIZE);
+		sprintf(key,"abc_%ld_efg",rand()%i);
 		void* data=db_get(key);
 		if(data){
 			count++;
@@ -237,7 +237,7 @@ void db_read_seq_test()
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
-		sprintf(key,"%ldkey",i);
+		sprintf(key,"abc_%ld_efg",i);
 		void* data=db_get(key);
 		if(data){
 			count++;
