@@ -210,7 +210,7 @@ void db_read_random_test()
 			free(data);
 		}
 
-		if((count%100)==0){
+		if((count%1000)==0){
 			fprintf(stderr,"random read finished %ld ops%30s\r",count,"");
 			fflush(stderr);
 		}
@@ -220,8 +220,8 @@ void db_read_random_test()
 	printf(LINE);
 	printf("|Random-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/R_NUM)
-		,(double)(R_NUM/cost)
+		,(double)(cost/count)
+		,(double)(count/cost)
 		,(_query_size/cost)
 		,cost);
 }
@@ -254,8 +254,8 @@ void db_read_seq_test()
 	printf(LINE);
 	printf("|Seq-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/R_NUM)
-		,(double)(R_NUM/cost)
+		,(double)(cost/count)
+		,(double)(count/cost)
 		,(_query_size/cost)
 		,cost);
 	
@@ -297,8 +297,8 @@ void db_remove_test()
 void db_tests()
 {
 	db_write_test();
-	db_read_seq_test();
 	db_read_random_test();
+	db_read_seq_test();
 	printf(LINE);
 }
 
