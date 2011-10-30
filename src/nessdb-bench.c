@@ -50,11 +50,11 @@
 
 #define KEYSIZE 	16
 #define VALSIZE 	80
-#define NUM 		1000000
+#define NUM 		2000000
 #define R_NUM 		20000
 #define REMOVE_NUM	20000
 #define BUFFERPOOL	(1024*1024*1024)
-#define BGSYNC		(0)
+#define BGSYNC		(1)
 #define V		"1.7"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
@@ -94,9 +94,9 @@ void random_key(char *key,int length) {
 		key[i] = salt[rand() % length];
 }
 
-double _index_size=(double)((double)(KEYSIZE+16)*NUM)/1048576.0;
-double _data_size=(double)((double)(VALSIZE+8)*NUM)/1048576.0;
-double _query_size=(double)((double)(KEYSIZE+48+VALSIZE+8)*R_NUM)/1048576.0;
+double _index_size=(double)((double)(KEYSIZE+8)*NUM)/1048576.0;
+double _data_size=(double)((double)(VALSIZE+4)*NUM)/1048576.0;
+double _query_size=(double)((double)(KEYSIZE+8+VALSIZE+4)*R_NUM)/1048576.0;
 
 void print_header()
 {
