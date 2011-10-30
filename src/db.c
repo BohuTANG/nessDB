@@ -108,7 +108,7 @@ static void db_loadbloom(int idx)
 		if(table->size>0){
 			for(i=0;i<table->size;i++){
 				uint32_t offset=from_be32(table->items[i].offset);
-				if(get_H(offset)==0){
+				if(get32_H(offset)==0){
 					bloom_add(&_bloom,(const char*)table->items[i].sha1);
 					info->used++;
 				}else
@@ -138,18 +138,13 @@ void db_init(int bufferpool_size,int isbgsync)
 		bgsync_init();
 }
 
-void db_remove(const char *key);
 int db_add(const char *key,const char *value)
 {
-	int ret=1;
 	uint32_t off;
 	unsigned int slot=jdb_hash(key)%DB_SLOT;
 	int isin=btree_get_index(&_btrees[slot],key);
-	if(isin){
-		db_remove(key);
-		_infos[slot].used--;
-		ret=2;
-	}
+	if(isin)
+		return (2);
 
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
@@ -158,7 +153,7 @@ int db_add(const char *key,const char *value)
 	_infos[slot].used++;
 
 	bloom_add(&_bloom,key);
-	return ret;
+	return (1);
 }
 
 
@@ -215,14 +210,8 @@ void db_remove(const char *key)
 
 void db_update(const char *key,const char *value)
 {
-	unsigned int slot=jdb_hash(key)%DB_SLOT;
-	int isin=btree_get_index(&_btrees[slot],key);
-	if(isin){
-		db_remove(key);
-		db_add(key,value);
-	}else{
-		db_add(key,value);
-	}
+	db_remove(key);
+	db_add(key,value);
 }
 
 void db_info(char *infos)

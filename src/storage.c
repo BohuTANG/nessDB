@@ -395,7 +395,7 @@ static uint32_t delete_table(struct btree *btree, uint32_t table_offset,
 				/* found */
 				//mark unused
 				uint32_t off = from_be32(table->items[i].offset);
-				table->items[i].offset=to_be32(set_H_1(off));
+				table->items[i].offset=to_be32(set32_H_1(off));
 				flush_table(btree, table, table_offset);
 				return 1;
 			}
@@ -489,7 +489,7 @@ static uint32_t lookup(struct btree *btree, uint32_t table_offset,
 				/* found */
 				uint32_t ret=from_be32(table->items[i].offset);
 				//unused-mark is true
-				if(get_H(ret)==1)
+				if(get32_H(ret)==1)
 					ret = 0;	
 			
 				put_table(btree, table, table_offset);

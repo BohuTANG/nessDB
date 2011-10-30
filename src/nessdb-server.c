@@ -176,7 +176,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					      }
 
 				case CMD_SET:{
-						db_add(req->argv[1],req->argv[2]);
+						db_update(req->argv[1],req->argv[2]);
 
 						resp=response_new(0,OK);
 						response_detch(resp,sent_buf);
@@ -189,7 +189,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					      	int i;
 						int c=req->argc;
 						for(i=1;i<c;i+=2){
-							db_add(req->argv[i],req->argv[i+1]);	
+							db_update(req->argv[i],req->argv[i+1]);	
 						}
 
 						resp=response_new(0,OK);
