@@ -249,7 +249,7 @@ static uint32_t alloc_chunk(struct btree *btree, size_t len)
 /* Allocate a chunk from the database file */
 static uint32_t alloc_db_chunk(struct btree *btree, size_t len)
 {
-	len = round_power2(len);
+	/*len = round_power2(len);*/
 
 	uint32_t offset  = btree->db_alloc;
 	btree->db_alloc = offset + len;
