@@ -87,9 +87,9 @@ static inline unsigned jenkins_hash(const char *key)
 }
 
 /**
- * Jdb hash function
+ * Djb hash function
  */
-static inline size_t jdb_hash(const char* key)
+static inline size_t djb_hash(const char* key)
 {
     if (!key) {
         return 0;
@@ -100,40 +100,6 @@ static inline size_t jdb_hash(const char* key)
 	hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
 
    return (size_t) hash;
-}
-
-/**
- * zend hash function
- */
-static inline unsigned long int zend_hash(const char *key)
-{
-    register unsigned long int hash = 5381;
-    size_t len=strlen(key);
-    if (!key) {
-        return 0;
-    }
-
-    for(; len >= 8; len -= 8) {
-        hash = ((hash << 5) + hash) + *key++;
-        hash = ((hash << 5) + hash) + *key++;
-        hash = ((hash << 5) + hash) + *key++;
-        hash = ((hash << 5) + hash) + *key++;
-        hash = ((hash << 5) + hash) + *key++;
-        hash = ((hash << 5) + hash) + *key++;
-        hash = ((hash << 5) + hash) + *key++;
-        hash = ((hash << 5) + hash) + *key++;
-    }
-    switch(len) {
-        case 7: hash = ((hash << 5) + hash) + *key++;
-        case 6: hash = ((hash << 5) + hash) + *key++;
-        case 5: hash = ((hash << 5) + hash) + *key++;
-        case 4: hash = ((hash << 5) + hash) + *key++;
-        case 3: hash = ((hash << 5) + hash) + *key++;
-        case 2: hash = ((hash << 5) + hash) + *key++;
-        case 1: hash = ((hash << 5) + hash) + *key++;break;
-        case 0: break;
-    }
-    return hash;
 }
 
 #endif

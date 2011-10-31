@@ -35,7 +35,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifndef __USE_FILE_OFFSET64
 #define __USE_FILE_OFFSET64
 #endif
@@ -201,7 +200,7 @@ static int btree_creat(struct btree *btree,const char *idx,const char *db)
 
 static int file_exists(const char *path)
 {
-	int fd=open64(path, O_RDWR);
+	int fd=open(path, O_RDWR);
 	if(fd>-1){
 		close(fd);
 		return 1;

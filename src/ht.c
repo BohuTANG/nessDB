@@ -60,7 +60,7 @@ void ht_init(struct ht *ht,size_t cap,KEYTYPE key_type)
 	ht->size = 0;
 	ht->cap = cap;
 	ht->nodes =calloc(cap, sizeof(struct ht_node*));
-	ht->hashfunc=jdb_hash;
+	ht->hashfunc=djb_hash;
 	ht->key_type=key_type;
 }
 

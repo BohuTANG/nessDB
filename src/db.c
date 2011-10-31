@@ -141,7 +141,7 @@ void db_init(int bufferpool_size,int isbgsync)
 int db_add(const char *key,const char *value)
 {
 	uint32_t off;
-	unsigned int slot=jdb_hash(key)%DB_SLOT;
+	unsigned int slot=djb_hash(key)%DB_SLOT;
 	int isin=btree_get_index(&_btrees[slot],key);
 	if(isin)
 		return (2);
@@ -168,7 +168,7 @@ void *db_get(const char *key)
 
 	v=llru_get(key);
 	if(v==NULL){
-		unsigned int slot=jdb_hash(key)%DB_SLOT;
+		unsigned int slot=djb_hash(key)%DB_SLOT;
 		v=btree_get(&_btrees[slot],key);
 		if(v==NULL)
 			return NULL;
@@ -192,14 +192,14 @@ void *db_get(const char *key)
 
 int db_exists(const char *key)
 {
-	unsigned int slot=jdb_hash(key)%DB_SLOT;
+	unsigned int slot=djb_hash(key)%DB_SLOT;
 	return btree_get_index(&_btrees[slot],key);
 }
 
 void db_remove(const char *key)
 {
 	int result;
-	unsigned int slot=jdb_hash(key)%DB_SLOT;
+	unsigned int slot=djb_hash(key)%DB_SLOT;
 	result=btree_delete(&_btrees[slot],key);
 	if(result==0){
 		_infos[slot].used--;
