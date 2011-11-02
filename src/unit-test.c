@@ -147,15 +147,6 @@ void test_db_test()
 	free(data);
 	LOG("%s PASSED....","db get");
 
-	//update test
-	sprintf(v3,"%s","value3");
-	db_update(k2,v3);
-	
-	data=db_get(k2);
-	assert(strcmp(data,v3)==0);
-	free(data);
-	LOG("%s PASSED....","db update");
-
 	//remove test
 	db_remove(k2);
 	data=db_get(k2);

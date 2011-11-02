@@ -138,21 +138,23 @@ void db_init(int bufferpool_size,int isbgsync)
 		bgsync_init();
 }
 
+int db_exists(const char *key);
 int db_add(const char *key,const char *value)
 {
+	int isin;
 	uint32_t off;
 	unsigned int slot=djb_hash(key)%DB_SLOT;
-	int isin=btree_get_index(&_btrees[slot],key);
-	if(isin)
-		return (2);
 
+	isin=db_exists(key);
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
 		return (0);
-
-	_infos[slot].used++;
-
-	bloom_add(&_bloom,key);
+	if(isin){
+			llru_remove(key);
+	}else{
+		_infos[slot].used++;
+		bloom_add(&_bloom,key);
+	}
 	return (1);
 }
 
@@ -208,11 +210,6 @@ void db_remove(const char *key)
 	}
 }
 
-void db_update(const char *key,const char *value)
-{
-	db_remove(key);
-	db_add(key,value);
-}
 
 void db_info(char *infos)
 {
