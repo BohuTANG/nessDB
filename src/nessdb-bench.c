@@ -175,7 +175,8 @@ void db_write_test()
 	char key[KEYSIZE];
 	start_timer();
 	for(i=1;i<NUM;i++){
-		sprintf(key,"abc_%ld_efg",rand()%i);
+		//sprintf(key,"abc_%ld_efg",rand()%i);
+		random_key(key,KEYSIZE);
 		if(db_add(key,value)==1)
 			count++;
 		if((i%1000)==0){
@@ -203,7 +204,8 @@ void db_read_random_test()
 	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
-		sprintf(key,"abc_%ld_efg",rand()%i);
+		//sprintf(key,"abc_%ld_efg",rand()%i);
+		random_key(key,KEYSIZE);
 		void* data=db_get(key);
 		if(data){
 			count++;
@@ -220,8 +222,8 @@ void db_read_random_test()
 	printf(LINE);
 	printf("|Random-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/count)
-		,(double)(count/cost)
+		,(double)(cost/NUM)
+		,(double)(NUM/cost)
 		,(_query_size/cost)
 		,cost);
 }
@@ -236,8 +238,9 @@ void db_read_seq_test()
 	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
-		memset(key,0,sizeof(key));
-		sprintf(key,"abc_%ld_efg",i);
+		//memset(key,0,sizeof(key));
+		//sprintf(key,"abc_%ld_efg",i);
+		random_key(key,KEYSIZE);
 		void* data=db_get(key);
 		if(data){
 			count++;
@@ -254,8 +257,8 @@ void db_read_seq_test()
 	printf(LINE);
 	printf("|Seq-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/count)
-		,(double)(count/cost)
+		,(double)(cost/NUM)
+		,(double)(NUM/cost)
 		,(_query_size/cost)
 		,cost);
 	

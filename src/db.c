@@ -107,7 +107,7 @@ static void db_loadbloom(int idx)
 		r=read(btree->fd,table, table_size) ;
 		if(table->size>0){
 			for(i=0;i<table->size;i++){
-				uint32_t offset=from_be32(table->items[i].offset);
+				uint32_t offset=from_be32(table->offsets[i]);
 				if(get32_H(offset)==0){
 					bloom_add(&_bloom,(const char*)table->items[i].sha1);
 					info->used++;

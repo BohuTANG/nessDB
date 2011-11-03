@@ -287,7 +287,7 @@ static uint32_t split_table(struct btree *btree, struct btree_table *table,
 			  char *sha1, uint32_t *offset)
 {
 	memcpy(sha1, table->items[TABLE_SIZE / 2].sha1, SHA1_LENGTH);
-	*offset = from_be32(table->items[TABLE_SIZE / 2].offset);
+	*offset = from_be32(table->offsets[TABLE_SIZE / 2]);
 
 	struct btree_table *new_table = alloc_table(btree);
 	new_table->size = table->size - TABLE_SIZE / 2 - 1;
@@ -325,7 +325,7 @@ static uint32_t insert_table(struct btree *btree, uint32_t table_offset,
 		if (cmp == 0) {
 			/* already in the table update it*/
 			uint32_t ret=btree_insert_data(btree,data,len);
-			table->items[i].offset= to_be32(ret);
+			table->offsets[i]= to_be32(ret);
 			flush_table(btree,table,table_offset);
 			return ret;
 		}
@@ -337,7 +337,7 @@ static uint32_t insert_table(struct btree *btree, uint32_t table_offset,
 	size_t i = left;
 
 	uint32_t offset = 0;
-	uint32_t left_child = from_be32(table->items[i].child);
+	uint32_t left_child = from_be32(table->childs[i]);
 	uint32_t right_child = 0; /* after insertion */
 	uint32_t ret = 0;
 	if (left_child != 0) {
@@ -367,9 +367,9 @@ static uint32_t insert_table(struct btree *btree, uint32_t table_offset,
 	memmove(&table->items[i + 1], &table->items[i],
 		(table->size - i) * sizeof(struct btree_item));
 	memcpy(table->items[i].sha1, sha1, SHA1_LENGTH);
-	table->items[i].offset = to_be32(offset);
-	table->items[i].child = to_be32(left_child);
-	table->items[i + 1].child = to_be32(right_child);
+	table->offsets[i] = to_be32(offset);
+	table->childs[i] = to_be32(left_child);
+	table->childs[i + 1] = to_be32(right_child);
 
 	flush_table(btree, table, table_offset);
 	return ret;
@@ -393,8 +393,8 @@ static uint32_t delete_table(struct btree *btree, uint32_t table_offset,
 			if (cmp == 0) {
 				/* found */
 				//mark unused
-				uint32_t off = from_be32(table->items[i].offset);
-				table->items[i].offset=to_be32(set32_H_1(off));
+				uint32_t off = from_be32(table->offsets[i]);
+				table->offsets[i]=to_be32(set32_H_1(off));
 				flush_table(btree, table, table_offset);
 				return 1;
 			}
@@ -403,7 +403,7 @@ static uint32_t delete_table(struct btree *btree, uint32_t table_offset,
 			else
 				left = i + 1;
 		}
-		uint32_t  child = from_be32(table->items[left].child);
+		uint32_t  child = from_be32(table->childs[left]);
 		put_table(btree, table, table_offset);
 		table_offset = child;
 	}
@@ -439,9 +439,9 @@ uint32_t insert_toplevel(struct btree *btree, uint32_t *table_offset,
 	struct btree_table *new_table = alloc_table(btree);
 	new_table->size = 1;
 	memcpy(new_table->items[0].sha1, sha1, SHA1_LENGTH);
-	new_table->items[0].offset = to_be32(offset);
-	new_table->items[0].child = to_be32(*table_offset);
-	new_table->items[1].child = to_be32(right_child);
+	new_table->offsets[0] = to_be32(offset);
+	new_table->childs[0] = to_be32(*table_offset);
+	new_table->childs[1] = to_be32(right_child);
 
 	uint32_t new_table_offset = alloc_chunk(btree, sizeof *new_table);
 	flush_table(btree, new_table, new_table_offset);
@@ -486,7 +486,7 @@ static uint32_t lookup(struct btree *btree, uint32_t table_offset,
 			int cmp = cmp_sha1((const char*)sha1, table->items[i].sha1);
 			if (cmp == 0) {
 				/* found */
-				uint32_t ret=from_be32(table->items[i].offset);
+				uint32_t ret=from_be32(table->offsets[i]);
 				//unused-mark is true
 				if(get32_H(ret)==1)
 					ret = 0;	
@@ -499,7 +499,7 @@ static uint32_t lookup(struct btree *btree, uint32_t table_offset,
 			else
 				left = i + 1;
 		}
-		uint32_t  child = from_be32(table->items[left].child);
+		uint32_t  child = from_be32(table->childs[left]);
 		put_table(btree, table, table_offset);
 		table_offset = child;
 	}
