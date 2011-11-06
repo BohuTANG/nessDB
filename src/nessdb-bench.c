@@ -222,8 +222,8 @@ void db_read_random_test()
 	printf(LINE);
 	printf("|Random-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/NUM)
-		,(double)(NUM/cost)
+		,(double)(cost/R_NUM)
+		,(double)(R_NUM/cost)
 		,(_query_size/cost)
 		,cost);
 }
@@ -257,8 +257,8 @@ void db_read_seq_test()
 	printf(LINE);
 	printf("|Seq-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/NUM)
-		,(double)(NUM/cost)
+		,(double)(cost/R_NUM)
+		,(double)(R_NUM/cost)
 		,(_query_size/cost)
 		,cost);
 	
