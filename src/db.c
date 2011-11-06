@@ -92,7 +92,7 @@ static void bgsync_init()
 */
 static void db_loadbloom(int idx)
 {
-	int r,i,super_size,table_size;
+	int i,super_size,table_size;
 	uint32_t total;
 	struct btree *btree=&_btrees[idx];
 	struct info *info=&_infos[idx];
@@ -104,7 +104,7 @@ static void db_loadbloom(int idx)
 
 	while(total>0){
 		struct btree_table *table=malloc(table_size);
-		r=read(btree->fd,table, table_size) ;
+		read(btree->fd,table, table_size) ;
 		if(table->size>0){
 			for(i=0;i<table->size;i++){
 				uint32_t offset=from_be32(table->offsets[i]);
@@ -138,23 +138,17 @@ void db_init(int bufferpool_size,int isbgsync)
 		bgsync_init();
 }
 
-int db_exists(const char *key);
 int db_add(const char *key,const char *value)
 {
-	int isin;
 	uint32_t off;
 	unsigned int slot=djb_hash(key)%DB_SLOT;
 
-	isin=db_exists(key);
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
 		return (0);
-	if(isin){
-			llru_remove(key);
-	}else{
-		_infos[slot].used++;
-		bloom_add(&_bloom,key);
-	}
+	llru_remove(key);
+	_infos[slot].used++;
+	bloom_add(&_bloom,key);
 	return (1);
 }
 

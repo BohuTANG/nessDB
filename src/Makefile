@@ -2,7 +2,7 @@ UNAME := $(shell uname)
 
 CC = gcc 
 CFLAGS =-Wall -std=c99
-LDLIBS = -lpthread
+LDLIBS = -pthread
 ifeq ($(UNAME), Linux)
 	DEBUG = -g -rdynamic -ggdb 
 else
