@@ -1,3 +1,7 @@
+/*
+ * Page is a page-cache for random-writing.
+ * Drafted by BohuTANG
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
