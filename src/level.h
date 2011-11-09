@@ -10,11 +10,10 @@ struct level{
 	struct level_node *first;
 	struct level_node *last;
 
-	struct ht *ht;
 };
 
 struct level_node{
-	char*	key;
+	void*	key;
 	void*	value;
 	int	hits;
 	int	size;

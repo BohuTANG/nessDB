@@ -59,14 +59,12 @@ void llru_init(size_t buffer_size)
 	_level_old->used_size=0;
 	_level_old->first=NULL;
 	_level_old->last=NULL;
-	_level_old->ht=&_ht;
 	
 	_level_new->count=0;
 	_level_new->allow_size=size_n;
 	_level_new->used_size=0;
 	_level_new->first=NULL;
 	_level_new->last=NULL;
-	_level_new->ht=&_ht;
 }
 
 static void llru_set_node(struct level_node *n)
