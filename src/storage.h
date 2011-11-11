@@ -8,7 +8,7 @@
 
 #define SHA1_LENGTH	(20)
 
-#define CACHE_SLOTS	(23) /* prime */
+#define CACHE_SLOTS	(98317) /* prime */
 
 struct btree_item {
 	char sha1[SHA1_LENGTH];

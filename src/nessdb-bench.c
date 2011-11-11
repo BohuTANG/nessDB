@@ -179,7 +179,7 @@ void db_write_test()
 		random_key(key,KEYSIZE);
 		if(db_add(key,value)==1)
 			count++;
-		if((i%1000)==0){
+		if((i%5000)==0){
 			fprintf(stderr,"random write finished %ld ops%30s\r",i,"");
 			fflush(stderr);
 		}
