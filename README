@@ -1,52 +1,13 @@
 ================================================================
-			nessDB v1.7
+			nessDB v1.8
 		(NOT ONLY DATABASE ENGINE)
 		Copyright (C) 2011 BohuTANG
 ================================================================	
   nessDB is written in ANSI C and works in most POSIX systems like Linux, *BSD, OS X and Solaris without external dependencies.
- 
-  Key Features
-  =============
-  * Bloom filter for record presence detection 
-  * Level-LRU for hot data caching,improving Random-Read 
-  * Distributable B+Tree-Structured-Indexes 
-  * Background IO for data flush to disk
-  * Redis protocol support
 
-  Directory Tree
-  ==================
-  ./
-  ./src/ 	- sources of nessDB
-  ./BENCHMARK	- benchmark results of nessDB
-  ./LEVEL-LRU	- nessDB's level-lru doc
-  ./TODO	- nessDB's todo list
-  ./x/		- nessDB's network layer(via redis),very high-performance.
+  The 1.8 version is still under construction.
+  Random-Read / Write will be greatly enhanced, and add the log recovery. 
+  The big stuff coming soon.
+  nessDB v1.8
 
-
-  Interface
-  ==========
-    * db_init(int bufferpool_size,int isbgsync)
-    * db_get(const char *key)
-    * db_add(const char *key,const char *value)
-    * db_remove(const char *key)
-
-    Very simple to use.
-
- 
-  How to do BENCHMARK
-  ==================
-	a, $cd src
-	b, $make
-	c, $./nessdb-bench add
-
-	If you want to remove all indexes&datas,please use "$make cleanall"  command.
-
-  Start as server
-  ===============
-  	* $./nessdb-server
-	Now you can use redis-cli(or other redis's clients) to do some "COMMAND" operations
-	(Support Redis-Style commands:PING,SET,MSET,GET,MGET,DEL,EXISTS,INFO).
-	
- Thanks.
-
- == END OF FILE ==
+  Thanks for your attention!

@@ -1,8 +1,0 @@
-LEVEL-LRU
-
-Level_0:old lru lists
-Level_1:new lru lists
-
-a) insert entry into old-lru list ahead
-b) if old-lru size >OMAX,remove last entry from list;then if hits >HIT,move it to new-lru list ahead
-c) if new-lru size >NMAX,remove all old-lru entries,move last N entries to old-lru
