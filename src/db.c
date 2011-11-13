@@ -61,81 +61,28 @@ struct info{
 */
 #define DB_SLOT		(13)
 #define DB_PREFIX 	"ndbs/ness"
+#define DB_DIR    	"ndbs"
 #define IDX_PRIME	(16785407)
+#define RATIO		(0.618)
+
 static struct btree 	_btrees[DB_SLOT];
 static struct info	_infos[DB_SLOT];
-static struct bloom	_bloom;
 
-static pthread_t	_bgsync;
-
-void *bgsync_func()
-{
-	int i;
-	while(1){
-		sleep(5);
-		for(i=0;i<DB_SLOT;i++){
-			fsync(_btrees[i].fd);
-			fsync(_btrees[i].db_fd);
-		}
-	}
-}
-
-static void bgsync_init()
-{
-	if(pthread_create(&_bgsync,NULL,bgsync_func,NULL))
-		abort();
-}
-
-/*Sequential read,and mark keys in BloomFilter
-* This is very important to preheat datas.
-* There is 'db_dump_keys' interface,but this is faster than it to load.
-*/
-static void db_loadbloom(int idx)
-{
-	int i,super_size,table_size;
-	uint32_t total;
-	struct btree *btree=&_btrees[idx];
-	struct info *info=&_infos[idx];
-
-	super_size=sizeof(struct btree_super);
-	table_size=(sizeof(struct btree_table));
-	total=btree->alloc-super_size;
-  	lseek(btree->fd, super_size, SEEK_SET);
-
-	while(total>0){
-		struct btree_table *table=malloc(table_size);
-		read(btree->fd,table, table_size) ;
-		if(table->size>0){
-			for(i=0;i<table->size;i++){
-				uint32_t offset=from_be32(table->offsets[i]);
-				if(get32_H(offset)==0){
-					bloom_add(&_bloom,(const char*)table->items[i].sha1);
-					info->used++;
-				}else
-					info->unused++;
-			}
-		}
-		free(table);
-		total-=table_size;
-	}
-
-}
-
-void db_init(int bufferpool_size,int isbgsync)
+void db_init(int bufferpool_size)
 {
 	int i;	
-	llru_init(bufferpool_size);
-	bloom_init(&_bloom,IDX_PRIME);
+	int pagepool_size=bufferpool_size*(1-RATIO)/DB_SLOT;
+	struct stat st;
 
+	if(stat(DB_DIR, &st) != 0)
+		mkdir(DB_DIR, S_IRWXU | S_IRGRP | S_IROTH);
+
+	llru_init(bufferpool_size*RATIO);
 	for(i=0;i<DB_SLOT;i++){
 		char pre[256]={0};
 		sprintf(pre,"%s%d",DB_PREFIX,i);
-		btree_init(&_btrees[i],pre,isbgsync);
-		db_loadbloom(i);
+		btree_init(&_btrees[i],pre,pagepool_size);
 	}
-
-	if(isbgsync)
-		bgsync_init();
 }
 
 int db_add(const char *key,const char *value)
@@ -146,9 +93,9 @@ int db_add(const char *key,const char *value)
 	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
 	if(off==0)
 		return (0);
+
 	llru_remove(key);
 	_infos[slot].used++;
-	bloom_add(&_bloom,key);
 	return (1);
 }
 
@@ -156,11 +103,8 @@ int db_add(const char *key,const char *value)
 void *db_get(const char *key)
 {
 	void *v;
-	int b,k_l,v_l;
+	int k_l,v_l;
 	char *k_tmp,*v_tmp;
-	b=bloom_get(&_bloom,key);
-	if(b!=0)
-		return NULL;
 
 	v=llru_get(key);
 	if(v==NULL){

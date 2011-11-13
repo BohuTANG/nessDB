@@ -9,7 +9,7 @@ extern "C" {
  * bufferpool:lru memory size allow,unit is BYTE
  * isbgsync:if TRUE,"fdatasync" will run on the background thread,otherwise will do nothing.
  */
-void 	db_init(int bufferpool_size,int isbgsync);
+void 	db_init(int bufferpool_size);
 
 void	*db_get(const char *key);
 int		db_exists(const char *key);

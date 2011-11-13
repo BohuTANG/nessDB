@@ -34,7 +34,7 @@
 static int key_cmp(struct ht *ht,void *a,void *b)
 {
 		switch(ht->key_type){
-		case INT:{
+		case INTEGER:{
 				 int x=*(int*)a;
 				 int y=*(int*)b;
 				return (x-y);
@@ -48,7 +48,7 @@ static int key_cmp(struct ht *ht,void *a,void *b)
 static size_t find_slot(struct ht *ht,void* key)
 {
 	switch(ht->key_type){
-		case INT:
+		case INTEGER:
 			return (*(int*)key) % ht->cap;
 		default:
 			return  ht->hashfunc((const char*)key) % ht->cap;
@@ -72,7 +72,7 @@ void ht_set(struct ht *ht,void * k,void* v)
 	slot=find_slot(ht,k);
 	node=calloc(1, sizeof(struct ht_node));
 	node->next=ht->nodes[slot];
-	if(ht->key_type==INT){
+	if(ht->key_type==INTEGER){
 		int* copy;
 		copy=calloc(1,sizeof(int));
 		memcpy(copy,k,sizeof(int));
@@ -117,7 +117,7 @@ void ht_remove(struct ht *ht,void *k)
 			ht->size--;
 
 			if(node){
-				if(ht->key_type==INT)
+				if(ht->key_type==INTEGER)
 					free(node->k);
 				free(node);
 			}
@@ -131,7 +131,7 @@ void ht_remove(struct ht *ht,void *k)
 
 void ht_free(struct ht *ht)
 {
-	if(ht->key_type==INT){
+	if(ht->key_type==INTEGER){
 		int i;
 		for(i=0;i<ht->cap;i++){
 			struct ht_node *cur,*nxt;

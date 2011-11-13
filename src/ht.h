@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-typedef enum {STRING=0,INT} KEYTYPE;
+typedef enum {STRING=0,INTEGER} KEYTYPE;
 
 struct ht 
 {

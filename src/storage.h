@@ -4,11 +4,8 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include "bitwise.h"
-#include "bloom.h"
 
 #define SHA1_LENGTH	(20)
-
-#define CACHE_SLOTS	(98317) /* prime */
 
 struct btree_item {
 	char sha1[SHA1_LENGTH];
@@ -45,14 +42,13 @@ struct btree {
 
 	int fd;
 	int db_fd;
-	struct btree_cache cache[CACHE_SLOTS];
-
-	int fd_rep;
+	int slot_prime;
+	struct btree_cache **cache;
 };
 
 
 //open or creat index&data files
-int btree_init(struct btree *btree,const char *db,int isbgsync);
+int btree_init(struct btree *btree,const char *db,int pagepool_size);
 
 
 /*

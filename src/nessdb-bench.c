@@ -53,8 +53,7 @@
 #define NUM 		2000000
 #define R_NUM 		20000
 #define REMOVE_NUM	20000
-#define BUFFERPOOL	(1024*1024*1024)
-#define BGSYNC		(0)
+#define BUFFERPOOL	(1024*1024*100)
 #define V		"1.8"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
@@ -105,7 +104,6 @@ void print_header()
 	printf("Entries:	%d\n",NUM);
 	printf("IndexSize:	%.1f MB (estimated)\n",_index_size);
 	printf("DataSize:	%.1f MB (estimated)\n",_data_size);
-	printf("BG SYNC:	%s\n",(BGSYNC==1)?"on...":"close...");
 	printf(LINE1);
 }
 
@@ -148,24 +146,7 @@ void print_environment()
 void db_init_test(int show)
 {
 	random_value();
-
-	double cost;
-	start_timer();
-   	cost=get_timer();
-	fprintf(stderr,"loading bloom filter......%30s\r","");
-
-	db_init(BUFFERPOOL,BGSYNC);
-
-	fflush(stderr);
-	
-   	cost=get_timer();
-	if(show){
-		printf(LINE);
-		printf("|loadindex	: %.6f sec/op; %.1f reads /sec(estimated) cost:%.2f(sec)\n"
-			,(double)(cost/R_NUM)
-			,(double)(NUM/cost)
-			,cost);
-	}
+	db_init(BUFFERPOOL);
 }
 
 void db_write_test()
@@ -175,7 +156,6 @@ void db_write_test()
 	char key[KEYSIZE];
 	start_timer();
 	for(i=1;i<NUM;i++){
-		//sprintf(key,"abc_%ld_efg",rand()%i);
 		random_key(key,KEYSIZE);
 		if(db_add(key,value)==1)
 			count++;
@@ -204,7 +184,6 @@ void db_read_random_test()
 	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
-		//sprintf(key,"abc_%ld_efg",rand()%i);
 		random_key(key,KEYSIZE);
 		void* data=db_get(key);
 		if(data){
@@ -238,8 +217,6 @@ void db_read_seq_test()
 	char key[KEYSIZE]={0};
 	start_timer();
 	for(i=r_start;i<r_end;i++){
-		//memset(key,0,sizeof(key));
-		//sprintf(key,"abc_%ld_efg",i);
 		random_key(key,KEYSIZE);
 		void* data=db_get(key);
 		if(data){
@@ -334,7 +311,6 @@ int main(int argc,char** argv)
 	print_header();
 	print_environment();
 	
-	//init
 	db_init_test(show);
 
 	if(op==OP_ADD)
@@ -345,7 +321,6 @@ int main(int argc,char** argv)
 		db_read_random_test();
 	else if(op==OP_REMOVE)
 		db_remove_test();
-	//destroy
 	db_destroy();
 	return 1;
 }

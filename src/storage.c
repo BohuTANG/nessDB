@@ -65,6 +65,27 @@ struct chunk {
 	uint32_t len;
 };
 
+static int get_prime_size(int size)
+{
+	int primes[]={3UL, 5UL, 7UL, 11UL, 13UL, 17UL, 19UL, 23UL, 29UL, 31UL, 37UL,41UL, 43UL, 47UL,
+		53UL, 97UL, 193UL, 389UL, 769UL, 1543UL, 3079UL, 6151UL, 12289UL,
+		24593UL, 49157UL, 98317UL, 196613UL, 393241UL, 786433UL, 1572869UL,
+		3145739UL, 6291469UL, 12582917UL, 25165843UL, 50331653UL,
+		100663319UL, 201326611UL, 402653189UL, 805306457UL, 1610612741UL,
+		3221225473UL, 4294967291UL};
+	int i=0;
+	if(size<97)
+		return 97;
+
+	while(i<sizeof(primes)){
+		if(size<primes[i])
+			break;
+		i++;
+	}
+
+	return primes[i-1];
+}
+
 static int cmp_sha1(const char *a,const char *b)
 {
 	return strcmp(a,b);
@@ -82,7 +103,7 @@ static struct btree_table *get_table(struct btree *btree, uint32_t offset)
 	assert(offset != 0);
 
 	/* take from cache */
-	struct btree_cache *slot = &btree->cache[offset % CACHE_SLOTS];
+	struct btree_cache *slot = btree->cache[offset % btree->slot_prime];
 	if (slot->offset == offset) {
 		slot->offset = 0;
 		return slot->table;
@@ -92,7 +113,7 @@ static struct btree_table *get_table(struct btree *btree, uint32_t offset)
 
 	lseek(btree->fd, offset, SEEK_SET);
 	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
-		fprintf(stderr, "btree: I/O error\n");
+		fprintf(stderr, "btree get_table: I/O error\n");
 		abort();
 	}
 	return table;
@@ -105,8 +126,8 @@ static void put_table(struct btree *btree, struct btree_table *table,
 	assert(offset != 0);
 
 	/* overwrite cache */
-	struct btree_cache *slot = &btree->cache[offset % CACHE_SLOTS];
-	if (slot->offset != 0) {
+	struct btree_cache *slot = btree->cache[offset % btree->slot_prime];
+		if (slot->offset != 0) {
 		free(slot->table);
 	}
 	slot->offset = offset;
@@ -117,11 +138,11 @@ static void put_table(struct btree *btree, struct btree_table *table,
 static void flush_table(struct btree *btree, struct btree_table *table,
 			uint32_t offset)
 {
-	assert(offset != 0);
+		assert(offset != 0);
 
         lseek(btree->fd, offset, SEEK_SET);
 	if (write(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
-		fprintf(stderr, "btree: I/O error\n");
+		fprintf(stderr, "btree flush_table: I/O error\n");
 		abort();
 	}
 	put_table(btree, table, offset);
@@ -129,7 +150,6 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 
 static void flush_super(struct btree *btree)
 {
-
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
 	super.top = to_be32(btree->top);
@@ -137,7 +157,7 @@ static void flush_super(struct btree *btree)
 
 	lseek(btree->fd, 0, SEEK_SET);
 	if (write(btree->fd, &super, sizeof super) != sizeof super){
-		fprintf(stderr, "btree: I/O error\n");
+		fprintf(stderr, "btree flush super: I/O error\n");
 		abort();
 	}
 }
@@ -145,7 +165,7 @@ static void flush_magic(struct btree *btree)
 {
 	int magic=2011;
 	if (write(btree->db_fd, &magic, sizeof magic) != sizeof magic){
-		fprintf(stderr, "btree: I/O error\n");
+		fprintf(stderr, "btree flush magic: I/O error\n");
 		abort();
 	}
 }
@@ -208,8 +228,9 @@ static int file_exists(const char *path)
 	return 0;
 }
 
-int btree_init(struct btree *btree,const char *dbname,int isbgsync)
+int btree_init(struct btree *btree,const char *dbname,int pagepool_size)
 {
+	int i;
 	char idx[256]={0};
 	char db[256]={0};
 
@@ -220,6 +241,17 @@ int btree_init(struct btree *btree,const char *dbname,int isbgsync)
 		btree_open(btree,idx,db);
 	else
 		btree_creat(btree,idx,db);
+
+	btree->slot_prime=get_prime_size(pagepool_size/(10*(4+4+TABLE_SIZE)));
+	btree->cache=calloc(btree->slot_prime,sizeof(struct btree_cache*));
+
+	for(i=0;i<btree->slot_prime;i++){
+		struct btree_cache *c=malloc(sizeof(struct btree_cache));
+		c->table=NULL;
+		c->offset=0;
+		btree->cache[i]=c;
+	}
+
 	return (1);
 }
 
@@ -229,9 +261,10 @@ void btree_close(struct btree *btree)
 	close(btree->db_fd);
 
 	size_t i;
-	for (i = 0; i < CACHE_SLOTS; ++i) {
-		if (btree->cache[i].offset)
-			free(btree->cache[i].table);
+	for (i = 0; i < btree->slot_prime; ++i) {
+		if (btree->cache[i]->offset)
+			free(btree->cache[i]->table);
+		free(btree->cache[i]);
 	}
 }
 

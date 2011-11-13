@@ -311,10 +311,9 @@ int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 }
 
 #define BUFFERPOOL	(1024*1024*1024)
-#define BGSYNC		(1)
 void nessdb_init()
 {
-	db_init(BUFFERPOOL,BGSYNC);
+	db_init(BUFFERPOOL);
 }
 
 int main()
