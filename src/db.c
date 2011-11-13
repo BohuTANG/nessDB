@@ -61,6 +61,7 @@ struct info{
 */
 #define DB_SLOT		(13)
 #define DB_PREFIX 	"ndbs/ness"
+#define DB_DIR		"ndbs"
 #define IDX_PRIME	(16785407)
 static struct btree 	_btrees[DB_SLOT];
 static struct info	_infos[DB_SLOT];
@@ -123,6 +124,10 @@ static void db_loadbloom(int idx)
 
 void db_init(int bufferpool_size,int isbgsync)
 {
+	struct stat st;
+	if(stat(DB_DIR, &st) != 0){
+		mkdir(DB_DIR, S_IRWXU | S_IRGRP | S_IROTH);
+	}
 	int i;	
 	llru_init(bufferpool_size);
 	bloom_init(&_bloom,IDX_PRIME);
