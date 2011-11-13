@@ -1,11 +1,10 @@
  /*Based on Japeq's btree(https://github.com/japeq/btree_db)
  *BohuTANG did  a lot of changes, including:
- * 1) Separate the index and data files
- * 2) Background thread to data flush
- * 3) Delete operation optimization,improve performance
- * 4) Range queries support
- * 5) Code abridged
- * 6) And other dreams will go on if needed.
+ * 1) Separate the index and data files.
+ * 2) Add tough Page-Cache,Random-Write and Random-Read very fast.
+ * 3) Delete operation optimization,improve performance,very fast.
+ * 4) Code abridged.
+ * 5) And other dreams will go on if needed.
  *
  * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.

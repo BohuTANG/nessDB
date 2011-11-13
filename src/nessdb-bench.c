@@ -53,8 +53,8 @@
 #define NUM 		2000000
 #define R_NUM 		20000
 #define REMOVE_NUM	20000
-#define BUFFERPOOL	(1024*1024*100)
-#define V		"1.8"
+#define BUFFERPOOL	(1024*1024*1024)
+#define V			"1.8"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
 
@@ -109,7 +109,7 @@ void print_header()
 
 void print_environment()
 {
-	printf("nessDB:		version %s(Multiple && Distributable B+Tree with Level-LRU,Background IO Sync)\n",V);
+	printf("nessDB:		version %s(Multiple && Distributable B+Tree with Level-LRU,Page-Cache)\n",V);
 	time_t now=time(NULL);
 	printf("Date:		%s",(char*)ctime(&now));
 	
