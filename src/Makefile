@@ -2,6 +2,7 @@ UNAME := $(shell uname)
 
 CC = gcc 
 CFLAGS =-Wall -std=c99
+LDFLAGS = -pthread
 ifeq ($(UNAME), Linux)
 	DEBUG = -g -rdynamic -ggdb 
 else
@@ -15,10 +16,10 @@ SVR_OBJS =  $(LIB_OBJS) ../x/ae.o  ../x/anet.o ../x/zmalloc.o request.o response
 
 all : nessdb-bench nessdb-server
 nessdb-bench : $(TEST_OBJS)
-	$(CC) $(CFLAGS) $(DEBUG)  -o $@ $(TEST_OBJS) 
+	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o $@ $(TEST_OBJS)
 
 nessdb-server : $(SVR_OBJS)
-	$(CC) $(CFLAGS) $(DEBUG)  -o $@ $(SVR_OBJS) 
+	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o $@ $(SVR_OBJS) 
 
 clean :
 	rm -rf $(TEST_OBJS) $(SVR_OBJS)  nessdb-bench nessdb-server libnessdb.so unit-test

@@ -68,7 +68,7 @@ void response_detch(struct response *res,char *ackbuf)
 	}
 	if(res->argc>1){
 		char buf[BUF_SIZE]={0};
-		sprintf(buf,"*%d\r\n",res->argc);
+		snprintf(buf,sizeof buf,"*%d\r\n",res->argc);
 		strcat(ackbuf,buf);
 	}
 
@@ -78,7 +78,7 @@ void response_detch(struct response *res,char *ackbuf)
 			strcat(ackbuf,"$-1\r\n");
 		}else{
 			int l=strlen(res->argv[i]);
-			sprintf(ls,"$%d\r\n",l);
+			snprintf(ls,sizeof ls,"$%d\r\n",l);
 			strcat(ackbuf,ls);
 
 			strcat(ackbuf,res->argv[i]);
