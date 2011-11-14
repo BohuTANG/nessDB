@@ -233,8 +233,8 @@ int btree_init(struct btree *btree,const char *dbname,int pagepool_size)
 	char idx[256]={0};
 	char db[256]={0};
 
-	sprintf(idx,"%s%s",dbname,IDXEXT);
-	sprintf(db,"%s%s",dbname,DBEXT);
+	snprintf(idx,sizeof idx,"%s%s",dbname,IDXEXT);
+	snprintf(db,sizeof db,"%s%s",dbname,DBEXT);
 
 	if(file_exists(idx))
 		btree_open(btree,idx,db);

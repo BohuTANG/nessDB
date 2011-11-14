@@ -36,13 +36,19 @@
 #define _XOPEN_SOURCE
 #endif
 
-#include <execinfo.h>
-#include <ucontext.h>
+
+#if defined(__linux__) || defined(__APPLE__)
+	# include <execinfo.h>
+	# include <ucontext.h>
+#endif
+
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
