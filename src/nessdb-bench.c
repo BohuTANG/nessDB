@@ -254,7 +254,7 @@ void db_remove_test()
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
-		sprintf(key,"%dkey",rand()%NUM);
+		snprintf(key,sizeof key,"%dkey",rand()%NUM);
 		db_remove(key);
 		count++;
 		if((count%100)==0){

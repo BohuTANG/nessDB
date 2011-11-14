@@ -80,7 +80,7 @@ void db_init(int bufferpool_size)
 	llru_init(bufferpool_size*RATIO);
 	for(i=0;i<DB_SLOT;i++){
 		char pre[256]={0};
-		sprintf(pre,"%s%d",DB_PREFIX,i);
+		snprintf(pre,sizeof pre,"%s%d",DB_PREFIX,i);
 		btree_init(&_btrees[i],pre,pagepool_size);
 	}
 }
@@ -156,7 +156,8 @@ void db_info(char *infos)
 	struct llru_info linfo;
 	for(int i=0;i<DB_SLOT;i++){
 		memset(str,0,256);
-		sprintf(str,"	db%d:used:<%d>;unused:<%d>;dbsize:<%d>bytes\n",
+		snprintf(str,sizeof str,
+                "	db%d:used:<%d>;unused:<%d>;dbsize:<%d>bytes\n",
 				i,
 				_infos[i].used,
 				_infos[i].unused,
@@ -166,12 +167,13 @@ void db_info(char *infos)
 		all_used+=_infos[i].used;
 		all_unused+=_infos[i].unused;
 	}
-	sprintf(str,"	all-used:<%d>;all-unused:<%d>\n",all_used,all_unused);
+	snprintf(str,sizeof str,
+            "	all-used:<%d>;all-unused:<%d>\n",all_used,all_unused);
 	strcat(infos,str);
 
 	llru_info(&linfo);
 	memset(str,0,256);
-	sprintf(str,
+	snprintf(str, sizeof str,
 			"	new-level-lru: count:<%d>;"
 			"allow-size:<%llu>bytes;"
 			"used-size:<%llu>bytes\n"
