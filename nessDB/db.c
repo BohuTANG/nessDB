@@ -38,7 +38,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <assert.h>
-#include <pthread.h>
+#ifdef _WIN32
+#include <direct.h>
+#endif
 #include "bitwise.h"
 #include "storage.h"
 #include "llru.h"
@@ -75,8 +77,11 @@ void db_init(int bufferpool_size)
 	struct stat st;
 
 	if(stat(DB_DIR, &st) != 0)
+		#ifdef _WIN32
+		_mkdir(DB_DIR);
+		#else
 		mkdir(DB_DIR, S_IRWXU | S_IRGRP | S_IROTH);
-
+		#endif
 	llru_init(bufferpool_size*RATIO);
 	for(i=0;i<DB_SLOT;i++){
 		char pre[256]={0};
