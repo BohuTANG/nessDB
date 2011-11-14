@@ -36,13 +36,17 @@
 #define _XOPEN_SOURCE
 #endif
 
-#include <execinfo.h>
-#include <ucontext.h>
+#if defined(__linux__) || defined(__APPLE__)
+# include <execinfo.h>
+# include <ucontext.h>
+#endif
 
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
@@ -63,6 +67,8 @@ struct server{
 	aeEventLoop *el;
 	char neterr[1024];
 };
+
+#if defined(__linux__) || defined(__APPLE__)
 
 static void *get_mcontext_eip(ucontext_t *uc) {
 #if defined(__FreeBSD__)
@@ -137,6 +143,11 @@ void signal_init()
 
 }
 
+#else
+
+void signal_init() { }
+
+#endif
 
 struct server _svr;
 static int _clicount;
