@@ -40,7 +40,7 @@
 #include <time.h>
 #include <string.h>
 #include "db.h"
-#include "platform.h"
+#include "../nessDB/platform.h"
 
 #define OP_ADD 1
 #define OP_GET 2
