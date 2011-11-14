@@ -36,5 +36,5 @@ AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STAT
 AC_CHECK_FUNCS([gethostbyname gettimeofday inet_ntoa memmove memset mkdir select socket strchr strerror])
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile nessDB/Makefile server/Makefile bench/Makefile])
 AC_OUTPUT

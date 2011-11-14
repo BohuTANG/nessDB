@@ -53,12 +53,12 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "../x/anet.h"
-#include "../x/ae.h"
+#include "anet.h"
+#include "ae.h"
 #include "request.h"
 #include "response.h"
 #include "db.h"
-#include "platform.h"
+#include "../nessDB/platform.h"
 
 
 struct server{
