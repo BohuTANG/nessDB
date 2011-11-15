@@ -57,7 +57,7 @@
 #include "ae.h"
 #include "request.h"
 #include "response.h"
-#include "db.h"
+#include "../nessDB/db.h"
 #include "../nessDB/platform.h"
 
 
@@ -68,6 +68,7 @@ struct server{
 
 	aeEventLoop *el;
 	char neterr[1024];
+	nessDB *db;
 };
 
 static void *get_mcontext_eip(ucontext_t *uc) {
@@ -182,7 +183,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					   }
 
 				case CMD_SET:{
-						db_add(req->argv[1],req->argv[2]);
+						db_add(_svr.db, req->argv[1], req->argv[2]);
 
 						resp=response_new(0,OK);
 						response_detch(resp,sent_buf);
@@ -195,7 +196,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					    int i;
 						int c=req->argc;
 						for(i=1;i<c;i+=2){
-							db_add(req->argv[i],req->argv[i+1]);	
+							db_add(_svr.db, req->argv[i], req->argv[i+1]);
 						}
 
 						resp=response_new(0,OK);
@@ -208,7 +209,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 
 				case CMD_GET:{
 						void* result;
-						result=db_get(req->argv[1]);
+						result=db_get(_svr.db, req->argv[1]);
 						if(result==NULL)
 							resp=response_new(0,OK_404);
 						else{
@@ -232,7 +233,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						resp=response_new(sub_c,OK_200);
 
 						for(i=1;i<c;i++){
-							vals[i-1]=db_get(req->argv[i]);	
+							vals[i-1]=db_get(_svr.db, req->argv[i]);
 							resp->argv[i-1]=vals[i-1];
 						}
 
@@ -250,7 +251,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					      }
 				case CMD_INFO:{
 						char infos[BUF_SIZE]={0};	
-						db_info(infos);
+						db_info(_svr.db, infos);
 						resp=response_new(1,OK_200);
 					 	resp->argv[0]=infos;
 						response_detch(resp,sent_buf);
@@ -262,7 +263,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 
 				case CMD_DEL:{
 						for(int i=1;i<req->argc;i++)
-					     		db_remove(req->argv[i]);
+					     		db_remove(_svr.db, req->argv[i]);
 
 						resp=response_new(0,OK);
 						response_detch(resp,sent_buf);
@@ -272,7 +273,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						break;
 					     }
 				case CMD_EXISTS:{
-						 int ret= db_exists(req->argv[1]);
+						 int ret= db_exists(_svr.db, req->argv[1]);
 						 if(ret)
 							write(fd,":1\r\n",4);
 						 else
@@ -317,19 +318,24 @@ int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 }
 
 #define BUFFERPOOL	(1024*1024*1024)
-void nessdb_init()
+nessDB *nessdb_init()
 {
-	db_init(BUFFERPOOL);
+	return db_init(BUFFERPOOL);
+}
+
+void nessdb_destroy(nessDB *db)
+{
+	db_destroy(db);
 }
 
 int main()
 {
 	signal_init();
-	nessdb_init();
 
 	_svr.bindaddr="127.0.0.1";
 	_svr.port=6379;
 	
+	_svr.db = nessdb_init();
 	_svr.el=aeCreateEventLoop();
 	_svr.fd=anetTcpServer(_svr.neterr,_svr.port,_svr.bindaddr);
 
@@ -342,5 +348,6 @@ int main()
 	aeMain(_svr.el);
 	printf("oops,exit\n");
 	aeDeleteEventLoop(_svr.el);
+	nessdb_destroy(_svr.db);
 	return 1;
 }

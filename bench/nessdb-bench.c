@@ -39,7 +39,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
-#include "db.h"
+#include "../nessDB/db.h"
 #include "../nessDB/platform.h"
 
 #define OP_ADD 1
@@ -143,13 +143,13 @@ void print_environment()
 	}
 }
 
-void db_init_test(int show)
+nessDB *db_init_test(int show)
 {
 	random_value();
-	db_init(BUFFERPOOL);
+	return db_init(BUFFERPOOL);
 }
 
-void db_write_test()
+void db_write_test(nessDB *db)
 {
 	long i,count=0;
 	double cost;
@@ -157,7 +157,7 @@ void db_write_test()
 	start_timer();
 	for(i=1;i<NUM;i++){
 		random_key(key,KEYSIZE);
-		if(db_add(key,value)==1)
+		if(db_add(db, key, value)==1)
 			count++;
 		if((i%5000)==0){
 			fprintf(stderr,"random write finished %ld ops%30s\r",i,"");
@@ -174,7 +174,7 @@ void db_write_test()
 		,cost);	
 }
 
-void db_read_random_test()
+void db_read_random_test(nessDB *db)
 {
 	long i,count=0;
 	long r_start=NUM/2;
@@ -185,7 +185,7 @@ void db_read_random_test()
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 		random_key(key,KEYSIZE);
-		void* data=db_get(key);
+		void* data=db_get(db, key);
 		if(data){
 			count++;
 			free(data);
@@ -207,7 +207,7 @@ void db_read_random_test()
 		,cost);
 }
 
-void db_read_seq_test()
+void db_read_seq_test(nessDB *db)
 {
 	long i, count=0;
 	long r_start=NUM/3;
@@ -218,7 +218,7 @@ void db_read_seq_test()
 	start_timer();
 	for(i=r_start;i<r_end;i++){
 		random_key(key,KEYSIZE);
-		void* data=db_get(key);
+		void* data=db_get(db, key);
 		if(data){
 			count++;
 			free(data);
@@ -242,7 +242,7 @@ void db_read_seq_test()
 }
 
 
-void db_remove_test()
+void db_remove_test(nessDB *db)
 {
 		
 	long i,count=0;
@@ -255,7 +255,7 @@ void db_remove_test()
 	for(i=r_start;i<r_end;i++){
 		memset(key,0,sizeof(key));
 		sprintf(key,"%dkey",rand()%NUM);
-		db_remove(key);
+		db_remove(db, key);
 		count++;
 		if((count%100)==0){
 			fprintf(stderr,"random remove  finished %ld ops%30s\r",count,"");
@@ -274,11 +274,11 @@ void db_remove_test()
 }
 
 
-void db_tests()
+void db_tests(nessDB *db)
 {
-	db_write_test();
-	db_read_random_test();
-	db_read_seq_test();
+	db_write_test(db);
+	db_read_random_test(db);
+	db_read_seq_test(db);
 	printf(LINE);
 }
 
@@ -287,6 +287,7 @@ int main(int argc,char** argv)
 {
 	long op;
 	int show=1;
+	nessDB *db;
 	if(argc!=2){
 		fprintf(stderr,"Usage: nessdb_benchmark <op>\n");
         	exit(1);
@@ -311,16 +312,16 @@ int main(int argc,char** argv)
 	print_header();
 	print_environment();
 	
-	db_init_test(show);
+	db = db_init_test(show);
 
 	if(op==OP_ADD)
-		db_tests();
+		db_tests(db);
 	else if(op==OP_WALK)
-		db_read_seq_test();
+		db_read_seq_test(db);
 	else if(op==OP_GET)
-		db_read_random_test();
+		db_read_random_test(db);
 	else if(op==OP_REMOVE)
-		db_remove_test();
-	db_destroy();
+		db_remove_test(db);
+	db_destroy(db);
 	return 1;
 }
