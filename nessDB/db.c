@@ -48,10 +48,6 @@
 #include "db.h"
 #include "platform.h"
 
-struct info{
-	int32_t used;
-	int32_t unused;	
-};
 
 /*primes are:
  3UL, 5UL, 7UL, 11UL, 13UL, 17UL, 19UL, 23UL, 29UL, 31UL, 37UL,41UL, 43UL, 47UL,
@@ -67,12 +63,9 @@ struct info{
 #define IDX_PRIME	(16785407)
 #define RATIO		(0.618)
 
-static struct btree 	_btrees[DB_SLOT];
-static struct info	_infos[DB_SLOT];
-
-void db_init(int bufferpool_size)
+nessDB *db_init(int bufferpool_size)
 {
-	int i;	
+	int i;
 	int pagepool_size=bufferpool_size*(1-RATIO)/DB_SLOT;
 	struct stat st;
 
@@ -82,30 +75,32 @@ void db_init(int bufferpool_size)
 		#else
 		mkdir(DB_DIR, S_IRWXU | S_IRGRP | S_IROTH);
 		#endif
+  nessDB *db = malloc(sizeof(nessDB));
 	llru_init(bufferpool_size*RATIO);
 	for(i=0;i<DB_SLOT;i++){
 		char pre[256]={0};
 		snprintf(pre,sizeof pre,"%s%d",DB_PREFIX,i);
-		btree_init(&_btrees[i],pre,pagepool_size);
+		btree_init(&db->_btrees[i], pre, pagepool_size);
 	}
+	return db;
 }
 
-int db_add(const char *key,const char *value)
+int db_add(nessDB *db, const char *key,const char *value)
 {
 	uint32_t off;
 	unsigned int slot=djb_hash(key)%DB_SLOT;
 
-	off=btree_insert(&_btrees[slot],key,(const void*)value,strlen(value));
+	off=btree_insert(&db->_btrees[slot], key, (const void*) value, strlen(value));
 	if(off==0)
 		return (0);
 
 	llru_remove(key);
-	_infos[slot].used++;
+	db->_infos[slot].used++;
 	return (1);
 }
 
 
-void *db_get(const char *key)
+void *db_get(nessDB *db, const char *key)
 {
 	void *v;
 	int k_l,v_l;
@@ -114,7 +109,7 @@ void *db_get(const char *key)
 	v=llru_get(key);
 	if(v==NULL){
 		unsigned int slot=djb_hash(key)%DB_SLOT;
-		v=btree_get(&_btrees[slot],key);
+		v=btree_get(&db->_btrees[slot], key);
 		if(v==NULL)
 			return NULL;
 		k_l=strlen(key);
@@ -135,26 +130,26 @@ void *db_get(const char *key)
 	}
 }
 
-int db_exists(const char *key)
+int db_exists(nessDB *db, const char *key)
 {
 	unsigned int slot=djb_hash(key)%DB_SLOT;
-	return btree_get_index(&_btrees[slot],key);
+	return btree_get_index(&db->_btrees[slot],key);
 }
 
-void db_remove(const char *key)
+void db_remove(nessDB *db, const char *key)
 {
 	int result;
 	unsigned int slot=djb_hash(key)%DB_SLOT;
-	result=btree_delete(&_btrees[slot],key);
+	result=btree_delete(&db->_btrees[slot],key);
 	if(result==0){
-		_infos[slot].used--;
-		_infos[slot].unused++;
+		db->_infos[slot].used--;
+		db->_infos[slot].unused++;
 		llru_remove(key);
 	}
 }
 
 
-void db_info(char *infos)
+void db_info(nessDB *db, char *infos)
 {
 	uint32_t all_used=0,all_unused=0;
 	char str[256];
@@ -163,13 +158,13 @@ void db_info(char *infos)
 		memset(str,0,256);
 		snprintf(str,sizeof str,"	db%d:used:<%d>;unused:<%d>;dbsize:<%d>bytes\n",
 				i,
-				_infos[i].used,
-				_infos[i].unused,
-				_btrees[i].db_alloc);
+				db->_infos[i].used,
+				db->_infos[i].unused,
+				db->_btrees[i].db_alloc);
 
 		strcat(infos,str);
-		all_used+=_infos[i].used;
-		all_unused+=_infos[i].unused;
+		all_used+=db->_infos[i].used;
+		all_unused+=db->_infos[i].unused;
 	}
 	snprintf(str,sizeof str,"	all-used:<%d>;all-unused:<%d>\n",all_used,all_unused);
 	strcat(infos,str);
@@ -193,10 +188,11 @@ void db_info(char *infos)
 	strcat(infos,str);
 }
 
-void db_destroy()
+void db_destroy(nessDB *db)
 {
 	int i;
 	for(i=0;i<DB_SLOT;i++)
-		btree_close(&_btrees[i]);
+		btree_close(&db->_btrees[i]);
 	llru_free();
+	free(db);
 }
