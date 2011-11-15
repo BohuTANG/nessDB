@@ -19,8 +19,7 @@ typedef struct nessDB {
 
 
 /*
- * bufferpool:lru memory size allow,unit is BYTE
- * isbgsync:if TRUE,"fdatasync" will run on the background thread,otherwise will do nothing.
+ * bufferpool:lru memory size allowed, unit is BYTE
  */
 nessDB *db_init(int bufferpool_size);
 void	*db_get(nessDB *db, const char *key);
