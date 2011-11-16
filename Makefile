@@ -9,12 +9,12 @@ CC = gcc
 CFLAGS =  -c -std=c99 -Wall $(DEBUG)	
 
 LIB_OBJS = \
-	./nessDB/ht.o \
-	./nessDB/llru.o \
-	./nessDB/level.o \
-	./nessDB/db.o \
-	./nessDB/util.o \
-	./nessDB/storage.o 
+	./engine/ht.o \
+	./engine/llru.o \
+	./engine/level.o \
+	./engine/db.o \
+	./engine/util.o \
+	./engine/storage.o 
 
 SVR_OBJS = \
 	./server/ae.o \

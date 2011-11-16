@@ -57,8 +57,8 @@
 #include "ae.h"
 #include "request.h"
 #include "response.h"
-#include "../nessDB/db.h"
-#include "../nessDB/platform.h"
+#include "../engine/db.h"
+#include "../engine/platform.h"
 
 
 struct server{

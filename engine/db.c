@@ -68,7 +68,7 @@ nessDB *db_init(int bufferpool_size, const char *basedir)
 	int i;
 	int pagepool_size=bufferpool_size*(1-RATIO)/DB_SLOT;
 	_ensure_dir_exists(concat_paths(basedir, DB_DIR));
-  nessDB *db = malloc(sizeof(nessDB));
+ 	nessDB *db = malloc(sizeof(nessDB));
 	llru_init(bufferpool_size*RATIO);
 	for(i=0;i<DB_SLOT;i++){
 		char pre[256]={0};

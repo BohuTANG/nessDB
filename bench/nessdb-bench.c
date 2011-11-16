@@ -29,9 +29,8 @@
 /*NOTE:
 	How to do
 	=========
-	 	$cd src
-		$make
-	 	$./nessdb-bench add
+		$make db-bench
+	 	$./db-bench add
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,8 +38,8 @@
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
-#include "../nessDB/db.h"
-#include "../nessDB/platform.h"
+#include "../engine/db.h"
+#include "../engine/platform.h"
 
 #define OP_ADD 1
 #define OP_GET 2
@@ -146,7 +145,7 @@ void print_environment()
 nessDB *db_init_test(int show)
 {
 	random_value();
-	return db_init(BUFFERPOOL, getcwd(NULL, 0));
+	return db_init(BUFFERPOOL, getcwd(NULL,0));
 }
 
 void db_write_test(nessDB *db)

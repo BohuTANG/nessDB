@@ -1,5 +1,5 @@
 #include <string.h>
-#include "../nessDB/db.h"
+#include "../engine/db.h"
 #include <assert.h>
 
 void test_db_operations(nessDB *db)

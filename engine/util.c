@@ -3,14 +3,15 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
 const char *concat_paths(const char *basedir, const char *subdir)
 {
-	char path[256]={0};
+	char *path=calloc(1,sizeof(char)*256);
 	snprintf(path, sizeof(path), "%s/%s", basedir, subdir);
-	return strndup(path, sizeof(path));
+	return path;
 }
 
 static void _portable_mkdir(const char *path)
