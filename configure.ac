@@ -3,7 +3,7 @@
 
 AC_PREREQ(2.61)
 AC_INIT(nessDB, 1.8.0, nessdb@googlegroups.com)
-AM_INIT_AUTOMAKE([foreign -Wall])
+AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 LT_INIT
