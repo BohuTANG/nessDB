@@ -188,4 +188,5 @@ void db_destroy(nessDB *db)
 		btree_close(&db->_btrees[i]);
 	llru_free();
 	free(db);
+	db = NULL;
 }
