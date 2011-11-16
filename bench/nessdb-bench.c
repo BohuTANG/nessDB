@@ -146,7 +146,7 @@ void print_environment()
 nessDB *db_init_test(int show)
 {
 	random_value();
-	return db_init(BUFFERPOOL);
+	return db_init(BUFFERPOOL, getcwd(NULL, 0));
 }
 
 void db_write_test(nessDB *db)
