@@ -21,7 +21,7 @@ typedef struct nessDB {
 /*
  * bufferpool_size:lru memory size allowed, unit is BYTE
  */
-nessDB *db_init(int bufferpool_size);
+nessDB *db_init(int bufferpool_size, const char *basedir);
 void   *db_get(nessDB *db, const char *key);
 int    db_exists(nessDB *db, const char *key);
 int    db_add(nessDB *db, const char *key,const char *value);

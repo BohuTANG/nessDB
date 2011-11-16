@@ -47,7 +47,7 @@
 #include "hashes.h"
 #include "db.h"
 #include "platform.h"
-
+#include "util.h"
 
 /*primes are:
  3UL, 5UL, 7UL, 11UL, 13UL, 17UL, 19UL, 23UL, 29UL, 31UL, 37UL,41UL, 43UL, 47UL,
@@ -63,23 +63,16 @@
 #define IDX_PRIME	(16785407)
 #define RATIO		(0.618)
 
-nessDB *db_init(int bufferpool_size)
+nessDB *db_init(int bufferpool_size, const char *basedir)
 {
 	int i;
 	int pagepool_size=bufferpool_size*(1-RATIO)/DB_SLOT;
-	struct stat st;
-
-	if(stat(DB_DIR, &st) != 0)
-		#ifdef _WIN32
-		_mkdir(DB_DIR);
-		#else
-		mkdir(DB_DIR, S_IRWXU | S_IRGRP | S_IROTH);
-		#endif
+	_ensure_dir_exists(concat_paths(basedir, DB_DIR));
   nessDB *db = malloc(sizeof(nessDB));
 	llru_init(bufferpool_size*RATIO);
 	for(i=0;i<DB_SLOT;i++){
 		char pre[256]={0};
-		snprintf(pre,sizeof pre,"%s%d",DB_PREFIX,i);
+		snprintf(pre, sizeof(pre), "%s/%s%d", basedir, DB_PREFIX, i);
 		btree_init(&db->_btrees[i], pre, pagepool_size);
 	}
 	return db;
