@@ -1,3 +1,4 @@
+#include <string.h>
 #include "../nessDB/db.h"
 #include <assert.h>
 
