@@ -22,14 +22,18 @@ SVR_OBJS = \
 	./server/request.o \
 	./server/response.o \
 	./server/zmalloc.o \
-	$(LIB_OBJS)
 
 LIBRARY = libnessdb.a
 
 all: $(LIBRARY)
 
 clean:
-	-rm -rf $(LIBRARY)  $(LIB_OBJS) $(SVR_OBJS) ndbs bench/nessdb-bench.o server/nessdb-server.o db-bench db-server
+	-rm -f $(LIBRARY)  
+	-rm -f $(LIB_OBJS)
+	-rm -f $(SVR_OBJS)
+	-rm -rf ndbs
+	-rm -f bench/nessdb-bench.o server/nessdb-server.o 
+	-rm -f db-bench db-server
 
 $(LIBRARY): $(LIB_OBJS)
 	rm -f $@
@@ -38,8 +42,8 @@ $(LIBRARY): $(LIB_OBJS)
 db-bench: bench/nessdb-bench.o $(LIB_OBJS)
 	$(CC)  bench/nessdb-bench.o $(LIB_OBJS)  -o $@
 
-db-server: server/nessdb-server.o $(SVR_OBJS)
-	$(CC)  server/nessdb-server.o $(SVR_OBJS)  -o $@
+db-server: server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS)
+	$(CC)  server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
 
 #db-test: test/test_different_dirs.o $(SVR_OBJS)
 #	$(CC)  test/test_different_dirs.o $(SVR_OBJS)  -o $@
