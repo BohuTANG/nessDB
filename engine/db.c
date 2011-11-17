@@ -44,7 +44,6 @@
 #include "bitwise.h"
 #include "storage.h"
 #include "llru.h"
-#include "hashes.h"
 #include "db.h"
 #include "platform.h"
 #include "util.h"
@@ -62,6 +61,23 @@
 #define DB_DIR    	"ndbs"
 #define IDX_PRIME	(16785407)
 #define RATIO		(0.618)
+
+
+/**
+ * Djb hash function
+ */
+static size_t djb_hash(const char* key)
+{
+    if (!key) {
+        return 0;
+    }
+    unsigned int hash = 5381;
+    unsigned int c;
+    while ((c = *key++))
+	hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
+
+   return (size_t) hash;
+}
 
 nessDB *db_init(int bufferpool_size, const char *basedir)
 {

@@ -28,8 +28,24 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "hashes.h"
+#include <string.h>
 #include "ht.h"
+
+/**
+ * Djb hash function
+ */
+static size_t djb_hash(const char* key)
+{
+    if (!key) {
+        return 0;
+    }
+    unsigned int hash = 5381;
+    unsigned int c;
+    while ((c = *key++))
+	hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
+
+   return (size_t) hash;
+}
 
 static int key_cmp(struct ht *ht,void *a,void *b)
 {
