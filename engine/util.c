@@ -9,8 +9,8 @@
 
 const char *concat_paths(const char *basedir, const char *subdir)
 {
-	char *path=calloc(1,sizeof(char)*256);
-	snprintf(path, sizeof(path), "%s/%s", basedir, subdir);
+	char *path=malloc(256);
+	snprintf(path, 256, "%s/%s", basedir, subdir);
 	return path;
 }
 
