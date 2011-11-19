@@ -9,15 +9,15 @@
 
 struct btree_item {
 	char sha1[SHA1_LENGTH];
+	__be32 offset;
+	__be32 child;
 } __attribute__((packed));
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct btree_item))
 
 struct btree_table {
 	uint16_t size;
-	struct btree_item items[TABLE_SIZE];
-	__be32 offsets[TABLE_SIZE];
-	__be32 childs[TABLE_SIZE];	
+	struct btree_item items[TABLE_SIZE];	
 } __attribute__((packed));
 
 struct btree_cache {
