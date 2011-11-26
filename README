@@ -1,6 +1,6 @@
 ================================================================
-			nessDB v1.8 with LSM-Tree&B+Tree 
-				Copyright (C) 2011 BohuTANG
+			nessDB v1.8 with LSM-Tree && B+Tree 
+			Copyright (C) 2011 BohuTANG
 ================================================================	
   nessDB is written in ANSI C and works in most POSIX systems like Linux, *BSD, OS X and Solaris without external dependencies.
 
