@@ -5,7 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#include "util.h"
 
 const char *concat_paths(const char *basedir, const char *subdir)
 {
@@ -51,3 +57,20 @@ void _ensure_dir_exists(const char *path)
 	}
 }
 
+int _file_exists(const char *path)
+{
+	int fd = open(path, O_RDWR);
+	if (fd > -1) {
+		close(fd);
+		return 1;
+	}
+	return 0;
+}
+
+UINT _getsize(int fd) {
+	struct stat sb;
+	if (fstat(fd,&sb) == -1)
+		return 0;
+
+	return (UINT)sb.st_size;
+}

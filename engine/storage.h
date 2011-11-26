@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include "bitwise.h"
+
 #include "platform.h"
+#include "util.h"
 
 #define SHA1_LENGTH	(20)
 
@@ -50,32 +52,13 @@ struct btree {
 	struct btree_cache cache[CACHE_SLOTS];
 };
 
-
-//open or creat index&data files
 int btree_init(struct btree *btree,const char *db);
-
-
-/*
- * Close a database file opened with btree_creat() or btree_open().
- */
 void btree_close(struct btree *btree);
-
 void btree_insert_index(struct btree *btree, const char *sha1, UINT  data_offset);
-
 UINT btree_insert_data(struct btree *btree, const void *data,size_t len);
-
-/*
- * Look up item with the given key 'sha1' in the database file. Length of the
- * item is stored in 'len'. Returns a pointer to the contents of the item.
- * The returned pointer should be released with free() after use.
- */
 void *btree_get(struct btree *btree, const char *sha1);
 int btree_get_index(struct btree *btree, const char *sha1);
 void *btree_get_byoffset(struct btree *btree,uint32_t offset);
-
-/*
- * Remove item with the given key 'sha1' from the database file.
- */
 int btree_delete(struct btree *btree, const char *sha1);
 
 #endif

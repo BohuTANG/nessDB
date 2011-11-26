@@ -50,24 +50,6 @@
 #include "log.h"
 #include "debug.h"
 
-int _file_exists(const char *path)
-{
-	int fd = open(path, O_RDWR);
-	if (fd > -1) {
-		close(fd);
-		return 1;
-	}
-	return 0;
-}
-
-UINT _getsize(int fd) {
-	struct stat sb;
-	if (fstat(fd,&sb) == -1)
-		return 0;
-
-	return (UINT)sb.st_size;
-}
-
 struct log *log_new(char *name)
 {
 	struct log *l;

@@ -54,7 +54,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include "storage.h"
-#include "platform.h"
 
 #define IDXEXT	".idx"
 #define DBEXT	".db"
@@ -65,23 +64,22 @@ struct chunk {
 };
 
 
-static int cmp_sha1(const char *a,const char *b)
+int _cmp_sha1(const char *a,const char *b)
 {
 	return strcmp(a,b);
 }
 
-static struct btree_table *alloc_table(struct btree *btree)
+struct btree_table *_alloc_table(struct btree *btree)
 {
 	struct btree_table *table = malloc(sizeof *table);
 	memset(table, 0, sizeof *table);
 	return table;
 }
 
-static struct btree_table *get_table(struct btree *btree, UINT offset)
+struct btree_table *_get_table(struct btree *btree, UINT offset)
 {
 	assert(offset != 0);
 
-	/* take from cache */
 	struct btree_cache *slot = &btree->cache[offset % CACHE_SLOTS];
 	if (slot->offset == offset) {
 		slot->offset = 0;
@@ -92,19 +90,17 @@ static struct btree_table *get_table(struct btree *btree, UINT offset)
 
 	lseek(btree->fd, offset, SEEK_SET);
 	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
-		fprintf(stderr, "btree get_table: I/O error\n");
+		fprintf(stderr, "btree _get_table: I/O error\n");
 		abort();
 	}
 	return table;
 }
 
-/* Free a table acquired with alloc_table() or get_table() */
-static void put_table(struct btree *btree, struct btree_table *table,
+void _put_table(struct btree *btree, struct btree_table *table,
 		      UINT offset)
 {
 	assert(offset != 0);
 
-	/* overwrite cache */
 	struct btree_cache *slot = &btree->cache[offset % CACHE_SLOTS];
 		if (slot->offset != 0) {
 		free(slot->table);
@@ -113,21 +109,20 @@ static void put_table(struct btree *btree, struct btree_table *table,
 	slot->table = table;
 }
 
-/* Write a table and free it */
-static void flush_table(struct btree *btree, struct btree_table *table,
+void _flush_table(struct btree *btree, struct btree_table *table,
 			UINT offset)
 {
 		assert(offset != 0);
 
         lseek(btree->fd, offset, SEEK_SET);
 	if (write(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
-		fprintf(stderr, "btree flush_table: I/O error\n");
+		fprintf(stderr, "btree _flush_table: I/O error\n");
 		abort();
 	}
-	put_table(btree, table, offset);
+	_put_table(btree, table, offset);
 }
 
-static void flush_super(struct btree *btree)
+void _flush_super(struct btree *btree)
 {
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
@@ -140,7 +135,8 @@ static void flush_super(struct btree *btree)
 		abort();
 	}
 }
-static void flush_magic(struct btree *btree)
+
+void _flush_maigc(struct btree *btree)
 {
 	int magic=2011;
 	if (write(btree->db_fd, &magic, sizeof magic) != sizeof magic){
@@ -149,13 +145,8 @@ static void flush_magic(struct btree *btree)
 	}
 }
 
-static UINT getsize(int fd) {
-    struct stat sb;
-    if (fstat(fd,&sb) == -1) return 0;
-    return (UINT) sb.st_size;
-}
 
-static int btree_open(struct btree *btree,const char *idx,const char *db)
+int _btree_open(struct btree *btree,const char *idx,const char *db)
 {
 	memset(btree, 0, sizeof *btree);
 
@@ -171,14 +162,14 @@ static int btree_open(struct btree *btree,const char *idx,const char *db)
 	btree->top = from_be32(super.top);
 	btree->free_top = from_be32(super.free_top);
 
-	btree->alloc = getsize(btree->fd);
-	btree->db_alloc = getsize(btree->db_fd);
+	btree->alloc = _getsize(btree->fd);
+	btree->db_alloc = _getsize(btree->db_fd);
 
 	return 0;
 }
 
 
-static int btree_creat(struct btree *btree,const char *idx,const char *db)
+int _btree_creat(struct btree *btree,const char *idx,const char *db)
 {
 	memset(btree, 0, sizeof *btree);
 
@@ -187,23 +178,13 @@ static int btree_creat(struct btree *btree,const char *idx,const char *db)
 	if (btree->fd < 0 || btree->db_fd < 0)
 		return -1;
 
-	flush_super(btree);
+	_flush_super(btree);
 
 	btree->alloc =sizeof (struct btree_super);
 	lseek(btree->fd, 0, SEEK_END);
 
-	flush_magic(btree);
+	_flush_maigc(btree);
 	btree->db_alloc = sizeof(int);
-	return 0;
-}
-
-static int file_exists(const char *path)
-{
-	int fd=open(path, O_RDWR);
-	if(fd>-1){
-		close(fd);
-		return 1;
-	}
 	return 0;
 }
 
@@ -215,10 +196,10 @@ int btree_init(struct btree *btree,const char *dbname)
 	snprintf(idx, sizeof idx, "%s%s", dbname,IDXEXT);
 	snprintf(db, sizeof db, "%s%s", dbname,DBEXT);
 
-	if (file_exists(idx))
-		btree_open(btree, idx, db);
+	if (_file_exists(idx))
+		_btree_open(btree, idx, db);
 	else
-		btree_creat(btree, idx, db);
+		_btree_creat(btree, idx, db);
 
 	return (1);
 }
@@ -236,29 +217,21 @@ void btree_close(struct btree *btree)
 	}
 }
 
-
-/* Allocate a chunk from the index file */
-static size_t alloc_chunk(struct btree *btree, size_t len)
+size_t _alloc_chunk(struct btree *btree, size_t len)
 {
 	size_t offset = btree->alloc;
 	btree->alloc = offset + len;
 	return offset;
 }
 
-
-/* Allocate a chunk from the database file */
-static size_t alloc_db_chunk(struct btree *btree, size_t len)
+size_t _alloc_db_chunk(struct btree *btree, size_t len)
 {
-	/*len = round_power2(len);*/
-
 	size_t offset  = btree->db_alloc;
 	btree->db_alloc = offset + len;
 	return offset;
 }
 
-
-
-static UINT insert_data(struct btree *btree, const void *data, size_t len)
+UINT _insert_data(struct btree *btree, const void *data, size_t len)
 {
 	UINT offset;
 	struct blob_info info;
@@ -269,7 +242,7 @@ static UINT insert_data(struct btree *btree, const void *data, size_t len)
 	memset(&info, 0, sizeof info);
 	info.len = to_be32(len);
 
-	offset = alloc_db_chunk(btree, sizeof info + len);
+	offset = _alloc_db_chunk(btree, sizeof info + len);
 
 	lseek(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof info) != sizeof info) {
@@ -284,15 +257,13 @@ static UINT insert_data(struct btree *btree, const void *data, size_t len)
 	return offset;
 }
 
-/* Split a table. The pivot item is stored to 'sha1' and 'offset'.
-   Returns offset to the new table. */
-static UINT split_table(struct btree *btree, struct btree_table *table,
+UINT _split_table(struct btree *btree, struct btree_table *table,
 			  char *sha1, UINT *offset)
 {
 	memcpy(sha1, table->items[TABLE_SIZE / 2].sha1, SHA1_LENGTH);
 	*offset = from_be32(table->items[TABLE_SIZE / 2].offset);
 
-	struct btree_table *new_table = alloc_table(btree);
+	struct btree_table *new_table = _alloc_table(btree);
 	new_table->size = table->size - TABLE_SIZE / 2 - 1;
 
 	table->size = TABLE_SIZE / 2;
@@ -300,35 +271,32 @@ static UINT split_table(struct btree *btree, struct btree_table *table,
 	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1],
 		(new_table->size + 1) * sizeof(struct btree_item));
 
-	UINT new_table_offset = alloc_chunk(btree, sizeof *new_table);
-	flush_table(btree, new_table, new_table_offset);
+	UINT new_table_offset = _alloc_chunk(btree, sizeof *new_table);
+	_flush_table(btree, new_table, new_table_offset);
 
 	return new_table_offset;
 }
 
 UINT btree_insert_data(struct btree *btree, const void *data, size_t len)
 {
-	return insert_data(btree, data, len);
+	return _insert_data(btree, data, len);
 }
 
-/* Insert a new item with key 'sha1' with the contents in 'data' to the given
-   table. Returns offset to the new item. */
-
-static UINT insert_table(struct btree *btree, UINT table_offset,
+UINT _insert_table(struct btree *btree, UINT table_offset,
 			 char *sha1, UINT v_off)
 {
-	struct btree_table *table = get_table(btree, table_offset);
+	struct btree_table *table = _get_table(btree, table_offset);
 	assert(table->size < TABLE_SIZE-1);
 
 	size_t left = 0, right = table->size;
 	while (left < right) {
 		size_t i = (right - left) / 2 + left;
-		int cmp = cmp_sha1(sha1, table->items[i].sha1);
+		int cmp = _cmp_sha1(sha1, table->items[i].sha1);
 		if (cmp == 0) {
 			/* already in the table update it*/
 			UINT ret = v_off;
 			table->items[i].offset= to_be32(ret);
-			flush_table(btree,table,table_offset);
+			_flush_table(btree,table,table_offset);
 			return ret;
 		}
 		if (cmp < 0)
@@ -344,20 +312,20 @@ static UINT insert_table(struct btree *btree, UINT table_offset,
 	UINT ret = 0;
 	if (left_child != 0) {
 		/* recursion */
-		ret = insert_table(btree, left_child, sha1, v_off);
+		ret = _insert_table(btree, left_child, sha1, v_off);
 
 		/* check if we need to split */
-		struct btree_table *child = get_table(btree, left_child);
+		struct btree_table *child = _get_table(btree, left_child);
 		if (child->size < TABLE_SIZE-1) {
 			/* nothing to do */
-			put_table(btree, table, table_offset);
-			put_table(btree, child, left_child);
+			_put_table(btree, table, table_offset);
+			_put_table(btree, child, left_child);
 			return ret;
 		}
 		/* overwrites SHA-1 */
-		right_child = split_table(btree, child, sha1, &offset);
+		right_child = _split_table(btree, child, sha1, &offset);
 		/* flush just in case changes happened */
-		flush_table(btree, child, left_child);
+		_flush_table(btree, child, left_child);
 	} else
 		ret=offset=v_off;
 
@@ -370,30 +338,25 @@ static UINT insert_table(struct btree *btree, UINT table_offset,
 	table->items[i].child = to_be32(left_child);
 	table->items[i + 1].child = to_be32(right_child);
 
-	flush_table(btree, table, table_offset);
+	_flush_table(btree, table, table_offset);
 	return ret;
 }
 
 
-/*
- * Remove a item with key 'sha1' from the given table. The offset to the
- * removed item is returned.
- * Please note that 'sha1' is overwritten when called inside the allocator.
- */
-static UINT delete_table(struct btree *btree, UINT table_offset, char *sha1)
+UINT _delete_table(struct btree *btree, UINT table_offset, char *sha1)
 {
 	while (table_offset) {
-		struct btree_table *table = get_table(btree, table_offset);
+		struct btree_table *table = _get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
 		while (left < right) {
 			i = (right - left) / 2 + left;
-			int cmp = cmp_sha1(sha1, table->items[i].sha1);
+			int cmp = _cmp_sha1(sha1, table->items[i].sha1);
 			if (cmp == 0) {
 				/* found */
 				//mark unused
 				UINT off = from_be32(table->items[i].offset);
 				table->items[i].offset=to_be32(set32_H_1(off));
-				flush_table(btree, table, table_offset);
+				_flush_table(btree, table, table_offset);
 				return 1;
 			}
 			if (cmp < 0)
@@ -402,44 +365,44 @@ static UINT delete_table(struct btree *btree, UINT table_offset, char *sha1)
 				left = i + 1;
 		}
 		UINT  child = from_be32(table->items[left].child);
-		put_table(btree, table, table_offset);
+		_put_table(btree, table, table_offset);
 		table_offset = child;
 	}
 	return 0;
 }
 
-UINT insert_toplevel(struct btree *btree, UINT *table_offset,
+UINT _insert_toplevel(struct btree *btree, UINT *table_offset,
 			char *sha1, UINT v_off)
 {
 	UINT offset = 0;
 	UINT ret = 0;
 	UINT right_child = 0;
 	if (*table_offset != 0) {
-		ret = insert_table(btree, *table_offset, sha1, v_off);
+		ret = _insert_table(btree, *table_offset, sha1, v_off);
 
 		/* check if we need to split */
-		struct btree_table *table = get_table(btree, *table_offset);
+		struct btree_table *table = _get_table(btree, *table_offset);
 		if (table->size < TABLE_SIZE-1) {
 			/* nothing to do */
-			put_table(btree, table, *table_offset);
+			_put_table(btree, table, *table_offset);
 			return ret;
 		}
-		right_child = split_table(btree, table, sha1, &offset);
-		flush_table(btree, table, *table_offset);
+		right_child = _split_table(btree, table, sha1, &offset);
+		_flush_table(btree, table, *table_offset);
 	} else {
 			ret = offset = v_off;
 	}
 
 	/* create new top level table */
-	struct btree_table *new_table = alloc_table(btree);
+	struct btree_table *new_table = _alloc_table(btree);
 	new_table->size = 1;
 	memcpy(new_table->items[0].sha1, sha1, SHA1_LENGTH);
 	new_table->items[0].offset = to_be32(offset);
 	new_table->items[0].child = to_be32(*table_offset);
 	new_table->items[1].child = to_be32(right_child);
 
-	UINT new_table_offset = alloc_chunk(btree, sizeof *new_table);
-	flush_table(btree, new_table, new_table_offset);
+	UINT new_table_offset = _alloc_chunk(btree, sizeof *new_table);
+	_flush_table(btree, new_table, new_table_offset);
 
 	*table_offset = new_table_offset;
 	return ret;
@@ -453,23 +416,18 @@ void  btree_insert_index(struct btree *btree,const char *c_sha1, UINT v_off)
 	memset(sha1, 0, SHA1_LENGTH);
 	memcpy(sha1,c_sha1,sizeof sha1);
 
-	insert_toplevel(btree, &btree->top, sha1, v_off);
+	_insert_toplevel(btree, &btree->top, sha1, v_off);
 }
 
 
-
-/*
- * Look up item with the given key 'sha1' in the given table. Returns offset
- * to the item.
- */
-static UINT lookup(struct btree *btree, UINT table_offset, const char *sha1)
+UINT _lookup(struct btree *btree, UINT table_offset, const char *sha1)
 {
 	while (table_offset) {
-		struct btree_table *table = get_table(btree, table_offset);
+		struct btree_table *table = _get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
 		while (left < right) {
 			i = (right - left) / 2 +left;
-			int cmp = cmp_sha1((const char*)sha1, table->items[i].sha1);
+			int cmp = _cmp_sha1((const char*)sha1, table->items[i].sha1);
 			if (cmp == 0) {
 				/* found */
 				UINT ret=from_be32(table->items[i].offset);
@@ -477,7 +435,7 @@ static UINT lookup(struct btree *btree, UINT table_offset, const char *sha1)
 				if(get32_H(ret)==1)
 					ret = 0;	
 			
-				put_table(btree, table, table_offset);
+				_put_table(btree, table, table_offset);
 				return ret;
 			}
 			if (cmp < 0)
@@ -487,7 +445,7 @@ static UINT lookup(struct btree *btree, UINT table_offset, const char *sha1)
 		}
 		
 		UINT child = from_be32(table->items[left].child);
-		put_table(btree, table, table_offset);
+		_put_table(btree, table, table_offset);
 		table_offset = child;
 	}
 	return 0;
@@ -496,7 +454,7 @@ static UINT lookup(struct btree *btree, UINT table_offset, const char *sha1)
 
 void *btree_get(struct btree *btree, const char *sha1)
 {
-	UINT offset = lookup(btree, btree->top, sha1);
+	UINT offset = _lookup(btree, btree->top, sha1);
 	
 	if (offset == 0){
 		return NULL;
@@ -521,7 +479,7 @@ void *btree_get(struct btree *btree, const char *sha1)
 
 int btree_get_index(struct btree *btree, const char *sha1)
 {
-	UINT offset = lookup(btree, btree->top, sha1);
+	UINT offset = _lookup(btree, btree->top, sha1);
 	if (offset == 0)
 		return (0);
 	return (1);
@@ -556,7 +514,7 @@ int btree_delete(struct btree *btree, const char *c_sha1)
 	memset(sha1, 0, SHA1_LENGTH);
 	memcpy(sha1, c_sha1, sizeof sha1);
 
-	UINT offset = delete_table(btree, btree->top, sha1);
+	UINT offset = _delete_table(btree, btree->top, sha1);
 	if (offset == 0)
 		return -1;
 	return 0;
