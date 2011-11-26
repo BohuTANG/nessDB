@@ -5,13 +5,17 @@
 #include <fcntl.h>
 
 #ifdef _WIN32
-#include <winsock.h>
+	#include <winsock.h>
 #else
 /* Unix */
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h> /* htonl/ntohl */
-#define O_BINARY 0
+
+#ifndef O_BINARY
+	#define O_BINARY 0
+#endif
+
 #endif
 
 //bloom

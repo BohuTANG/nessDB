@@ -1,35 +1,17 @@
-#ifndef _DEBUG_H_
-#define _DEBUG_H_
+#ifndef _DEBUG_H
+#define _DEBUG_H
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-void _debug_raw(const char *msg) {
-   
-    time_t now = time(NULL);
-    FILE *fp;
-    char buf[64];
-
-    fp = fopen("log.txt","a");
-    if (!fp) return;
-
-    strftime(buf,sizeof(buf),"%d %b %H:%M:%S",localtime(&now));
-    fprintf(fp,"[%d] %s  %s\n",(int)getpid(),buf,msg);
-    fflush(fp);
-    fclose(fp);
-}
-
-
-void _debug(const char *fmt, ...) {
-    va_list ap;
-    char msg[1024];
-
-    va_start(ap, fmt);
-    vsnprintf(msg, sizeof(msg), fmt, ap);
-    va_end(ap);
-     
-    _debug_raw(msg);
-}
+#ifdef DEBUG
+#define __DEBUG(x...) do {                                  								\
+        fprintf(stderr, "[%d]	%s(line:%d)	", (int)getpid(),  __FUNCTION__, __LINE__); 	\
+        fprintf(stderr, ##x);                               								\
+		fprintf(stderr, "\n");																\
+    } while(0)
+#else
+	#define __DEBUG(x...)
+#endif
 
 #endif

@@ -1,19 +1,22 @@
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
-	DEBUG = -g -rdynamic -ggdb 
+	DEBUG = -g -rdynamic -ggdb -DDEBUG
 else
 	DEBUG =	-g -ggdb 
 endif
 
 CC = gcc
-CFLAGS =  -c -std=c99 -Wall $(DEBUG)	
+CFLAGS =  -c -std=c99 -Wall  $(DEBUG)	
 
 LIB_OBJS = \
-	./engine/ht.o \
-	./engine/llru.o \
-	./engine/level.o \
-	./engine/db.o \
-	./engine/util.o \
+	./engine/ht.o		\
+	./engine/llru.o		\
+	./engine/level.o	\
+	./engine/db.o		\
+	./engine/util.o		\
+	./engine/skiplist.o		\
+	./engine/log.o		\
+	./engine/buffer.o	\
 	./engine/storage.o 
 
 SVR_OBJS = \
@@ -32,19 +35,16 @@ clean:
 	-rm -f $(LIB_OBJS)
 	-rm -f $(SVR_OBJS)
 	-rm -rf ndbs
-	-rm -f bench/nessdb-bench.o server/nessdb-server.o 
+	-rm -f bench/db-bench.o server/nessdb-server.o 
 	-rm -f db-bench db-server
 
 $(LIBRARY): $(LIB_OBJS)
 	rm -f $@
 	$(AR) -rs $@ $(LIB_OBJS)
 
-db-bench: bench/nessdb-bench.o $(LIB_OBJS)
-	$(CC)  bench/nessdb-bench.o $(LIB_OBJS)  -o $@
+db-bench: bench/db-bench.o $(LIB_OBJS)
+	$(CC)  bench/db-bench.o $(LIB_OBJS)  -o $@
 
 db-server: server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS)
 	$(CC)  server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
-
-#db-test: test/test_different_dirs.o $(SVR_OBJS)
-#	$(CC)  test/test_different_dirs.o $(SVR_OBJS)  -o $@
 

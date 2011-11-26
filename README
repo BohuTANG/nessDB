@@ -1,13 +1,17 @@
 ================================================================
-			nessDB v1.8
-		(NOT ONLY DATABASE ENGINE)
-		Copyright (C) 2011 BohuTANG
+			nessDB v1.8 with LSM-Tree&B+Tree 
+				Copyright (C) 2011 BohuTANG
 ================================================================	
   nessDB is written in ANSI C and works in most POSIX systems like Linux, *BSD, OS X and Solaris without external dependencies.
 
   The 1.8 version is still under construction.
   Random-Read / Write will be greatly enhanced, and add the log recovery. 
   The big stuff coming soon.
-  nessDB v1.8
+  nessDB v1.8 with LSM-Tree.
 
   Thanks for your attention!
+
+  HOW TODO
+  ========
+  $make db-bench
+  $db-bench add

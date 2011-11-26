@@ -40,6 +40,7 @@
 #include <string.h>
 #include "../engine/db.h"
 #include "../engine/platform.h"
+#include "../engine/util.h"
 
 #define OP_ADD 1
 #define OP_GET 2
@@ -49,11 +50,11 @@
 
 #define KEYSIZE 	16
 #define VALSIZE 	80
-#define NUM 		2000000
+#define NUM 		5000000
 #define R_NUM 		20000
 #define REMOVE_NUM	20000
 #define BUFFERPOOL	(1024*1024*1024)
-#define V			"1.8"
+#define V			"1.8.1"
 #define LINE 		"+-----------------------+---------------------------+----------------------------------+---------------------+\n"
 #define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
 
@@ -76,193 +77,216 @@ static double get_timer(void)
 }
 
 
-static char value[VALSIZE+1]={0};
+static char value[VALSIZE+1] = {0};
 void random_value()
 {
-	char salt[10]={'1','2','3','4','5','6','7','8','a','b'};
 	int i;
-	for(i=0;i<VALSIZE;i++)
-		value[i]=salt[rand()%10];
+	char salt[10] = {'1','2','3','4','5','6','7','8','a','b'};
+	for (i = 0; i < VALSIZE; i++)
+		value[i] = salt[rand() % 10];
 }
 
 void random_key(char *key,int length) {
-    	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
-	memset(key,0,length);
+	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
+	memset(key, 0, length);
 	for (int i = 0; i < length; i++)
 		key[i] = salt[rand() % length];
 }
 
-double _index_size=(double)((double)(KEYSIZE+8)*NUM)/1048576.0;
-double _data_size=(double)((double)(VALSIZE+4)*NUM)/1048576.0;
-double _query_size=(double)((double)(KEYSIZE+8+VALSIZE+4)*R_NUM)/1048576.0;
+double _index_size = (double)((double)(KEYSIZE + 8) * NUM) / 1048576.0;
+double _data_size = (double)((double)(VALSIZE + 4) * NUM) / 1048576.0;
+double _query_size = (double)((double)(KEYSIZE + 8 + VALSIZE + 4) * R_NUM) / 1048576.0;
 
 void print_header()
 {
-	printf("Keys:		%d bytes each\n",KEYSIZE);
-	printf("Values:		%d bytes each\n",VALSIZE);
-	printf("Entries:	%d\n",NUM);
-	printf("IndexSize:	%.1f MB (estimated)\n",_index_size);
-	printf("DataSize:	%.1f MB (estimated)\n",_data_size);
+	printf("Keys:		%d bytes each\n", KEYSIZE);
+	printf("Values:		%d bytes each\n", VALSIZE);
+	printf("Entries:	%d\n", NUM);
+	printf("IndexSize:	%.1f MB (estimated)\n", _index_size);
+	printf("DataSize:	%.1f MB (estimated)\n", _data_size);
 	printf(LINE1);
 }
 
 void print_environment()
 {
-	printf("nessDB:		version %s(Multiple && Distributable B+Tree with Level-LRU,Page-Cache)\n",V);
-	time_t now=time(NULL);
-	printf("Date:		%s",(char*)ctime(&now));
+	time_t now = time(NULL);
+	printf("nessDB:		version %s(LSM-Tree && B+Tree with Level-LRU,Page-Cache)\n", V);
+	printf("Date:		%s", (char*)ctime(&now));
 	
-	int num_cpus=0;
-	char cpu_type[256]={0};
-	char cache_size[256]={0};
+	int num_cpus = 0;
+	char cpu_type[256] = {0};
+	char cache_size[256] = {0};
 
-	FILE* cpuinfo=fopen("/proc/cpuinfo","r");
-	if(cpuinfo){
-		char line[1024]={0};
-		while(fgets(line,sizeof(line),cpuinfo)!=NULL){
-			const char* sep=strchr(line,':');
-			if(sep==NULL||strlen(sep)<10)
+	FILE* cpuinfo = fopen("/proc/cpuinfo", "r");
+	if (cpuinfo) {
+		char line[1024] = {0};
+		while (fgets(line, sizeof(line), cpuinfo) != NULL) {
+			const char* sep = strchr(line, ':');
+			if (sep == NULL || strlen(sep) < 10)
 				continue;
 			
-			char key[1024]={0};
-			char val[1024]={0};
-			strncpy(key,line,sep-1-line);
-			strncpy(val,sep+1,strlen(sep)-1);
-			if(strcmp("model name",key)==0){
+			char key[1024] = {0};
+			char val[1024] = {0};
+			strncpy(key, line, sep-1-line);
+			strncpy(val, sep+1, strlen(sep)-1);
+			if (strcmp("model name", key) == 0) {
 				num_cpus++;
-				strcpy(cpu_type,val);
+				strcpy(cpu_type, val);
 			}
-			else if(strcmp("cache size",key)==0)
-				strncpy(cache_size,val+1,strlen(val)-1);	
+			else if (strcmp("cache size", key) == 0)
+				strncpy(cache_size, val + 1, strlen(val) - 1);	
 		}
 
 		fclose(cpuinfo);
-		printf("CPU:		%d * %s",num_cpus,cpu_type);
-		printf("CPUCache:	%s\n",cache_size);
+		printf("CPU:		%d * %s", num_cpus, cpu_type);
+		printf("CPUCache:	%s\n", cache_size);
 	}
 }
 
-nessDB *db_init_test(int show)
+struct nessdb *db_init_test(int show)
 {
 	random_value();
-	return db_init(BUFFERPOOL, getcwd(NULL,0));
+	return db_open(BUFFERPOOL, getcwd(NULL,0));
 }
 
-void db_write_test(nessDB *db)
+void db_write_test(struct nessdb *db)
 {
-	long i,count=0;
+	long i, count=0;
 	double cost;
 	char key[KEYSIZE];
+
+	struct slice sk;
+	struct slice sv;
+
 	start_timer();
-	for(i=1;i<NUM;i++){
-		random_key(key,KEYSIZE);
-		if(db_add(db, key, value)==1)
+	for (i = 1; i < NUM; i++) {
+		random_key(key, KEYSIZE);
+
+		sk.len = KEYSIZE;
+		sk.data = key;
+
+		sv.len = VALSIZE;
+		sv.data = value;
+
+		if (db_add(db, &sk, &sv) == 1)
 			count++;
-		if((i%5000)==0){
-			fprintf(stderr,"random write finished %ld ops%30s\r",i,"");
+		if ((i % 10000) == 0) {
+			fprintf(stderr,"random write finished %ld ops%30s\r", i, "");
 			fflush(stderr);
 		}
 	}
 	
-	cost=get_timer();
+	cost = get_timer();
 	printf(LINE);
 	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
-		,count,(double)(cost/NUM)
-		,(double)(count/cost)
-		,((_index_size+_data_size)/cost)
+		,count, (double)(cost / NUM)
+		,(double)(count / cost)
+		,((_index_size + _data_size) / cost)
 		,cost);	
 }
 
-void db_read_random_test(nessDB *db)
+void db_read_random_test(struct nessdb *db)
 {
-	long i,count=0;
-	long r_start=NUM/2;
-	long r_end=r_start+R_NUM;
+	long i, count = 0;
+	long r_start = NUM / 2;
+	long r_end = r_start + R_NUM;
 
 	double cost;
-	char key[KEYSIZE]={0};
+	char key[KEYSIZE] = {0};
+	struct slice sk;
+
 	start_timer();
-	for(i=r_start;i<r_end;i++){
-		random_key(key,KEYSIZE);
-		void* data=db_get(db, key);
-		if(data){
+	for (i = r_start; i < r_end; i++) {
+		random_key(key, KEYSIZE);
+
+		sk.len = KEYSIZE;
+		sk.data = key;
+		void* data = db_get(db, &sk);
+		if (data) {
 			count++;
 			free(data);
 		}
 
-		if((count%1000)==0){
-			fprintf(stderr,"random read finished %ld ops%30s\r",count,"");
+		if ((count % 1000) == 0) {
+			fprintf(stderr,"random read finished %ld ops%30s\r", count, "");
 			fflush(stderr);
 		}
 
 	}
-   	cost=get_timer();
+   	cost = get_timer();
 	printf(LINE);
 	printf("|Random-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/R_NUM)
-		,(double)(R_NUM/cost)
-		,(_query_size/cost)
+		,(double)(cost / R_NUM)
+		,(double)(R_NUM / cost)
+		,(_query_size / cost)
 		,cost);
 }
 
-void db_read_seq_test(nessDB *db)
+void db_read_seq_test(struct nessdb *db)
 {
-	long i, count=0;
-	long r_start=NUM/3;
-	long r_end=r_start+R_NUM;
+	long i, count = 0;
+	long r_start = NUM / 3;
+	long r_end = r_start + R_NUM;
 
 	double cost;
-	char key[KEYSIZE]={0};
+	char key[KEYSIZE] = {0};
+	struct slice sk;
+
 	start_timer();
-	for(i=r_start;i<r_end;i++){
+	for (i = r_start; i < r_end; i++) {
 		random_key(key,KEYSIZE);
-		void* data=db_get(db, key);
-		if(data){
+		sk.len = KEYSIZE;
+		sk.data = key;
+		void* data = db_get(db, &sk);
+		if (data) {
 			count++;
 			free(data);
 		}
 
-		if((count%1000)==0){
-			fprintf(stderr,"sequential read finished %ld ops %30s\r",count,"");
+		if ((count % 1000) == 0) {
+			fprintf(stderr,"sequential read finished %ld ops %30s\r", count, "");
 			fflush(stderr);
 		}
 
 	}
-	cost=get_timer();
+	cost = get_timer();
 	printf(LINE);
 	printf("|Seq-Read	(found:%ld): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
 		,count
-		,(double)(cost/R_NUM)
-		,(double)(R_NUM/cost)
-		,(_query_size/cost)
+		,(double)(cost / R_NUM)
+		,(double)(R_NUM / cost)
+		,(_query_size / cost)
 		,cost);
 	
 }
 
 
-void db_remove_test(nessDB *db)
+void db_remove_test(struct nessdb *db)
 {
-		
-	long i,count=0;
-	long r_start=NUM/6;
-	long r_end=r_start+REMOVE_NUM;
+	long i,count = 0;
+	long r_start = NUM / 6;
+	long r_end = r_start + REMOVE_NUM;
 
 	double cost;
-	char key[KEYSIZE]={0};
+	char key[KEYSIZE] = {0};
+	struct slice sk;
 	start_timer();
-	for(i=r_start;i<r_end;i++){
+	for (i = r_start; i < r_end; i++) {
 		memset(key,0,sizeof(key));
 		sprintf(key,"%dkey",rand()%NUM);
-		db_remove(db, key);
+		sk.len = KEYSIZE;
+		sk.data = key;
+
+		db_remove(db, &sk);
 		count++;
-		if((count%100)==0){
-			fprintf(stderr,"random remove  finished %ld ops%30s\r",count,"");
+		if ((count % 100) == 0) {
+			fprintf(stderr,"random remove  finished %ld ops%30s\r", count, "");
 			fflush(stderr);
 		}
 
 	}
-   	cost=get_timer();
+   	cost = get_timer();
 	printf(LINE);
 	printf("|Rand-Remove	(done:%ld):	%.6f sec/op;	%.1f reads /sec(estimated);	%.1f MB/sec \n"
 		,count
@@ -273,7 +297,7 @@ void db_remove_test(nessDB *db)
 }
 
 
-void db_tests(nessDB *db)
+void db_tests(struct nessdb *db)
 {
 	db_write_test(db);
 	db_read_random_test(db);
@@ -285,27 +309,27 @@ void db_tests(nessDB *db)
 int main(int argc,char** argv)
 {
 	long op;
-	int show=1;
-	nessDB *db;
-	if(argc!=2){
+	int show = 1;
+	struct nessdb *db;
+	if (argc != 2) {
 		fprintf(stderr,"Usage: nessdb_benchmark <op>\n");
-        	exit(1);
+        exit(1);
 	}
 
-	if(strcmp(argv[1],"add")==0){
-		op=OP_ADD;
-		show=0;
+	if (strcmp(argv[1], "add") == 0 ) {
+		op = OP_ADD;
+		show = 0;
 	}
-	else if(strcmp(argv[1],"get")==0)
+	else if (strcmp(argv[1], "get") == 0)
 		op=OP_GET;
-	else if(strcmp(argv[1],"walk")==0)
+	else if (strcmp(argv[1], "walk") == 0)
 		op=OP_WALK;
-	else if(strcmp(argv[1],"remove")==0)
+	else if (strcmp(argv[1], "remove") == 0)
 		op=OP_REMOVE;
-	else{
+	else { 
 		printf("not supported op %s\n", argv[1]);
-        	exit(1);
-    	}
+        exit(1);
+	}
 	
 	srand(time(NULL));
 	print_header();
@@ -313,13 +337,13 @@ int main(int argc,char** argv)
 	
 	db = db_init_test(show);
 
-	if(op==OP_ADD)
+	if (op == OP_ADD)
 		db_tests(db);
-	else if(op==OP_WALK)
+	else if (op == OP_WALK)
 		db_read_seq_test(db);
-	else if(op==OP_GET)
+	else if (op == OP_GET)
 		db_read_random_test(db);
-	else if(op==OP_REMOVE)
+	else if (op == OP_REMOVE)
 		db_remove_test(db);
 	db_destroy(db);
 	return 1;

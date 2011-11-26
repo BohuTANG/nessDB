@@ -50,3 +50,4 @@ void _ensure_dir_exists(const char *path)
 		_mkdirs(path);
 	}
 }
+

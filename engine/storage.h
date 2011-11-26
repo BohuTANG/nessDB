@@ -1,9 +1,11 @@
 #ifndef _BTREE_H
 #define _BTREE_H
+
 #include <stdio.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include "bitwise.h"
+#include "platform.h"
 
 #define SHA1_LENGTH	(20)
 
@@ -34,21 +36,23 @@ struct btree_super {
 	__be32 free_top;
 } __attribute__((packed));
 
+#define CACHE_SLOTS (6151)
+  	
 struct btree {
-	uint32_t top;
-	uint32_t free_top;
-	uint32_t alloc;
-	uint32_t db_alloc;
+	UINT top;
+	UINT free_top;
+	UINT alloc;
+	UINT db_alloc;
 
 	int fd;
 	int db_fd;
 	int slot_prime;
-	struct btree_cache **cache;
+	struct btree_cache cache[CACHE_SLOTS];
 };
 
 
 //open or creat index&data files
-int btree_init(struct btree *btree,const char *db,int pagepool_size);
+int btree_init(struct btree *btree,const char *db);
 
 
 /*
@@ -56,15 +60,9 @@ int btree_init(struct btree *btree,const char *db,int pagepool_size);
  */
 void btree_close(struct btree *btree);
 
-/*
- * Insert a new item with key 'sha1' with the contents in 'data' to the
- * database file.
- */
-uint32_t btree_insert(struct btree *btree, const char *sha1, const void *data,size_t len);
+void btree_insert_index(struct btree *btree, const char *sha1, UINT  data_offset);
 
-uint32_t btree_insert_index(struct btree *btree, const char *sha1,const uint32_t *v_off);
-
-uint32_t btree_insert_data(struct btree *btree, const void *data,size_t len);
+UINT btree_insert_data(struct btree *btree, const void *data,size_t len);
 
 /*
  * Look up item with the given key 'sha1' in the database file. Length of the
