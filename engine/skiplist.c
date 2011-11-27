@@ -199,9 +199,10 @@ void skiplist_delete(struct skiplist *list, char* data)
 		list->level--;
 }
 
-struct skipnode *skiplist_lookup(struct skiplist *list, char* data) 
+struct skipnode *skiplist_lookup(struct skiplist *list, struct slice *sk) 
 {
 	int i;
+	char *data = sk->data;
 	struct skipnode *x = list->hdr;
 	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NIL 

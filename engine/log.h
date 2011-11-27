@@ -12,7 +12,7 @@ struct log{
 };
 
 struct log *log_new(char *name);
-void log_append(struct log *log, struct slice *sk, uint64_t offset);
+void log_append(struct log *log, struct slice *sk, uint64_t offset, uint8_t opt);
 void log_free(struct log *log);
 
 #endif

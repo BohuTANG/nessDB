@@ -75,15 +75,19 @@ struct log *log_new(char *name)
 	return l;
 }
 
-void log_append(struct log *l, struct slice *sk, uint64_t offset)
+void log_append(struct log *l, struct slice *sk, uint64_t offset, uint8_t opt)
 {
 	char *line;
 	int len;
 	struct buffer *buf = l->buf;
 
+	buffer_putc(buf, (char)opt);
 	buffer_putint(buf, sk->len);
 	buffer_putnstr(buf, sk->data, sk->len);
-	buffer_putlong(buf, offset);
+
+	/* If opt is not 1, it maybe remove*/
+	if(opt == 1)
+		buffer_putlong(buf, offset);
 
 	len = buf->NUL;
 	line = buffer_detach(buf);
