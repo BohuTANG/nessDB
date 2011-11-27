@@ -62,6 +62,14 @@ void response_detch(struct response *res,char *ackbuf)
 			strcat(ackbuf,"+PONG\r\n");
 			return;	
 		
+		case OK_TRUE:
+			strcat(ackbuf,":1\r\n");
+			return;
+
+		case OK_FALSE:
+			strcat(ackbuf,":0\r\n");
+			return;
+
 		case ERR:
 			strcat(ackbuf,"-ERROR\r\n");
 			return;;

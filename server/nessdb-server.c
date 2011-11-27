@@ -52,6 +52,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <assert.h>
 
 #include "anet.h"
 #include "ae.h"
@@ -62,14 +64,17 @@
 
 
 struct server{
+	bool running;
 	char *bindaddr;
 	int port;
 	int fd;
+	int client_count;
 
 	aeEventLoop *el;
 	char neterr[1024];
-	nessDB *db;
+	struct nessdb *db;
 };
+typedef struct server server_t;
 
 static void *get_mcontext_eip(ucontext_t *uc) {
 #if defined(__FreeBSD__)
@@ -100,6 +105,7 @@ static void *get_mcontext_eip(ucontext_t *uc) {
     return NULL;
 #endif
 }
+
 
 void back_trace(int sig_num, siginfo_t * info, void * ucontext)
 {
@@ -145,12 +151,97 @@ void signal_init()
 }
 
 
-struct server _svr;
-static int _clicount;
-
 #define BUF_SIZE (10240)
-void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
+struct response* 
+svr_handle(server_t *svr, struct request *req)
 {
+	assert( req != NULL );
+	switch(req->cmd){
+		case CMD_PING:{
+			return response_new(0,OK_PONG);
+		}
+
+		case CMD_SET:{
+			slice_t k = {req->argv[1], strlen(req->argv[1])};
+			slice_t v = {req->argv[2], strlen(req->argv[2])};
+			db_add(svr->db, &k, &v);
+
+			return response_new(0,OK);
+		}
+
+		case CMD_MSET:{
+			int i;
+			int c=req->argc;
+			slice_t k, v;
+			for(i=1;i<c;i+=2){
+				k.data = req->argv[i];     k.len = strlen(req->argv[i+1]);
+				v.data = req->argv[i + 1]; v.len = strlen(req->argv[i+1]);
+				db_add(svr->db, &k, &v);
+			}
+
+			return response_new(0,OK);
+		}
+
+		case CMD_GET:{
+			slice_t k = {req->argv[1], strlen(req->argv[1])};
+			void* result;
+			result=db_get(svr->db, &k);	// XXX: Leaky
+			if(result==NULL)
+				return response_new(0,OK_404);
+			else{				
+				struct response *resp=response_new(1,OK_200);
+				resp->argv[0]=result;
+				return resp;
+			}
+		}
+
+		case CMD_MGET:{
+			int c=req->argc;
+			struct response *resp = response_new(c - 1,OK_200);
+
+			for(int i=1; i<c; i++){
+				slice_t k = {req->argv[i], strlen(req->argv[i])};
+				resp->argv[i-1] = db_get(svr->db, &k);	// XXX: Leaky
+			}
+
+			return resp;
+		}
+
+		case CMD_INFO:{
+			char infos[BUF_SIZE]={0};
+			db_info(svr->db, infos);
+			struct response* resp = response_new(1,OK_200);
+			resp->argv[0]=infos;
+			return resp;
+		}
+
+		case CMD_DEL:{
+			slice_t k;
+			for(int i=1;i<req->argc;i++) {
+				k.data = req->argv[i];
+				k.len = strlen(req->argv[i]);
+				db_remove(svr->db, &k);
+			}
+
+			return response_new(0,OK);
+		}
+
+		case CMD_EXISTS:{
+			slice_t k = {req->argv[1], strlen(req->argv[1])};
+			int ret= db_exists(svr->db, &k);
+			return response_new(0, ret ? OK_TRUE : OK_FALSE);
+		}					
+
+		default:{
+			return response_new(0,ERR);
+		}
+	}
+}
+
+
+void svr_read_cb(aeEventLoop *el, int fd, void *_svr, int mask)
+{
+	server_t *svr = (server_t*)_svr;
 	char buf[BUF_SIZE]={0};
 	int nread;
 
@@ -161,193 +252,89 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 	if(nread==0){
 		aeDeleteFileEvent(el, fd, AE_WRITABLE);
 		aeDeleteFileEvent(el, fd, AE_READABLE);
-		_clicount--;
+		svr->client_count--;
 		return;
-	}else{
-		int ret;
-		struct request *req=request_new(buf);
-		struct response *resp;
-		ret=request_parse(req);
-		if(ret==1){
-			char sent_buf[BUF_SIZE]={0};
-			request_dump(req);
-
-			switch(req->cmd){
-				case CMD_PING:{
-						resp=response_new(0,OK_PONG);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					   }
-
-				case CMD_SET:{
-						db_add(_svr.db, req->argv[1], req->argv[2]);
-
-						resp=response_new(0,OK);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					   }
-				case CMD_MSET:{
-					    int i;
-						int c=req->argc;
-						for(i=1;i<c;i+=2){
-							db_add(_svr.db, req->argv[i], req->argv[i+1]);
-						}
-
-						resp=response_new(0,OK);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					      }
-
-				case CMD_GET:{
-						void* result;
-						result=db_get(_svr.db, req->argv[1]);
-						if(result==NULL)
-							resp=response_new(0,OK_404);
-						else{
-							resp=response_new(1,OK_200);
-							resp->argv[0]=result;
-						}
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-
-						if(result)
-							free(result);
-						break;
-					     }
-				case CMD_MGET:{
-						int c=req->argc;
-						int sub_c=c-1;
-						char **vals=calloc(c,sizeof(char*));
-					        int i;
-						resp=response_new(sub_c,OK_200);
-
-						for(i=1;i<c;i++){
-							vals[i-1]=db_get(_svr.db, req->argv[i]);
-							resp->argv[i-1]=vals[i-1];
-						}
-
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-
-						for(i=0;i<sub_c;i++){
-							if(vals[i])
-								free(vals[i]);	
-						}
-						free(vals);
-					      	break;
-					      }
-				case CMD_INFO:{
-						char infos[BUF_SIZE]={0};	
-						db_info(_svr.db, infos);
-						resp=response_new(1,OK_200);
-					 	resp->argv[0]=infos;
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					      }
-
-				case CMD_DEL:{
-						for(int i=1;i<req->argc;i++)
-					     		db_remove(_svr.db, req->argv[i]);
-
-						resp=response_new(0,OK);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					     }
-				case CMD_EXISTS:{
-						 int ret= db_exists(_svr.db, req->argv[1]);
-						 if(ret)
-							write(fd,":1\r\n",4);
-						 else
-							write(fd,":-1\r\n",5);
-						}
-						break;
-
-				default:{
-						resp=response_new(0,ERR);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					}
-			}
-
-		}
-
-		request_free(req);
 	}
+
+	struct request *req=request_new(buf);		
+	if( request_parse(req) ){
+		struct response *resp = NULL;
+		char sent_buf[BUF_SIZE]={0};
+
+		resp = svr_handle(svr, req);
+		response_detch(resp, sent_buf);
+		write(fd, sent_buf, strlen(sent_buf));
+		response_free(resp);
+	}
+	request_free(req);
 }
 
-void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask) 
+
+void svr_accept_cb(aeEventLoop *el, int fd, void *_svr, int mask) 
 {
+	server_t *svr = (server_t*)_svr;
 	int cport, cfd;
-    	char cip[128];
-   	cfd = anetTcpAccept(_svr.neterr,fd,cip,&cport);
+    char cip[128];
+
+   	cfd = anetTcpAccept(svr->neterr,fd,cip,&cport);
 	if (cfd == AE_ERR) {
 		printf("accept....\n");
 		return;
 	}
-	_clicount++;
+	svr->client_count++;
 
-	aeCreateFileEvent(_svr.el,cfd,AE_READABLE,read_handler,NULL);
+	aeCreateFileEvent(svr->el, cfd, AE_READABLE, svr_read_cb, svr);
 }
 
-int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
+
+int svr_cron_cb(struct aeEventLoop *eventLoop, long long id, void *_svr)
 {
-	printf("%d clients connected\n ",_clicount);
+	server_t *svr = (server_t*)_svr;
+	printf("%d clients connected\n ", svr->client_count);
 	return 3000;
 }
 
+
 #define BUFFERPOOL	(1024*1024*1024)
-nessDB *nessdb_init()
+void svr_init(server_t *svr)
 {
-	return db_init(BUFFERPOOL, getcwd(NULL, 0));
+	memset(svr, 0, sizeof(server_t));
+	svr->db = db_open(BUFFERPOOL, getcwd(NULL, 0));
+	svr->el = aeCreateEventLoop();
+	aeCreateTimeEvent(svr->el, 3000, svr_cron_cb, svr, NULL);
 }
 
-void nessdb_destroy(nessDB *db)
+
+void svr_run(server_t *svr)
 {
-	db_destroy(db);
+	// TODO: handle errors
+	svr->fd = anetTcpServer(svr->neterr, svr->port, svr->bindaddr);
+ 	aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, &svr);
+
+	svr->running = true;
+	aeMain(svr->el);
 }
+
+
+void svr_destroy(server_t *svr)
+{
+	aeDeleteEventLoop(svr->el);
+	db_destroy(svr->db);
+}
+
 
 int main()
 {
+	server_t self;
+
 	signal_init();
+	svr_init(&self);
 
-	_svr.bindaddr="127.0.0.1";
-	_svr.port=6379;
-	
-	_svr.db = nessdb_init();
-	_svr.el=aeCreateEventLoop();
-	_svr.fd=anetTcpServer(_svr.neterr,_svr.port,_svr.bindaddr);
+	self.bindaddr="127.0.0.1";
+	self.port=6379;
+		
+	svr_run(&self);
+	svr_destroy(&self);
 
-	aeCreateTimeEvent(_svr.el, 3000, server_cron, NULL, NULL);
-
-	/*handler*/
- 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE,accept_handler, NULL) == AE_ERR) 
-		printf("creating file event");
-
-	aeMain(_svr.el);
-	printf("oops,exit\n");
-	aeDeleteEventLoop(_svr.el);
-	nessdb_destroy(_svr.db);
-	return 1;
+	return 0;
 }

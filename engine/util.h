@@ -5,8 +5,9 @@
 
 struct slice{
 	char *data;
-	int len;
+	size_t len;
 };
+typedef struct slice slice_t;
 
 void _ensure_dir_exists(const char *path);
 const char *concat_paths(const char *basedir, const char *subdir);
