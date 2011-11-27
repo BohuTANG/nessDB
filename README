@@ -1,17 +1,31 @@
 ================================================================
-			nessDB v1.8 with LSM-Tree && B+Tree 
-			Copyright (C) 2011 BohuTANG
-================================================================	
-  nessDB is written in ANSI C and works in most POSIX systems like Linux, *BSD, OS X and Solaris without external dependencies.
+nessDB v1.8 with LSM-Tree && B+Tree 
+Copyright (C) 2011 BohuTANG________________ 
+_____________________________  __ \__  __ )
+__  __ \  _ \_  ___/_  ___/_  / / /_  __  |
+_  / / /  __/(__  )_(__  )_  /_/ /_  /_/ / 
+/_/ /_/\___//____/ /____/ /_____/ /_____/  
+================================================================
 
+  nessDB is a fast Key-Value database, supports Redis-Protocol(PING,SET,MSET,GET,MGET,DEL,EXISTS,INFO).
+  Which is written in ANSI C with BSD LICENSE and works in most POSIX systems without external dependencies.
   The 1.8 version is still under construction.
-  Random-Read / Write will be greatly enhanced, and add the log recovery. 
-  The big stuff coming soon.
-  nessDB v1.8 with LSM-Tree.
 
-  Thanks for your attention!
+  LAYOUT
+  ======
+  (1) mtable : which is a sorted 'LSM-Tree' in memory and active for  recently ADD/UPDATE/DELETE operations.
+  (2) log : mtable's snapshot on-disk for data-recover.
+  (3) on-disk-index : B+Tree structured indices.
+
+  V1.8 FEATURES
+  =============
+  a. Better performance on Random-Read/Random-Write
+  b. Log recover
+  c. Using LSM-Tree && B+Tree
 
   HOW TODO
   ========
   $make db-bench
   $db-bench add
+  
+  Thanks for your attention!

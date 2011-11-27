@@ -29,8 +29,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "skiplist.h"
+#include <stdint.h>
 
+#include "skiplist.h"
 #include "debug.h"
 
 #define cmp_lt(a, b) (strcmp(a, b) < 0)
@@ -48,6 +49,8 @@ struct pool *_pool_new()
 {
 	unsigned int p_size = 8092 - sizeof(struct pool);
 	struct pool *pool = malloc(sizeof(struct pool) + p_size);
+
+	memset(pool, 0, p_size);
 	pool->next = NULL;
 	pool->ptr = (char*)(pool + 1);
 	pool->rem = p_size;
@@ -117,7 +120,7 @@ int skiplist_notfull(struct skiplist *list)
 	return 0;
 }
 
-int skiplist_insert(struct skiplist *list, struct slice *sk, UINT val, OPT opt) 
+int skiplist_insert(struct skiplist *list, struct slice *sk, uint64_t val, OPT opt) 
 {
 	int i, new_level;
 	struct skipnode *update[MAXLEVEL+1];
@@ -224,7 +227,7 @@ void skiplist_dump(struct skiplist *list)
 			(int)list->count);
 
 	for (i=0; i<list->count; i++) {
-		printf("	[%d]key:<%s>;val<%d>;opt<%s>\n", i, x->key, x->val, x->opt == ADD?"ADD":"DEL");
+		printf("	[%d]key:<%s>;val<%llu>;opt<%s>\n", i, x->key, x->val, x->opt == ADD?"ADD":"DEL");
 		x = x->forward[0];
 	}
 }

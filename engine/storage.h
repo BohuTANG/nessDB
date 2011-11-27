@@ -41,10 +41,10 @@ struct btree_super {
 #define CACHE_SLOTS (6151)
   	
 struct btree {
-	UINT top;
-	UINT free_top;
-	UINT alloc;
-	UINT db_alloc;
+	uint64_t top;
+	uint64_t free_top;
+	uint64_t alloc;
+	uint64_t db_alloc;
 
 	int fd;
 	int db_fd;
@@ -54,8 +54,8 @@ struct btree {
 
 int btree_init(struct btree *btree,const char *db);
 void btree_close(struct btree *btree);
-void btree_insert_index(struct btree *btree, const char *sha1, UINT  data_offset);
-UINT btree_insert_data(struct btree *btree, const void *data,size_t len);
+void btree_insert_index(struct btree *btree, const char *sha1, uint64_t  data_offset);
+uint64_t btree_insert_data(struct btree *btree, const void *data,size_t len);
 void *btree_get(struct btree *btree, const char *sha1);
 int btree_get_index(struct btree *btree, const char *sha1);
 void *btree_get_byoffset(struct btree *btree,uint32_t offset);

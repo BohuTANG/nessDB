@@ -15,7 +15,8 @@
 
 const char *concat_paths(const char *basedir, const char *subdir)
 {
-	char *path=malloc(256);
+	char *path = malloc(256);
+	memset(path, 0, 256);
 	snprintf(path, 256, "%s/%s", basedir, subdir);
 	return path;
 }
@@ -67,10 +68,10 @@ int _file_exists(const char *path)
 	return 0;
 }
 
-UINT _getsize(int fd) {
+uint64_t _getsize(int fd) {
 	struct stat sb;
 	if (fstat(fd,&sb) == -1)
 		return 0;
 
-	return (UINT)sb.st_size;
+	return (uint64_t)sb.st_size;
 }

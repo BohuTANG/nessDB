@@ -12,10 +12,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h> /* htonl/ntohl */
 
-#ifndef O_BINARY
-	#define O_BINARY 0
-#endif
-
 #endif
 
 //bloom

@@ -48,6 +48,7 @@
 
 #include "buffer.h"
 #include "log.h"
+#include "platform.h"
 #include "debug.h"
 
 struct log *log_new(char *name)
@@ -74,20 +75,18 @@ struct log *log_new(char *name)
 	return l;
 }
 
-void log_append(struct log *l, struct slice *sk, struct slice *sv)
+void log_append(struct log *l, struct slice *sk, uint64_t offset)
 {
 	char *line;
-	struct buffer *buf = l->buf;
 	int len;
+	struct buffer *buf = l->buf;
 
 	buffer_putint(buf, sk->len);
 	buffer_putnstr(buf, sk->data, sk->len);
-	buffer_putint(buf, sv->len);
-	buffer_putnstr(buf, sv->data, sv->len);
+	buffer_putlong(buf, offset);
 
 	len = buf->NUL;
 	line = buffer_detach(buf);
-
 	if (write(l->fd, line, len) != len)
 		__DEBUG("%s,buffer is:%s,buffer length:<%d>", "ERROR: Log AOF **ERROR**", line, len);
 }

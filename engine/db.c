@@ -59,23 +59,24 @@
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
 {
 	char pre[256];
+	const char *dir;
 	struct nessdb *db;
 
-	llru_init(bufferpool_size);
 	memset(pre, 0, 256);
-	_ensure_dir_exists(concat_paths(basedir, DB_DIR));
+	dir = concat_paths(basedir, DB_DIR);
+	_ensure_dir_exists(dir);
+	free((char*) dir);
+
  	
 	db = malloc(sizeof(struct nessdb));
-
 	db->btree = malloc(sizeof(struct btree));
 	snprintf(pre, sizeof(pre), "%s/%s", basedir, DB_PREFIX);
 	btree_init(db->btree, pre);
 	
-	/*mtable*/
 	db->list = skiplist_new(LIST_SIZE);
-
-	/*log*/
 	db->log = log_new(pre);
+
+	llru_init(bufferpool_size);
 
 	return db;
 }
@@ -85,12 +86,13 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
-	UINT data_offset;
-
-	/*log*/
-	log_append(log, sk, sv);
+	uint64_t data_offset;
 
 	data_offset = btree_insert_data(btree, sv->data, sv->len);
+	
+	/*log*/
+	log_append(log, sk, data_offset);
+
 	if(data_offset == 0)
 		return 0;
 

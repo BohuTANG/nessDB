@@ -39,8 +39,6 @@
 #include <time.h>
 #include <string.h>
 #include "../engine/db.h"
-#include "../engine/platform.h"
-#include "../engine/util.h"
 
 #define OP_ADD 1
 #define OP_GET 2
