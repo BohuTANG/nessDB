@@ -3,10 +3,15 @@
 
 #include "util.h"
 
+#include "llru.h"
+#include "log.h"
+#include "skiplist.h"
+
 struct nessdb {
 	struct btree *btree;
 	struct skiplist *list;
 	struct log *log;
+	llru_t llru;
 };
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir);

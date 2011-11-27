@@ -11,11 +11,19 @@ struct llru_info{
 	uint64_t ol_used;
 };
 
-void	llru_init(size_t buffer_size);
-void	llru_set(const char *k,void *v,int k_len,int v_len);
-void*	llru_get(const char *k);
-void	llru_remove(const char *k);
-void	llru_info(struct llru_info *llru_info);
-void	llru_free();
+struct llru {
+	struct ht ht;
+	struct level level_old;
+	struct level level_new;
+	int buffer;
+};
+typedef struct llru llru_t;
+
+void	llru_init(llru_t *self, size_t buffer_size);
+void	llru_set(llru_t *self, const char *k, void *v, size_t k_len, size_t v_len);
+void*	llru_get(llru_t *self, const char *k);
+void	llru_remove(llru_t *self, const char *k);
+void	llru_info(llru_t *self, struct llru_info *llru_info);
+void	llru_free(llru_t *self);
 
 #endif

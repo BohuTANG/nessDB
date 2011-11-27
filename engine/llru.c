@@ -31,81 +31,62 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "llru.h"
 
 #define MAXHITS (3)
 #define PRIME	(16785407)
 #define RATIO	(0.618)
 
-static struct ht _ht;
-static struct level *_level_old;
-static struct level *_level_new;
-static int	_buffer=0;
-void llru_init(size_t buffer_size)
+void llru_init(llru_t *self, size_t buffer_size)
 {
-	if(buffer_size>1024)
-		_buffer=1;
-
-	ht_init(&_ht,PRIME,STRING);
-
-	_level_old=calloc(1,sizeof(struct level));
-	_level_new=calloc(1,sizeof(struct level));
-	
 	size_t size_n=buffer_size*RATIO;
 	size_t size_o=buffer_size-size_n;
-
-	_level_old->count=0;
-	_level_old->allow_size=size_o;
-	_level_old->used_size=0;
-	_level_old->first=NULL;
-	_level_old->last=NULL;
-	
-	_level_new->count=0;
-	_level_new->allow_size=size_n;
-	_level_new->used_size=0;
-	_level_new->first=NULL;
-	_level_new->last=NULL;
+	memset(self, 0, sizeof(llru_t));
+	ht_init(&self->ht,PRIME,STRING);
+	level_init(&self->level_old, size_o);
+	level_init(&self->level_new, size_n);
 }
 
-static void llru_set_node(struct level_node *n)
+static void llru_set_node(llru_t *self, struct level_node *n)
 {
 	if(n!=NULL){
 		if(n->hits==-1){
-			if(_level_new->used_size>_level_new->allow_size){
-				struct level_node *new_last_node=_level_new->last;
-				level_remove_link(_level_new,new_last_node);
-				level_set_head(_level_old,new_last_node);
+			if(self->level_new.used_size > self->level_new.allow_size){
+				struct level_node *new_last_node = self->level_new.last;
+				level_remove_link(&self->level_new,new_last_node);
+				level_set_head(&self->level_old,new_last_node);
 			}
-			level_remove_link(_level_new,n);
-			level_set_head(_level_new,n);
+			level_remove_link(&self->level_new, n);
+			level_set_head(&self->level_new, n);
 		}else{
 
-			if(_level_old->used_size>_level_old->allow_size)
-				level_free_last(_level_old);
+			if(self->level_old.used_size > self->level_old.allow_size)
+				level_free_last(&self->level_old);
 
 			n->hits++;
-			level_remove_link(_level_old,n);
+			level_remove_link(&self->level_old, n);
 			if(n->hits>MAXHITS){
-				level_set_head(_level_new,n);
+				level_set_head(&self->level_new, n);
 				n->hits=-1;
-				_level_old->used_size-=n->size;
-				_level_new->used_size+=n->size;
+				self->level_old.used_size -= n->size;
+				self->level_new.used_size += n->size;
 			}else
-				level_set_head(_level_old,n);
+				level_set_head(&self->level_old, n);
 		}
 	}
 }
 
 
-void llru_set(const char *k,void *v,int k_len,int v_len)
+void llru_set(llru_t *self, const char *k, void *v, size_t k_len, size_t v_len)
 {
 	int size=(k_len+v_len);
-	if(_buffer==0)
+	if(self->buffer==0)
 		return;
-	struct level_node *n=ht_get(&_ht,(void*)k);
+	struct level_node *n=ht_get(&self->ht,(void*)k);
 	if(n==NULL){
-		_level_old->used_size+=size;
-		_level_old->count++;
+		self->level_old.used_size += size;
+		self->level_old.count++;
 
 		n=calloc(1,sizeof(struct level_node));
 		n->key=(char*)k;
@@ -115,53 +96,53 @@ void llru_set(const char *k,void *v,int k_len,int v_len)
 		n->pre=NULL;
 		n->nxt=NULL;
 	}
-	llru_set_node(n);
-	ht_set(&_ht,(void*)k,(void*)n);
+	llru_set_node(self, n);
+	ht_set(&self->ht,(void*)k,(void*)n);
 }
 
 
-void* llru_get(const char *k)
+void* llru_get(llru_t *self, const char *k)
 {
-	if(_buffer==0)
+	if(self->buffer==0)
 		return NULL;
 
-	struct level_node *n=ht_get(&_ht,(void*)k);
+	struct level_node *n=ht_get(&self->ht,(void*)k);
 	if(n!=NULL){
-		llru_set_node(n);
+		llru_set_node(self, n);
 		return n->value;
 	}
 	return NULL;
 }
 
-void llru_remove(const char* k)
+void llru_remove(llru_t *self, const char* k)
 {
-	if(_buffer==0)
+	if(self->buffer==0)
 		return;
 
-	struct level_node *n=ht_get(&_ht,(void*)k);
+	struct level_node *n=ht_get(&self->ht,(void*)k);
 	if(n!=NULL){
 
-		ht_remove(&_ht,(void*)k);
+		ht_remove(&self->ht,(void*)k);
 		if(n->hits==-1)
-			level_free_node(_level_new,n);
+			level_free_node(&self->level_new,n);
 		else
-			level_free_node(_level_old,n);
+			level_free_node(&self->level_old,n);
 	}
 }
 
-void llru_info(struct llru_info *llru_info)
+void llru_info(llru_t *self, struct llru_info *llru_info)
 {
-	llru_info->nl_count=_level_new->count;
-	llru_info->ol_count=_level_old->count;
+	llru_info->nl_count = self->level_new.count;
+	llru_info->ol_count = self->level_old.count;
 
-	llru_info->nl_used=_level_new->used_size;
-	llru_info->ol_used=_level_old->used_size;
+	llru_info->nl_used = self->level_new.used_size;
+	llru_info->ol_used = self->level_old.used_size;
 
-	llru_info->nl_allowsize=_level_new->allow_size;
-	llru_info->ol_allowsize=_level_old->allow_size;
+	llru_info->nl_allowsize = self->level_new.allow_size;
+	llru_info->ol_allowsize = self->level_old.allow_size;
 }
 
-void llru_free()
+void llru_free(llru_t *self)
 {
-	ht_free(&_ht);
+	ht_free(&self->ht);
 }

@@ -22,7 +22,7 @@ struct level_node{
 	struct level_node *pre;
 };
 
-
+void		level_init(struct level *self, size_t allow_size);
 void 		level_set_head(struct level *level,struct level_node *node);
 void		level_remove_link(struct level *,struct level_node *node);
 void		level_free_last(struct level *level);

@@ -43,9 +43,6 @@
 	#include <direct.h>
 #endif
 
-#include "llru.h"
-#include "log.h"
-#include "skiplist.h"
 #include "storage.h"
 #include "debug.h"
 #include "platform.h"
@@ -61,7 +58,6 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
 	char pre[256];
 	struct nessdb *db;
 
-	llru_init(bufferpool_size);
 	memset(pre, 0, 256);
 	_ensure_dir_exists(concat_paths(basedir, DB_DIR));
  	
@@ -76,6 +72,9 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
 
 	/*log*/
 	db->log = log_new(pre);
+
+	/*llru*/
+	llru_init(&db->llru, bufferpool_size);
 
 	return db;
 }
@@ -110,7 +109,7 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	}
 
 	skiplist_insert(list, sk, data_offset, ADD);
-	llru_remove(sk->data);
+	llru_remove(&db->llru, sk->data);
 
 	return (1);
 }
@@ -145,6 +144,7 @@ void db_destroy(struct nessdb *db)
 	log_free(db->log);
 	skiplist_free(db->list);
 	btree_close(db->btree);
-	llru_free();
+	free(db->btree);
+	llru_free(&db->llru);
 	free(db);
 }

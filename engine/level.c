@@ -30,6 +30,11 @@
 #include <stdlib.h>
 #include "level.h"
 
+void level_init(struct level *self, size_t allow_size) {
+	memset(self, 0, sizeof(struct level));
+	self->allow_size=allow_size;
+}
+
 void level_set_head(struct level *level,struct level_node *n)
 {
 	level->count++;
