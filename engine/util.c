@@ -60,7 +60,7 @@ void _ensure_dir_exists(const char *path)
 int _file_exists(const char *path)
 {
 	int fd = open(path, O_RDWR);
-	if (fd > -1) {
+	if (fd == -1) {
 		close(fd);
 		return 1;
 	}
