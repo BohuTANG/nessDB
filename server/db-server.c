@@ -196,6 +196,7 @@ svr_handle(server_t *svr, struct request *req)
 				struct response *resp=response_new(1,OK_200);
 				resp->argv[0]=result;
 				resp->to_free = calloc( 2, sizeof(void*) );
+				assert( resp->to_free != NULL );
 				resp->to_free[0] = result;
 				resp->to_free[1] = NULL;
 				return resp;
@@ -332,6 +333,8 @@ void svr_run(server_t *svr)
 	}
 
 	svr->el = aeCreateEventLoop();
+	assert( svr->el != NULL );
+
 	long long cron_event = aeCreateTimeEvent(svr->el, 3000, svr_cron_cb, svr, NULL);
 	assert( cron_event != AE_ERR );
 
@@ -340,7 +343,7 @@ void svr_run(server_t *svr)
 		errx(EXIT_FAILURE, "Cannot start TCP server on %s:%d -- %s", svr->bindaddr, svr->port, svr->neterr);
 	}
 
- 	int file_event = aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, &svr);
+ 	int file_event = aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, svr);
  	assert( file_event == AE_OK );
 
 	aeMain(svr->el);

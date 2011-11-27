@@ -113,8 +113,9 @@ void response_dump(struct response *res)
 void response_free(struct response *res)
 {
 	if( res->to_free ) {
-		while( res->to_free ) {
-			free(*res->to_free++);
+		void **n = res->to_free;
+		while( *n ) {
+			free(*n++);
 		}
 		free(res->to_free);
 	}
