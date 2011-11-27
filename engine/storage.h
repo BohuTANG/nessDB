@@ -9,7 +9,7 @@
 #include "platform.h"
 #include "util.h"
 
-#define SHA1_LENGTH	(20)
+#define SHA1_LENGTH	(32)
 
 struct btree_item {
 	char sha1[SHA1_LENGTH];
