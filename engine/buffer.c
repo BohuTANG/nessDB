@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "buffer.h"
 
 unsigned _next_power(unsigned x)
@@ -111,14 +112,26 @@ void buffer_putc(struct buffer *b, const char c)
 	b->buf[b->NUL] = '\0';
 }
 
-void buffer_putint(struct buffer *b, int i)
+void buffer_putint(struct buffer *b, uint32_t val)
 {
-	unsigned int value = i;
 	_buffer_extendby(b, sizeof(int));
-	b->buf[b->NUL++] = (char)(value);
-	b->buf[b->NUL++] = (char)(value >> 0x08);
-	b->buf[b->NUL++] = (char)(value >> 0x10);
-	b->buf[b->NUL++] = (char)(value >> 0x18);
+	b->buf[b->NUL++] = (val >> 24) & 0xff;
+	b->buf[b->NUL++] = (val >> 16) & 0xff;
+	b->buf[b->NUL++] = (val >> 8) & 0xff;
+	b->buf[b->NUL++] = val & 0xff;
+}
+
+void buffer_putlong(struct buffer *b, uint64_t val)
+{
+	_buffer_extendby(b, sizeof(uint64_t));
+	b->buf[b->NUL++] = (val >> 56) & 0xff;
+	b->buf[b->NUL++] = (val >> 48) & 0xff;
+	b->buf[b->NUL++] = (val >> 40) & 0xff;
+	b->buf[b->NUL++] = (val >> 32) & 0xff;
+	b->buf[b->NUL++] = (val >> 24) & 0xff;
+	b->buf[b->NUL++] = (val >> 16) & 0xff;
+	b->buf[b->NUL++] = (val >> 8) & 0xff;
+	b->buf[b->NUL++] = val & 0xff;
 }
 
 char * buffer_detach(struct buffer *b)

@@ -1,7 +1,7 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
-#include "platform.h"
+#include <stdint.h>
 
 struct slice{
 	char *data;
@@ -13,6 +13,6 @@ void _ensure_dir_exists(const char *path);
 const char *concat_paths(const char *basedir, const char *subdir);
 
 int _file_exists(const char *path);
-UINT _getsize(int fd);
+uint64_t _getsize(int fd);
 
 #endif

@@ -54,6 +54,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <err.h>
 
 #include "anet.h"
 #include "ae.h"
@@ -61,10 +62,10 @@
 #include "response.h"
 #include "../engine/db.h"
 #include "../engine/platform.h"
+#include "../engine/util.h"
 
 
 struct server{
-	bool running;
 	char *bindaddr;
 	int port;
 	int fd;
@@ -135,6 +136,7 @@ void back_trace(int sig_num, siginfo_t * info, void * ucontext)
 	 exit(EXIT_FAILURE);
 }
 
+
 void signal_init()
 {
 	struct sigaction sigact;
@@ -142,12 +144,9 @@ void signal_init()
  	sigact.sa_flags = SA_RESTART | SA_SIGINFO;
 
  	if (sigaction(SIGSEGV, &sigact, (struct sigaction *)NULL) != 0){
-  		fprintf(stderr, "error setting signal handler for %d (%s)\n",
+  		errx(EXIT_FAILURE, "error setting signal handler for %d (%s)\n",
     		SIGSEGV, strsignal(SIGSEGV));
-
-  		exit(EXIT_FAILURE);
  	}
-
 }
 
 
@@ -236,6 +235,7 @@ svr_handle(server_t *svr, struct request *req)
 			return response_new(0,ERR);
 		}
 	}
+	assert( 0 );
 }
 
 
@@ -278,12 +278,14 @@ void svr_accept_cb(aeEventLoop *el, int fd, void *_svr, int mask)
 
    	cfd = anetTcpAccept(svr->neterr,fd,cip,&cport);
 	if (cfd == AE_ERR) {
+		warnx("Could not accept: %s", svr->neterr);
 		printf("accept....\n");
 		return;
 	}
 	svr->client_count++;
 
-	aeCreateFileEvent(svr->el, cfd, AE_READABLE, svr_read_cb, svr);
+	int x = aeCreateFileEvent(svr->el, cfd, AE_READABLE, svr_read_cb, svr);
+	assert( x == AE_OK );
 }
 
 
@@ -301,7 +303,8 @@ void svr_init(server_t *svr)
 	memset(svr, 0, sizeof(server_t));
 	svr->db = db_open(BUFFERPOOL, getcwd(NULL, 0));
 	svr->el = aeCreateEventLoop();
-	aeCreateTimeEvent(svr->el, 3000, svr_cron_cb, svr, NULL);
+	long long x = aeCreateTimeEvent(svr->el, 3000, svr_cron_cb, svr, NULL);
+	assert( x != AE_ERR );
 }
 
 
@@ -309,9 +312,12 @@ void svr_run(server_t *svr)
 {
 	// TODO: handle errors
 	svr->fd = anetTcpServer(svr->neterr, svr->port, svr->bindaddr);
- 	aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, &svr);
+	if( svr->fd == AE_ERR ) {
+		errx(EXIT_FAILURE, "Cannot start TCP server on %s:%d -- %s", svr->bindaddr, svr->port, svr->neterr);
+	}
 
-	svr->running = true;
+ 	int x = aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, &svr);
+ 	assert( x == AE_OK );
 	aeMain(svr->el);
 }
 
@@ -319,7 +325,7 @@ void svr_run(server_t *svr)
 void svr_destroy(server_t *svr)
 {
 	aeDeleteEventLoop(svr->el);
-	db_destroy(svr->db);
+	db_close(svr->db);
 }
 
 
