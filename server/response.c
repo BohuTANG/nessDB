@@ -38,6 +38,7 @@ struct response *response_new(int argc,STATUS status)
 	res->argv=calloc(argc,sizeof(char*));
 	res->argc=argc;
 	res->status=status;
+	res->to_free = NULL;
 	return res;
 }
 
@@ -111,6 +112,13 @@ void response_dump(struct response *res)
 
 void response_free(struct response *res)
 {
+	if( res->to_free ) {
+		while( res->to_free ) {
+			free(*res->to_free++);
+		}
+		free(res->to_free);
+	}
+
 	if(res){
 		free(res->argv);
 	}

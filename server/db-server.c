@@ -55,6 +55,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <err.h>
+#include <getopt.h>
 
 #include "anet.h"
 #include "ae.h"
@@ -66,6 +67,7 @@
 
 
 struct server{
+	char *dbpath;
 	char *bindaddr;
 	int port;
 	int fd;
@@ -154,6 +156,8 @@ void signal_init()
 struct response* 
 svr_handle(server_t *svr, struct request *req)
 {
+	/* TODO: response needs to free values retrieved from the DB */
+
 	assert( req != NULL );
 	switch(req->cmd){
 		case CMD_PING:{
@@ -172,13 +176,14 @@ svr_handle(server_t *svr, struct request *req)
 			int i;
 			int c=req->argc;
 			slice_t k, v;
+
 			for(i=1;i<c;i+=2){
 				k.data = req->argv[i];     k.len = strlen(req->argv[i+1]);
 				v.data = req->argv[i + 1]; v.len = strlen(req->argv[i+1]);
-				db_add(svr->db, &k, &v);
+				db_add(svr->db, &k, &v);				
 			}
 
-			return response_new(0,OK);
+			return response_new(0, OK);
 		}
 
 		case CMD_GET:{
@@ -190,6 +195,9 @@ svr_handle(server_t *svr, struct request *req)
 			else{				
 				struct response *resp=response_new(1,OK_200);
 				resp->argv[0]=result;
+				resp->to_free = calloc( 2, sizeof(void*) );
+				resp->to_free[0] = result;
+				resp->to_free[1] = NULL;
 				return resp;
 			}
 		}
@@ -197,11 +205,15 @@ svr_handle(server_t *svr, struct request *req)
 		case CMD_MGET:{
 			int c=req->argc;
 			struct response *resp = response_new(c - 1,OK_200);
-
+			resp->to_free = calloc(c, sizeof(void *));
 			for(int i=1; i<c; i++){
 				slice_t k = {req->argv[i], strlen(req->argv[i])};
-				resp->argv[i-1] = db_get(svr->db, &k);	// XXX: Leaky
+				char *val = db_get(svr->db, &k);
+				if( ! val ) val = strdup("");	// XXX: hack so response_free will clean all
+				resp->argv[i-1] = val;
+				resp->to_free[i - 1] = val;
 			}
+			resp->to_free[c - 1] = NULL;
 
 			return resp;
 		}
@@ -301,46 +313,127 @@ int svr_cron_cb(struct aeEventLoop *eventLoop, long long id, void *_svr)
 void svr_init(server_t *svr)
 {
 	memset(svr, 0, sizeof(server_t));
-	svr->db = db_open(BUFFERPOOL, getcwd(NULL, 0));
-	svr->el = aeCreateEventLoop();
-	long long x = aeCreateTimeEvent(svr->el, 3000, svr_cron_cb, svr, NULL);
-	assert( x != AE_ERR );
+
+	// Sensible defaults
+	svr->bindaddr="127.0.0.1";
+	svr->port=6379;
 }
 
 
 void svr_run(server_t *svr)
 {
-	// TODO: handle errors
+	if( svr->dbpath == NULL ) {
+		svr->dbpath = getcwd(NULL, 0);
+	}
+
+	svr->db = db_open(BUFFERPOOL, svr->dbpath);
+	if( ! svr->db ) {
+		errx(EXIT_FAILURE, "Failed to open database in '%s'", svr->dbpath);
+	}
+
+	svr->el = aeCreateEventLoop();
+	long long cron_event = aeCreateTimeEvent(svr->el, 3000, svr_cron_cb, svr, NULL);
+	assert( cron_event != AE_ERR );
+
 	svr->fd = anetTcpServer(svr->neterr, svr->port, svr->bindaddr);
 	if( svr->fd == AE_ERR ) {
 		errx(EXIT_FAILURE, "Cannot start TCP server on %s:%d -- %s", svr->bindaddr, svr->port, svr->neterr);
 	}
 
- 	int x = aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, &svr);
- 	assert( x == AE_OK );
+ 	int file_event = aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, &svr);
+ 	assert( file_event == AE_OK );
+
 	aeMain(svr->el);
 }
 
+// TODO: svr_open and svr_close
 
 void svr_destroy(server_t *svr)
 {
-	aeDeleteEventLoop(svr->el);
-	db_close(svr->db);
+	if( svr->el ) {
+		aeDeleteEventLoop(svr->el);
+	}
+
+	if( svr->db ) {
+		db_close(svr->db);
+	}
+
+	if( svr->dbpath ) {
+		free(svr->dbpath);
+	}
 }
 
 
-int main()
+static void
+show_help(char *prog) {
+	fprintf(stderr,
+		"Usage: %s [options]\n"
+		"\t--help|-h             - Show usage instructions\n"
+		"\t--listen|-l <address> - Bind address for Redis listener\n"
+		"\t--dbpath|-d <dir>     - Directory to store database\n",
+		prog);
+} 
+
+static void
+parse_bind_addr( char *in, char **addr, int *port ) {
+	char *ps = strrchr(in, ':');
+	if( ps ) {
+		int p;
+		ps[0] = 0;
+		p = atoi(++ps);
+		if( p < 1 || p > 0xFFFF ) {
+			warnx("Invalid port %d from bind address '%s', using default", p, in);
+		}
+		else {
+			*port = atoi(ps);	
+		}				
+	}
+	*addr = strdup(in);
+}
+
+static bool
+parse_opts( int argc, char **argv, server_t *svr ) {
+	while( true ) {
+		static struct option long_options[] = {
+			{"help", 0, 0, 'h'},
+			{"listen", 1, 0, 'l'},
+			{"dbpath", 1, 0, 'd'},
+			{0, 0, 0, 0}
+		};
+		int idx = 0, c;
+
+		c = getopt_long(argc, argv, "hl:d:", long_options, &idx);
+		if( c == -1 ) break; 
+
+		switch(c) {
+		case 'l':
+			parse_bind_addr(optarg, &svr->bindaddr, &svr->port);
+			break;
+
+		case 'd':
+			svr->dbpath = optarg;
+			break;
+
+		case 'h':
+		default:
+			show_help(argv[0]);
+			return false;
+		}
+	}
+	return true;
+}
+
+int main(int argc, char **argv)
 {
-	server_t self;
+	server_t instance;
 
 	signal_init();
-	svr_init(&self);
+	svr_init(&instance);
 
-	self.bindaddr="127.0.0.1";
-	self.port=6379;
-		
-	svr_run(&self);
-	svr_destroy(&self);
+	if( parse_opts(argc, argv, &instance) ) {
+		svr_run(&instance);
+	}
 
-	return 0;
+	svr_destroy(&instance);
+	return EXIT_SUCCESS;
 }
