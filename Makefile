@@ -26,25 +26,34 @@ SVR_OBJS = \
 	./server/response.o \
 	./server/zmalloc.o \
 
+TEST_ENGINE_OBJS = \
+	./test/engine.o \
+	./test/engine_llru.o
+
 LIBRARY = libnessdb.a
 
-all: $(LIBRARY)
+all: $(LIBRARY) db-bench db-server
 
 clean:
-	-rm -f $(LIBRARY)  
-	-rm -f $(LIB_OBJS)
-	-rm -f $(SVR_OBJS)
+	-rm -f $(LIB_OBJS) $(LIBRARY)
+	-rm -f $(SVR_OBJS) server/nessdb-server.o db-server
+	-rm -f $(TEST_ENGINE_OBJS) test-engine
 	-rm -rf ndbs
-	-rm -f bench/db-bench.o server/nessdb-server.o 
-	-rm -f db-bench db-server
+	-rm -f bench/db-bench.o db-bench  
 
 $(LIBRARY): $(LIB_OBJS)
 	rm -f $@
 	$(AR) -rs $@ $(LIB_OBJS)
 
-db-bench: bench/db-bench.o $(LIB_OBJS)
-	$(CC)  bench/db-bench.o $(LIB_OBJS)  -o $@
+.PHONY: BENCHMARK
+BENCHMARK: db-bench
+	./db-bench add > $@
 
 db-server: server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS)
 	$(CC)  server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
 
+db-bench: bench/db-bench.o $(LIB_OBJS)
+	$(CC)  bench/db-bench.o $(LIB_OBJS) -o $@
+
+test-engine: $(TEST_ENGINE_OBJS)
+	$(CC) -o $@ $+ -lcheck $(LIBRARY)
