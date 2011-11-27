@@ -95,6 +95,13 @@ void log_append(struct log *l, struct slice *sk, uint64_t offset, uint8_t opt)
 		__DEBUG("%s,buffer is:%s,buffer length:<%d>", "ERROR: Log AOF **ERROR**", line, len);
 }
 
+void log_trunc(struct log *l)
+{
+	buffer_clear(l->buf);
+	remove(l->name);
+	l->fd = open(l->name, BTREE_CREAT_FLAGS, 0644);
+}
+
 void log_free(struct log *l)
 {
 	if (l) {

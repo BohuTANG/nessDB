@@ -178,6 +178,7 @@ int request_parse(struct request *req)
 
 		/*get argv*/
 		v=(char*)calloc(argv_len,sizeof(char));
+		memset(v,0,argv_len);
 		memcpy(v,req->querybuf+(req->pos),argv_len);
 		req->argv[i]=v;	
 		req->pos+=(argv_len+2);

@@ -35,7 +35,7 @@ clean:
 	-rm -f $(LIB_OBJS)
 	-rm -f $(SVR_OBJS)
 	-rm -rf ndbs
-	-rm -f bench/db-bench.o server/nessdb-server.o 
+	-rm -f bench/db-bench.o server/db-server.o 
 	-rm -f db-bench db-server
 
 $(LIBRARY): $(LIB_OBJS)
@@ -45,6 +45,6 @@ $(LIBRARY): $(LIB_OBJS)
 db-bench: bench/db-bench.o $(LIB_OBJS)
 	$(CC)  bench/db-bench.o $(LIB_OBJS)  -o $@
 
-db-server: server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS)
-	$(CC)  server/nessdb-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
+db-server: server/db-server.o $(SVR_OBJS) $(LIB_OBJS)
+	$(CC)  server/db-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
 

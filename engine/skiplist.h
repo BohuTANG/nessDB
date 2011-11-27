@@ -4,14 +4,14 @@
 #include "util.h"
 
 #define MAXLEVEL (15)
-#define SKIP_KSIZE (256)
+#define SKIP_KSIZE (64)
 
-typedef enum {ADD,DEL} OPT;
+typedef enum {ADD = 1,DEL} OPT;
 
 struct skipnode{
     char key[SKIP_KSIZE];
 	uint64_t val;
-	OPT opt;                   
+	uint8_t opt;                   
     struct skipnode *forward[1]; 
 	struct skipnode *next;
 };

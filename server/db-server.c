@@ -9,7 +9,7 @@
  *   * Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of nessDB nor the names of its contributors may be used
+ *   * Neither the name of struct nessdb nor the names of its contributors may be used
  *     to endorse or promote products derived from this software without
  *     specific prior written permission.
  *
@@ -59,6 +59,7 @@
 #include "response.h"
 #include "../engine/db.h"
 #include "../engine/platform.h"
+#include "../engine/util.h"
 
 
 struct server{
@@ -68,7 +69,7 @@ struct server{
 
 	aeEventLoop *el;
 	char neterr[1024];
-	nessDB *db;
+	struct nessdb *db;
 };
 
 static void *get_mcontext_eip(ucontext_t *uc) {
@@ -183,7 +184,14 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					   }
 
 				case CMD_SET:{
-						db_add(_svr.db, req->argv[1], req->argv[2]);
+						struct slice sk, sv;
+						sk.len = strlen(req->argv[1]);
+						sk.data = req->argv[1];
+
+						sv.len = strlen(req->argv[2]);
+						sv.data = req->argv[2];
+
+						db_add(_svr.db, &sk, &sv);
 
 						resp=response_new(0,OK);
 						response_detch(resp,sent_buf);
@@ -196,7 +204,13 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					    int i;
 						int c=req->argc;
 						for(i=1;i<c;i+=2){
-							db_add(_svr.db, req->argv[i], req->argv[i+1]);
+							struct slice sk, sv;
+							sk.len = strlen(req->argv[i]);
+							sk.data = req->argv[i];
+
+							sv.len = strlen(req->argv[i+1]);
+							sv.data = req->argv[i+1];
+							db_add(_svr.db, &sk, &sv);
 						}
 
 						resp=response_new(0,OK);
@@ -208,8 +222,11 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					      }
 
 				case CMD_GET:{
+						struct slice sk;
 						void* result;
-						result=db_get(_svr.db, req->argv[1]);
+						sk.len=strlen(req->argv[1]);
+						sk.data = req->argv[1];
+						result=db_get(_svr.db, &sk);
 						if(result==NULL)
 							resp=response_new(0,OK_404);
 						else{
@@ -233,7 +250,11 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						resp=response_new(sub_c,OK_200);
 
 						for(i=1;i<c;i++){
-							vals[i-1]=db_get(_svr.db, req->argv[i]);
+							struct slice sk;
+							sk.len = strlen(req->argv[i]);
+							sk.data = req->argv[i];
+
+							vals[i-1]=db_get(_svr.db, &sk);
 							resp->argv[i-1]=vals[i-1];
 						}
 
@@ -262,8 +283,12 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 					      }
 
 				case CMD_DEL:{
-						for(int i=1;i<req->argc;i++)
-					     		db_remove(_svr.db, req->argv[i]);
+						for(int i=1;i<req->argc;i++){
+							struct slice sk;
+							sk.len = strlen(req->argv[i]);
+							sk.data = req->argv[i];
+					     	db_remove(_svr.db, &sk);
+						}
 
 						resp=response_new(0,OK);
 						response_detch(resp,sent_buf);
@@ -273,7 +298,10 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 						break;
 					     }
 				case CMD_EXISTS:{
-						 int ret= db_exists(_svr.db, req->argv[1]);
+						 struct slice sk;
+						 sk.len = strlen(req->argv[1]);
+						 sk.data = req->argv[1];
+						 int ret= db_exists(_svr.db, &sk);
 						 if(ret)
 							write(fd,":1\r\n",4);
 						 else
@@ -318,14 +346,14 @@ int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 }
 
 #define BUFFERPOOL	(1024*1024*1024)
-nessDB *nessdb_init()
+struct nessdb *nessdb_open()
 {
-	return db_init(BUFFERPOOL, getcwd(NULL, 0));
+	return db_open(BUFFERPOOL, getcwd(NULL, 0));
 }
 
-void nessdb_destroy(nessDB *db)
+void nessdb_close(struct nessdb *db)
 {
-	db_destroy(db);
+	db_close(db);
 }
 
 int main()
@@ -335,7 +363,7 @@ int main()
 	_svr.bindaddr="127.0.0.1";
 	_svr.port=6379;
 	
-	_svr.db = nessdb_init();
+	_svr.db = nessdb_open();
 	_svr.el=aeCreateEventLoop();
 	_svr.fd=anetTcpServer(_svr.neterr,_svr.port,_svr.bindaddr);
 
@@ -348,6 +376,6 @@ int main()
 	aeMain(_svr.el);
 	printf("oops,exit\n");
 	aeDeleteEventLoop(_svr.el);
-	nessdb_destroy(_svr.db);
+	nessdb_close(_svr.db);
 	return 1;
 }

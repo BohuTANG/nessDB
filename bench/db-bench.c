@@ -173,7 +173,7 @@ void db_write_test(struct nessdb *db)
 			fflush(stderr);
 		}
 	}
-	
+
 	cost = get_timer();
 	printf(LINE);
 	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); %.1f MB/sec; cost:%.3f(sec)\n"
@@ -343,6 +343,6 @@ int main(int argc,char** argv)
 		db_read_random_test(db);
 	else if (op == OP_REMOVE)
 		db_remove_test(db);
-	db_destroy(db);
+	db_close(db);
 	return 1;
 }
