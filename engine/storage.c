@@ -58,11 +58,6 @@
 #define IDXEXT	".idx"
 #define DBEXT	".db"
 
-struct chunk {
-	uint32_t offset;
-	uint32_t len;
-};
-
 
 int _cmp_sha1(const char *a,const char *b)
 {
@@ -162,8 +157,8 @@ int _btree_open(struct btree *btree,const char *idx,const char *db)
 	btree->top = from_be64(super.top);
 	btree->free_top = from_be64(super.free_top);
 
-	btree->alloc = _getsize(btree->fd);
-	btree->db_alloc = _getsize(btree->db_fd);
+	btree->alloc = lseek(btree->fd, 0, SEEK_END);
+	btree->db_alloc = lseek(btree->db_fd, 0, SEEK_END);
 
 	return 0;
 }
@@ -217,16 +212,16 @@ void btree_close(struct btree *btree)
 	}
 }
 
-size_t _alloc_chunk(struct btree *btree, size_t len)
+uint64_t _alloc_chunk(struct btree *btree, size_t len)
 {
-	size_t offset = btree->alloc;
+	uint64_t offset = btree->alloc;
 	btree->alloc = offset + len;
 	return offset;
 }
 
-size_t _alloc_db_chunk(struct btree *btree, size_t len)
+uint64_t _alloc_db_chunk(struct btree *btree, size_t len)
 {
-	size_t offset  = btree->db_alloc;
+	uint64_t offset  = btree->db_alloc;
 	btree->db_alloc = offset + len;
 	return offset;
 }
@@ -244,7 +239,6 @@ uint64_t _insert_data(struct btree *btree, const void *data, size_t len)
 
 	offset = _alloc_db_chunk(btree, sizeof info + len);
 
-	lseek(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof info) != sizeof info) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();

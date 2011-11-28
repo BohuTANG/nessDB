@@ -6,7 +6,6 @@
 #endif
 
 #if defined(__linux__)
-	# define open open64
 	# define lseek lseek64
 	# define fstat fstat64
 	# define fsync fdatasync

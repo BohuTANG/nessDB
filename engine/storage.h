@@ -8,6 +8,7 @@
 
 #include "platform.h"
 #include "util.h"
+#include "buffer.h"
 
 #define SHA1_LENGTH	(32)
 
@@ -50,6 +51,7 @@ struct btree {
 	int db_fd;
 	int slot_prime;
 	struct btree_cache cache[CACHE_SLOTS];
+	struct buffer *buf;
 };
 
 int btree_init(struct btree *btree,const char *db);
