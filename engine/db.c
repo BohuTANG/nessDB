@@ -127,10 +127,9 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	return (1);
 }
 
-void  *db_get(struct nessdb *db, struct slice *sk)
+void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	void *val;
-	struct slice *sv;
 	struct skipnode *snode;
 	struct btree *btree = db->btree;
 
@@ -150,8 +149,7 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 			return NULL;
 
 		/* 3)Get from on-disk B+tree index*/
-		sv = btree_get_data(btree, snode->val);
-		if (sv) {
+		if ( btree_get_data(btree, snode->val, sv) ) {
 			/* 4)Add to Level-LRU*/
 			char *k_clone = calloc(1, sk->len);
 			char *v_clone = calloc(1, sv->len);
@@ -160,20 +158,18 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 			memcpy(v_clone, sv->data, sv->len);
 
 			llru_set(&db->llru, k_clone, v_clone, sk->len, sv->len);
-			val = sv->data;
-
-			free(sv);
 		}
 	}
-	return val;
+	return sv->data;
 }
 
 int db_exists(struct nessdb *db, struct slice *sk)
 {
-	char *val = db_get(db, sk);
-	if(val)
+	struct slice sv;
+	if( db_get(db, sk, &sv) ) {
+		free(sv.data);
 		return 1;
-
+	}
 	return 0;
 }
 

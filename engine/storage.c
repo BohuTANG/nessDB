@@ -485,33 +485,32 @@ int btree_get_index(struct btree *btree, const char *sha1)
 	return (1);
 }
 
-struct slice *btree_get_data(struct btree *btree,uint64_t offset)
+int btree_get_data(struct btree *btree, uint64_t offset, struct slice *sv)
 {
 	size_t len;
 	char *data;
 	struct blob_info info;
-	struct slice *sv;
 
 	if (offset == 0)
-		return NULL;
+		return 0;
 
 	lseek(btree->db_fd, offset, SEEK_SET);
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
-		return NULL;
+		return 0;
 
 	len = from_be32(info.len);
 	data = calloc(1,len);
 	if (data == NULL)
-		return NULL;
+		return 0;
 
 	if (read(btree->db_fd, data, len) != (ssize_t) len) {
 		free(data);
-		data = NULL;
+		data = 0;
 	}
-	sv = calloc(1, sizeof(struct slice));
+
 	sv->len = len;
 	sv->data = data;
-	return sv;
+	return 1;
 }
 
 

@@ -58,7 +58,7 @@ void btree_insert_index(struct btree *btree, const char *sha1, uint64_t  data_of
 uint64_t btree_insert_data(struct btree *btree, const void *data,size_t len);
 void *btree_get(struct btree *btree, const char *sha1);
 int btree_get_index(struct btree *btree, const char *sha1);
-struct slice *btree_get_data(struct btree *btree,uint64_t offset);
+int btree_get_data(struct btree *btree, uint64_t offset, struct slice *sv);
 int btree_delete(struct btree *btree, const char *sha1);
 
 #endif
