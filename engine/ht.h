@@ -1,18 +1,13 @@
 #ifndef _HT_H
 #define _HT_H
 
-#include <stdint.h>
-
-typedef enum {STRING=0,INTEGER} KEYTYPE;
-
 struct ht 
 {
 	size_t size;
 	size_t cap;
-	size_t (*hashfunc)  (const char *k);
+	size_t (*hashfunc) (void  *k);
+	int (*cmpfunc) (void *a, void *b);
 	struct ht_node **nodes;
-	KEYTYPE key_type;
-
 };
 
 struct ht_node 
@@ -23,10 +18,10 @@ struct ht_node
 };
 
 
-void 		ht_init(struct ht *ht,size_t cap,KEYTYPE key_type);
-void 		ht_set(struct ht *ht,void *k,void* v);
-void*	 	ht_get(struct ht *ht,void *k);
-void 		ht_remove(struct ht *ht,void *k);
-void 		ht_free(struct ht *ht);
+void ht_init(struct ht *ht, size_t cap);
+void ht_set(struct ht *ht, void *k, void* v);
+void* ht_get(struct ht *ht, void *k);
+void ht_remove(struct ht *ht, void *k);
+void ht_free(struct ht *ht);
 
 #endif

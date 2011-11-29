@@ -34,9 +34,11 @@ clean:
 	-rm -f $(LIBRARY)  
 	-rm -f $(LIB_OBJS)
 	-rm -f $(SVR_OBJS)
-	-rm -rf ndbs
 	-rm -f bench/db-bench.o server/db-server.o 
 	-rm -f db-bench db-server
+
+cleandb:
+	-rm -rf ndbs
 
 $(LIBRARY): $(LIB_OBJS)
 	rm -f $@

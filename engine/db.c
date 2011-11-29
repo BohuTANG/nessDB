@@ -73,10 +73,14 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
 	snprintf(pre, sizeof(pre), "%s/%s", basedir, DB_PREFIX);
 	btree_init(db->btree, pre);
 	
+	/* Mtable*/
 	db->list = skiplist_new(LIST_SIZE);
+	
+	/* Log*/
 	db->log = log_new(pre);
 
-	llru_init(bufferpool_size);
+	/* Lru*/
+	db->lru = llru_new(bufferpool_size);
 
 	return db;
 }
@@ -87,6 +91,8 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
+	struct llru *lru = db->lru;
+
 	uint64_t data_offset;
 	uint8_t opt = 1;
 
@@ -105,7 +111,7 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 			if (x->opt == ADD)
 				btree_insert_index(btree, x->key, x->val);
 			else { 
-				llru_remove(x->key);
+				llru_remove(lru, x->key);
 				btree_delete(btree, x->key);
 			}
 
@@ -124,7 +130,7 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	}
 
 	skiplist_insert(list, sk, data_offset, ADD);
-	llru_remove(sk->data);
+	llru_remove(lru, sk->data);
 
 	return (1);
 }
@@ -135,11 +141,20 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 	struct slice *sv;
 	struct skipnode *snode;
 	struct btree *btree = db->btree;
+	struct llru *lru = db->lru;
 
-	val = llru_get(sk->data);
+	val = llru_get(lru, sk->data);
 
 	/* 1)Data is in Level-LRU, return*/
 	if(val) {
+		/*TODO*/
+		uint64_t *data_offset = (uint64_t*)(val);
+		sv = btree_get_data(btree, *data_offset);
+		if(sv) {
+			val = sv->data;
+			free(sv);
+		}
+
 		return val;
 	}
 	
@@ -156,17 +171,15 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 		if (sv) {
 			/* 4)Add to Level-LRU*/
 			char *k_clone = calloc(1, sk->len);
-			char *v_clone = calloc(1, sv->len);
-
 			memcpy(k_clone, sk->data, sk->len);
-			memcpy(v_clone, sv->data, sv->len);
 
-			llru_set(k_clone, v_clone, sk->len, sv->len);
+			llru_set(lru, k_clone, &sv->park, (sk->len + sizeof(sv->park)));
 			val = sv->data;
 
 			free(sv);
 		}
 	}
+
 	return val;
 }
 
@@ -184,6 +197,7 @@ void db_remove(struct nessdb *db, struct slice *sk)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
+	struct llru *lru = db->lru;
 
 	/* Add to log*/
 	log_append(log, sk, 0UL, 0);
@@ -195,7 +209,7 @@ void db_remove(struct nessdb *db, struct slice *sk)
 			if (x->opt == ADD)
 				btree_insert_index(btree, x->key, x->val);
 			else { 
-				llru_remove(x->key);
+				llru_remove(lru, x->key);
 				btree_delete(btree, x->key);
 			}
 
@@ -212,7 +226,7 @@ void db_remove(struct nessdb *db, struct slice *sk)
 	}
 
 	skiplist_insert(list, sk, 0UL, ADD);
-	llru_remove(sk->data);
+	llru_remove(lru, sk->data);
 }
 
 
@@ -227,13 +241,15 @@ void db_flush(struct nessdb *db)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
+	struct llru *lru = db->lru;
+
 	struct skipnode *x = list->hdr->forward[0];
 
 	for (i = 0; i < list->count; i++) {
 		if (x->opt == ADD)
 			btree_insert_index(btree, x->key, x->val);
 		else { 
-			llru_remove(x->key);
+			llru_remove(lru, x->key);
 			btree_delete(btree, x->key);
 		}
 
@@ -250,12 +266,11 @@ void db_flush(struct nessdb *db)
 
 void db_close(struct nessdb *db)
 {
+	__DEBUG("%s" ,"WARNING: Db is closed, flush  mtable's datas to disk indices...");
 	db_flush(db);
-	__DEBUG("%s" ,"WARNING: Finished flushing mtable's datas to disk indices...");
-
 	log_free(db->log);
 	skiplist_free(db->list);
 	btree_close(db->btree);
-	llru_free();
+	llru_free(db->lru);
 	free(db);
 }

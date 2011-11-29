@@ -6,12 +6,10 @@
 struct slice{
 	char *data;
 	int len;
+	uint64_t park;
 };
 
 void _ensure_dir_exists(const char *path);
 const char *concat_paths(const char *basedir, const char *subdir);
-
-int _file_exists(const char *path);
-uint64_t _getsize(int fd);
 
 #endif

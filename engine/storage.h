@@ -26,7 +26,7 @@ struct btree_table {
 } __attribute__((packed));
 
 struct btree_cache {
-	uint32_t offset;
+	uint64_t offset;
 	struct btree_table *table;
 };
 

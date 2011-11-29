@@ -34,17 +34,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __USE_FILE_OFFSET64
-#define __USE_FILE_OFFSET64
-#endif
-
-#ifndef __USE_LARGEFILE64
-#define __USE_LARGEFILE64
-#endif
-
-#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
-#endif
+#define _FILE_OFFSET_BITS (64)
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -107,9 +98,8 @@ void _put_table(struct btree *btree, struct btree_table *table,
 void _flush_table(struct btree *btree, struct btree_table *table,
 			uint64_t offset)
 {
-		assert(offset != 0);
-
-        lseek(btree->fd, offset, SEEK_SET);
+	assert(offset != 0);
+	lseek(btree->fd, offset, SEEK_SET);
 	if (write(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree _flush_table: I/O error\n");
 		abort();
@@ -187,14 +177,18 @@ int btree_init(struct btree *btree,const char *dbname)
 {
 	char idx[256];
 	char db[256];
+	int fd;
 
 	snprintf(idx, sizeof idx, "%s%s", dbname,IDXEXT);
 	snprintf(db, sizeof db, "%s%s", dbname,DBEXT);
 
-	if (_file_exists(idx))
+	fd = open(idx, BTREE_OPEN_FLAGS, 0644);
+	if ( fd > -1)
 		_btree_open(btree, idx, db);
-	else
+	else {
+		close(fd);
 		_btree_creat(btree, idx, db);
+	}
 
 	return (1);
 }
