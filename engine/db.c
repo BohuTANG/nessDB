@@ -145,7 +145,6 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 	struct llru *lru = db->lru;
 
 	data_offset = llru_get(lru, sk->data);
-	__DEBUG("lru get,data offset is:%llu",data_offset);
 
 	/* 1)Data is in Level-LRU, return*/
 	if(data_offset) {
@@ -162,7 +161,6 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 
 	/* 2)Data is mtable, goto it and get the offset*/
 	if (snode) {
-		__DEBUG("mtable get off:%llu",snode->val);
 		/* If OPT is DEL, return NULL*/
 		if (snode->opt == DEL)
 			return NULL;
@@ -184,7 +182,6 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 
 	/* Last found in on-disk B+Tree index*/
 	val = btree_get(btree, sk->data);
-	__DEBUG("btree get :%s",val);
 
 	return val;
 }
