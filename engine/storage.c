@@ -109,15 +109,17 @@ void _flush_table(struct btree *btree, struct btree_table *table,
 
 void _flush_super(struct btree *btree)
 {
-	struct btree_super super;
-	memset(&super, 0, sizeof super);
-	super.top = to_be64(btree->top);
-	super.free_top = to_be64(btree->free_top);
+	if (btree->top != btree->super_top) {
+		struct btree_super super;
+		memset(&super, 0, sizeof super);
+		super.top = to_be64(btree->top);
 
-	lseek(btree->fd, 0, SEEK_SET);
-	if (write(btree->fd, &super, sizeof super) != sizeof super){
-		fprintf(stderr, "btree flush super: I/O error\n");
-		abort();
+		lseek(btree->fd, 0, SEEK_SET);
+		if (write(btree->fd, &super, sizeof super) != sizeof super){
+			fprintf(stderr, "btree flush super: I/O error\n");
+			abort();
+		}
+		btree->super_top = btree->top;
 	}
 }
 
@@ -145,7 +147,7 @@ int _btree_open(struct btree *btree,const char *idx,const char *db)
 	if (read(btree->fd, &super, sizeof super) != (ssize_t) sizeof super)
 		return -1;
 	btree->top = from_be64(super.top);
-	btree->free_top = from_be64(super.free_top);
+	btree->super_top = btree->top;
 
 	btree->alloc = lseek(btree->fd, 0, SEEK_END);
 	btree->db_alloc = lseek(btree->db_fd, 0, SEEK_END);

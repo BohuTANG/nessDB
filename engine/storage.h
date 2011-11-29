@@ -36,16 +36,15 @@ struct blob_info {
 
 struct btree_super {
 	__be64 top;
-	__be64 free_top;
 } __attribute__((packed));
 
 #define CACHE_SLOTS (6151)
   	
 struct btree {
 	uint64_t top;
-	uint64_t free_top;
 	uint64_t alloc;
 	uint64_t db_alloc;
+	uint64_t super_top;
 
 	int fd;
 	int db_fd;
