@@ -6,7 +6,7 @@
 #define MAXLEVEL (15)
 #define SKIP_KSIZE (64)
 
-typedef enum {ADD = 1,DEL} OPT;
+typedef enum {DEL, ADD} OPT;
 
 struct skipnode{
     char key[SKIP_KSIZE];
