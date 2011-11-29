@@ -26,12 +26,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*NOTE:
-	How to do
-	=========
-		$make db-bench
-	 	$./db-bench add
-*/
+/* HarryR:
+ * The series of benchmarks we need to provide should be comparable to the
+ * LevelDB benchmarks, but flexible enough to apply to a load of different
+ * database systems.
+ *
+ * The benchmarks should be used in-place of a test suite and should represent
+ * many different use cases and scenarios.
+ *
+ * Reference at: http://code.google.com/p/leveldb/source/browse/db/db_bench.cc
+ *
+ * TODO: output CSV of results
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -41,25 +48,23 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
-#include "../engine/db.h"
-
-#define KEYSIZE 	16
-#define VALSIZE 	80
-#define NUM 		50000
-#define R_NUM 		20000
-#define REMOVE_NUM	20000
-#define BUFFERPOOL	(1024*1024*1024)
-#define LINE 		"+----------------------+---------------------------+----------------------------------+-----------------------+\n"
-#define LINE1		"--------------------------------------------------------------------------------------------------------------\n"
-
+#include <err.h>
 #include <sys/time.h>
 
-static void start_timer(struct timeval *start)
+#include "../engine/db.h"
+
+// Hand crafted so the output looks nice
+#define LINE 		"+----------------------+-----------------+-----------------+--------------------+---------------+--------------------+\n"
+#define LINE1		"+--------------------------------------------------------------------------------------------------------------------+\n"
+
+static void
+start_timer(struct timeval *start)
 {
     gettimeofday(start, NULL);
 }
 
-static double get_timer(struct timeval *start)
+static double
+get_timer(struct timeval *start)
 {
     struct timeval end;
     gettimeofday(&end, NULL);
@@ -70,46 +75,38 @@ static double get_timer(struct timeval *start)
 
 static void
 fill_random( struct slice *s ) {
-	int i;
-	for( i = 0; i < s->len; i++ ) {
+	for( size_t i = 0; i < s->len; i++ ) {
 		s->data[i] = rand() % 0xFF;
 	}
 }
 
 struct benchmark {
+	const char *work_dir;
 	const char *name;
+	size_t entries;
+	size_t key_len;
+	size_t val_len;
+	size_t cache_mb;
+
 	uint32_t count;
 	uint32_t ok_count;
 	double cost;
 	uint64_t io_bytes;
+
 	struct nessdb *db;
+	void (*controller)( struct benchmark* );
 };
 typedef struct benchmark benchmark_t;
+
+struct benchmark_controller {
+	char* name;
+	void (*runner)( struct benchmark* );
+};
 
 /**
  * Runs operation `i` for benchmark `b` and returns total bytes of DB I/O
  */
 typedef uint32_t (*benchmark_op_t)(struct benchmark *b, uint32_t i, void* d);
-
-
-static void
-benchmark_reset( benchmark_t *self ) {
-	self->count = 0;
-	self->ok_count = 0;
-	self->cost = 0;
-}
-
-
-static void
-benchmark_init( benchmark_t* self, const char *name, struct nessdb* db ) {
-	assert( self != NULL );
-	assert( db != NULL );
-
-	memset(self, 0, sizeof(benchmark_t));
-	self->name = name;
-	self->db = db;
-}
-
 
 static void
 benchmark_run(benchmark_t *self, uint32_t count, benchmark_op_t op, void *op_data, char *progress)
@@ -139,7 +136,7 @@ benchmark_run(benchmark_t *self, uint32_t count, benchmark_op_t op, void *op_dat
 
 static void
 benchmark_report(benchmark_t *self) {
-	printf("| %-20s | %.1f%% hit ratio | %.6f sec/op | %d ops/sec | %.1f MiB/sec | %.2f sec runtime |\n"
+	printf("| %-20s | %4.1f%% hit ratio | %8.6f sec/op | %10u ops/sec | %5.1f MiB/sec | %6.2f sec runtime |\n"
 		,self->name
 		,(double)(self->ok_count / (self->count / 100))
 		,(double)(self->cost / self->count)
@@ -151,23 +148,22 @@ benchmark_report(benchmark_t *self) {
 
 
 static uint32_t
-bop_null(benchmark_t *b, uint32_t i, void *d) {
+bop_null(benchmark_t* b, uint32_t i, void* d) {
 	return 0;
 }
 static void
-db_test_null( struct nessdb *db ) {
-	benchmark_t b;
-	benchmark_init(&b, "Null-Op", db);
-	benchmark_run(&b, 100000, bop_null, NULL, "Doing nothing");
-	benchmark_report(&b);
+db_test_null( benchmark_t* b ) {
+	benchmark_run(b, 100000, bop_null, NULL, "Doing nothing");
+	benchmark_report(b);
 }
 
+
 static uint32_t
-bop_write_random_k20_v100(benchmark_t *b, uint32_t i, void *d) {
-	char key[20];
-	char val[100];
-	struct slice sk = {key, sizeof(key)};
-	struct slice sv = {val, sizeof(val)};
+bop_write_random(benchmark_t* b, uint32_t i, void* d) {
+	char key[b->key_len];
+	char val[b->val_len];
+	struct slice sk = {key, b->key_len};
+	struct slice sv = {val, b->val_len};
 	fill_random(&sk);
 	fill_random(&sv);
 	db_add(b->db, &sk, &sv);
@@ -175,18 +171,16 @@ bop_write_random_k20_v100(benchmark_t *b, uint32_t i, void *d) {
 	return sk.len + sv.len;
 }
 static void
-db_test_writerand( struct nessdb *db ) {
-	benchmark_t b;
-	benchmark_init(&b, "Random-Write", db);
-	benchmark_run(&b, 100000, bop_write_random_k20_v100, NULL, "writing random 20 byte keys and 100 byte values");
-	benchmark_report(&b);
+db_test_writerand( benchmark_t *b ) {
+	benchmark_run(b, 100000, bop_write_random, NULL, "writing random 20 byte keys and 100 byte values");
+	benchmark_report(b);
 }
 
 
 static uint32_t
-bop_read_random_k20(benchmark_t *b, uint32_t i, void *d) {
-	char key[20];
-	struct slice sk = {key, sizeof(key)};
+bop_read_random(benchmark_t* b, uint32_t i, void* d) {
+	char key[b->key_len];
+	struct slice sk = {key, b->key_len};
 	struct slice sv = {NULL, 0};
 	fill_random(&sk);
 	
@@ -195,22 +189,19 @@ bop_read_random_k20(benchmark_t *b, uint32_t i, void *d) {
 	}
 	return sv.len;
 }
-
 static void
-db_test_readrand( struct nessdb *db ) {
-	benchmark_t b;
-	benchmark_init(&b, "Random-Read", db);
-	benchmark_run(&b, 100000, bop_read_random_k20, NULL, "reading random non-existant 20 byte keys");
-	benchmark_report(&b);
+db_test_readrand( benchmark_t* b ) {
+	benchmark_run(b, 100000, bop_read_random, NULL, "reading random non-existant 20 byte keys");
+	benchmark_report(b);
 }
 
 
 static uint32_t
-bop_read_sequence_k20(benchmark_t *b, uint32_t i, void *d) {
-	char key[20];
-	struct slice sk = {key, sizeof(key)};
+bop_read_sequence(benchmark_t* b, uint32_t i, void* d) {
+	char key[b->key_len];
+	struct slice sk = {key, b->key_len};
 	struct slice sv = {NULL, 0};
-	memset(key, 'X', sizeof(key));
+	memset(key, 'X', b->key_len);
 	*(uint32_t*)key = i;
 
 	if( db_get(b->db, &sk, &sv) ) {
@@ -219,55 +210,72 @@ bop_read_sequence_k20(benchmark_t *b, uint32_t i, void *d) {
 	return sv.len;
 }
 static void
-db_test_readseq( struct nessdb *db ) {
-	benchmark_t b;
-	benchmark_init(&b, "Seq-Read", db);
-	benchmark_run(&b, 100000, bop_read_sequence_k20, NULL, "reading non-existant keys sequentially");
-	benchmark_report(&b);
+db_test_readseq( benchmark_t* b ) {
+	benchmark_run(b, 100000, bop_read_sequence, NULL, "reading non-existant keys sequentially");
+	benchmark_report(b);
 }
 
 
 static uint32_t
-bop_remove_sequence_k20(benchmark_t *b, uint32_t i, void *d) {
-	char key[20];
-	struct slice sk = {key, sizeof(key)};
-	memset(key, 'X', sizeof(key));
+bop_remove_sequence(benchmark_t* b, uint32_t i, void* d) {
+	char key[b->key_len];
+	struct slice sk = {key, b->key_len};
+	memset(key, 'X', b->key_len);
 	*(uint32_t*)key = i;
 
 	db_remove(b->db, &sk);
 	return 0;
 }
 static void
-db_test_removeseq( struct nessdb *db ) {
-	benchmark_t b;
-	benchmark_init(&b, "Remove-Seq", db);
-	benchmark_run(&b, 100000, bop_remove_sequence_k20, NULL, "removing non-existant keys sequentially");
-	benchmark_report(&b);
+db_test_removeseq( benchmark_t *b ) {
+	benchmark_run(b, 100000, bop_remove_sequence, NULL, "removing non-existant keys sequentially");
+	benchmark_report(b);
 }
 
+static struct benchmark_controller
+available_benchmarks[] = {
+	{"null", db_test_null},
+	{"readrand", db_test_readrand},
+	{"readseq", db_test_readseq},
+	{"writerand", db_test_writerand},
+	{"removeseq", db_test_removeseq},
+	{NULL, NULL}	
+};
 
-static void
-print_header(void)
-{
-	printf(LINE1);
-	printf("Keys:		%d bytes each\n", KEYSIZE);
-	printf("Values:		%d bytes each\n", VALSIZE);
-	printf("Entries:	%d\n", NUM);
-	//It would be nice to estimate, but it would be better to show the
-	//I/O size compared to the on-disk size.
-	//printf("IndexSize:	%.1f MB (estimated)\n", _index_size);
-	//printf("DataSize:	%.1f MB (estimated)\n", _data_size);
-	printf(LINE1);
+static bool
+benchmark_validate( benchmark_t *b ) {
+	struct benchmark_controller* r = &available_benchmarks[0];
+	if( b->name == NULL ) {
+		warnx("No benchmark name specified");
+		return false;
+	}
+	while( r->name ) {
+		if( ! strcmp(b->name, r->name) ) {
+			b->controller = r->runner;
+			break;
+		}
+		r++;
+	}
+	if( r->name == NULL ) {
+		warnx("Unknown benchmark name '%s'", b->name);
+		return false;
+	}
+
+	return (b->name != NULL)
+		&& (b->work_dir != NULL)
+		&& (b->entries > 0)
+		&& (b->key_len > 0)
+		&& (b->val_len > 0);
 }
-
 
 static void
 print_environment(void)
 {
 	time_t now = time(NULL);
-	printf("nessDB:		version %s(%s)\n", NESSDB_VERSION, NESSDB_FEATURES);
-	printf("Compiler:	%s\n", __VERSION__);
-	printf("Date:		%s\n", (char*)ctime(&now));
+	
+	printf("  nessDB:	version %s (%s)\n", NESSDB_VERSION, NESSDB_FEATURES);
+	printf("  Compiler:	%s\n", __VERSION__);
+	printf("  Date:		%s", (char*)ctime(&now));
 	
 	int num_cpus = 0;
 	char cpu_type[256] = {0};
@@ -283,57 +291,35 @@ print_environment(void)
 			
 			char key[1024] = {0};
 			char val[1024] = {0};
-			strncpy(key, line, sep-1-line);
+			strncpy(key, line, sep - 1 - line);
 			strncpy(val, sep+1, strlen(sep)-1);
 			if (strcmp("model name", key) == 0) {
 				num_cpus++;
-				strcpy(cpu_type, val);
+				strncpy(cpu_type, val, strlen(val) - 1);
 			}
-			else if (strcmp("cache size", key) == 0)
-				strncpy(cache_size, val + 1, strlen(val) - 1);	
+			else if(strcmp("cache size", key) == 0)
+				strncpy(cache_size, val + 1, strlen(val) - 2);	
 		}
 
 		fclose(cpuinfo);
-		printf("CPU:		%d * %s", num_cpus, cpu_type);
-		printf("CPUCache:	%s\n", cache_size);
+		printf("  CPU:		%d * %s\n", num_cpus, cpu_type);
+		printf("  CPUCache:	%s\n", cache_size);
 	}
-	printf(LINE);
 }
-
-
-struct nessdb *db_init_test(int show)
-{
-	return db_open(BUFFERPOOL, getcwd(NULL,0));
-}
-
-typedef void (*benchmark_runner_t)( struct nessdb * );
-struct benchtype {
-	char* name;
-	benchmark_runner_t runner;
-};
-
-static struct benchtype available_benchmarks[] = {
-	{"null", db_test_null},
-	{"readrand", db_test_readrand},
-	{"readseq", db_test_readseq},
-	{"writerand", db_test_writerand},
-	{"removeseq", db_test_removeseq},
-	{NULL, NULL}	
-};
 
 static void
 print_usage( char *prog ) {
 	fprintf(stderr,
 		"Usage: db-bench [options] <benchmark-name>\n"
 		"\t-d <dir> Database directory (default: .)\n"
-		"\t-n <num> Number of operations to perform (default: 500000)\n"
+		"\t-e <num> Number of DB entries (default: 500000)\n"
 		"\t-k <num> Key size in bytes (default: 20)\n"
 		"\t-v <num> Value size in bytes (default: 100)\n"
 		"\t-c <mb>  Cache size in megabytes (default: 4)\n"
 		"\n"
 		"Benchmarks:\n");
 	
-	struct benchtype *b = &available_benchmarks[0];
+	struct benchmark_controller *b = &available_benchmarks[0];
 	while( b->name ) {
 		fprintf(stderr, "\t%s\n", b->name);
 		b++;
@@ -341,83 +327,75 @@ print_usage( char *prog ) {
 	fprintf(stderr, "\n");
 }
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
-	bool cant_run = false;
-	int opt_num = 500000, opt_key = 20, opt_val = 100, opt_cache = 4;
-	char *opt_dir = NULL;
-	char* op_name = NULL;
-	srand(time(NULL));
-
 	int c;
-	while( (c = getopt(argc, argv, "d:n:k:v:c:")) != -1 ) {
+	benchmark_t bench = {
+		.work_dir = NULL,
+		.name = NULL,
+		.entries = 500000,
+		.key_len = 20,
+		.val_len = 100,
+		.cache_mb = 4
+	};
+
+	while( (c = getopt(argc, argv, "d:e:k:v:c:")) != -1 ) {
 		switch( c ) {
 		case 'd':
-			opt_dir = optarg;
+			bench.work_dir = optarg;
 			break;
 
-		case 'n':
-			opt_num = atoi(optarg);
+		case 'e':
+			bench.entries = atoi(optarg);
 			break;
 
 		case 'k':
-			opt_key = atoi(optarg);
+			bench.key_len = atoi(optarg);
 			break;
 
 		case 'v':
-			opt_val = atoi(optarg);
+			bench.val_len = atoi(optarg);
 			break;
 		
 		case 'c':
-			opt_cache = atoi(optarg);
+			bench.cache_mb = atoi(optarg);
 			break;
 
 		default:
 			fprintf(stderr, "Unknown option -%c\n", c);
-			cant_run = true;
 			break;
 		}
 	}
 
-	if( ! cant_run ) {
-		if( optind < argc ) {
-			op_name = argv[optind];
-		}
-		else {
-			cant_run = true;
-		}
+	if( ! bench.work_dir ) {
+		bench.work_dir = getcwd(NULL, 0);
 	}
 
-	struct benchtype *b = NULL;
-	if( ! cant_run ) {
-		b = &available_benchmarks[0];
-		while( b->name ) {
-			if( ! strcmp(b->name, op_name) ) {
-				break;
-			}
-			b++;
-		}
-		if( b->name == NULL ) {
-			cant_run = true;
-		}
+	if( optind < argc ) {
+		bench.name = argv[optind];
 	}
-
-	if( cant_run ) {
+	
+	if( ! benchmark_validate(&bench) ) {
 		print_usage(argv[0]);
 		return EXIT_FAILURE;
 	}
 
-	if( ! opt_dir ) {
-		opt_dir = getcwd(NULL,0);
-	}
-	struct nessdb *db = db_open(opt_cache * 1024 * 1024, opt_dir);
-	if( ! db ) {
-		errx(EXIT_FAILURE, "Cannot open database in directory '%s' with %dMiB cache", opt_dir, opt_cache);
-	}
-
-	print_header();
+	printf(LINE1);
 	print_environment();
-	b->runner(db);
+	printf(LINE1);
+	printf("  Cache:    %zu MiB\n", bench.cache_mb);
+	printf("  Keys:     %zu bytes each\n", bench.key_len);
+	printf("  Values:   %zu bytes each\n", bench.val_len);
+	printf("  Entries:  %zu\n", bench.entries);
+	printf(LINE1);
+
+	struct nessdb *db = db_open(bench.cache_mb * 1024 * 1024, bench.work_dir);
+	if( ! db ) {
+		errx(EXIT_FAILURE, "Cannot open database");
+	}
+	srand(time(NULL));
+	bench.controller(&bench);
 	db_close(db);
 	return EXIT_SUCCESS;
 }

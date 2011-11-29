@@ -6,7 +6,7 @@ else
 endif
 
 CC = gcc
-CFLAGS =  -c -std=c99 -Wall  $(DEBUG)	
+CFLAGS =  -c -std=c99 -Wall -Wextra -pedantic $(DEBUG)	
 
 LIB_OBJS = \
 	./engine/ht.o		\
