@@ -75,8 +75,6 @@ void level_free_node(struct level *level, struct level_node *n)
 		level_remove_link(level, n);
 		if (n->key)
 			free(n->key);
-		if (n->value)
-			free(n->value);
 		free(n);
 	}
 }

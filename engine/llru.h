@@ -20,8 +20,8 @@ struct llru{
 
 
 struct llru *llru_new(size_t buffer_size);
-void llru_set(struct llru *llru, void *k, void *v, size_t size);
-void* llru_get(struct llru *llru, void *k);
+void llru_set(struct llru *llru, void *k, uint64_t v, size_t size);
+uint64_t llru_get(struct llru *llru, void *k);
 void llru_remove(struct llru *llru, void *k);
 void llru_info(struct llru *llru);
 void llru_free(struct llru *llru);

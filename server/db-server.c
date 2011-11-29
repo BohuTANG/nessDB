@@ -358,7 +358,7 @@ void nessdb_close(struct nessdb *db)
 
 int main()
 {
-	signal_init();
+	/*signal_init();*/
 
 	_svr.bindaddr="127.0.0.1";
 	_svr.port=6379;

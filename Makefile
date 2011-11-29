@@ -2,7 +2,7 @@ UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
 	DEBUG = -g -rdynamic -ggdb -DDEBUG
 else
-	DEBUG =	-g -ggdb 
+	DEBUG =	-g -ggdb -DDEBUG
 endif
 
 CC = gcc

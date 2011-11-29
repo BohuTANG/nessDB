@@ -1,6 +1,7 @@
 #ifndef _LEVEL_H
 #define _LEVEL_H
 
+#include <stdint.h>
 #include "ht.h"
 
 struct level{
@@ -13,10 +14,10 @@ struct level{
 };
 
 struct level_node{
-	void*	key;
-	void*	value;
-	int	hits;
-	int	size;
+	void* key;
+	uint64_t value;
+	int hits;
+	int size;
 
 	struct level_node *nxt;
 	struct level_node *pre;

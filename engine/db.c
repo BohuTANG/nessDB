@@ -138,18 +138,18 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 void  *db_get(struct nessdb *db, struct slice *sk)
 {
 	void *val;
+	uint64_t data_offset;
 	struct slice *sv;
 	struct skipnode *snode;
 	struct btree *btree = db->btree;
 	struct llru *lru = db->lru;
 
-	val = llru_get(lru, sk->data);
+	data_offset = llru_get(lru, sk->data);
+	__DEBUG("lru get,data offset is:%llu",data_offset);
 
 	/* 1)Data is in Level-LRU, return*/
-	if(val) {
-		/*TODO*/
-		uint64_t *data_offset = (uint64_t*)(val);
-		sv = btree_get_data(btree, *data_offset);
+	if(data_offset) {
+		sv = btree_get_data(btree, data_offset);
 		if(sv) {
 			val = sv->data;
 			free(sv);
@@ -162,6 +162,7 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 
 	/* 2)Data is mtable, goto it and get the offset*/
 	if (snode) {
+		__DEBUG("mtable get off:%llu",snode->val);
 		/* If OPT is DEL, return NULL*/
 		if (snode->opt == DEL)
 			return NULL;
@@ -173,12 +174,17 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 			char *k_clone = calloc(1, sk->len);
 			memcpy(k_clone, sk->data, sk->len);
 
-			llru_set(lru, k_clone, &sv->park, (sk->len + sizeof(sv->park)));
+			llru_set(lru, k_clone, sv->park, (sk->len + sizeof(sv->park)));
 			val = sv->data;
 
 			free(sv);
+			return val;
 		}
 	}
+
+	/* Last found in on-disk B+Tree index*/
+	val = btree_get(btree, sk->data);
+	__DEBUG("btree get :%s",val);
 
 	return val;
 }

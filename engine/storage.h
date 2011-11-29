@@ -14,8 +14,8 @@
 
 struct btree_item {
 	char sha1[SHA1_LENGTH];
-	__be32 offset;
-	__be32 child;
+	__be64 offset;
+	__be64 child;
 } __attribute__((packed));
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct btree_item))
@@ -35,8 +35,8 @@ struct blob_info {
 };
 
 struct btree_super {
-	__be32 top;
-	__be32 free_top;
+	__be64 top;
+	__be64 free_top;
 } __attribute__((packed));
 
 #define CACHE_SLOTS (6151)

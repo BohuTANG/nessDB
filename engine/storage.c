@@ -343,7 +343,7 @@ uint64_t _delete_table(struct btree *btree, uint64_t table_offset, char *sha1)
 				/* found */
 				//mark unused
 				uint64_t off = from_be64(table->items[i].offset);
-				table->items[i].offset=to_be64(set32_H_1(off));
+				table->items[i].offset=to_be64(set64_H_1(off));
 				_flush_table(btree, table, table_offset);
 				return 1;
 			}
@@ -405,6 +405,7 @@ void  btree_insert_index(struct btree *btree,const char *c_sha1, uint64_t v_off)
 	memcpy(sha1,c_sha1,sizeof sha1);
 
 	_insert_toplevel(btree, &btree->top, sha1, v_off);
+	_flush_super(btree);
 }
 
 
@@ -420,7 +421,7 @@ uint64_t _lookup(struct btree *btree, uint64_t table_offset, const char *sha1)
 				/* found */
 				uint64_t ret=from_be64(table->items[i].offset);
 				//unused-mark is true
-				if(get32_H(ret)==1)
+				if(get64_H(ret)==1)
 					ret = 0;	
 			
 				_put_table(btree, table, table_offset);

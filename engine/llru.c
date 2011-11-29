@@ -124,7 +124,7 @@ void _llru_set_node(struct llru *lru, struct level_node *n)
 }
 
 
-void llru_set(struct llru *lru, void *k, void *v, size_t size)
+void llru_set(struct llru *lru, void *k, uint64_t v, size_t size)
 {
 	if (lru->buffer == 0)
 		return;
@@ -144,14 +144,14 @@ void llru_set(struct llru *lru, void *k, void *v, size_t size)
 	}
 
 	_llru_set_node(lru, n);
-	ht_set(lru->ht, k, v);
+	ht_set(lru->ht, k, n);
 }
 
 
-void* llru_get(struct llru *lru, void *k)
+uint64_t llru_get(struct llru *lru, void *k)
 {
 	if (lru->buffer == 0)
-		return NULL;
+		return 0UL;
 
 	struct level_node *n = ht_get(lru->ht, k);
 	if (n != NULL) {
@@ -159,7 +159,7 @@ void* llru_get(struct llru *lru, void *k)
 		return n->value;
 	}
 
-	return NULL;
+	return 0UL;
 }
 
 void llru_remove(struct llru *lru, void *k)
@@ -175,12 +175,10 @@ void llru_remove(struct llru *lru, void *k)
 		else
 			level_free_node(lru->level_old, n);
 	}
-	/*TODO: free*/
 }
 
 
 void llru_free(struct llru *lru)
 {
 	ht_free(lru->ht);
-	/*TODO:level free*/
 }
