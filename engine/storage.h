@@ -48,7 +48,7 @@ struct btree {
 
 	int fd;
 	int db_fd;
-	int slot_prime;
+	int super_fd;
 	struct btree_cache cache[CACHE_SLOTS];
 	struct buffer *buf;
 };
