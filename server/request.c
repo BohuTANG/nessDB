@@ -132,6 +132,9 @@ int req_state_len(struct request *req,char *sb)
 			default:
 				if(first==1){
 					/* the first symbol is not '*' or '$'*/
+					/* TODO: parse inline commands
+					   - http://redis.io/topics/protocol
+					 */
 					if(_table[(unsigned char)c]!=3)
 						return STATE_FAIL;
 				}else{

@@ -54,8 +54,8 @@
 #include "../engine/db.h"
 
 // Hand crafted so the output looks nice
-#define LINE 		"+----------------------+-----------------+-----------------+--------------------+---------------+--------------------+\n"
-#define LINE1		"+--------------------------------------------------------------------------------------------------------------------+\n"
+#define LINE 		"+----------------------+-----------+-----------------+--------------------+---------------+--------------------+\n"
+#define LINE1		"+--------------------------------------------------------------------------------------------------------------+\n"
 
 static void
 start_timer(struct timeval *start)
@@ -109,6 +109,14 @@ struct benchmark_controller {
 typedef uint32_t (*benchmark_op_t)(struct benchmark *b, uint32_t i, void* d);
 
 static void
+benchmark_reset( benchmark_t *self ) {
+	self->count = 0;
+	self->ok_count = 0;
+	self->io_bytes = 0;
+	self->cost = 0;
+}
+
+static void
 benchmark_run(benchmark_t *self, uint32_t count, benchmark_op_t op, void *op_data, char *progress)
 {
 	uint32_t i;
@@ -136,7 +144,7 @@ benchmark_run(benchmark_t *self, uint32_t count, benchmark_op_t op, void *op_dat
 
 static void
 benchmark_report(benchmark_t *self) {
-	printf("| %-20s | %4.1f%% hit ratio | %8.6f sec/op | %10u ops/sec | %5.1f MiB/sec | %6.2f sec runtime |\n"
+	printf("| %-20s | %4.1f%% OK | %8.6f sec/op | %10u ops/sec | %5.1f MiB/sec | %6.2f sec runtime |\n"
 		,self->name
 		,(double)(self->ok_count / (self->count / 100))
 		,(double)(self->cost / self->count)
@@ -153,8 +161,7 @@ bop_null(benchmark_t* b, uint32_t i, void* d) {
 }
 static void
 db_test_null( benchmark_t* b ) {
-	benchmark_run(b, 100000, bop_null, NULL, "Doing nothing");
-	benchmark_report(b);
+	benchmark_run(b, b->entries, bop_null, NULL, "Doing nothing");
 }
 
 
@@ -172,8 +179,7 @@ bop_write_random(benchmark_t* b, uint32_t i, void* d) {
 }
 static void
 db_test_writerand( benchmark_t *b ) {
-	benchmark_run(b, 100000, bop_write_random, NULL, "writing random 20 byte keys and 100 byte values");
-	benchmark_report(b);
+	benchmark_run(b, b->entries, bop_write_random, NULL, "writing random 20 byte keys and 100 byte values");
 }
 
 
@@ -191,10 +197,28 @@ bop_read_random(benchmark_t* b, uint32_t i, void* d) {
 }
 static void
 db_test_readrand( benchmark_t* b ) {
-	benchmark_run(b, 100000, bop_read_random, NULL, "reading random non-existant 20 byte keys");
-	benchmark_report(b);
+	benchmark_run(b, b->entries, bop_read_random, NULL, "reading random non-existant 20 byte keys");
 }
 
+static uint32_t
+bop_write_sequence(benchmark_t* b, uint32_t i, void* d) {
+	char key[b->key_len];
+	char val[b->val_len];
+	struct slice sk = {key, b->key_len};
+	struct slice sv = {val, b->val_len};
+	memset(key, 'X', b->key_len);
+	memset(val, 'X', b->val_len);
+	*(uint32_t*)key = i;
+
+	if( ! db_add(b->db, &sk, &sv) ) {
+		return 0;
+	}
+	return b->key_len + b->val_len;
+}
+static void
+db_test_writeseq( benchmark_t *b ) {
+	benchmark_run(b,  b->entries, bop_write_sequence, NULL, "writing keys sequentially");
+}
 
 static uint32_t
 bop_read_sequence(benchmark_t* b, uint32_t i, void* d) {
@@ -211,8 +235,9 @@ bop_read_sequence(benchmark_t* b, uint32_t i, void* d) {
 }
 static void
 db_test_readseq( benchmark_t* b ) {
-	benchmark_run(b, 100000, bop_read_sequence, NULL, "reading non-existant keys sequentially");
-	benchmark_report(b);
+	benchmark_run(b, b->entries, bop_write_sequence, NULL, "filling test data");
+	benchmark_reset(b);
+	benchmark_run(b, b->entries, bop_read_sequence, NULL, "reading keys sequentially");
 }
 
 
@@ -229,13 +254,13 @@ bop_remove_sequence(benchmark_t* b, uint32_t i, void* d) {
 static void
 db_test_removeseq( benchmark_t *b ) {
 	benchmark_run(b, 100000, bop_remove_sequence, NULL, "removing non-existant keys sequentially");
-	benchmark_report(b);
+	
 }
 
 static struct benchmark_controller
 available_benchmarks[] = {
 	{"null", db_test_null},
-	{"readrand", db_test_readrand},
+	{"readrandom", db_test_readrand},
 	{"readseq", db_test_readseq},
 	{"writerand", db_test_writerand},
 	{"removeseq", db_test_removeseq},
@@ -264,7 +289,7 @@ benchmark_validate( benchmark_t *b ) {
 	return (b->name != NULL)
 		&& (b->work_dir != NULL)
 		&& (b->entries > 0)
-		&& (b->key_len > 0)
+		&& (b->key_len >= 4)
 		&& (b->val_len > 0);
 }
 
@@ -388,14 +413,16 @@ main(int argc, char** argv)
 	printf("  Keys:     %zu bytes each\n", bench.key_len);
 	printf("  Values:   %zu bytes each\n", bench.val_len);
 	printf("  Entries:  %zu\n", bench.entries);
-	printf(LINE1);
 
 	bench.db = db_open(bench.cache_mb * 1024 * 1024, bench.work_dir);
 	if( ! bench.db ) {
 		errx(EXIT_FAILURE, "Cannot open database");
 	}
 	srand(time(NULL));
+
+	printf(LINE);
 	bench.controller(&bench);
+	benchmark_report(&bench);
 	db_close(bench.db);
 	return EXIT_SUCCESS;
 }

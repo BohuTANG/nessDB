@@ -2,7 +2,7 @@ UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
 	DEBUG = -g -rdynamic -ggdb -DDEBUG
 else
-	DEBUG =	-g -ggdb 
+	DEBUG =	-g -ggdb -DDEBUG
 endif
 
 CC = gcc
@@ -35,11 +35,15 @@ LIBRARY = libnessdb.a
 all: $(LIBRARY) db-bench db-server
 
 clean:
-	-rm -f $(LIB_OBJS) $(LIBRARY)
-	-rm -f $(SVR_OBJS) server/db-server.o db-server
-	-rm -f $(TEST_ENGINE_OBJS) test-engine
+
+	-rm -f $(LIBRARY)  
+	-rm -f $(LIB_OBJS)
+	-rm -f $(SVR_OBJS)
+	-rm -f bench/db-bench.o server/db-server.o 
+	-rm -f db-bench db-server
+
+cleandb:
 	-rm -rf ndbs
-	-rm -f bench/db-bench.o db-bench  
 
 $(LIBRARY): $(LIB_OBJS)
 	rm -f $@

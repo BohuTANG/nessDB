@@ -5,7 +5,7 @@
 
 struct slice{
 	char *data;
-	int len;
+	size_t len;
 	uint64_t park;	// XXX: what is this for?
 };
 

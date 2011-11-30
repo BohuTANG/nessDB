@@ -79,6 +79,7 @@ struct server{
 };
 typedef struct server server_t;
 
+
 static void *get_mcontext_eip(ucontext_t *uc) {
 #if defined(__FreeBSD__)
     return (void*) uc->uc_mcontext.mc_eip;
@@ -398,6 +399,7 @@ parse_bind_addr( char *in, char **addr, int *port ) {
 	}
 	*addr = strdup(in);
 }
+
 
 static bool
 parse_opts( int argc, char **argv, server_t *svr ) {

@@ -5,6 +5,7 @@
  * 3) Delete operation optimization,improve performance,very fast.
  * 4) Code abridged.
  * 5) And other dreams will go on if needed.
+ * 6) Add Super Cache, and get  a "unmatched  speed"
  *
  * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
@@ -44,10 +45,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include "storage.h"
+#include "debug.h"
 
-#define IDXEXT	".idx"
-#define DBEXT	".db"
+#define IDXEXT ".idx"
+#define DBEXT ".db"
+#define SUPEREXT ".super"
 
 
 int _cmp_sha1(const char *a,const char *b)
@@ -114,8 +118,8 @@ void _flush_super(struct btree *btree)
 		memset(&super, 0, sizeof super);
 		super.top = to_be64(btree->top);
 
-		lseek(btree->fd, 0, SEEK_SET);
-		if (write(btree->fd, &super, sizeof super) != sizeof super){
+		lseek(btree->super_fd, 0, SEEK_SET);
+		if (write(btree->super_fd, &super, sizeof super) != sizeof super){
 			fprintf(stderr, "btree flush super: I/O error\n");
 			abort();
 		}
@@ -133,20 +137,24 @@ void _flush_magic(struct btree *btree)
 }
 
 
-int _btree_open(struct btree *btree,const char *idx,const char *db)
+int _btree_open(struct btree *btree, const char *idx, const char *db, const char *super_name)
 {
 	memset(btree, 0, sizeof *btree);
 
 	btree->fd = open(idx, BTREE_OPEN_FLAGS);
 	btree->db_fd = open(db, BTREE_OPEN_FLAGS);
+	btree->super_fd = open(super_name, BTREE_OPEN_FLAGS);
 
 	if (btree->fd < 0 || btree->db_fd<0)
 		return -1;
 
 	struct btree_super super;
-	if (read(btree->fd, &super, sizeof super) != (ssize_t) sizeof super)
+	if (read(btree->super_fd, &super, sizeof super) != (ssize_t) sizeof super)
 		return -1;
 	btree->top = from_be64(super.top);
+
+	__DEBUG("btree top is:%" PRIu64 "",btree->top);
+
 	btree->super_top = btree->top;
 
 	btree->alloc = lseek(btree->fd, 0, SEEK_END);
@@ -156,40 +164,45 @@ int _btree_open(struct btree *btree,const char *idx,const char *db)
 }
 
 
-int _btree_creat(struct btree *btree,const char *idx,const char *db)
+int _btree_creat(struct btree *btree, const char *idx, const char *db, const char *super_name)
 {
 	memset(btree, 0, sizeof *btree);
 
 	btree->fd = open(idx, BTREE_CREAT_FLAGS, 0644);
 	btree->db_fd = open(db, BTREE_CREAT_FLAGS, 0644);
-	if (btree->fd < 0 || btree->db_fd < 0)
+	btree->super_fd = open(super_name, BTREE_CREAT_FLAGS, 0644);
+
+	if (btree->fd < 0 || btree->db_fd < 0 || btree->super_fd < 0)
 		return -1;
 
 	_flush_super(btree);
 
-	btree->alloc =sizeof (struct btree_super);
-	lseek(btree->fd, 0, SEEK_END);
+	btree->alloc = sizeof (struct btree_super);
+	lseek(btree->fd, sizeof(struct btree_super), SEEK_SET);
 
 	_flush_magic(btree);
 	btree->db_alloc = sizeof(int);
 	return 0;
 }
 
-int btree_init(struct btree *btree,const char *dbname)
+int btree_init(struct btree *btree, const char *dbname)
 {
 	char idx[256];
 	char db[256];
+	char sup[256];
 	int fd;
 
-	snprintf(idx, sizeof idx, "%s%s", dbname,IDXEXT);
-	snprintf(db, sizeof db, "%s%s", dbname,DBEXT);
+	snprintf(idx, sizeof idx, "%s%s", dbname, IDXEXT);
+	snprintf(db, sizeof db, "%s%s", dbname, DBEXT);
+	snprintf(sup, sizeof sup, "%s%s", dbname, SUPEREXT); 
 
 	fd = open(idx, BTREE_OPEN_FLAGS, 0644);
-	if ( fd > -1)
-		_btree_open(btree, idx, db);
-	else {
+	if ( fd != -1) {
+		_btree_open(btree, idx, db, sup);
 		close(fd);
-		_btree_creat(btree, idx, db);
+	}
+	else {
+		_btree_creat(btree, idx, db, sup);
 	}
 
 	return (1);
@@ -201,6 +214,7 @@ void btree_close(struct btree *btree)
 
 	close(btree->fd);
 	close(btree->db_fd);
+	close(btree->super_fd);
 
 	for (i = 0; i < CACHE_SLOTS; ++i) {
 		if (btree->cache[i].offset)
@@ -458,7 +472,7 @@ void *btree_get(struct btree *btree, struct slice *sk, struct slice *sv)
 	sv->len = from_be32(info.len);
 	sv->data = calloc(1,sk->len);
 	assert( sv->data != NULL );
-	if (read(btree->db_fd, sv->data, sv->len) != sv->len) {
+	if (read(btree->db_fd, sv->data, sv->len) != (ssize_t)sv->len) {
 		free(sv->data);
 		sv->data = NULL;
 	}	
