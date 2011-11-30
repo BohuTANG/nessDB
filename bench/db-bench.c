@@ -126,7 +126,7 @@ benchmark_run(benchmark_t *self, uint32_t count, benchmark_op_t op, void *op_dat
 		self->ok_count += (io_bytes ? 1 : 0);
 		self->io_bytes += io_bytes;
 		if( progress && (i % prog_stop == 0) ) {
-			fprintf(stderr, "%3d%% -- %70s\r", i / (count / 100), progress);
+			fprintf(stderr, "%3d%% -- %s\r", i / (count / 100), progress);
 		}
 	}
 
@@ -141,7 +141,7 @@ benchmark_report(benchmark_t *self) {
 		,(double)(self->ok_count / (self->count / 100))
 		,(double)(self->cost / self->count)
 		,(int)(self->count / self->cost)
-		,(self->io_bytes / self->cost)
+		,(self->io_bytes / self->cost) / 1024 / 1024
 		,self->cost);
 	printf(LINE);
 }
@@ -390,12 +390,12 @@ main(int argc, char** argv)
 	printf("  Entries:  %zu\n", bench.entries);
 	printf(LINE1);
 
-	struct nessdb *db = db_open(bench.cache_mb * 1024 * 1024, bench.work_dir);
-	if( ! db ) {
+	bench.db = db_open(bench.cache_mb * 1024 * 1024, bench.work_dir);
+	if( ! bench.db ) {
 		errx(EXIT_FAILURE, "Cannot open database");
 	}
 	srand(time(NULL));
 	bench.controller(&bench);
-	db_close(db);
+	db_close(bench.db);
 	return EXIT_SUCCESS;
 }
