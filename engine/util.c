@@ -58,17 +58,3 @@ void _ensure_dir_exists(const char *path)
 	}
 }
 
-int _file_exists(const char *path)
-{
-	int fd = open(path, O_RDWR);
-	if (fd == -1) return 0;
-	return close(fd) == 0;
-}
-
-uint64_t _getsize(int fd) {
-	struct stat sb;
-	if (fstat(fd,&sb) == -1)
-		return 0;
-
-	return (uint64_t)sb.st_size;
-}

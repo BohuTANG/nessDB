@@ -29,120 +29,156 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 #include "llru.h"
 
 #define MAXHITS (3)
 #define PRIME	(16785407)
 #define RATIO	(0.618)
 
-void llru_init(llru_t *self, size_t buffer_size)
+/*TODO:hashfunc cmpfunc impl*/
+
+size_t _ht_hashfunc(void *val)
+{
+	unsigned int hash = 5318;
+	unsigned int c;
+
+	if(!val)
+		return 0;
+
+	while ((c = *(char*)val++))
+		hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
+
+	return (size_t) hash;
+}
+
+int _ht_cmpfunc(void *a, void *b)
+{
+	return strcmp((const char*)a, (const char*)b);
+}
+
+struct llru *llru_new(size_t buffer_size)
 {
 	size_t size_n=buffer_size*RATIO;
 	size_t size_o=buffer_size-size_n;
-	memset(self, 0, sizeof(llru_t));
-	ht_init(&self->ht,PRIME,STRING);
-	level_init(&self->level_old, size_o);
-	level_init(&self->level_new, size_n);
+
+	struct ht *ht = malloc(sizeof(struct ht));
+	struct level *level_old = level_creat();
+	struct level *level_new = level_creat();
+
+	struct llru *lru = malloc(sizeof(struct llru));
+
+	if (buffer_size > 1024)
+		lru->buffer = 1;
+
+
+	ht_init(ht,PRIME);
+	ht->hashfunc = _ht_hashfunc;
+	ht->cmpfunc = _ht_cmpfunc;
+	lru->ht = ht;
+
+	level_old->count = 0;
+	level_old->allow_size = size_o;
+	level_old->used_size = 0;
+	level_old->first = NULL;
+	level_old->last = NULL;
+	lru->level_old = level_old;
+	
+	level_new->count = 0;
+	level_new->allow_size = size_n;
+	level_new->used_size = 0;
+	level_new->first = NULL;
+	level_new->last = NULL;
+	lru->level_new = level_new;
+
+	return lru;
 }
 
-static void llru_set_node(llru_t *self, struct level_node *n)
+void _llru_set_node(struct llru *lru, struct level_node *n)
 {
-	if(n!=NULL){
-		if(n->hits==-1){
-			if(self->level_new.used_size > self->level_new.allow_size){
-				struct level_node *new_last_node = self->level_new.last;
-				level_remove_link(&self->level_new,new_last_node);
-				level_set_head(&self->level_old,new_last_node);
+	if( n != NULL) {
+		if (n->hits == -1) {
+			if (lru->level_new->used_size > lru->level_new->allow_size) {
+				struct level_node *new_last_node = lru->level_new->last;
+				level_remove_link(lru->level_new, new_last_node);
+				level_set_head(lru->level_old, new_last_node);
 			}
-			level_remove_link(&self->level_new, n);
-			level_set_head(&self->level_new, n);
-		}else{
-
-			if(self->level_old.used_size > self->level_old.allow_size)
-				level_free_last(&self->level_old);
+			level_remove_link(lru->level_new, n);
+			level_set_head(lru->level_new, n);
+		} else {
+			if (lru->level_old->used_size > lru->level_old->allow_size)
+				level_free_last(lru->level_old);
 
 			n->hits++;
-			level_remove_link(&self->level_old, n);
-			if(n->hits>MAXHITS){
-				level_set_head(&self->level_new, n);
-				n->hits=-1;
-				self->level_old.used_size -= n->size;
-				self->level_new.used_size += n->size;
-			}else
-				level_set_head(&self->level_old, n);
+			level_remove_link(lru->level_old, n);
+			if (n->hits > MAXHITS) {
+				level_set_head(lru->level_new, n);
+				n->hits = -1;
+				lru->level_old->used_size -= n->size;
+				lru->level_new->used_size += n->size;
+			} else
+				level_set_head(lru->level_old,n);
 		}
 	}
 }
 
 
-void llru_set(llru_t *self, const char *k, void *v, size_t k_len, size_t v_len)
+void llru_set(struct llru *lru, void *k, uint64_t v, size_t size)
 {
-	int size=(k_len+v_len);
-	if(self->buffer==0)
+	if (lru->buffer == 0)
 		return;
-	struct level_node *n=ht_get(&self->ht,(void*)k);
-	if(n==NULL){
-		self->level_old.used_size += size;
-		self->level_old.count++;
 
-		n=calloc(1,sizeof(struct level_node));
-		n->key=(char*)k;
-		n->value=v;
-		n->size=size;
-		n->hits=1;
-		n->pre=NULL;
-		n->nxt=NULL;
+	struct level_node *n = ht_get(lru->ht, k);
+	if (n == NULL) {
+		lru->level_old->used_size += size;
+		lru->level_old->count++;
+
+		n = calloc(1, sizeof(struct level_node));
+		n->key = k;
+		n->value = v;
+		n->size = size;
+		n->hits = 1;
+		n->pre = NULL;
+		n->nxt = NULL;
 	}
-	llru_set_node(self, n);
-	ht_set(&self->ht,(void*)k,(void*)n);
+
+	_llru_set_node(lru, n);
+	ht_set(lru->ht, k, n);
 }
 
 
-void* llru_get(llru_t *self, const char *k)
+uint64_t llru_get(struct llru *lru, void *k)
 {
-	if(self->buffer==0)
-		return NULL;
+	if (lru->buffer == 0)
+		return 0UL;
 
-	struct level_node *n=ht_get(&self->ht,(void*)k);
-	if(n!=NULL){
-		llru_set_node(self, n);
+	struct level_node *n = ht_get(lru->ht, k);
+	if (n != NULL) {
+		_llru_set_node(lru, n);
 		return n->value;
 	}
-	return NULL;
+
+	return 0UL;
 }
 
-void llru_remove(llru_t *self, const char* k)
+void llru_remove(struct llru *lru, void *k)
 {
-	if(self->buffer==0)
+	if (lru->buffer == 0)
 		return;
 
-	struct level_node *n=ht_get(&self->ht,(void*)k);
-	if(n!=NULL){
-
-		ht_remove(&self->ht,(void*)k);
-		if(n->hits==-1)
-			level_free_node(&self->level_new,n);
+	struct level_node *n = ht_get(lru->ht, k);
+	if (n != NULL) {
+		ht_remove(lru->ht, k);
+		if (n->hits == -1)
+			level_free_node(lru->level_new, n);
 		else
-			level_free_node(&self->level_old,n);
+			level_free_node(lru->level_old, n);
 	}
 }
 
-void llru_info(llru_t *self, struct llru_info *llru_info)
+
+void llru_free(struct llru *lru)
 {
-	llru_info->nl_count = self->level_new.count;
-	llru_info->ol_count = self->level_old.count;
-
-	llru_info->nl_used = self->level_new.used_size;
-	llru_info->ol_used = self->level_old.used_size;
-
-	llru_info->nl_allowsize = self->level_new.allow_size;
-	llru_info->ol_allowsize = self->level_old.allow_size;
-}
-
-void llru_free(llru_t *self)
-{
-	ht_free(&self->ht);
+	ht_free(lru->ht);
 }

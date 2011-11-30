@@ -30,59 +30,58 @@
 #include <stdlib.h>
 #include "level.h"
 
-void level_init(struct level *self, size_t allow_size) {
-	memset(self, 0, sizeof(struct level));
-	self->allow_size=allow_size;
+struct level *level_creat()
+{
+	struct level *lev = malloc(sizeof(struct level));
+	return lev;
 }
 
-void level_set_head(struct level *level,struct level_node *n)
+void level_set_head(struct level *level, struct level_node *n)
 {
 	level->count++;
-	if(level->first==NULL){
-		level->first=n;
-	}else{
-		n->pre=NULL;
-		n->nxt=level->first;
-		level->first=n;
+	if (level->first == NULL) {
+		level->first = n;
+	} else {
+		n->pre = NULL;
+		n->nxt = level->first;
+		level->first = n;
 	}
 }
 
-void level_remove_link(struct level *level,struct level_node *n)
+void level_remove_link(struct level *level, struct level_node *n)
 {
 	level->count--;
-	if(n->pre==NULL){
-		level->first=n->nxt;
-		n->nxt=NULL;
-	}else{
-		if(n->nxt==NULL){
-			level->last=n->pre;
-			n->pre=NULL;
-		}else{
-			n->pre->nxt=n->nxt;
-			n->nxt=NULL;
-			n->pre=NULL;
+	if (n->pre == NULL) {
+		level->first = n->nxt;
+		n->nxt = NULL;
+	} else {
+		if (n->nxt == NULL) {
+			level->last = n->pre;
+			n->pre = NULL;
+		} else {
+			n->pre->nxt = n->nxt;
+			n->nxt = NULL;
+			n->pre = NULL;
 		}
 	}
 
 }	
 
 
-void level_free_node(struct level *level,struct level_node *n)
+void level_free_node(struct level *level, struct level_node *n)
 {
-	if(n){
-		level->used_size-=n->size;
-		level_remove_link(level,n);
-		if(n->key)
+	if (n) {
+		level->used_size -= n->size;
+		level_remove_link(level, n);
+		if (n->key)
 			free(n->key);
-		if(n->value)
-			free(n->value);
 		free(n);
 	}
 }
 
 void level_free_last(struct level *level)
 {
-	struct level_node *n=level->last;
-        level_free_node(level,n);
+	struct level_node *n = level->last;
+        level_free_node(level, n);
 }
 

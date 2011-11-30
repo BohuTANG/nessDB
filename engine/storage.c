@@ -34,17 +34,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __USE_FILE_OFFSET64
-#define __USE_FILE_OFFSET64
-#endif
-
-#ifndef __USE_LARGEFILE64
-#define __USE_LARGEFILE64
-#endif
-
-#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
-#endif
+#define _FILE_OFFSET_BITS (64)
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -57,11 +48,6 @@
 
 #define IDXEXT	".idx"
 #define DBEXT	".db"
-
-struct chunk {
-	uint32_t offset;
-	uint32_t len;
-};
 
 
 int _cmp_sha1(const char *a,const char *b)
@@ -112,9 +98,8 @@ void _put_table(struct btree *btree, struct btree_table *table,
 void _flush_table(struct btree *btree, struct btree_table *table,
 			uint64_t offset)
 {
-		assert(offset != 0);
-
-        lseek(btree->fd, offset, SEEK_SET);
+	assert(offset != 0);
+	lseek(btree->fd, offset, SEEK_SET);
 	if (write(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree _flush_table: I/O error\n");
 		abort();
@@ -124,19 +109,21 @@ void _flush_table(struct btree *btree, struct btree_table *table,
 
 void _flush_super(struct btree *btree)
 {
-	struct btree_super super;
-	memset(&super, 0, sizeof super);
-	super.top = to_be64(btree->top);
-	super.free_top = to_be64(btree->free_top);
+	if (btree->top != btree->super_top) {
+		struct btree_super super;
+		memset(&super, 0, sizeof super);
+		super.top = to_be64(btree->top);
 
-	lseek(btree->fd, 0, SEEK_SET);
-	if (write(btree->fd, &super, sizeof super) != sizeof super){
-		fprintf(stderr, "btree flush super: I/O error\n");
-		abort();
+		lseek(btree->fd, 0, SEEK_SET);
+		if (write(btree->fd, &super, sizeof super) != sizeof super){
+			fprintf(stderr, "btree flush super: I/O error\n");
+			abort();
+		}
+		btree->super_top = btree->top;
 	}
 }
 
-void _flush_maigc(struct btree *btree)
+void _flush_magic(struct btree *btree)
 {
 	int magic=2011;
 	if (write(btree->db_fd, &magic, sizeof magic) != sizeof magic){
@@ -160,10 +147,10 @@ int _btree_open(struct btree *btree,const char *idx,const char *db)
 	if (read(btree->fd, &super, sizeof super) != (ssize_t) sizeof super)
 		return -1;
 	btree->top = from_be64(super.top);
-	btree->free_top = from_be64(super.free_top);
+	btree->super_top = btree->top;
 
-	btree->alloc = _getsize(btree->fd);
-	btree->db_alloc = _getsize(btree->db_fd);
+	btree->alloc = lseek(btree->fd, 0, SEEK_END);
+	btree->db_alloc = lseek(btree->db_fd, 0, SEEK_END);
 
 	return 0;
 }
@@ -183,7 +170,7 @@ int _btree_creat(struct btree *btree,const char *idx,const char *db)
 	btree->alloc =sizeof (struct btree_super);
 	lseek(btree->fd, 0, SEEK_END);
 
-	_flush_maigc(btree);
+	_flush_magic(btree);
 	btree->db_alloc = sizeof(int);
 	return 0;
 }
@@ -192,14 +179,18 @@ int btree_init(struct btree *btree,const char *dbname)
 {
 	char idx[256];
 	char db[256];
+	int fd;
 
 	snprintf(idx, sizeof idx, "%s%s", dbname,IDXEXT);
 	snprintf(db, sizeof db, "%s%s", dbname,DBEXT);
 
-	if (_file_exists(idx))
+	fd = open(idx, BTREE_OPEN_FLAGS, 0644);
+	if ( fd > -1)
 		_btree_open(btree, idx, db);
-	else
+	else {
+		close(fd);
 		_btree_creat(btree, idx, db);
+	}
 
 	return (1);
 }
@@ -217,16 +208,16 @@ void btree_close(struct btree *btree)
 	}
 }
 
-size_t _alloc_chunk(struct btree *btree, size_t len)
+uint64_t _alloc_chunk(struct btree *btree, size_t len)
 {
-	size_t offset = btree->alloc;
+	uint64_t offset = btree->alloc;
 	btree->alloc = offset + len;
 	return offset;
 }
 
-size_t _alloc_db_chunk(struct btree *btree, size_t len)
+uint64_t _alloc_db_chunk(struct btree *btree, size_t len)
 {
-	size_t offset  = btree->db_alloc;
+	uint64_t offset  = btree->db_alloc;
 	btree->db_alloc = offset + len;
 	return offset;
 }
@@ -244,7 +235,6 @@ uint64_t _insert_data(struct btree *btree, const void *data, size_t len)
 
 	offset = _alloc_db_chunk(btree, sizeof info + len);
 
-	lseek(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof info) != sizeof info) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -355,7 +345,7 @@ uint64_t _delete_table(struct btree *btree, uint64_t table_offset, char *sha1)
 				/* found */
 				//mark unused
 				uint64_t off = from_be64(table->items[i].offset);
-				table->items[i].offset=to_be64(set32_H_1(off));
+				table->items[i].offset=to_be64(set64_H_1(off));
 				_flush_table(btree, table, table_offset);
 				return 1;
 			}
@@ -417,22 +407,23 @@ void  btree_insert_index(struct btree *btree,const char *c_sha1, uint64_t v_off)
 	memcpy(sha1,c_sha1,sizeof sha1);
 
 	_insert_toplevel(btree, &btree->top, sha1, v_off);
+	_flush_super(btree);
 }
 
 
-uint64_t _lookup(struct btree *btree, uint64_t table_offset, const char *sha1)
+uint64_t _lookup(struct btree *btree, uint64_t table_offset, struct slice *sk)
 {
 	while (table_offset) {
 		struct btree_table *table = _get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
 		while (left < right) {
 			i = (right - left) / 2 +left;
-			int cmp = _cmp_sha1((const char*)sha1, table->items[i].sha1);
+			int cmp = _cmp_sha1((const char*)sk->data, table->items[i].sha1);
 			if (cmp == 0) {
 				/* found */
 				uint64_t ret=from_be64(table->items[i].offset);
 				//unused-mark is true
-				if(get32_H(ret)==1)
+				if(get64_H(ret)==1)
 					ret = 0;	
 			
 				_put_table(btree, table, table_offset);
@@ -452,10 +443,9 @@ uint64_t _lookup(struct btree *btree, uint64_t table_offset, const char *sha1)
 }
 
 
-void *btree_get(struct btree *btree, const char *sha1)
+void *btree_get(struct btree *btree, struct slice *sk, struct slice *sv)
 {
-	uint64_t offset = _lookup(btree, btree->top, sha1);
-	
+	uint64_t offset = _lookup(btree, btree->top, sk);
 	if (offset == 0){
 		return NULL;
 	}
@@ -464,22 +454,21 @@ void *btree_get(struct btree *btree, const char *sha1)
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
-	size_t len = from_be32(info.len);
 
-	void *data = calloc(1,len);
-	if (data == NULL)
-		return NULL;
-	if (read(btree->db_fd, data, len) != (ssize_t)len) {
-		free(data);
-		data = NULL;
-	}
-	return data;
+	sv->len = from_be32(info.len);
+	sv->data = calloc(1,sk->len);
+	assert( sv->data != NULL );
+	if (read(btree->db_fd, sv->data, sv->len) != sv->len) {
+		free(sv->data);
+		sv->data = NULL;
+	}	
+	return sv->data;
 }
 
 
-int btree_get_index(struct btree *btree, const char *sha1)
+int btree_get_index(struct btree *btree, struct slice *sk)
 {
-	uint64_t offset = _lookup(btree, btree->top, sha1);
+	uint64_t offset = _lookup(btree, btree->top, sk);
 	if (offset == 0)
 		return (0);
 	return (1);

@@ -14,7 +14,7 @@ struct nessdb {
 	struct btree *btree;
 	struct skiplist *list;
 	struct log *log;
-	llru_t llru;
+	struct llru *lru;
 };
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir);

@@ -5,14 +5,11 @@
 
 struct slice{
 	char *data;
-	size_t len;
+	int len;
+	uint64_t park;	// XXX: what is this for?
 };
-typedef struct slice slice_t;
 
 void _ensure_dir_exists(const char *path);
 const char *concat_paths(const char *basedir, const char *subdir);
-
-int _file_exists(const char *path);
-uint64_t _getsize(int fd);
 
 #endif

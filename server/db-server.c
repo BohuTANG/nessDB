@@ -165,8 +165,8 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_SET:{
-			slice_t k = {req->argv[1], strlen(req->argv[1])};
-			slice_t v = {req->argv[2], strlen(req->argv[2])};
+			struct slice k = {req->argv[1], strlen(req->argv[1])};
+			struct slice v = {req->argv[2], strlen(req->argv[2])};
 			db_add(svr->db, &k, &v);
 
 			return response_new(0,OK);
@@ -175,7 +175,7 @@ svr_handle(server_t *svr, struct request *req)
 		case CMD_MSET:{
 			int i;
 			int c=req->argc;
-			slice_t k, v;
+			struct slice k, v;
 
 			for(i=1;i<c;i+=2){
 				k.data = req->argv[i];     k.len = strlen(req->argv[i+1]);
@@ -187,20 +187,19 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_GET:{
-			slice_t k = {req->argv[1], strlen(req->argv[1])};
-			void* result;
-			result=db_get(svr->db, &k);	// XXX: Leaky
-			if(result==NULL)
+			struct slice k = {req->argv[1], strlen(req->argv[1])};
+			struct slice v;
+			if( ! db_get(svr->db, &k, &v) ) {
 				return response_new(0,OK_404);
-			else{				
-				struct response *resp=response_new(1,OK_200);
-				resp->argv[0]=result;
-				resp->to_free = calloc( 2, sizeof(void*) );
-				assert( resp->to_free != NULL );
-				resp->to_free[0] = result;
-				resp->to_free[1] = NULL;
-				return resp;
 			}
+							
+			struct response *resp=response_new(1,OK_200);
+			resp->argv[0]=v.data;
+			resp->to_free = calloc( 2, sizeof(void*) );
+			assert( resp->to_free != NULL );
+			resp->to_free[0] = v.data;
+			resp->to_free[1] = NULL;
+			return resp;
 		}
 
 		case CMD_MGET:{
@@ -208,11 +207,17 @@ svr_handle(server_t *svr, struct request *req)
 			struct response *resp = response_new(c - 1,OK_200);
 			resp->to_free = calloc(c, sizeof(void *));
 			for(int i=1; i<c; i++){
-				slice_t k = {req->argv[i], strlen(req->argv[i])};
-				char *val = db_get(svr->db, &k);
-				if( ! val ) val = strdup("");	// XXX: hack so response_free will clean all
-				resp->argv[i-1] = val;
-				resp->to_free[i - 1] = val;
+				struct slice k = {req->argv[i], strlen(req->argv[i])};
+				struct slice v;
+
+				// XXX: hack so response_free will clean all
+				if( ! db_get(svr->db, &k, &v) ) {
+					v.data = strdup("");
+					v.len = 1;
+				}
+
+				resp->argv[i-1] = v.data;
+				resp->to_free[i - 1] = v.data;
 			}
 			resp->to_free[c - 1] = NULL;
 
@@ -228,7 +233,7 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_DEL:{
-			slice_t k;
+			struct slice k;
 			for(int i=1;i<req->argc;i++) {
 				k.data = req->argv[i];
 				k.len = strlen(req->argv[i]);
@@ -239,7 +244,7 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_EXISTS:{
-			slice_t k = {req->argv[1], strlen(req->argv[1])};
+			struct slice k = {req->argv[1], strlen(req->argv[1])};
 			int ret= db_exists(svr->db, &k);
 			return response_new(0, ret ? OK_TRUE : OK_FALSE);
 		}					

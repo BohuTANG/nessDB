@@ -1,29 +1,29 @@
 #ifndef _LLRU_H
 #define _LLRU_H
+
+#include <stdint.h>
 #include "level.h"
 
-struct llru_info{
-	int nl_count;
-	int ol_count;
+struct llru{
+	size_t nl_count;
+	size_t ol_count;
+	size_t buffer;
 	uint64_t nl_allowsize;
 	uint64_t nl_used;
 	uint64_t ol_allowsize;
 	uint64_t ol_used;
+
+	struct ht *ht;
+	struct level *level_old;
+	struct level *level_new;
 };
 
-struct llru {
-	struct ht ht;
-	struct level level_old;
-	struct level level_new;
-	int buffer;
-};
-typedef struct llru llru_t;
 
-void	llru_init(llru_t *self, size_t buffer_size);
-void	llru_set(llru_t *self, const char *k, void *v, size_t k_len, size_t v_len);
-void*	llru_get(llru_t *self, const char *k);
-void	llru_remove(llru_t *self, const char *k);
-void	llru_info(llru_t *self, struct llru_info *llru_info);
-void	llru_free(llru_t *self);
+struct llru *llru_new(size_t buffer_size);
+void llru_set(struct llru *llru, void *k, uint64_t v, size_t size);
+uint64_t llru_get(struct llru *llru, void *k);
+void llru_remove(struct llru *llru, void *k);
+void llru_info(struct llru *llru);
+void llru_free(struct llru *llru);
 
 #endif

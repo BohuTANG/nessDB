@@ -55,6 +55,7 @@ struct log *log_new(char *name)
 {
 	struct log *l;
 	char log_name[LOG_NSIZE];
+	int fd;
 
 	l = malloc(sizeof(struct log));
 
@@ -62,15 +63,15 @@ struct log *log_new(char *name)
 	snprintf(log_name, LOG_NSIZE, "%s.log", name);
 	memcpy(l->name, log_name, LOG_NSIZE);
 
-
-	if (_file_exists(log_name)) {
-		l->fd = open(log_name, BTREE_OPEN_FLAGS, 0644);
+	fd = open(log_name, BTREE_OPEN_FLAGS, 0644);
+	if (fd > -1) {
+		l->fd = fd;
 		__DEBUG("%s", "WARNING: Find log file,need to recover");
 		/*TODO: log recover*/
 	} else
 		l->fd = open(log_name, BTREE_CREAT_FLAGS, 0644);
 
-	l->buf = buffer_new(256);
+	l->buf = buffer_new(1024*1024);
 
 	return l;
 }

@@ -31,115 +31,67 @@
 #include <string.h>
 #include "ht.h"
 
-/**
- * Djb hash function
- */
-static size_t djb_hash(const char* key)
-{
-    if (!key) {
-        return 0;
-    }
-    unsigned int hash = 5381;
-    unsigned int c;
-    while ((c = *key++))
-	hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
 
-   return (size_t) hash;
+static size_t find_slot(struct ht *ht, void* key)
+{
+	return  ht->hashfunc(key) % ht->cap;
 }
 
-static int key_cmp(struct ht *ht,void *a,void *b)
-{
-		switch(ht->key_type){
-		case INTEGER:{
-				 int x=*(int*)a;
-				 int y=*(int*)b;
-				return (x-y);
-			 }
-		default:
-			return  strcmp((const char*)a,(const char*)b);
-	}
-
-}
-
-static size_t find_slot(struct ht *ht,void* key)
-{
-	switch(ht->key_type){
-		case INTEGER:
-			return (*(int*)key) % ht->cap;
-		default:
-			return  ht->hashfunc((const char*)key) % ht->cap;
-	}
-}
-
-void ht_init(struct ht *ht,size_t cap,KEYTYPE key_type)
+void ht_init(struct ht *ht, size_t cap)
 {
 	ht->size = 0;
 	ht->cap = cap;
-	ht->nodes =calloc(cap, sizeof(struct ht_node*));
-	ht->hashfunc=djb_hash;
-	ht->key_type=key_type;
+	ht->nodes = calloc(cap, sizeof(struct ht_node*));
 }
 
-void ht_set(struct ht *ht,void * k,void* v)
+void ht_set(struct ht *ht, void * k, void* v)
 {
 	size_t slot;
 	struct ht_node *node;
 
-	slot=find_slot(ht,k);
-	node=calloc(1, sizeof(struct ht_node));
-	node->next=ht->nodes[slot];
-	if(ht->key_type==INTEGER){
-		int* copy;
-		copy=calloc(1,sizeof(int));
-		memcpy(copy,k,sizeof(int));
-		node->k=copy;
-	}else
-		node->k=k;
+	slot = find_slot(ht, k);
+	node = calloc(1, sizeof(struct ht_node));
+	node->next = ht->nodes[slot];
 
-	node->v=v;
+	node->k = k;
+	node->v = v;
 
-	ht->nodes[slot]=node;
+	ht->nodes[slot] = node;
 	ht->size++;
 }
 
-void* ht_get(struct ht *ht,void * k)
+void* ht_get(struct ht *ht, void * k)
 {
 	size_t slot;
 	struct ht_node *node;
 
-	slot=find_slot(ht,k);
-	node=ht->nodes[slot];
-	while(node){
-		if(key_cmp(ht,k,node->k)==0)
+	slot = find_slot(ht, k);
+	node = ht->nodes[slot];
+	while (node) {
+		if (ht->cmpfunc(k, node->k) == 0)
 			return node->v;
-		node=node->next;
+		node = node->next;
 	}
 	return NULL;
 }
 
-void ht_remove(struct ht *ht,void *k)
+void ht_remove(struct ht *ht, void *k)
 {
 	size_t slot;
-	struct ht_node *node,*prev=NULL;
+	struct ht_node *node, *prev=NULL;
 	
-	slot=find_slot(ht,k);
-	node=ht->nodes[slot];
-	while(node){
-		if(key_cmp(ht,k,node->k)==0){
-			if(prev!=NULL)
-				prev->next=node->next;
+	slot = find_slot(ht, k);
+	node = ht->nodes[slot];
+	while (node) {
+		if( ht->cmpfunc(k, node->k) == 0) {
+			if (prev != NULL)
+				prev->next = node->next;
 			else
-				ht->nodes[slot]=node->next;
+				ht->nodes[slot] = node->next;
 			ht->size--;
-
-			if(node){
-				if(ht->key_type==INTEGER)
-					free(node->k);
-				free(node);
-			}
 		}
-		prev=node;
-		node=node->next;	
+		prev = node;
+		node = node->next;	
 	}
 }
 
@@ -147,19 +99,6 @@ void ht_remove(struct ht *ht,void *k)
 
 void ht_free(struct ht *ht)
 {
-	if(ht->key_type==INTEGER){
-		int i;
-		for(i=0;i<ht->cap;i++){
-			struct ht_node *cur,*nxt;
-			cur=ht->nodes[i];
-			while(cur!=NULL){
-				nxt=cur->next;
-				free(cur->k);
-				free(cur);
-				cur=nxt;
-			}
-		}
-	}else
-		free(ht->nodes);
+	free(ht->nodes);
 }
 

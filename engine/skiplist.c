@@ -47,7 +47,7 @@ struct pool {
 
 struct pool *_pool_new()
 {
-	unsigned int p_size = 8092 - sizeof(struct pool);
+	unsigned int p_size = 1024*512 - sizeof(struct pool);
 	struct pool *pool = malloc(sizeof(struct pool) + p_size);
 
 	memset(pool, 0, p_size);
