@@ -160,6 +160,11 @@ int request_parse(struct request *req)
 	int  i;
 	char sb[BUF_SIZE]={0};
 
+	if( strncmp(req->querybuf, "PING", 4) == 0 ) {
+		req->cmd = CMD_PING;
+		return 1;
+	}
+
 	if(req_state_len(req,sb)!=STATE_CONTINUE){
 		fprintf(stderr,"argc format ***ERROR***,buffer:%s,len-buf:%s\n",req->querybuf,sb);
 		return 0;
