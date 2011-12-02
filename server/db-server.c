@@ -229,7 +229,7 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_INFO:{
-			char infos = db_info(svr->db);
+			char* infos = db_info(svr->db);
 			struct response* resp = response_new(1,OK_200);
 			resp->argv[0]=infos;
 			resp->to_free = calloc(2, sizeof(void*));

@@ -19,19 +19,13 @@ static struct nessdb* open_db(void *can_reply, void *reply_directed) {
 	return db;
 }
 
-size_t
-example_put(
-	char* in_data,
-	size_t in_sz,
-	module_callback cb,
-	void* token
-){
+DB_OP(nessdb_put){
 	open_db(cb, token);
 	struct slice sk = {NULL, 0, 0};
 	struct slice sv = {NULL, 0, 0};
 	sha1nfo data_hash;
 
-	// Key = SHA1(data)
+	// Unique Key = SHA1(data)
 	sha1_init(&data_hash);
 	sha1_write(&data_hash, in_data, in_sz);
 	sk.data = (char*)sha1_result(&data_hash);
@@ -41,13 +35,7 @@ example_put(
 	return sk.len + sv.len;
 }
 
-size_t
-example_get(
-	char* in_data,
-	size_t in_sz,
-	module_callback cb,
-	void* token
-){
+DB_OP(nessdb_get){
 	open_db(cb, token);
 	struct slice sk = {in_data, in_sz, 0};
 	struct slice sv = {NULL, 0, 0};
@@ -58,13 +46,7 @@ example_get(
 	return sk.len + sv.len;
 }
 
-size_t
-example_del(
-	char* in_data,
-	size_t in_sz,
-	module_callback cb,
-	void* token
-){
+DB_OP(nessdb_del){
 	open_db(cb, token);
 
 	struct slice sk = {in_data, in_sz, 0};
@@ -72,12 +54,26 @@ example_del(
 	return sk.len;
 }
 
+DB_OP(nessdb_idx){
+	if( in_sz < 21 ) {
+		return 0;
+	}
+
+	struct slice sv = {in_data, 20, 0};
+	struct slice sk = {in_data + 20, in_sz - 20, 0};
+
+	open_db(cb, token);
+	// TODO: put in tree
+	return sk.len + sv.len;
+}
+
 void*
 i_speak_db(void){
 	static struct module_feature ops[] = {
-		{"put", 0, (module_callback)example_put, NULL},
-		{"get", 1, (module_callback)example_get, NULL},
-		{"del", 0, (module_callback)example_del, NULL},
+		{"put", 0, (dbzop_t)nessdb_put, NULL},
+		{"get", 1, (dbzop_t)nessdb_get, NULL},
+		{"del", 0, (dbzop_t)nessdb_del, NULL},
+		{"idx", 0, (dbzop_t)nessdb_idx, NULL},
 		{NULL, 0, 0, 0}
 	};
 	return &ops;
