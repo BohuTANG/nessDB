@@ -46,6 +46,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <assert.h>
 #include "storage.h"
 #include "debug.h"
 
@@ -62,6 +63,8 @@ int _cmp_sha1(const char *a,const char *b)
 struct btree_table *_alloc_table(struct btree *btree)
 {
 	struct btree_table *table = malloc(sizeof *table);
+	assert( table != NULL );
+	assert( btree != NULL );
 	memset(table, 0, sizeof *table);
 	return table;
 }
@@ -76,8 +79,8 @@ struct btree_table *_get_table(struct btree *btree, uint64_t offset)
 		return slot->table;
 	}
 
-	struct btree_table *table = malloc(sizeof *table);
-
+	struct btree_table *table = malloc(sizeof(struct btree_table));
+	assert( table != NULL );
 	lseek(btree->fd, offset, SEEK_SET);
 	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree _get_table: I/O error\n");
@@ -429,7 +432,7 @@ uint64_t _lookup(struct btree *btree, uint64_t table_offset, struct slice *sk)
 {
 	while (table_offset) {
 		struct btree_table *table = _get_table(btree, table_offset);
-		size_t left = 0, right = table->size, i;
+		size_t left = 0, right = table->size, i = 0;
 		while (left < right) {
 			i = (right - left) / 2 +left;
 			int cmp = _cmp_sha1((const char*)sk->data, table->items[i].sha1);
@@ -503,6 +506,7 @@ int btree_get_data(struct btree *btree, uint64_t offset, struct slice *sv)
 
 	len = from_be32(info.len);
 	data = calloc(1,len);
+	assert( data != NULL );
 	if (data == NULL)
 		return 0;
 

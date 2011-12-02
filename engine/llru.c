@@ -180,5 +180,18 @@ void llru_remove(struct llru *lru, void *k)
 
 void llru_free(struct llru *lru)
 {
+	for( size_t i = 0; i < lru->ht->size; i++ ) {
+		struct ht_node *node = lru->ht->nodes[i];
+		while(node) {			
+			printf("Bucket %d has %p\n", i, node);
+			struct ht_node *next = node->next;
+			llru_remove(lru, node->k);
+			node = next;
+		}
+	}
+
 	ht_free(lru->ht);
+	free(lru->level_new);
+	free(lru->level_old);
+	free(lru);
 }

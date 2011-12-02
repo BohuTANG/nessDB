@@ -89,6 +89,8 @@ void ht_remove(struct ht *ht, void *k)
 			else
 				ht->nodes[slot] = node->next;
 			ht->size--;
+			free(node);
+			return;
 		}
 		prev = node;
 		node = node->next;	

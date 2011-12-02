@@ -22,7 +22,7 @@ void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv);
 int db_exists(struct nessdb *db, struct slice *sk);
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv);
 void db_remove(struct nessdb *db, struct slice *sk);
-void db_info(struct nessdb *db, char *infos);
+char* db_info(struct nessdb *db);
 void db_flush(struct nessdb *db);
 void db_close(struct nessdb *db);
 

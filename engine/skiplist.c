@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "skiplist.h"
 #include "debug.h"
@@ -228,7 +229,7 @@ void skiplist_dump(struct skiplist *list)
 			(int)list->count);
 
 	for (i=0; i<list->count; i++) {
-		printf("	[%d]key:<%s>;val<%llu>;opt<%s>\n", i, x->key, x->val, x->opt == ADD?"ADD":"DEL");
+		printf("	[%d]key:<%s>;val<%" PRIu64 ">;opt<%s>\n", i, x->key, x->val, x->opt == ADD?"ADD":"DEL");
 		x = x->forward[0];
 	}
 }

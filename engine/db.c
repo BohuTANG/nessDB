@@ -138,15 +138,13 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 
 void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
-	void *val;
 	uint64_t data_offset;
 	struct skipnode *snode;
 	struct btree *btree = db->btree;
 	struct llru *lru = db->lru;
 
-	data_offset = llru_get(lru, sk->data);
-
 	/* 1)Data is in Level-LRU, return*/
+	data_offset = llru_get(lru, sk->data);
 	if(data_offset) {		
 		if( btree_get_data(btree, data_offset, sv) ) {
 			return sv->data;
@@ -154,9 +152,8 @@ void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 		return NULL;
 	}
 	
-	snode = skiplist_lookup(db->list, sk);
-
 	/* 2)Data is mtable, goto it and get the offset*/
+	snode = skiplist_lookup(db->list, sk);
 	if (snode) {
 		/* If OPT is DEL, return NULL*/
 		if (snode->opt == DEL)
@@ -165,20 +162,16 @@ void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 		/* 3)Get from on-disk B+tree index*/
 		if (btree_get_data(btree, snode->val, sv)) {
 			/* 4)Add to Level-LRU*/
-			char *k_clone = calloc(1, sk->len);
-			memcpy(k_clone, sk->data, sk->len);
-
-			llru_set(lru, k_clone, sv->park, (sk->len + sizeof(sv->park)));
-			val = sv->data;
-
-			return val;
+			char *k_clone = calloc(1, sk->len + 1);
+			k_clone[sk->len - 1] = 0;
+			llru_set(lru, k_clone, sv->park, (sk->len + 1 + sizeof(sv->park)));
+			return sv->data;
 		}
 	}
 
 	/* Last found in on-disk B+Tree index*/
-	val = btree_get(btree, sk, sv);
-
-	return val;
+	btree_get(btree, sk, sv);
+	return sv->data;
 }
 
 int db_exists(struct nessdb *db, struct slice *sk)
@@ -229,7 +222,7 @@ void db_remove(struct nessdb *db, struct slice *sk)
 }
 
 
-void db_info(struct nessdb *db, char *infos)
+char* db_info(struct nessdb *db)
 {
 	/*TODO*/
 }
@@ -270,6 +263,7 @@ void db_close(struct nessdb *db)
 	log_free(db->log);
 	skiplist_free(db->list);
 	btree_close(db->btree);
+	free(db->btree);
 	llru_free(db->lru);
 	free(db);
 }
