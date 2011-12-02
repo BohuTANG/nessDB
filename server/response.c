@@ -90,7 +90,7 @@ void response_detch(struct response *res,char *ackbuf)
 			snprintf(ls,sizeof ls,"$%d\r\n",l);
 			strcat(ackbuf,ls);
 
-			strcat(ackbuf,res->argv[i]);
+			strncat(ackbuf,res->argv[i], l);
 			strcat(ackbuf,"\r\n");
 		}
 	}

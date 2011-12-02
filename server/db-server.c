@@ -56,6 +56,7 @@
 #include <assert.h>
 #include <err.h>
 #include <getopt.h>
+#include <inttypes.h>
 
 #include "anet.h"
 #include "ae.h"
@@ -166,8 +167,8 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_SET:{
-			struct slice k = {req->argv[1], strlen(req->argv[1])};
-			struct slice v = {req->argv[2], strlen(req->argv[2])};
+			struct slice k = {req->argv[1], strlen(req->argv[1]), 0};
+			struct slice v = {req->argv[2], strlen(req->argv[2]), 0};
 			db_add(svr->db, &k, &v);
 
 			return response_new(0,OK);
@@ -177,9 +178,11 @@ svr_handle(server_t *svr, struct request *req)
 			int i;
 			int c=req->argc;
 			struct slice k, v;
+			k.park = 0;
+			v.park = 0;
 
 			for(i=1;i<c;i+=2){
-				k.data = req->argv[i];     k.len = strlen(req->argv[i+1]);
+				k.data = req->argv[i]; k.len = strlen(req->argv[i+1]);
 				v.data = req->argv[i + 1]; v.len = strlen(req->argv[i+1]);
 				db_add(svr->db, &k, &v);				
 			}
@@ -188,7 +191,7 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_GET:{
-			struct slice k = {req->argv[1], strlen(req->argv[1])};
+			struct slice k = {req->argv[1], strlen(req->argv[1]), 0};
 			struct slice v;
 			if( ! db_get(svr->db, &k, &v) ) {
 				return response_new(0,OK_404);
@@ -208,7 +211,7 @@ svr_handle(server_t *svr, struct request *req)
 			struct response *resp = response_new(c - 1,OK_200);
 			resp->to_free = calloc(c, sizeof(void *));
 			for(int i=1; i<c; i++){
-				struct slice k = {req->argv[i], strlen(req->argv[i])};
+				struct slice k = {req->argv[i], strlen(req->argv[i]), 0};
 				struct slice v;
 
 				// XXX: hack so response_free will clean all
@@ -226,10 +229,12 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_INFO:{
-			char infos[BUF_SIZE]={0};
-			db_info(svr->db, infos);
+			char infos = db_info(svr->db);
 			struct response* resp = response_new(1,OK_200);
 			resp->argv[0]=infos;
+			resp->to_free = calloc(2, sizeof(void*));
+			resp->to_free[0] = infos;
+			resp->to_free[1] = NULL;
 			return resp;
 		}
 
@@ -245,7 +250,7 @@ svr_handle(server_t *svr, struct request *req)
 		}
 
 		case CMD_EXISTS:{
-			struct slice k = {req->argv[1], strlen(req->argv[1])};
+			struct slice k = {req->argv[1], strlen(req->argv[1]), 0};
 			int ret= db_exists(svr->db, &k);
 			return response_new(0, ret ? OK_TRUE : OK_FALSE);
 		}					
@@ -263,6 +268,7 @@ void svr_read_cb(aeEventLoop *el, int fd, void *_svr, int mask)
 	server_t *svr = (server_t*)_svr;
 	char buf[BUF_SIZE]={0};
 	int nread;
+	(void)el; (void)mask;
 
 	nread=read(fd,buf,BUF_SIZE);
 	if(nread==-1)
@@ -294,6 +300,7 @@ void svr_accept_cb(aeEventLoop *el, int fd, void *_svr, int mask)
 	server_t *svr = (server_t*)_svr;
 	int cport, cfd;
     char cip[128];
+    (void)el; (void)mask;
 
    	cfd = anetTcpAccept(svr->neterr,fd,cip,&cport);
 	if (cfd == AE_ERR) {
@@ -311,7 +318,8 @@ void svr_accept_cb(aeEventLoop *el, int fd, void *_svr, int mask)
 int svr_cron_cb(struct aeEventLoop *eventLoop, long long id, void *_svr)
 {
 	server_t *svr = (server_t*)_svr;
-	printf("%d clients connected\n ", svr->client_count);
+	(void)eventLoop;
+	printf("%d clients connected (%lld)\n ", svr->client_count, id);
 	return 3000;
 }
 
