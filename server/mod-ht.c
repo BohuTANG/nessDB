@@ -99,7 +99,7 @@ DB_OP(htop_del){
 
 void*
 i_speak_db(void){
-	static struct module_feature ops[] = {
+	static struct dbz_op ops[] = {
 		{"put", 0, (dbzop_t)htop_put, NULL},
 		{"get", 1, (dbzop_t)htop_get, NULL},
 		{"del", 0, (dbzop_t)htop_del, NULL},

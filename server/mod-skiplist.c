@@ -57,7 +57,7 @@ DB_OP(skiplist_del){
 
 void*
 i_speak_db(void){
-	static struct module_feature ops[] = {
+	static struct dbz_op ops[] = {
 		{"put", 0, (dbzop_t)skiplist_put, NULL},
 		{"get", 1, (dbzop_t)skiplist_get, NULL},
 		{"del", 0, (dbzop_t)skiplist_del, NULL},
