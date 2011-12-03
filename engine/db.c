@@ -81,7 +81,7 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
 	db->log = log_new(pre);
 
 	/* Lru*/
-	db->lru = llru_new(bufferpool_size);
+	llru_new(&db->lru, bufferpool_size);
 
 	return db;
 }
@@ -92,7 +92,7 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
-	struct llru *lru = db->lru;
+	struct llru *lru = &db->lru;
 
 	uint64_t data_offset;
 	uint8_t opt = 1;
@@ -141,7 +141,7 @@ void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	uint64_t data_offset;
 	struct skipnode *snode;
 	struct btree *btree = db->btree;
-	struct llru *lru = db->lru;
+	struct llru *lru = &db->lru;
 
 	/* 1)Data is in Level-LRU, return*/
 	data_offset = llru_get(lru, sk->data);
@@ -161,10 +161,7 @@ void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 
 		/* 3)Get from on-disk B+tree index*/
 		if (btree_get_data(btree, snode->val, sv)) {
-			/* 4)Add to Level-LRU*/
-			char *k_clone = calloc(1, sk->len + 1);
-			k_clone[sk->len - 1] = 0;
-			llru_set(lru, k_clone, sv->park, (sk->len + 1 + sizeof(sv->park)));
+			llru_set(lru, sk->data, sv->park, sk->len);
 			return sv->data;
 		}
 	}
@@ -189,7 +186,7 @@ void db_remove(struct nessdb *db, struct slice *sk)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
-	struct llru *lru = db->lru;
+	struct llru *lru = &db->lru;
 
 	/* Add to log*/
 	log_append(log, sk, 0UL, 0);
@@ -224,7 +221,8 @@ void db_remove(struct nessdb *db, struct slice *sk)
 
 char* db_info(struct nessdb *db)
 {
-	/*TODO*/
+	(void)db;
+	return NULL;
 }
 
 void db_flush(struct nessdb *db)
@@ -233,7 +231,7 @@ void db_flush(struct nessdb *db)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
-	struct llru *lru = db->lru;
+	struct llru *lru = &db->lru;
 
 	struct skipnode *x = list->hdr->forward[0];
 
@@ -264,6 +262,6 @@ void db_close(struct nessdb *db)
 	skiplist_free(db->list);
 	btree_close(db->btree);
 	free(db->btree);
-	llru_free(db->lru);
+	llru_free(&db->lru);
 	free(db);
 }
