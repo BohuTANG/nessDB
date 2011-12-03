@@ -17,12 +17,12 @@ struct dbz_s {
 	void* mod;
 	void* mod_ctx;
 	void* zctx;
-	struct module_feature* features;
+	struct dbz_op* ops;
 };
 typedef struct dbz_s dbz;
 
-dbz*
-dbz_load(char *filename) {
+void*
+dbz_load(const char *filename) {
 	dbz* x = malloc(sizeof(dbz));
 	memset(x, 0, sizeof(dbz));
 	x->mod = dlopen(filename, RTLD_LAZY);
@@ -37,14 +37,28 @@ dbz_load(char *filename) {
     	return NULL;
     }
 
-    x->features = ((mod_init_fn) f)();
+    x->ops = ((mod_init_fn) f)();
     x->zctx = zmq_init(1);
     return x;
 }
 
-struct module_feature*
-dbz_bind(dbz* ctx, const char *name, const char *addr) {
-	struct module_feature* f = ctx->features;
+dbzop_t
+dbz_bind_op(void* _ctx, const char* name) {
+	dbz* ctx = (dbz*)_ctx;
+	struct dbz_op* f = ctx->ops;
+	while( f->name ) {
+		if( strcmp(f->name, name) == 0 ) {
+			return f->cb;
+		}
+		f++;
+	}
+	return NULL;
+}
+
+struct dbz_op*
+dbz_bind(void* _ctx, const char* name, const char *addr) {
+	dbz* ctx = (dbz*)_ctx;
+	struct dbz_op* f = ctx->ops;
 	while( f->name ) {
 		if( strcmp(f->name, name) == 0 ) {
 			break;
@@ -72,8 +86,13 @@ dbz_bind(dbz* ctx, const char *name, const char *addr) {
 }
 
 int
-dbz_close(dbz* ctx) {
-	// TODO: close sockets
+dbz_close(void* _ctx) {
+	dbz* ctx = (dbz*)_ctx;
+	struct dbz_op* f = ctx->ops;
+	while( f->name ) {
+		if( f->token ) zmq_close(f->token);
+		f++;
+	}
 	if( ctx->zctx ) zmq_term(ctx->zctx);
 	if( ctx->mod ) dlclose(ctx->mod);
 	memset(ctx, 0, sizeof(dbz));
@@ -81,20 +100,22 @@ dbz_close(dbz* ctx) {
 	return 1;
 }
 
-size_t
+static size_t
 reply_cb(void* data, size_t len, void* cb, void* token ) {
 	assert( cb == NULL );
 	zmq_msg_t msg;
 	zmq_msg_init_data(&msg, data, len, NULL, NULL);
 	zmq_send(token, &msg, 0);
+	zmq_msg_close(&msg);
 	return len;
 }
 
 int
-dbz_run(dbz* ctx) {
+dbz_run(void* _ctx) {
+	dbz* ctx = (dbz*)_ctx;
 	ctx->running = 1;
 	int fc = 0;
-	struct module_feature* f = ctx->features;
+	struct dbz_op* f = ctx->ops;
 	while( (f++)->name ) {
 		fc++;
 	}
@@ -103,7 +124,7 @@ dbz_run(dbz* ctx) {
 	while( ctx->running == 1 ) {
 		memset(&items[0], 0, sizeof(zmq_pollitem_t) * fc);
 		for( int i = 0; i < fc; i++ ) {
-			items[i].socket = ctx->features[i].token;
+			items[i].socket = ctx->ops[i].token;
 			items[i].events = ZMQ_POLLIN;
 		}
 	
@@ -115,10 +136,13 @@ dbz_run(dbz* ctx) {
 			if( 0 == zmq_recv(f->token, &msg, 0) ) {
 				f->cb(zmq_msg_data(&msg), zmq_msg_size(&msg), reply_cb, f->token);
 			}
+			zmq_msg_close(&msg);
 		}
 	}
 	return ctx->running;
 }
+
+#ifdef DBZ_MAIN
 
 int main(int argc, char **argv) {
 	if( argc < 2 ) {
@@ -133,7 +157,7 @@ int main(int argc, char **argv) {
 		char *op = argv[i];
 		char *addr = strchr(op, '=');
 		*addr++ = 0;
-		struct module_feature* f = dbz_bind(d, op, addr);
+		struct dbz_op* f = dbz_bind(d, op, addr);
 		if( ! f  ) {
 			errx(EXIT_FAILURE, "Cannot bind '%s'='%s'", op, addr);
 		}
@@ -141,7 +165,7 @@ int main(int argc, char **argv) {
 	}
 
 	if( ! ok ) {
-		struct module_feature* f = d->features;
+		struct dbz_op* f = d->ops;
 		fprintf(stderr, "Operations:\n");
 		while( f->name ) {
 			fprintf(stderr, "\t%s\n", f->name);
@@ -154,3 +178,5 @@ int main(int argc, char **argv) {
 	dbz_close(d);
 	return( EXIT_SUCCESS );
 }
+
+#endif

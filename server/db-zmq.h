@@ -12,15 +12,20 @@ typedef size_t (*dbzop_t)(
 	void* token
 );
 
-struct module_feature {	
+struct dbz_op {	
 	const char* name;
 	size_t opts;
 	dbzop_t cb;
 	void* token;
 };
 
-typedef struct module_feature* (*mod_init_fn)();
+typedef struct dbz_op* (*mod_init_fn)();
 
 #define DB_OP(name) size_t name ( char* in_data, size_t in_sz, dbzop_t cb, void* token )
+
+void* dbz_load(const char *filename);
+dbzop_t dbz_bind_op(void* _ctx, const char* name);
+struct dbz_op* dbz_bind(void* _ctx, const char *name, const char *addr);
+int dbz_close(void* _ctx);
 
 #endif

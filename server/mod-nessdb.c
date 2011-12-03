@@ -9,7 +9,11 @@
 struct nessdb* db = NULL;
 
 static struct nessdb* open_db(void *can_reply, void *reply_directed) {
-	// TODO: use these later
+	// The values of can_reply and reply_directed represent the output
+	// channel state.
+	// can_reply && reply_directed = REPLY/PAIR socket
+	// can_reply && !reply_directed = PUB socket
+	// !can_reply = PULL/SUB socket
 	(void)can_reply;
 	(void)reply_directed;
 	if( ! db ) {
@@ -25,7 +29,8 @@ DB_OP(nessdb_put){
 	struct slice sv = {NULL, 0, 0};
 	sha1nfo data_hash;
 
-	// Unique Key = SHA1(data)
+	// The key should be unique to the database
+	// ∃! k ∈ DB: SHA1(k)
 	sha1_init(&data_hash);
 	sha1_write(&data_hash, in_data, in_sz);
 	sk.data = (char*)sha1_result(&data_hash);
@@ -54,26 +59,13 @@ DB_OP(nessdb_del){
 	return sk.len;
 }
 
-DB_OP(nessdb_idx){
-	if( in_sz < 21 ) {
-		return 0;
-	}
-
-	struct slice sv = {in_data, 20, 0};
-	struct slice sk = {in_data + 20, in_sz - 20, 0};
-
-	open_db(cb, token);
-	// TODO: put in tree
-	return sk.len + sv.len;
-}
-
 void*
 i_speak_db(void){
-	static struct module_feature ops[] = {
+	static struct dbz_op ops[] = {
 		{"put", 0, (dbzop_t)nessdb_put, NULL},
 		{"get", 1, (dbzop_t)nessdb_get, NULL},
 		{"del", 0, (dbzop_t)nessdb_del, NULL},
-		{"idx", 0, (dbzop_t)nessdb_idx, NULL},
+		//{"next", 0, (dbzop_t)nessdb_next, NULL},
 		{NULL, 0, 0, 0}
 	};
 	return &ops;
