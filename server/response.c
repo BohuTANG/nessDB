@@ -38,6 +38,7 @@ struct response *response_new(int argc,STATUS status)
 	res->argv=calloc(argc,sizeof(char*));
 	res->argc=argc;
 	res->status=status;
+	res->to_free = NULL;
 	return res;
 }
 
@@ -62,6 +63,14 @@ void response_detch(struct response *res,char *ackbuf)
 			strcat(ackbuf,"+PONG\r\n");
 			return;	
 		
+		case OK_TRUE:
+			strcat(ackbuf,":1\r\n");
+			return;
+
+		case OK_FALSE:
+			strcat(ackbuf,":0\r\n");
+			return;
+
 		case ERR:
 			strcat(ackbuf,"-ERROR\r\n");
 			return;;
@@ -81,7 +90,7 @@ void response_detch(struct response *res,char *ackbuf)
 			snprintf(ls,sizeof ls,"$%d\r\n",l);
 			strcat(ackbuf,ls);
 
-			strcat(ackbuf,res->argv[i]);
+			strncat(ackbuf,res->argv[i], l);
 			strcat(ackbuf,"\r\n");
 		}
 	}
@@ -103,6 +112,14 @@ void response_dump(struct response *res)
 
 void response_free(struct response *res)
 {
+	if( res->to_free ) {
+		void **n = res->to_free;
+		while( *n ) {
+			free(*n++);
+		}
+		free(res->to_free);
+	}
+
 	if(res){
 		free(res->argv);
 	}

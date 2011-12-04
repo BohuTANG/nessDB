@@ -14,11 +14,10 @@ struct level{
 };
 
 struct level_node{
-	void* key;
+	struct ht_node* ht_next;
 	uint64_t value;
 	int hits;
-	int size;
-
+	size_t size;
 	struct level_node *nxt;
 	struct level_node *pre;
 };

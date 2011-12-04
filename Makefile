@@ -1,12 +1,12 @@
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
-	DEBUG = -g -rdynamic -ggdb -DDEBUG
+	DEBUG = -g -ggdb -DDEBUG -fPIC
 else
 	DEBUG =	-g -ggdb -DDEBUG
 endif
 
-CC = gcc
-CFLAGS =  -c -std=c99 -Wall  $(DEBUG)	
+CC = clang
+CFLAGS = -std=c99 -O3 -Wall -Wextra $(DEBUG)	
 
 LIB_OBJS = \
 	./engine/ht.o		\
@@ -14,10 +14,10 @@ LIB_OBJS = \
 	./engine/level.o	\
 	./engine/db.o		\
 	./engine/util.o		\
-	./engine/skiplist.o		\
+	./engine/skiplist.o \
 	./engine/log.o		\
 	./engine/buffer.o	\
-	./engine/storage.o 
+	./engine/storage.o
 
 SVR_OBJS = \
 	./server/ae.o \
@@ -26,16 +26,17 @@ SVR_OBJS = \
 	./server/response.o \
 	./server/zmalloc.o \
 
+BENCH_OBJS = ./bench/db-bench.c
+
 LIBRARY = libnessdb.a
 
-all: $(LIBRARY)
+ALL = $(LIBRARY) db-bench db-server db-zmq mod-nessdb.so mod-skiplist.so mod-ht.so mod-null.so
+
+all: $(ALL)
 
 clean:
-	-rm -f $(LIBRARY)  
-	-rm -f $(LIB_OBJS)
-	-rm -f $(SVR_OBJS)
-	-rm -f bench/db-bench.o server/db-server.o 
-	-rm -f db-bench db-server
+	-rm -f $(ALL)
+	-rm -f bench/*.o server/*.o engine/*.o
 
 cleandb:
 	-rm -rf ndbs
@@ -43,10 +44,29 @@ cleandb:
 $(LIBRARY): $(LIB_OBJS)
 	rm -f $@
 	$(AR) -rs $@ $(LIB_OBJS)
+	rm -f $(LIB_OBJS)
 
-db-bench: bench/db-bench.o $(LIB_OBJS)
-	$(CC)  bench/db-bench.o $(LIB_OBJS)  -o $@
+.PHONY: BENCHMARK
+BENCHMARK: db-bench
+	./db-bench -k 32 -e 5000000 rwmix > $@
 
-db-server: server/db-server.o $(SVR_OBJS) $(LIB_OBJS)
-	$(CC)  server/db-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
+db-server: server/db-server.o $(SVR_OBJS:.o=.c) $(LIB_OBJS:.o=.c)
+	$(CC) $(CFLAGS) -o $@ $+
 
+db-bench: bench/db-bench.c server/db-zmq.c $(LIB_OBJS:.o=.c)
+	$(CC) $(CFLAGS) -o $@ $+ -ldl
+
+db-zmq: server/db-zmq.c $(LIB_OBJS:.o=.c)
+	$(CC) $(CFLAGS) -DDBZ_MAIN -o $@ $+ -lzmq -ldl
+
+mod-nessdb.so: server/mod-nessdb.c server/sha1.c $(LIB_OBJS:.o=.c)
+	$(CC) $(CFLAGS) -shared -o $@ $+
+
+mod-skiplist.so: ./engine/skiplist.c server/mod-skiplist.c
+	$(CC) $(CFLAGS) -shared -o $@ $+
+
+mod-ht.so: ./engine/ht.c server/mod-ht.c
+	$(CC) $(CFLAGS) -shared -o $@ $+
+
+mod-null.so: server/mod-null.c
+	$(CC) $(CFLAGS) -shared -o $@ $+

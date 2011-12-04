@@ -132,6 +132,9 @@ int req_state_len(struct request *req,char *sb)
 			default:
 				if(first==1){
 					/* the first symbol is not '*' or '$'*/
+					/* TODO: parse inline commands
+					   - http://redis.io/topics/protocol
+					 */
 					if(_table[(unsigned char)c]!=3)
 						return STATE_FAIL;
 				}else{
@@ -157,6 +160,11 @@ int request_parse(struct request *req)
 	int  i;
 	char sb[BUF_SIZE]={0};
 
+	if( strncmp(req->querybuf, "PING", 4) == 0 ) {
+		req->cmd = CMD_PING;
+		return 1;
+	}
+
 	if(req_state_len(req,sb)!=STATE_CONTINUE){
 		fprintf(stderr,"argc format ***ERROR***,buffer:%s,len-buf:%s\n",req->querybuf,sb);
 		return 0;
@@ -177,7 +185,7 @@ int request_parse(struct request *req)
 		argv_len=atoi(sb);
 
 		/*get argv*/
-		v=(char*)calloc(argv_len,sizeof(char));
+		v=(char*)calloc(argv_len + 1,sizeof(char));
 		memset(v,0,argv_len);
 		memcpy(v,req->querybuf+(req->pos),argv_len);
 		req->argv[i]=v;	

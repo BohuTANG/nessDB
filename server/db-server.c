@@ -9,7 +9,7 @@
  *   * Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of struct nessdb nor the names of its contributors may be used
+ *   * Neither the name of nessDB nor the names of its contributors may be used
  *     to endorse or promote products derived from this software without
  *     specific prior written permission.
  *
@@ -52,6 +52,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <assert.h>
+#include <err.h>
+#include <getopt.h>
+#include <inttypes.h>
 
 #include "anet.h"
 #include "ae.h"
@@ -63,14 +68,18 @@
 
 
 struct server{
+	char *dbpath;
 	char *bindaddr;
 	int port;
 	int fd;
+	int client_count;
 
 	aeEventLoop *el;
 	char neterr[1024];
 	struct nessdb *db;
 };
+typedef struct server server_t;
+
 
 static void *get_mcontext_eip(ucontext_t *uc) {
 #if defined(__FreeBSD__)
@@ -102,6 +111,7 @@ static void *get_mcontext_eip(ucontext_t *uc) {
 #endif
 }
 
+
 void back_trace(int sig_num, siginfo_t * info, void * ucontext)
 {
  	 void *             array[50];
@@ -130,6 +140,7 @@ void back_trace(int sig_num, siginfo_t * info, void * ucontext)
 	 exit(EXIT_FAILURE);
 }
 
+
 void signal_init()
 {
 	struct sigaction sigact;
@@ -137,23 +148,127 @@ void signal_init()
  	sigact.sa_flags = SA_RESTART | SA_SIGINFO;
 
  	if (sigaction(SIGSEGV, &sigact, (struct sigaction *)NULL) != 0){
-  		fprintf(stderr, "error setting signal handler for %d (%s)\n",
+  		errx(EXIT_FAILURE, "error setting signal handler for %d (%s)\n",
     		SIGSEGV, strsignal(SIGSEGV));
-
-  		exit(EXIT_FAILURE);
  	}
-
 }
 
 
-struct server _svr;
-static int _clicount;
-
 #define BUF_SIZE (10240)
-void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
+struct response* 
+svr_handle(server_t *svr, struct request *req)
 {
+	/* TODO: response needs to free values retrieved from the DB */
+
+	assert( req != NULL );
+	switch(req->cmd){
+		case CMD_PING:{
+			return response_new(0,OK_PONG);
+		}
+
+		case CMD_SET:{
+			struct slice k = {req->argv[1], strlen(req->argv[1]), 0};
+			struct slice v = {req->argv[2], strlen(req->argv[2]), 0};
+			db_add(svr->db, &k, &v);
+
+			return response_new(0,OK);
+		}
+
+		case CMD_MSET:{
+			int i;
+			int c=req->argc;
+			struct slice k, v;
+			k.park = 0;
+			v.park = 0;
+
+			for(i=1;i<c;i+=2){
+				k.data = req->argv[i]; k.len = strlen(req->argv[i+1]);
+				v.data = req->argv[i + 1]; v.len = strlen(req->argv[i+1]);
+				db_add(svr->db, &k, &v);				
+			}
+
+			return response_new(0, OK);
+		}
+
+		case CMD_GET:{
+			struct slice k = {req->argv[1], strlen(req->argv[1]), 0};
+			struct slice v;
+			if( ! db_get(svr->db, &k, &v) ) {
+				return response_new(0,OK_404);
+			}
+							
+			struct response *resp=response_new(1,OK_200);
+			resp->argv[0]=v.data;
+			resp->to_free = calloc( 2, sizeof(void*) );
+			assert( resp->to_free != NULL );
+			resp->to_free[0] = v.data;
+			resp->to_free[1] = NULL;
+			return resp;
+		}
+
+		case CMD_MGET:{
+			int c=req->argc;
+			struct response *resp = response_new(c - 1,OK_200);
+			resp->to_free = calloc(c, sizeof(void *));
+			for(int i=1; i<c; i++){
+				struct slice k = {req->argv[i], strlen(req->argv[i]), 0};
+				struct slice v;
+
+				// XXX: hack so response_free will clean all
+				if( ! db_get(svr->db, &k, &v) ) {
+					v.data = strdup("");
+					v.len = 1;
+				}
+
+				resp->argv[i-1] = v.data;
+				resp->to_free[i - 1] = v.data;
+			}
+			resp->to_free[c - 1] = NULL;
+
+			return resp;
+		}
+
+		case CMD_INFO:{
+			char* infos = db_info(svr->db);
+			struct response* resp = response_new(1,OK_200);
+			resp->argv[0]=infos;
+			resp->to_free = calloc(2, sizeof(void*));
+			resp->to_free[0] = infos;
+			resp->to_free[1] = NULL;
+			return resp;
+		}
+
+		case CMD_DEL:{
+			struct slice k;
+			for(int i=1;i<req->argc;i++) {
+				k.data = req->argv[i];
+				k.len = strlen(req->argv[i]);
+				db_remove(svr->db, &k);
+			}
+
+			return response_new(0,OK);
+		}
+
+		case CMD_EXISTS:{
+			struct slice k = {req->argv[1], strlen(req->argv[1]), 0};
+			int ret= db_exists(svr->db, &k);
+			return response_new(0, ret ? OK_TRUE : OK_FALSE);
+		}					
+
+		default:{
+			return response_new(0,ERR);
+		}
+	}
+	assert( 0 );
+}
+
+
+void svr_read_cb(aeEventLoop *el, int fd, void *_svr, int mask)
+{
+	server_t *svr = (server_t*)_svr;
 	char buf[BUF_SIZE]={0};
 	int nread;
+	(void)el; (void)mask;
 
 	nread=read(fd,buf,BUF_SIZE);
 	if(nread==-1)
@@ -162,220 +277,181 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 	if(nread==0){
 		aeDeleteFileEvent(el, fd, AE_WRITABLE);
 		aeDeleteFileEvent(el, fd, AE_READABLE);
-		_clicount--;
+		svr->client_count--;
 		return;
-	}else{
-		int ret;
-		struct request *req=request_new(buf);
-		struct response *resp;
-		ret=request_parse(req);
-		if(ret==1){
-			char sent_buf[BUF_SIZE]={0};
-			request_dump(req);
-
-			switch(req->cmd){
-				case CMD_PING:{
-						resp=response_new(0,OK_PONG);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					   }
-
-				case CMD_SET:{
-						struct slice sk, sv;
-						sk.len = strlen(req->argv[1]);
-						sk.data = req->argv[1];
-
-						sv.len = strlen(req->argv[2]);
-						sv.data = req->argv[2];
-
-						db_add(_svr.db, &sk, &sv);
-
-						resp=response_new(0,OK);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					   }
-				case CMD_MSET:{
-					    int i;
-						int c=req->argc;
-						for(i=1;i<c;i+=2){
-							struct slice sk, sv;
-							sk.len = strlen(req->argv[i]);
-							sk.data = req->argv[i];
-
-							sv.len = strlen(req->argv[i+1]);
-							sv.data = req->argv[i+1];
-							db_add(_svr.db, &sk, &sv);
-						}
-
-						resp=response_new(0,OK);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					      }
-
-				case CMD_GET:{
-						struct slice sk;
-						void* result;
-						sk.len=strlen(req->argv[1]);
-						sk.data = req->argv[1];
-						result=db_get(_svr.db, &sk);
-						if(result==NULL)
-							resp=response_new(0,OK_404);
-						else{
-							resp=response_new(1,OK_200);
-							resp->argv[0]=result;
-						}
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-
-						if(result)
-							free(result);
-						break;
-					     }
-				case CMD_MGET:{
-						int c=req->argc;
-						int sub_c=c-1;
-						char **vals=calloc(c,sizeof(char*));
-					        int i;
-						resp=response_new(sub_c,OK_200);
-
-						for(i=1;i<c;i++){
-							struct slice sk;
-							sk.len = strlen(req->argv[i]);
-							sk.data = req->argv[i];
-
-							vals[i-1]=db_get(_svr.db, &sk);
-							resp->argv[i-1]=vals[i-1];
-						}
-
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-
-						for(i=0;i<sub_c;i++){
-							if(vals[i])
-								free(vals[i]);	
-						}
-						free(vals);
-					      	break;
-					      }
-				case CMD_INFO:{
-						char infos[BUF_SIZE]={0};	
-						db_info(_svr.db, infos);
-						resp=response_new(1,OK_200);
-					 	resp->argv[0]=infos;
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					      }
-
-				case CMD_DEL:{
-						for(int i=1;i<req->argc;i++){
-							struct slice sk;
-							sk.len = strlen(req->argv[i]);
-							sk.data = req->argv[i];
-					     	db_remove(_svr.db, &sk);
-						}
-
-						resp=response_new(0,OK);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					     }
-				case CMD_EXISTS:{
-						 struct slice sk;
-						 sk.len = strlen(req->argv[1]);
-						 sk.data = req->argv[1];
-						 int ret= db_exists(_svr.db, &sk);
-						 if(ret)
-							write(fd,":1\r\n",4);
-						 else
-							write(fd,":-1\r\n",5);
-						}
-						break;
-
-				default:{
-						resp=response_new(0,ERR);
-						response_detch(resp,sent_buf);
-						write(fd,sent_buf,strlen(sent_buf));
-						response_dump(resp);
-						response_free(resp);
-						break;
-					}
-			}
-
-		}
-
-		request_free(req);
 	}
+
+	struct request *req=request_new(buf);		
+	if( request_parse(req) ){
+		struct response *resp = NULL;
+		char sent_buf[BUF_SIZE]={0};
+
+		resp = svr_handle(svr, req);
+		response_detch(resp, sent_buf);
+		write(fd, sent_buf, strlen(sent_buf));
+		response_free(resp);
+	}
+	request_free(req);
 }
 
-void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask) 
+
+void svr_accept_cb(aeEventLoop *el, int fd, void *_svr, int mask) 
 {
+	server_t *svr = (server_t*)_svr;
 	int cport, cfd;
-    	char cip[128];
-   	cfd = anetTcpAccept(_svr.neterr,fd,cip,&cport);
+    char cip[128];
+    (void)el; (void)mask;
+
+   	cfd = anetTcpAccept(svr->neterr,fd,cip,&cport);
 	if (cfd == AE_ERR) {
+		warnx("Could not accept: %s", svr->neterr);
 		printf("accept....\n");
 		return;
 	}
-	_clicount++;
+	svr->client_count++;
 
-	aeCreateFileEvent(_svr.el,cfd,AE_READABLE,read_handler,NULL);
+	int x = aeCreateFileEvent(svr->el, cfd, AE_READABLE, svr_read_cb, svr);
+	assert( x == AE_OK );
 }
 
-int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
+
+int svr_cron_cb(struct aeEventLoop *eventLoop, long long id, void *_svr)
 {
-	printf("%d clients connected\n ",_clicount);
+	server_t *svr = (server_t*)_svr;
+	(void)eventLoop;
+	printf("%d clients connected (%lld)\n ", svr->client_count, id);
 	return 3000;
 }
 
+
 #define BUFFERPOOL	(1024*1024*1024)
-struct nessdb *nessdb_open()
+void svr_init(server_t *svr)
 {
-	return db_open(BUFFERPOOL, getcwd(NULL, 0));
+	memset(svr, 0, sizeof(server_t));
+
+	// Sensible defaults
+	svr->bindaddr="127.0.0.1";
+	svr->port=6379;
 }
 
-void nessdb_close(struct nessdb *db)
+
+void svr_run(server_t *svr)
 {
-	db_close(db);
+	if( svr->dbpath == NULL ) {
+		svr->dbpath = getcwd(NULL, 0);
+	}
+
+	svr->db = db_open(BUFFERPOOL, svr->dbpath);
+	if( ! svr->db ) {
+		errx(EXIT_FAILURE, "Failed to open database in '%s'", svr->dbpath);
+	}
+
+	svr->el = aeCreateEventLoop();
+	assert( svr->el != NULL );
+
+	long long cron_event = aeCreateTimeEvent(svr->el, 3000, svr_cron_cb, svr, NULL);
+	assert( cron_event != AE_ERR );
+
+	svr->fd = anetTcpServer(svr->neterr, svr->port, svr->bindaddr);
+	if( svr->fd == AE_ERR ) {
+		errx(EXIT_FAILURE, "Cannot start TCP server on %s:%d -- %s", svr->bindaddr, svr->port, svr->neterr);
+	}
+
+ 	int file_event = aeCreateFileEvent(svr->el, svr->fd, AE_READABLE, svr_accept_cb, svr);
+ 	assert( file_event == AE_OK );
+
+	aeMain(svr->el);
 }
 
-int main()
+// TODO: svr_open and svr_close
+
+void svr_destroy(server_t *svr)
 {
-	/*signal_init();*/
+	if( svr->el ) {
+		aeDeleteEventLoop(svr->el);
+	}
 
-	_svr.bindaddr="127.0.0.1";
-	_svr.port=6379;
-	
-	_svr.db = nessdb_open();
-	_svr.el=aeCreateEventLoop();
-	_svr.fd=anetTcpServer(_svr.neterr,_svr.port,_svr.bindaddr);
+	if( svr->db ) {
+		db_close(svr->db);
+	}
 
-	aeCreateTimeEvent(_svr.el, 3000, server_cron, NULL, NULL);
+	if( svr->dbpath ) {
+		free(svr->dbpath);
+	}
+}
 
-	/*handler*/
- 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE,accept_handler, NULL) == AE_ERR) 
-		printf("creating file event");
 
-	aeMain(_svr.el);
-	printf("oops,exit\n");
-	aeDeleteEventLoop(_svr.el);
-	nessdb_close(_svr.db);
-	return 1;
+static void
+show_help(char *prog) {
+	fprintf(stderr,
+		"Usage: %s [options]\n"
+		"\t--help|-h             - Show usage instructions\n"
+		"\t--listen|-l <address> - Bind address for Redis listener\n"
+		"\t--dbpath|-d <dir>     - Directory to store database\n",
+		prog);
+} 
+
+static void
+parse_bind_addr( char *in, char **addr, int *port ) {
+	char *ps = strrchr(in, ':');
+	if( ps ) {
+		int p;
+		ps[0] = 0;
+		p = atoi(++ps);
+		if( p < 1 || p > 0xFFFF ) {
+			warnx("Invalid port %d from bind address '%s', using default", p, in);
+		}
+		else {
+			*port = atoi(ps);	
+		}				
+	}
+	*addr = strdup(in);
+}
+
+
+static bool
+parse_opts( int argc, char **argv, server_t *svr ) {
+	while( true ) {
+		static struct option long_options[] = {
+			{"help", 0, 0, 'h'},
+			{"listen", 1, 0, 'l'},
+			{"dbpath", 1, 0, 'd'},
+			{0, 0, 0, 0}
+		};
+		int idx = 0, c;
+
+		c = getopt_long(argc, argv, "hl:d:", long_options, &idx);
+		if( c == -1 ) break; 
+
+		switch(c) {
+		case 'l':
+			parse_bind_addr(optarg, &svr->bindaddr, &svr->port);
+			break;
+
+		case 'd':
+			svr->dbpath = optarg;
+			break;
+
+		case 'h':
+		default:
+			show_help(argv[0]);
+			return false;
+		}
+	}
+	return true;
+}
+
+int main(int argc, char **argv)
+{
+	server_t instance;
+
+	signal_init();
+	svr_init(&instance);
+
+	if( parse_opts(argc, argv, &instance) ) {
+		svr_run(&instance);
+	}
+
+	svr_destroy(&instance);
+	return EXIT_SUCCESS;
 }

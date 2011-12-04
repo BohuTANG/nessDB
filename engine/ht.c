@@ -32,9 +32,9 @@
 #include "ht.h"
 
 
-static size_t find_slot(struct ht *ht, void* key)
+static size_t find_slot(struct ht *ht, void *node)
 {
-	return  ht->hashfunc(key) % ht->cap;
+	return ht->hashfunc(node) % ht->cap;
 }
 
 void ht_init(struct ht *ht, size_t cap)
@@ -44,23 +44,17 @@ void ht_init(struct ht *ht, size_t cap)
 	ht->nodes = calloc(cap, sizeof(struct ht_node*));
 }
 
-void ht_set(struct ht *ht, void * k, void* v)
+void ht_set(struct ht *ht, struct ht_node *node)
 {
 	size_t slot;
-	struct ht_node *node;
 
-	slot = find_slot(ht, k);
-	node = calloc(1, sizeof(struct ht_node));
+	slot = find_slot(ht, node);
 	node->next = ht->nodes[slot];
-
-	node->k = k;
-	node->v = v;
-
 	ht->nodes[slot] = node;
 	ht->size++;
 }
 
-void* ht_get(struct ht *ht, void * k)
+struct ht_node* ht_get(struct ht *ht, void * k)
 {
 	size_t slot;
 	struct ht_node *node;
@@ -68,14 +62,14 @@ void* ht_get(struct ht *ht, void * k)
 	slot = find_slot(ht, k);
 	node = ht->nodes[slot];
 	while (node) {
-		if (ht->cmpfunc(k, node->k) == 0)
-			return node->v;
+		if (ht->cmpfunc(k, node) == 0)
+			return node;
 		node = node->next;
 	}
 	return NULL;
 }
 
-void ht_remove(struct ht *ht, void *k)
+struct ht_node * ht_remove(struct ht *ht, void *k)
 {
 	size_t slot;
 	struct ht_node *node, *prev=NULL;
@@ -83,16 +77,18 @@ void ht_remove(struct ht *ht, void *k)
 	slot = find_slot(ht, k);
 	node = ht->nodes[slot];
 	while (node) {
-		if( ht->cmpfunc(k, node->k) == 0) {
+		if( ht->cmpfunc(k, node) == 0) {
 			if (prev != NULL)
 				prev->next = node->next;
 			else
 				ht->nodes[slot] = node->next;
 			ht->size--;
+			return node;
 		}
 		prev = node;
 		node = node->next;	
 	}
+	return NULL;
 }
 
 

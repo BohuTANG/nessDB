@@ -9,7 +9,7 @@
  *   * Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of struct nessdb nor the names of its contributors may be used
+ *   * Neither the name of nessDB nor the names of its contributors may be used
  *     to endorse or promote products derived from this software without
  *     specific prior written permission.
  *
@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <assert.h>
+#include <inttypes.h>
 #ifdef _WIN32
 	#include <direct.h>
 #endif
@@ -80,7 +81,7 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
 	db->log = log_new(pre);
 
 	/* Lru*/
-	db->lru = llru_new(bufferpool_size);
+	llru_new(&db->lru, bufferpool_size);
 
 	return db;
 }
@@ -91,7 +92,7 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
-	struct llru *lru = db->lru;
+	struct llru *lru = &db->lru;
 
 	uint64_t data_offset;
 	uint8_t opt = 1;
@@ -135,63 +136,48 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	return (1);
 }
 
-void  *db_get(struct nessdb *db, struct slice *sk)
+void* db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
-	void *val;
 	uint64_t data_offset;
-	struct slice *sv;
 	struct skipnode *snode;
 	struct btree *btree = db->btree;
-	struct llru *lru = db->lru;
-
-	data_offset = llru_get(lru, sk->data);
+	struct llru *lru = &db->lru;
 
 	/* 1)Data is in Level-LRU, return*/
-	if(data_offset) {
-		sv = btree_get_data(btree, data_offset);
-		if(sv) {
-			val = sv->data;
-			free(sv);
+	data_offset = llru_get(lru, sk->data);
+	if(data_offset) {		
+		if( btree_get_data(btree, data_offset, sv) ) {
+			return sv->data;
 		}
-
-		return val;
+		return NULL;
 	}
 	
-	snode = skiplist_lookup(db->list, sk);
-
 	/* 2)Data is mtable, goto it and get the offset*/
+	snode = skiplist_lookup(db->list, sk);
 	if (snode) {
 		/* If OPT is DEL, return NULL*/
 		if (snode->opt == DEL)
 			return NULL;
 
 		/* 3)Get from on-disk B+tree index*/
-		sv = btree_get_data(btree, snode->val);
-		if (sv) {
-			/* 4)Add to Level-LRU*/
-			char *k_clone = calloc(1, sk->len);
-			memcpy(k_clone, sk->data, sk->len);
-
-			llru_set(lru, k_clone, sv->park, (sk->len + sizeof(sv->park)));
-			val = sv->data;
-
-			free(sv);
-			return val;
+		if (btree_get_data(btree, snode->val, sv)) {
+			llru_set(lru, sk->data, sv->park, sk->len);
+			return sv->data;
 		}
 	}
 
 	/* Last found in on-disk B+Tree index*/
-	val = btree_get(btree, sk->data);
-
-	return val;
+	btree_get(btree, sk, sv);
+	return sv->data;
 }
 
 int db_exists(struct nessdb *db, struct slice *sk)
 {
-	char *val = db_get(db, sk);
-	if(val)
+	struct slice sv;
+	if( db_get(db, sk, &sv) ) {
+		free(sv.data);
 		return 1;
-
+	}
 	return 0;
 }
 
@@ -200,7 +186,7 @@ void db_remove(struct nessdb *db, struct slice *sk)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
-	struct llru *lru = db->lru;
+	struct llru *lru = &db->lru;
 
 	/* Add to log*/
 	log_append(log, sk, 0UL, 0);
@@ -233,9 +219,10 @@ void db_remove(struct nessdb *db, struct slice *sk)
 }
 
 
-void db_info(struct nessdb *db, char *infos)
+char* db_info(struct nessdb *db)
 {
-	/*TODO*/
+	(void)db;
+	return NULL;
 }
 
 void db_flush(struct nessdb *db)
@@ -244,7 +231,7 @@ void db_flush(struct nessdb *db)
 	struct btree *btree = db->btree;
 	struct skiplist *list = db->list;
 	struct log *log = db->log;
-	struct llru *lru = db->lru;
+	struct llru *lru = &db->lru;
 
 	struct skipnode *x = list->hdr->forward[0];
 
@@ -274,6 +261,7 @@ void db_close(struct nessdb *db)
 	log_free(db->log);
 	skiplist_free(db->list);
 	btree_close(db->btree);
-	llru_free(db->lru);
+	free(db->btree);
+	llru_free(&db->lru);
 	free(db);
 }

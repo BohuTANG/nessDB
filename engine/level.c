@@ -73,8 +73,6 @@ void level_free_node(struct level *level, struct level_node *n)
 	if (n) {
 		level->used_size -= n->size;
 		level_remove_link(level, n);
-		if (n->key)
-			free(n->key);
 		free(n);
 	}
 }

@@ -6,13 +6,14 @@
  *OK_404:"$-1"
  *ERR:"-OK"
  */
-typedef enum{OK,OK_200,OK_404,OK_PONG,ERR}STATUS;
+typedef enum{OK,OK_200,OK_404,OK_PONG,ERR,OK_TRUE,OK_FALSE}STATUS;
 
 struct response{
 	int argc;
 	STATUS status;
 	char *ackbuf;
 	char **argv;
+	void **to_free;
 };
 
 struct response *response_new(int argc,STATUS status);

@@ -45,6 +45,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <inttypes.h>
+#include <assert.h>
 #include "storage.h"
 #include "debug.h"
 
@@ -61,6 +63,8 @@ int _cmp_sha1(const char *a,const char *b)
 struct btree_table *_alloc_table(struct btree *btree)
 {
 	struct btree_table *table = malloc(sizeof *table);
+	assert( table != NULL );
+	assert( btree != NULL );
 	memset(table, 0, sizeof *table);
 	return table;
 }
@@ -75,8 +79,8 @@ struct btree_table *_get_table(struct btree *btree, uint64_t offset)
 		return slot->table;
 	}
 
-	struct btree_table *table = malloc(sizeof *table);
-
+	struct btree_table *table = malloc(sizeof(struct btree_table));
+	assert( table != NULL );
 	lseek(btree->fd, offset, SEEK_SET);
 	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree _get_table: I/O error\n");
@@ -152,7 +156,7 @@ int _btree_open(struct btree *btree, const char *idx, const char *db, const char
 		return -1;
 	btree->top = from_be64(super.top);
 
-	__DEBUG("btree top is:%llu",btree->top);
+	__DEBUG("btree top is:%" PRIu64 "",btree->top);
 
 	btree->super_top = btree->top;
 
@@ -196,10 +200,11 @@ int btree_init(struct btree *btree, const char *dbname)
 	snprintf(sup, sizeof sup, "%s%s", dbname, SUPEREXT); 
 
 	fd = open(idx, BTREE_OPEN_FLAGS, 0644);
-	if ( fd > -1)
+	if ( fd != -1) {
 		_btree_open(btree, idx, db, sup);
-	else {
 		close(fd);
+	}
+	else {
 		_btree_creat(btree, idx, db, sup);
 	}
 
@@ -423,14 +428,14 @@ void  btree_insert_index(struct btree *btree,const char *c_sha1, uint64_t v_off)
 }
 
 
-uint64_t _lookup(struct btree *btree, uint64_t table_offset, const char *sha1)
+uint64_t _lookup(struct btree *btree, uint64_t table_offset, struct slice *sk)
 {
 	while (table_offset) {
 		struct btree_table *table = _get_table(btree, table_offset);
-		size_t left = 0, right = table->size, i;
+		size_t left = 0, right = table->size, i = 0;
 		while (left < right) {
 			i = (right - left) / 2 +left;
-			int cmp = _cmp_sha1((const char*)sha1, table->items[i].sha1);
+			int cmp = _cmp_sha1((const char*)sk->data, table->items[i].sha1);
 			if (cmp == 0) {
 				/* found */
 				uint64_t ret=from_be64(table->items[i].offset);
@@ -455,10 +460,9 @@ uint64_t _lookup(struct btree *btree, uint64_t table_offset, const char *sha1)
 }
 
 
-void *btree_get(struct btree *btree, const char *sha1)
+void *btree_get(struct btree *btree, struct slice *sk, struct slice *sv)
 {
-	uint64_t offset = _lookup(btree, btree->top, sha1);
-	
+	uint64_t offset = _lookup(btree, btree->top, sk);
 	if (offset == 0){
 		return NULL;
 	}
@@ -467,54 +471,53 @@ void *btree_get(struct btree *btree, const char *sha1)
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
-	size_t len = from_be32(info.len);
 
-	void *data = calloc(1,len);
-	if (data == NULL)
-		return NULL;
-	if (read(btree->db_fd, data, len) != (ssize_t)len) {
-		free(data);
-		data = NULL;
-	}
-	return data;
+	sv->len = from_be32(info.len);
+	sv->data = calloc(1,sv->len);
+	assert( sv->data != NULL );
+	if (read(btree->db_fd, sv->data, sv->len) != (ssize_t)sv->len) {
+		free(sv->data);
+		sv->data = NULL;
+	}	
+	return sv->data;
 }
 
 
-int btree_get_index(struct btree *btree, const char *sha1)
+int btree_get_index(struct btree *btree, struct slice *sk)
 {
-	uint64_t offset = _lookup(btree, btree->top, sha1);
+	uint64_t offset = _lookup(btree, btree->top, sk);
 	if (offset == 0)
 		return (0);
 	return (1);
 }
 
-struct slice *btree_get_data(struct btree *btree,uint64_t offset)
+int btree_get_data(struct btree *btree, uint64_t offset, struct slice *sv)
 {
 	size_t len;
 	char *data;
 	struct blob_info info;
-	struct slice *sv;
 
 	if (offset == 0)
-		return NULL;
+		return 0;
 
 	lseek(btree->db_fd, offset, SEEK_SET);
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
-		return NULL;
+		return 0;
 
 	len = from_be32(info.len);
 	data = calloc(1,len);
+	assert( data != NULL );
 	if (data == NULL)
-		return NULL;
+		return 0;
 
 	if (read(btree->db_fd, data, len) != (ssize_t) len) {
 		free(data);
-		data = NULL;
+		data = 0;
 	}
-	sv = calloc(1, sizeof(struct slice));
+
 	sv->len = len;
 	sv->data = data;
-	return sv;
+	return 1;
 }
 
 

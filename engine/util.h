@@ -5,8 +5,8 @@
 
 struct slice{
 	char *data;
-	int len;
-	uint64_t park;
+	size_t len;
+	uint64_t park;	// XXX: what is this for?
 };
 
 void _ensure_dir_exists(const char *path);
