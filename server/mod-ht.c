@@ -33,7 +33,7 @@ static int
 my_cmpfunc(void *_a, void *_b) {
 	struct my_node* a = (struct my_node*)_a;
 	struct my_node* b = (struct my_node*)_b;
-	return memcmp(a->k, b->k, sizeof(uint32_t));
+	return memcmp(a->k, b->k, 4);
 }
 
 static struct ht* open_db(void *can_reply, void *reply_directed) {

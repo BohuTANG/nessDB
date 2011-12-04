@@ -54,7 +54,7 @@ db-server: server/db-server.o $(SVR_OBJS:.o=.c) $(LIB_OBJS:.o=.c)
 	$(CC) $(CFLAGS) -o $@ $+
 
 db-bench: bench/db-bench.c server/db-zmq.c $(LIB_OBJS:.o=.c)
-	$(CC) $(CFLAGS) -o $@ $+ -ldl -lzmq
+	$(CC) $(CFLAGS) -o $@ $+ -ldl
 
 db-zmq: server/db-zmq.c $(LIB_OBJS:.o=.c)
 	$(CC) $(CFLAGS) -DDBZ_MAIN -o $@ $+ -lzmq -ldl
@@ -70,6 +70,3 @@ mod-ht.so: ./engine/ht.c server/mod-ht.c
 
 mod-null.so: server/mod-null.c
 	$(CC) $(CFLAGS) -shared -o $@ $+
-
-cachegrind: db-bench
-	valgrind --tool=cachegrind ./db-bench rwmix

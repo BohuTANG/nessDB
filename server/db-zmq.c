@@ -16,7 +16,6 @@ struct dbz_s {
 	int running;
 	void* mod;
 	void* mod_ctx;
-	void* zctx;
 	struct dbz_op* ops;
 };
 typedef struct dbz_s dbz;
@@ -38,67 +37,32 @@ dbz_load(const char *filename) {
     }
 
     x->ops = ((mod_init_fn) f)();
-    x->zctx = zmq_init(1);
     return x;
 }
 
-dbzop_t
-dbz_bind_op(void* _ctx, const char* name) {
+struct dbz_op*
+dbz_op(void* _ctx, const char* name) {
 	dbz* ctx = (dbz*)_ctx;
 	struct dbz_op* f = ctx->ops;
 	while( f->name ) {
 		if( strcmp(f->name, name) == 0 ) {
-			return f->cb;
+			return f;
 		}
 		f++;
 	}
 	return NULL;
 }
 
-struct dbz_op*
-dbz_bind(void* _ctx, const char* name, const char *addr) {
-	dbz* ctx = (dbz*)_ctx;
-	struct dbz_op* f = ctx->ops;
-	while( f->name ) {
-		if( strcmp(f->name, name) == 0 ) {
-			break;
-		}
-		f++;
-	}
-
-	if( ! f->name ) {
-		warnx("Unknown bind name %s=%s", name, addr);
-		return NULL;
-	}
-
-	void *sock = zmq_socket(ctx->zctx, f->opts ? ZMQ_REP : ZMQ_PULL);
-	if( sock == NULL ) {
-		warnx("Cannot create socket for '%s': %s", addr, zmq_strerror(zmq_errno()));	
-		return NULL;;
-	} 
-	if( zmq_bind(sock, addr) == -1 ) {
-		warnx("Cannot bind socket '%s': %s", addr, zmq_strerror(zmq_errno()));
-		zmq_close(sock);
-		return NULL;
-	}
-	f->token = sock;
-	return f;
-}
-
 int
 dbz_close(void* _ctx) {
 	dbz* ctx = (dbz*)_ctx;
-	struct dbz_op* f = ctx->ops;
-	while( f->name ) {
-		if( f->token ) zmq_close(f->token);
-		f++;
-	}
-	if( ctx->zctx ) zmq_term(ctx->zctx);
 	if( ctx->mod ) dlclose(ctx->mod);
 	memset(ctx, 0, sizeof(dbz));
 	free(ctx);
 	return 1;
 }
+
+#ifdef DBZ_MAIN
 
 static size_t
 reply_cb(void* data, size_t len, void* cb, void* token ) {
@@ -110,7 +74,29 @@ reply_cb(void* data, size_t len, void* cb, void* token ) {
 	return len;
 }
 
-int
+static struct dbz_op*
+dbz_bind(void* zctx, void* _ctx, const char* name, const char *addr) {
+	struct dbz_op* op = dbz_op(_ctx, name);
+	if( ! op->name ) {
+		warnx("Unknown bind name %s=%s", name, addr);
+		return NULL;
+	}
+
+	void *sock = zmq_socket(zctx, op->opts ? ZMQ_REP : ZMQ_PULL);
+	if( sock == NULL ) {
+		warnx("Cannot create socket for '%s': %s", addr, zmq_strerror(zmq_errno()));	
+		return NULL;;
+	} 
+	if( zmq_bind(sock, addr) == -1 ) {
+		warnx("Cannot bind socket '%s': %s", addr, zmq_strerror(zmq_errno()));
+		zmq_close(sock);
+		return NULL;
+	}
+	op->token = sock;
+	return op;
+}
+
+static int
 dbz_run(void* _ctx) {
 	dbz* ctx = (dbz*)_ctx;
 	ctx->running = 1;
@@ -142,13 +128,13 @@ dbz_run(void* _ctx) {
 	return ctx->running;
 }
 
-#ifdef DBZ_MAIN
-
 int main(int argc, char **argv) {
 	if( argc < 2 ) {
 		fprintf(stderr, "Usage: %s <module.so> [op=tcp://... ]\n", argv[0]);
 		return( EXIT_FAILURE );
 	}
+
+	void *zctx;
 	dbz* d = dbz_load(argv[1]);
 	if( ! d ) return( EXIT_FAILURE );
 
@@ -157,7 +143,7 @@ int main(int argc, char **argv) {
 		char *op = argv[i];
 		char *addr = strchr(op, '=');
 		*addr++ = 0;
-		struct dbz_op* f = dbz_bind(d, op, addr);
+		struct dbz_op* f = dbz_bind(zctx, d, op, addr);
 		if( ! f  ) {
 			errx(EXIT_FAILURE, "Cannot bind '%s'='%s'", op, addr);
 		}
@@ -173,9 +159,16 @@ int main(int argc, char **argv) {
 		}		
 		exit(EXIT_FAILURE);
 	}
-	dbz_run(d);
 
+	dbz_run(d);
 	dbz_close(d);
+
+	struct dbz_op* f = d->ops;
+	while( f->name ) {
+		if( f->token ) zmq_close(f->token);
+		f++;
+	}
+	if( zctx ) zmq_term(zctx);
 	return( EXIT_SUCCESS );
 }
 

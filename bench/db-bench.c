@@ -68,9 +68,7 @@ get_timer(struct timeval *start)
 {
     struct timeval end;
     gettimeofday(&end, NULL);
-    long seconds = end.tv_sec - start->tv_sec;
-    long nseconds = (end.tv_usec - start->tv_usec) * 1000;
-    return seconds + (double) nseconds / 1.0e9;
+	return (double)(end.tv_sec - start->tv_sec) + (double)(end.tv_usec - start->tv_usec) / 1000000.0;
 }
 
 static void
@@ -89,10 +87,14 @@ struct benchmark {
 
 	uint32_t count;
 	uint32_t ok_count;
-	uint32_t cost;
+	double cost;
 	uint64_t io_bytes;
 
 	struct timeval start;
+
+	struct dbz_op* put_op;
+	struct dbz_op* get_op;
+	struct dbz_op* del_op;
 
 	dbzop_t put;
 	dbzop_t get;
@@ -119,7 +121,7 @@ benchmark_reset( benchmark_t *self ) {
 	self->count = 0;
 	self->ok_count = 0;
 	self->io_bytes = 0;
-	self->cost = 0;
+	self->cost = 0.0;
 }
 
 static size_t
@@ -152,6 +154,9 @@ benchmark_op(benchmark_t *self, uint32_t count, benchmark_op_t op, char *progres
 	assert( op != NULL );
 	assert( count > 0 );
 
+	struct timeval start;
+	start_timer(&start);
+
 	for (i = 0; i < count; i++) {
 		size_t io_bytes = op(self);
 		self->count++;
@@ -162,19 +167,17 @@ benchmark_op(benchmark_t *self, uint32_t count, benchmark_op_t op, char *progres
 		}
 	}
 
-	self->cost += get_timer(&self->start);	
+	self->cost += get_timer(&start);	
 }
 
 
 static void
 benchmark_report(benchmark_t *self) {
-	if( self->cost == 0 ) return;
-
-	printf("| %-20s | %4.1f%% OK | %8.6f sec/op | %10u ops/sec | %5.1f MiB/sec | %d sec runtime |\n"
+	printf("| %-20s | %4.1f%% OK | %8.6f sec/op | %10.2f ops/sec | %5.1f MiB/sec | %.2f sec runtime |\n"
 		,self->name
 		,(double)(self->ok_count / (self->count / 100.0))
 		,(double)(self->cost / self->count)
-		,(int)(self->count / self->cost)
+		,self->count / self->cost
 		,benchmark_bps(self) / 1024.0 / 1024.0
 		,self->cost);
 	printf(LINE);
@@ -467,9 +470,13 @@ main(int argc, char** argv)
 		if( ! dbz ) {
 			return EXIT_FAILURE;
 		}
-		bench.put = dbz_bind_op(dbz, "put");
-		bench.get = dbz_bind_op(dbz, "get");
-		bench.del = dbz_bind_op(dbz, "del");
+		bench.put_op = dbz_op(dbz, "put");
+		bench.get_op = dbz_op(dbz, "get");
+		bench.del_op = dbz_op(dbz, "del");
+
+		if( bench.put_op ) bench.put = bench.put_op->cb;
+		if( bench.get_op ) bench.get = bench.get_op->cb;
+		if( bench.del_op ) bench.del = bench.del_op->cb;
 	}
 	
 	if( ! benchmark_validate(&bench) ) {
