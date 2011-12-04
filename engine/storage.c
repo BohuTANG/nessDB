@@ -473,7 +473,7 @@ void *btree_get(struct btree *btree, struct slice *sk, struct slice *sv)
 		return NULL;
 
 	sv->len = from_be32(info.len);
-	sv->data = calloc(1,sk->len);
+	sv->data = calloc(1,sv->len);
 	assert( sv->data != NULL );
 	if (read(btree->db_fd, sv->data, sv->len) != (ssize_t)sv->len) {
 		free(sv->data);
