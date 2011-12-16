@@ -5,7 +5,9 @@
 #include <fcntl.h>
 #include "bitwise.h"
 
-#define SHA1_LENGTH	(20)
+#define SHA1_LENGTH	(100)
+#define IDXEXT	".idx"
+#define DBEXT	".db"
 
 struct btree_item {
 	char sha1[SHA1_LENGTH];
@@ -74,6 +76,8 @@ uint32_t btree_insert_data(struct btree *btree, const void *data,size_t len);
 void *btree_get(struct btree *btree, const char *sha1);
 int btree_get_index(struct btree *btree, const char *sha1);
 void *btree_get_byoffset(struct btree *btree,uint32_t offset);
+
+struct btree_table *get_table(struct btree *btree, uint32_t offset);
 
 /*
  * Remove item with the given key 'sha1' from the database file.

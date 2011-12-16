@@ -206,3 +206,50 @@ void db_destroy(nessDB *db)
 	free(db);
 	db = NULL;
 }
+
+void db_drop(const char *basedir)
+{
+  int i;
+  for(i=0;i<DB_SLOT;i++){
+    char idx[256]={0};
+    char db[256]={0};
+    snprintf(idx,sizeof idx,"%s/%s%d%s",basedir,DB_PREFIX,i,IDXEXT);
+    snprintf(db,sizeof db,"%s/%s%d%s",basedir,DB_PREFIX,i,DBEXT);
+    if( remove(idx) != 0 )
+      fprintf(stderr, "Error removing file. May have already been deleted.");
+    if( remove(db) != 0 )
+      fprintf(stderr, "Error removing file. May have already been deleted.");
+  }
+}
+
+dbLine *db_get_all(nessDB *db, int *size)
+{
+  int i, keys = 0;
+  for(i=0;i<DB_SLOT;i++){
+    struct btree *bt = &db->_btrees[i];
+	  struct btree_table *table = get_table(bt, bt->top);
+    *size += table->size;
+  }
+  printf("size=%d\n", *size);
+  dbLine *myDb = (dbLine *) malloc(*size * sizeof(dbLine));
+  if (myDb == NULL) {
+    fprintf(stderr, "Error during memory allocation");
+    return myDb;
+  }
+  
+  for(i=0;i<DB_SLOT;i++){
+    struct btree *bt = &db->_btrees[i];
+  	struct btree_table *table = get_table(bt, bt->top);
+    size_t j = 0, end = table->size;
+    while (end != 0 && j <= end - 1) {
+  		uint32_t off = from_be32(table->items[j].offset);
+      char *val = (char *) btree_get_byoffset(bt, off);
+      (myDb[keys]).key = (char *) table->items[j].sha1;
+      (myDb[keys]).val = val;
+      printf("i=%d - key=%s & val=%s\n", keys, (myDb[keys]).key, val);
+      j++;
+      keys++;
+  	}
+  }
+  return myDb;
+}
