@@ -1,19 +1,31 @@
+RANDOM-WRITE RESULTS
+=====================
 Keys:		16 bytes each
 Values:		80 bytes each
-Entries:	5000000
-IndexSize:	114.4 MB (estimated)
-DataSize:	400.5 MB (estimated)
---------------------------------------------------------------------------------------------------------------
-nessDB:		version 1.8.1(LSM-Tree && B+Tree with Level-LRU,Page-Cache)
-Date:		Sat Nov 26 22:23:43 2011
+Entries:	10000000
+IndexSize:	238.4 MB (estimated)
+DataSize:	801.1 MB (estimated)
+---------------------------------------------------------------------------------------------------
+nessDB:		version 1.8.1(LSM-Tree storage engine)
+Date:		Fri Dec 16 23:07:00 2011
 CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
 CPUCache:	1024 KB
++-----------------------------+----------------+------------------------------+-------------------+
+|Random-Write	(done:10000000): 0.000012 sec/op; 80645.2 writes/sec(estimated); cost:124.000(sec)
 
-+-----------------------+---------------------------+----------------------------------+---------------------+
-|Random-Write	(done:4999999): 0.000023 sec/op; 43755.4 writes/sec(estimated); 4.5 MB/sec; cost:114.272(sec)
-+-----------------------+---------------------------+----------------------------------+---------------------+
-|Random-Read	(found:0): 0.000112 sec/op; 8912.4 reads /sec(estimated); 0.9 MB/sec; cost:2.244(sec)
-+-----------------------+---------------------------+----------------------------------+---------------------+
-|Seq-Read	(found:0): 0.000120 sec/op; 8346.7 reads /sec(estimated); 0.9 MB/sec; cost:2.396(sec)
-+-----------------------+---------------------------+----------------------------------+---------------------+
+RANDOM-READ RESULTS
+=====================
+Keys:		16 bytes each
+Values:		80 bytes each
+Entries:	100000
+IndexSize:	2.4 MB (estimated)
+DataSize:	8.0 MB (estimated)
+---------------------------------------------------------------------------------------------------
+nessDB:		version 1.8.1(LSM-Tree storage engine)
+Date:		Fri Dec 16 23:11:44 2011
+CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
+CPUCache:	1024 KB
++-----------------------------+----------------+------------------------------+-------------------+
+|Random-Read	(done:100000): 0.000030 sec/op; 33333.3 reads /sec(estimated); cost:3.000(sec)
+
 

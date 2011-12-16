@@ -76,7 +76,7 @@ void _print_header(int count)
 void _print_environment()
 {
 	time_t now = time(NULL);
-	printf("LSM-Tree:	version %s(nessDB storage engine)\n", V);
+	printf("nessDB:		version %s(LSM-Tree storage engine)\n", V);
 	printf("Date:		%s", (char*)ctime(&now));
 
 	int num_cpus = 0;
@@ -109,13 +109,15 @@ void _print_environment()
 	}
 }
 
-void _write_test(struct nessdb *db, long int count)
+void _write_test(long int count)
 {
 	int i;
 	double cost;
 	long long start,end;
 	struct slice sk, sv;
+	struct nessdb *db;
 
+	db = db_open(BUFFERPOOL, getcwd(NULL,0));
 	char key[KSIZE];
 	char val[VSIZE];
 
@@ -135,10 +137,10 @@ void _write_test(struct nessdb *db, long int count)
 			fflush(stderr);
 		}
 	}
+	db_close(db);
+
 	end = _ustime();
 	cost = end -start;
-
-	db_close(db);
 
 	printf(LINE);
 	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); cost:%.3f(sec)\n"
@@ -147,12 +149,15 @@ void _write_test(struct nessdb *db, long int count)
 		,cost);	
 }
 
-void _read_test(struct nessdb *db, long int count)
+void _read_test(long int count)
 {
 	int i;
 	double cost;
 	long long start,end;
 	struct slice sk;
+	struct nessdb *db;
+
+	db = db_open(BUFFERPOOL, getcwd(NULL,0));
 
 	char key[KSIZE];
 
@@ -172,9 +177,10 @@ void _read_test(struct nessdb *db, long int count)
 		}
 	}
 
+	db_close(db);
+
 	end = _ustime();
 	cost = end - start;
-	db_close(db);
 
  	cost = end - start;
 	printf(LINE);
@@ -185,9 +191,12 @@ void _read_test(struct nessdb *db, long int count)
 		,cost);
 }
 
-void _readone_test(struct nessdb *db, char *key)
+void _readone_test(char *key)
 {
 	struct slice sk;
+	struct nessdb *db;
+
+	db = db_open(BUFFERPOOL, getcwd(NULL,0));
 
 	sk.data = key;
 	sk.len = KSIZE;
@@ -198,14 +207,12 @@ void _readone_test(struct nessdb *db, char *key)
 		free(data);
 	} else
 		__DEBUG("Get Key:<%s>,but value is NULL", key);
-
 	db_close(db);
 }
 
 int main(int argc,char** argv)
 {
 	long int count;
-	struct nessdb *db;
 
 	srand(time(NULL));
 	_random_value();
@@ -214,25 +221,23 @@ int main(int argc,char** argv)
 		exit(1);
 	}
 	
-	db = db_open(BUFFERPOOL, getcwd(NULL,0));
 	if (strcmp(argv[1], "write") == 0) {
 		count = atoi(argv[2]);
 		_print_header(count);
 		_print_environment();
-		_write_test(db, count);
+		_write_test(count);
 	} else if (strcmp(argv[1], "read") == 0) {
 		count = atoi(argv[2]);
 		_print_header(count);
 		_print_environment();
 		
-		_read_test(db, count);
+		_read_test(count);
 	} else if (strcmp(argv[1], "readone") == 0) {
-		_readone_test(db, argv[2]);
+		_readone_test(argv[2]);
 	} else {
 		fprintf(stderr,"Usage: db-bench <op: write | read> <count>\n");
 		exit(1);
 	}
 
-	db_close(db);
 	return 1;
 }
