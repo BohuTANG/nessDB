@@ -15,10 +15,10 @@
 #endif
 
 //bloom
-#define CHAR_BIT 8
-#define SETBIT_1(bitset,i) (bitset[i / CHAR_BIT] |=  (1<<(i % CHAR_BIT)))
-#define SETBIT_0(bitset,i) (bitset[i / CHAR_BIT] &=  (~(1<<(i % CHAR_BIT))))
-#define GETBIT(bitset,i) (bitset[i / CHAR_BIT] &   (1<<(i % CHAR_BIT)))
+#define CHAR_BIT_1 8
+#define SETBIT_1(bitset,i) (bitset[i / CHAR_BIT_1] |=  (1<<(i % CHAR_BIT_1)))
+#define SETBIT_0(bitset,i) (bitset[i / CHAR_BIT_1] &=  (~(1<<(i % CHAR_BIT_1))))
+#define GETBIT(bitset,i) (bitset[i / CHAR_BIT_1] &   (1<<(i % CHAR_BIT_1)))
 
 
 //byte order

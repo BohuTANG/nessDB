@@ -16,18 +16,23 @@ typedef struct nessDB {
 	struct btree _btrees[DB_SLOT];
 	struct info _infos[DB_SLOT];
 } nessDB;
-
+typedef struct dbLine {
+  char *key;
+  char *val;
+} dbLine;
 
 /*
  * bufferpool_size:lru memory size allowed, unit is BYTE
  */
 nessDB *db_init(int bufferpool_size, const char *basedir);
 void   *db_get(nessDB *db, const char *key);
+dbLine *db_get_all(nessDB *db, int *size);
 int    db_exists(nessDB *db, const char *key);
 int    db_add(nessDB *db, const char *key,const char *value);
 void   db_remove(nessDB *db, const char *key);
 void   db_info(nessDB *db, char *infos);
 void   db_destroy(nessDB *db);
+void   db_drop(const char *basedir);
 
 
 #ifdef __cplusplus

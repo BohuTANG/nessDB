@@ -56,9 +56,6 @@
 #include "storage.h"
 #include "platform.h"
 
-#define IDXEXT	".idx"
-#define DBEXT	".db"
-
 struct chunk {
 	uint32_t offset;
 	uint32_t len;
@@ -97,23 +94,25 @@ static struct btree_table *alloc_table(struct btree *btree)
 	return table;
 }
 
-static struct btree_table *get_table(struct btree *btree, uint32_t offset)
+struct btree_table *get_table(struct btree *btree, uint32_t offset)
 {
-	assert(offset != 0);
-
 	/* take from cache */
 	struct btree_cache *slot = btree->cache[offset % btree->slot_prime];
-	if (slot->offset == offset) {
+	if (offset != 0 && slot->offset == offset) {
 		slot->offset = 0;
 		return slot->table;
 	}
 
 	struct btree_table *table = malloc(sizeof *table);
-
-	lseek(btree->fd, offset, SEEK_SET);
-	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
-		fprintf(stderr, "btree get_table: I/O error\n");
-		abort();
+  if (offset == 0) {
+    memset(table, 0, sizeof *table);
+    table->size = 0;
+  } else {
+	  lseek(btree->fd, offset, SEEK_SET);
+	  if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
+		  fprintf(stderr, "btree get_table: I/O error\n");
+		  abort();
+	  }
 	}
 	return table;
 }
