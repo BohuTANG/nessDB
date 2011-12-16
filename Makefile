@@ -9,15 +9,14 @@ CC = gcc
 CFLAGS =  -c -std=c99 -Wall  $(DEBUG)	
 
 LIB_OBJS = \
-	./engine/ht.o		\
-	./engine/llru.o		\
-	./engine/level.o	\
+	./engine/meta.o		\
+	./engine/sst.o		\
+	./engine/index.o	\
 	./engine/db.o		\
 	./engine/util.o		\
 	./engine/skiplist.o		\
 	./engine/log.o		\
 	./engine/buffer.o	\
-	./engine/storage.o 
 
 SVR_OBJS = \
 	./server/ae.o \

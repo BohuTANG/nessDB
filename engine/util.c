@@ -1,5 +1,13 @@
+/*
+ * LSM-Tree storage engine
+ * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
+ * All rights reserved.
+ * Code is licensed with BSD. See COPYING.BSD file.
+ *
+ */
+
 #ifndef _GNU_SOURCE
-	#define _GNU_SOURCE
+#define _GNU_SOURCE
 #endif
 
 #include <stdio.h>
@@ -12,14 +20,6 @@
 #include <unistd.h>
 
 #include "util.h"
-
-const char *concat_paths(const char *basedir, const char *subdir)
-{
-	char *path = malloc(256);
-	memset(path, 0, 256);
-	snprintf(path, 256, "%s/%s", basedir, subdir);
-	return path;
-}
 
 static void _portable_mkdir(const char *path)
 {

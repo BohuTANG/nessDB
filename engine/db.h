@@ -1,13 +1,11 @@
 #ifndef _DB_H
 #define _DB_H
 
+#include "index.h"
 #include "util.h"
 
 struct nessdb {
-	struct btree *btree;
-	struct skiplist *list;
-	struct log *log;
-	struct llru *lru;
+	struct index *idx;
 };
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir);

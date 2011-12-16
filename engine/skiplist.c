@@ -1,37 +1,16 @@
- /* Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
+/*
+ * LSM-Tree storage engine
+ * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
+ * Code is licensed with BSD. See COPYING.BSD file.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of lsmtree nor the names of its contributors may be used
- *     to endorse or promote products derived from this software without
- *     specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
-
 #include "skiplist.h"
+
 #include "debug.h"
 
 #define cmp_lt(a, b) (strcmp(a, b) < 0)
@@ -47,7 +26,7 @@ struct pool {
 
 struct pool *_pool_new()
 {
-	unsigned int p_size = 1024*512 - sizeof(struct pool);
+	unsigned int p_size = 8092 - sizeof(struct pool);
 	struct pool *pool = malloc(sizeof(struct pool) + p_size);
 
 	memset(pool, 0, p_size);
@@ -89,7 +68,6 @@ void *_pool_alloc(struct skiplist *list, size_t size)
 struct skiplist *skiplist_new(size_t size)
 {
 	int i;
-
 	struct skiplist *list = malloc(sizeof(struct skiplist));
 	list->hdr = malloc(sizeof(struct skipnode) + MAXLEVEL*sizeof(struct skipnode *));
 
@@ -120,13 +98,11 @@ int skiplist_notfull(struct skiplist *list)
 	return 0;
 }
 
-int skiplist_insert(struct skiplist *list, struct slice *sk, uint64_t val, OPT opt) 
+int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt) 
 {
 	int i, new_level;
 	struct skipnode *update[MAXLEVEL+1];
 	struct skipnode *x;
-
-	char *key = sk->data;
 
 	if (!skiplist_notfull(list))
 		return 0;
@@ -158,7 +134,7 @@ int skiplist_insert(struct skiplist *list, struct slice *sk, uint64_t val, OPT o
 	if ((x =_pool_alloc(list,sizeof(struct skipnode) + new_level*sizeof(struct skipnode *))) == 0)
 		__DEBUG("%s", "ERROR: Alloc Memory *ERROR*");
 
-	memcpy(x->key, key, sk->len);
+	memcpy(x->key, key, SKIP_KSIZE);
 	x->val = val;
 	x->opt = opt;
 
@@ -171,7 +147,12 @@ int skiplist_insert(struct skiplist *list, struct slice *sk, uint64_t val, OPT o
 	return(1);
 }
 
-void skiplist_delete(struct skiplist *list, char* data) 
+int skiplist_insert_node(struct skiplist *list, struct skipnode *node)
+{
+	return skiplist_insert(list, node->key, node->val, node->opt);
+}
+
+void skiplist_delete(struct skiplist *list, const  char *data) 
 {
 	int i;
 	struct skipnode *update[MAXLEVEL+1], *x;
@@ -199,10 +180,9 @@ void skiplist_delete(struct skiplist *list, char* data)
 		list->level--;
 }
 
-struct skipnode *skiplist_lookup(struct skiplist *list, struct slice *sk) 
+struct skipnode *skiplist_lookup(struct skiplist *list, char* data) 
 {
 	int i;
-	char *data = sk->data;
 	struct skipnode *x = list->hdr;
 	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NIL 
@@ -219,7 +199,7 @@ struct skipnode *skiplist_lookup(struct skiplist *list, struct slice *sk)
 
 void skiplist_dump(struct skiplist *list)
 {
-	int i;
+	int i = 0;
 	struct skipnode *x = list->hdr->forward[0];
 
 	printf("--skiplist dump:level<%d>,size:<%d>,count:<%d>\n",
@@ -227,8 +207,12 @@ void skiplist_dump(struct skiplist *list)
 			(int)list->size,
 			(int)list->count);
 
-	for (i=0; i<list->count; i++) {
-		printf("	[%d]key:<%s>;val<%llu>;opt<%s>\n", i, x->key, x->val, x->opt == ADD?"ADD":"DEL");
+	while( x != NIL) {
+		printf("	[%d]key:<%s>;val<%llu>;opt<%s>\n",
+				i++,
+				x->key,
+				x->val,
+				x->opt == ADD?"ADD":"DEL");
 		x = x->forward[0];
 	}
 }
