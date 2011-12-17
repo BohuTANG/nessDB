@@ -21,32 +21,11 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   =============
   a. Better performance on Random-Read/Random-Write
   b. Log recover
-  c. Using LSM-Tree && B+Tree
+  c. Using LSM-Tree
 
   HOW TODO
   ========
   $make db-bench
-  $db-bench add
-
-  BENCHMARK
-  =========
-  Keys:		16 bytes each
-  Values:		80 bytes each
-  Entries:	5000000
-  IndexSize:	114.4 MB (estimated)
-  DataSize:	400.5 MB (estimated)
-  --------------------------------------------------------------------------------------------------------------
-  nessDB:		version 1.8.1(LSM-Tree && B+Tree with Level-LRU,Page-Cache)
-  Date:		Sun Nov 27 18:19:47 2011
-  CPU:		2 *  Intel(R) Pentium(R) Dual  CPU  T3200  @ 2.00GHz
-  CPUCache:	1024 KB
-
-  +-----------------------+---------------------------+----------------------------------+---------------------+
-  |Random-Write	(done:4999999): 0.000020 sec/op; 50660.5 writes/sec(estimated); 5.2 MB/sec; cost:98.696(sec)
-  +-----------------------+---------------------------+----------------------------------+---------------------+
-  |Random-Read	(found:0): 0.000119 sec/op; 8382.7 reads /sec(estimated); 0.9 MB/sec; cost:2.386(sec)
-  +-----------------------+---------------------------+----------------------------------+---------------------+
-  |Seq-Read	(found:0): 0.000119 sec/op; 8417.3 reads /sec(estimated); 0.9 MB/sec; cost:2.376(sec)
-  +-----------------------+---------------------------+----------------------------------+---------------------+
+  $./db-bench <write | read > <count> or $./db-bench readone <key>
 
   Thanks for your attention!

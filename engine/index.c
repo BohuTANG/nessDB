@@ -15,6 +15,7 @@
 #include "index.h"
 #include "skiplist.h"
 #include "log.h"
+#include "buffer.h"
 #include "debug.h"
 
 #define TOLOG (0)
@@ -126,9 +127,10 @@ void index_remove(struct index *idx, struct slice *sk)
 
 char *index_get(struct index *idx, struct slice *sk)
 {
-	int len;
-	int result;
-	uint64_t off;
+
+	char lenstr[4];
+	int result = 0;
+	uint64_t off = 0UL;
 	struct skiplist *list = idx->mtbls[idx->lsn];
 	struct skipnode *node = skiplist_lookup(list, sk->data);
 	if (node && node->opt == ADD)
@@ -138,7 +140,8 @@ char *index_get(struct index *idx, struct slice *sk)
 
 	if (off != 0) {
 		lseek(idx->log->fd_db, off, SEEK_SET);
-		if(read(idx->log->fd_db, &len, sizeof(int)) == sizeof(int)) {
+		if(read(idx->log->fd_db, &lenstr, sizeof(int)) == sizeof(int)) {
+			uint32_t len = buffer_getint((unsigned char*)&lenstr);
 			char *data = malloc(len + 1);
 			result = read(idx->log->fd_db, data, len);
 			if (result != -1)
