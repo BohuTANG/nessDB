@@ -44,15 +44,6 @@ long long _ustime(void)
 }
 
 
-static char value[VSIZE+1] = {0};
-void _random_value()
-{
-	int i;
-	char salt[10] = {'1','2','3','4','5','6','7','8','a','b'};
-	for (i = 0; i < VSIZE; i++)
-		value[i] = salt[rand() % 10];
-}
-
 void _random_key(char *key,int length) {
 	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
 	memset(key, 0, length);
@@ -215,7 +206,6 @@ int main(int argc,char** argv)
 	long int count;
 
 	srand(time(NULL));
-	_random_value();
 	if (argc != 3) {
 		fprintf(stderr,"Usage: db-bench <op: write | read> <count>\n");
 		exit(1);
