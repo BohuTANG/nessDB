@@ -56,6 +56,11 @@ void  *db_get(struct nessdb *db, struct slice *sk)
 	return index_get(db->idx, sk);
 }
 
+dbLine *db_get_all(struct nessdb *db, int *size)
+{
+  return index_get_all(db->idx, size);
+}
+
 int db_exists(struct nessdb *db, struct slice *sk)
 {
 	char *val = index_get(db->idx, sk);
@@ -86,5 +91,11 @@ void db_flush(struct nessdb *db)
 void db_close(struct nessdb *db)
 {
 	index_free(db->idx);
+	free(db);
+}
+
+void db_drop(struct nessdb *db)
+{
+	index_drop_all(db->idx);
 	free(db);
 }

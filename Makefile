@@ -25,6 +25,9 @@ SVR_OBJS = \
 	./server/response.o \
 	./server/zmalloc.o \
 
+TEST_OBJS = \
+	./test/test_dump_and_restore.o
+		
 LIBRARY = libnessdb.a
 
 all: $(LIBRARY)
@@ -33,8 +36,9 @@ clean:
 	-rm -f $(LIBRARY)  
 	-rm -f $(LIB_OBJS)
 	-rm -f $(SVR_OBJS)
-	-rm -f bench/db-bench.o server/db-server.o 
-	-rm -f db-bench db-server
+	-rm -f $(TEST_OBJS)
+	-rm -f bench/db-bench.o server/db-server.o
+	-rm -f db-bench db-server db-test
 
 cleandb:
 	-rm -rf ndbs
@@ -48,4 +52,7 @@ db-bench: bench/db-bench.o $(LIB_OBJS)
 
 db-server: server/db-server.o $(SVR_OBJS) $(LIB_OBJS)
 	$(CC)  server/db-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
+
+db-test: test/test_dump_and_restore.o $(LIB_OBJS)
+	$(CC)  test/test_dump_and_restore.o $(LIB_OBJS)  -o $@
 
