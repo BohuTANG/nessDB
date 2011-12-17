@@ -10,7 +10,18 @@
  * +--------+--------+--------+--------+
  * |             sst block N           |
  * +--------+--------+--------+--------+
+ * |             footer                |
+ * +--------+--------+--------+--------+
  *
+ * FOOTER's LAYOUT:
+ * +--------+--------+--------+--------+
+ * |               last key            |
+ * +--------+--------+--------+--------+
+ * |             block count           |
+ * +--------+--------+--------+--------+
+ * |                 crc               |
+ * +--------+--------+--------+--------+
+
  * LSM-Tree storage engine
  * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
@@ -150,8 +161,6 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 		x = x->forward[0];
 	}
 
-
-
 	if (munmap(blks, sizes) == -1) {
 		perror("Error un-mmapping the file");
 	}
@@ -288,7 +297,7 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count)
 	int rem;
 
 	/* Less than 2x SST_MAX,compact one index file */
-	if (count < (SST_MAX * 2)) {
+	if (count <= SST_MAX * 2) {
 		x = _write_mmap(sst, x, count, 0);
 	} else {
 		x = _write_mmap(sst, x, SST_MAX, 0);
@@ -303,7 +312,7 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count)
 			x = _write_mmap(sst, x, SST_MAX, 1);
 		}
 
-		if (rem > 0) {
+		if ( rem > 0) {
 			/* The remain part,will be larger than SST_MAX */
 			memset(sst->name, 0, SST_NSIZE);
 			snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
@@ -318,7 +327,7 @@ void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 	int mul ;
 	int rem;
 
-	if (count < (SST_MAX * 2)) {
+	if (count <= SST_MAX * 2) {
 		memset(sst->name, 0, SST_NSIZE);
 		snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
 		x = _write_mmap(sst, x, count, 1);
