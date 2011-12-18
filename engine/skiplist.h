@@ -18,7 +18,7 @@ typedef enum {ADD,DEL} OPT;
 
 struct skipnode{
     char key[SKIP_KSIZE];
-	uint64_t  val;
+	uint64_t  val:47;
 	unsigned opt:1;                   
     struct skipnode *forward[1]; 
 	struct skipnode *next;

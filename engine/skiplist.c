@@ -208,10 +208,9 @@ void skiplist_dump(struct skiplist *list)
 			(int)list->count);
 
 	while( x != NIL) {
-		printf("	[%d]key:<%s>;val<%llu>;opt<%s>\n",
+		printf("	[%d]key:<%s>;opt<%s>\n",
 				i++,
 				x->key,
-				x->val,
 				x->opt == ADD?"ADD":"DEL");
 		x = x->forward[0];
 	}
