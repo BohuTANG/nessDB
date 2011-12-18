@@ -312,7 +312,7 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count)
 		x = _write_mmap(sst, x, SST_MAX, 0);
 
 		/* first+last */
-		mul = (count - SST_MAX) / SST_MAX;
+		mul = (count - SST_MAX * 2) / SST_MAX;
 		rem = count % SST_MAX;
 
 		for (int i = 0; i < mul; i++) {
@@ -321,13 +321,11 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count)
 			x = _write_mmap(sst, x, SST_MAX, 1);
 		}
 
-		if ( rem > 0) {
-			/* The remain part,will be larger than SST_MAX */
-			memset(sst->name, 0, SST_NSIZE);
-			snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
+		/* The remain part,will be larger than SST_MAX */
+		memset(sst->name, 0, SST_NSIZE);
+		snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
 
-			x = _write_mmap(sst, x, rem, 1);
-		}
+		x = _write_mmap(sst, x, rem + SST_MAX, 1);
 	}	
 }
 
