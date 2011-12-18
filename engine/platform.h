@@ -15,9 +15,8 @@
 
 #if defined(__linux__)
 	# define open open64
-	# define lseek lseek
-	# define fstat fstat
-	# define fsync fdatasync
+	# define lseek lseek64
+	# define fstat fstat64
 	# define LSM_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE)
 	# define LSM_OPEN_FLAGS   (O_RDWR | O_BINARY | O_LARGEFILE)
 #else

@@ -1,5 +1,5 @@
 ================================================================
-nessDB v1.8 with LSM-Tree && B+Tree 
+nessDB v1.8 with LSM-Tree
 Copyright (C) 2011 BohuTANG________________ 
 _____________________________  __ \__  __ )
 __  __ \  _ \_  ___/_  ___/_  / / /_  __  |
@@ -14,13 +14,13 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   LAYOUT
   ======
   (1) mtable : which is a sorted 'LSM-Tree' in memory and active for  recently ADD/UPDATE/DELETE operations.
-  (2) log : mtable's snapshot on-disk for data-recover.
-  (3) on-disk-index : B+Tree structured indices.
+  (2) log : mtable's snapshot on-disk for data-recovery.
+  (3) on-disk-index : LSM-Tree indices.
 
   V1.8 FEATURES
   =============
   a. Better performance on Random-Read/Random-Write
-  b. Log recover
+  b. Log recovery
   c. Using LSM-Tree
 
   HOW TODO
