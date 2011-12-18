@@ -35,8 +35,8 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 	while (left < right) {
 		i = (right -left) / 2 +left;
 		int cmp = strcmp(key, meta->nodes[i].end);
-		if (cmp == 0)
-			break ;
+		if (cmp == 0) 
+			return &meta->nodes[i];
 
 		if (cmp < 0)
 			right = i;

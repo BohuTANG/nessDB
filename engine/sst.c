@@ -247,17 +247,26 @@ uint64_t _read_offset(struct sst *sst, const char *key)
 {
 	int fd;
 	int blk_sizes;
-	int b_count;
+	int result;
 	uint64_t off = 0UL;
 	char file[SST_FLEN];
 	struct sst_block *blks;
+	struct footer footer;
+	int fsize = sizeof(struct footer);
 
 	memset(file, 0, SST_FLEN);
 	snprintf(file, SST_FLEN, "%s/%s", sst->basedir, sst->name);
 
 	fd = open(file, O_RDWR, 0644);
-	blk_sizes = lseek(fd, 0, SEEK_END);
-	b_count = blk_sizes / sizeof(struct sst_block);
+	result = lseek(fd, -fsize, SEEK_END);
+	if (result == -1) {
+		abort();
+	}
+	result = read(fd, &footer, fsize);
+	if (result == -1)
+		abort();
+
+	blk_sizes = footer.count * sizeof(struct sst_block);
 
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
@@ -266,7 +275,7 @@ uint64_t _read_offset(struct sst *sst, const char *key)
 		goto out;
 	}
 
-	size_t left = 0, right = b_count, i = 0;
+	size_t left = 0, right = footer.count, i = 0;
 	while (left < right) {
 		i = (right -left) / 2 +left;
 		int cmp = strcmp(key, blks[i].key);
