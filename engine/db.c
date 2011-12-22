@@ -13,7 +13,7 @@
 #include "db.h"
 
 #define DB "ness"
-#define LIST_SIZE	(5000000)
+#define LIST_SIZE	(2<<21)
 
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir)

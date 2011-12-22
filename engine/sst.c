@@ -44,7 +44,7 @@
 #include "sst.h"
 #include "debug.h"
 
-#define SST_MAX (25000)
+#define SST_MAX (2<<14)
 #define BLK_MAGIC (20111225)
 #define F_CRC (2011)
 

@@ -211,9 +211,9 @@ void request_dump(struct request *req)
 
 	printf("request-dump--->{");
 	printf("argc:<%d>\n",req->argc);
-	printf("		cmd:<%s>\n",_cmds[req->cmd].method);
+	printf("\t\tcmd:<%s>\n",_cmds[req->cmd].method);
 	for(i=0;i<req->argc;i++){
-		printf("		argv[%d]:<%s>\n",i,req->argv[i]);
+		printf("\t\targv[%d]:<%s>\n",i,req->argv[i]);
 	}
 	printf("}\n\n");
 }

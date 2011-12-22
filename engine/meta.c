@@ -93,7 +93,7 @@ void meta_dump(struct meta *meta)
 	printf("--Meta dump:count<%d>\n", meta->size);
 	for (i = 0; i< meta->size; i++) {
 		struct meta_node n = meta->nodes[i];
-		printf("	(%d) end:<%s>,indexname:<%s>,hascount:<%d>,lsn:<%d>\n",
+		printf("\t(%d) end:<%s>,indexname:<%s>,hascount:<%d>,lsn:<%d>\n",
 				i,
 				n.end,
 				n.index_name,

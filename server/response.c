@@ -96,7 +96,7 @@ void response_dump(struct response *res)
 	printf("response-dump--->{");
 	printf("argc:<%d>\n",res->argc);
 	for(i=0;i<res->argc;i++){
-		printf("		argv[%d]:<%s>\n",i,res->argv[i]);
+		printf("\t\targv[%d]:<%s>\n",i,res->argv[i]);
 	}
 	printf("}\n\n");
 }

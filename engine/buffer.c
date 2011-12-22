@@ -152,5 +152,5 @@ void buffer_dump(struct buffer *b)
 	printf("--buffer dump:buflen<%d>,pos<%d>\n", b->buflen, b->NUL);
 
 	for (i = 0; i < b->NUL; i++)
-		printf("	[%d] %c\n", i, b->buf[i]);
+		printf("\t[%d] %c\n", i, b->buf[i]);
 }
