@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <dirent.h>
 
 #include "sst.h"
 #include "index.h"
@@ -150,6 +151,52 @@ char *index_get(struct index *idx, struct slice *sk)
 	}
 
 	return NULL;
+}
+
+dbLine *index_get_all(struct index *idx, int *size)
+{  
+	int len, result, keys = 0;
+	struct skiplist *list = idx->mtbls[idx->lsn];
+  *size = (int) list->count;
+  
+  dbLine *myDb = (dbLine *) malloc(*size * sizeof(dbLine));
+  if (myDb == NULL) {
+    __DEBUG("ERROR: during memory allocation");
+    return myDb;
+  }
+  
+	struct skipnode *x = list->hdr->forward[0];
+	while( x != list->hdr) {
+    (myDb[keys]).key = x->key;
+  	lseek(idx->log->fd_db, x->val, SEEK_SET);
+  	if(read(idx->log->fd_db, &len, sizeof(int)) == sizeof(int)) {
+  		char *data = malloc(len + 1);
+  		result = read(idx->log->fd_db, data, len);
+  		if (result != -1)
+  		  (myDb[keys]).val = data;
+  	}
+  	//__DEBUG("	[%d]key:<%s>;val<%llu>; = %s\n", keys, x->key, x->val, (myDb[keys]).val);
+    keys++;
+		x = x->forward[0];
+	}
+  return myDb;
+}
+
+void index_drop_all(struct index *idx)
+{
+  unsigned char isFile =0x8;
+  DIR *dir;
+  struct dirent *dirEntry;
+  
+  dir = opendir(idx->basedir);
+  while((dirEntry=readdir(dir)) != NULL) {
+    if ( dirEntry->d_type == isFile) {
+      char file[INDEX_NSIZE]={0};
+      snprintf(file,INDEX_NSIZE,"%s/%s",idx->basedir,dirEntry->d_name);
+      if( remove(file) != 0 )
+        __DEBUG("ERROR: removing file: %s. File not found, may have already been deleted.", file);
+    }
+  }
 }
 
 void index_free(struct index *idx)

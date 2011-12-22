@@ -27,7 +27,9 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 int index_add(struct index *idx, struct slice *sk, struct slice *sv);
 void index_flush(struct index *idx);
 char *index_get(struct index *idx, struct slice *sk);
+dbLine *index_get_all(struct index *idx, int *size);
 void index_remove(struct index *idx, struct slice *sk);
+void index_drop_all(struct index *idx);
 void index_free(struct index *idx);
 
 #endif

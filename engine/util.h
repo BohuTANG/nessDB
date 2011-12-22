@@ -18,6 +18,10 @@ struct slice{
 	char *data;
 	int len;
 };
+typedef struct dbLine {
+  char *key;
+  char *val;
+} dbLine;
 
 void _ensure_dir_exists(const char *path);
 #endif
