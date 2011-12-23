@@ -151,6 +151,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	last = x;
 	for (i = 0 ; i < count; i++) {
 		if (x->opt == ADD) {
+			memset(blks[i].key, 0, SKIP_KSIZE);
 			memcpy(blks[i].key, x->key,SKIP_KSIZE);
 			blks[i].offset=x->val;
 		} else
@@ -241,7 +242,7 @@ out:
 	return merge;
 }
 
-uint64_t _read_offset(struct sst *sst, const char *key)
+uint64_t _read_offset(struct sst *sst, struct slice *sk)
 {
 	int fd;
 	int blk_sizes;
@@ -276,7 +277,7 @@ uint64_t _read_offset(struct sst *sst, const char *key)
 	size_t left = 0, right = footer.count, i = 0;
 	while (left < right) {
 		i = (right -left) / 2 +left;
-		int cmp = strcmp(key, blks[i].key);
+		int cmp = strcmp(sk->data, blks[i].key);
 		if (cmp == 0) {
 			off = blks[i].offset;	
 			break ;
@@ -449,7 +450,7 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 		return 0UL;
 
 	memcpy(sst->name, meta_info->index_name, SST_NSIZE);
-	off = _read_offset(sst, sk->data);
+	off = _read_offset(sst, sk);
 
 	return off;
 }
