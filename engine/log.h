@@ -15,8 +15,8 @@
 #include "platform.h"
 
 struct log{
-	int fd;
-	int fd_db;
+	int idx_wfd;
+	int db_wfd;
 	int islog;
 	char name[LOG_NSIZE];
 	uint64_t db_alloc;

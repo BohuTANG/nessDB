@@ -91,52 +91,32 @@ void buffer_putc(struct buffer *b, const char c)
 	b->buf[b->NUL] = '\0';
 }
 
+/*
+ * Little-Endian
+ */
 void buffer_putint(struct buffer *b, int val)
 {
 	_buffer_extendby(b, sizeof(int));
-	b->buf[b->NUL++] = (val >> 24) & 0xff;
-	b->buf[b->NUL++] = (val >> 16) & 0xff;
-	b->buf[b->NUL++] = (val >> 8) & 0xff;
 	b->buf[b->NUL++] = val & 0xff;
+	b->buf[b->NUL++] = (val >> 8) & 0xff;
+	b->buf[b->NUL++] = (val >> 16) & 0xff;
+	b->buf[b->NUL++] = (val >> 24) & 0xff;
 }
 
-uint32_t buffer_getint(unsigned char *buf)
-{
-	uint32_t val = 0;
-
-	val |= buf[0] << 24;
-	val |= buf[1] << 16;
-	val |= buf[2] << 8;
-	val |= buf[3];
-	return val;
-}
-
-uint64_t buffer_getlong(unsigned char *buf) 
-{
-	uint64_t val = 0;
-
-	val |= (uint64_t) buf[0] << 56;
-	val |= (uint64_t) buf[1] << 48;
-	val |= (uint64_t) buf[2] << 40;
-	val |= (uint64_t) buf[3] << 32;
-	val |= buf[4] << 24;
-	val |= buf[5] << 16;
-	val |= buf[6] << 8;
-	val |= buf[7];
-	return val;
-}
-
+/*
+ * Little-Endian
+ */
 void buffer_putlong(struct buffer *b, uint64_t val)
 {
 	_buffer_extendby(b, sizeof(uint64_t));
-	b->buf[b->NUL++] = (val >> 56) & 0xff;
-	b->buf[b->NUL++] = (val >> 48) & 0xff;
-	b->buf[b->NUL++] = (val >> 40) & 0xff;
-	b->buf[b->NUL++] = (val >> 32) & 0xff;
-	b->buf[b->NUL++] = (val >> 24) & 0xff;
-	b->buf[b->NUL++] = (val >> 16) & 0xff;
-	b->buf[b->NUL++] = (val >> 8) & 0xff;
 	b->buf[b->NUL++] = val & 0xff;
+	b->buf[b->NUL++] = (val >> 8) & 0xff;
+	b->buf[b->NUL++] = (val >> 16) & 0xff;
+	b->buf[b->NUL++] = (val >> 24) & 0xff;
+	b->buf[b->NUL++] = (val >> 32) & 0xff;
+	b->buf[b->NUL++] = (val >> 40) & 0xff;
+	b->buf[b->NUL++] = (val >> 48) & 0xff;
+	b->buf[b->NUL++] = (val >> 56) & 0xff;
 }
 
 char * buffer_detach(struct buffer *b)

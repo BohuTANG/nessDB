@@ -16,8 +16,7 @@
 
 struct sst_block{
 	char key[SKIP_KSIZE];
-	uint64_t offset:47;
-	unsigned opt:1;
+	uint64_t offset;
 }__attribute__((packed));
 
 struct sst{

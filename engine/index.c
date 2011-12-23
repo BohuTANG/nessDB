@@ -6,10 +6,25 @@
  *
  */
 
+#ifndef __USE_FILE_OFFSET64
+	#define __USE_FILE_OFFSET64
+#endif
+
+#ifndef __USE_LARGEFILE64
+	#define __USE_LARGEFILE64
+#endif
+
+#ifndef _LARGEFILE64_SOURCE
+	#define _LARGEFILE64_SOURCE
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <unistd.h>
 #include <string.h>
-#include <stdint.h>
+#include <stdio.h>
 
 #include "sst.h"
 #include "index.h"
@@ -24,6 +39,7 @@
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size)
 {
 	char dir[INDEX_NSIZE];
+	char dbfile[1024];
 	struct index *idx = malloc(sizeof(struct index));
 
 	memset(dir, 0, INDEX_NSIZE);
@@ -49,6 +65,11 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	/* log */
 	idx->log = log_new(idx->basedir, idx->name, TOLOG);
 	log_recovery(idx->log, idx->mtbls[0]);
+
+
+	memset(dbfile, 0, 1024);
+	snprintf(dbfile, 1024, "%s/%s.db", idx->basedir, name);
+	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
 
 	return idx;
 }
@@ -127,23 +148,24 @@ void index_remove(struct index *idx, struct slice *sk)
 
 char *index_get(struct index *idx, struct slice *sk)
 {
-
-	char lenstr[4];
+	int vlen = 0;
 	int result = 0;
 	uint64_t off = 0UL;
 	struct skiplist *list = idx->mtbls[idx->lsn];
 	struct skipnode *node = skiplist_lookup(list, sk->data);
+
 	if (node && node->opt == ADD)
 		off = node->val;
 	else 
 		off = sst_getoff(idx->sst, sk);
 
 	if (off != 0) {
-		lseek(idx->log->fd_db, off, SEEK_SET);
-		if(read(idx->log->fd_db, &lenstr, sizeof(int)) == sizeof(int)) {
-			uint32_t len = buffer_getint((unsigned char*)&lenstr);
-			char *data = malloc(len + 1);
-			result = read(idx->log->fd_db, data, len);
+		lseek(idx->db_rfd, off, SEEK_SET);
+		result = read(idx->db_rfd, &vlen, sizeof(int));
+		if(result == sizeof(int)) {
+			char *data = malloc(vlen + 1);
+			memset(data, 0, vlen+1);
+			result = read(idx->db_rfd, data, vlen);
 			if (result != -1)
 				return data;
 		}
@@ -154,7 +176,7 @@ char *index_get(struct index *idx, struct slice *sk)
 
 void index_free(struct index *idx)
 {
-	__DEBUG("%s:", "Warn: mtable is flush to disk");
+	close(idx->db_rfd);
 	index_flush(idx);
 	log_free(idx->log);
 	free(idx);

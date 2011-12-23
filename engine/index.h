@@ -13,6 +13,7 @@
 
 struct index{
 	int lsn;
+	int db_rfd;
 	int meta_lsn;
 	int max_mtbl;
 	int max_mtbl_size;

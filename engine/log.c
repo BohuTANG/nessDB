@@ -60,18 +60,18 @@ struct log *log_new(const char *basedir, const char *name, int islog)
 	snprintf(db_name, LOG_NSIZE, "%s/%s.db", basedir, name);
 
 	if (_file_exists(log_name))
-		l->fd = open(log_name, LSM_OPEN_FLAGS, 0644);
+		l->idx_wfd = open(log_name, LSM_OPEN_FLAGS, 0644);
 	else
-		l->fd = open(log_name, LSM_CREAT_FLAGS, 0644);
+		l->idx_wfd = open(log_name, LSM_CREAT_FLAGS, 0644);
 
 	if (_file_exists(db_name)) {
-		l->fd_db = open(db_name, LSM_OPEN_FLAGS, 0644);
-		l->db_alloc = lseek(l->fd_db, 0, SEEK_END);
+		l->db_wfd = open(db_name, LSM_OPEN_FLAGS, 0644);
+		l->db_alloc = lseek(l->db_wfd, 0, SEEK_END);
 	} else {
 		int magic = DB_MAGIC;
 
-		l->fd_db = open(db_name, LSM_CREAT_FLAGS, 0644);
-		result = write(l->fd_db, &magic, sizeof(int));
+		l->db_wfd = open(db_name, LSM_CREAT_FLAGS, 0644);
+		result = write(l->db_wfd, &magic, sizeof(int));
 		if (result == -1) 
 			perror("write magic error\n");
 		l->db_alloc = sizeof(int);
@@ -86,7 +86,7 @@ struct log *log_new(const char *basedir, const char *name, int islog)
 
 int log_recovery(struct log *l, struct skiplist *list)
 {
-	int sizes = lseek(l->fd, 0, SEEK_END);
+	int sizes = lseek(l->idx_wfd, 0, SEEK_END);
 	if (sizes > 0)
 		__DEBUG("%s", "WARNING: Find log file,need to recover");
 	/* TODO: log read */
@@ -110,8 +110,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		db_len = db_buf->NUL;
 		db_line = buffer_detach(db_buf);
 
-		lseek(l->fd_db, l->db_alloc, SEEK_SET);
-		if (write(l->fd_db, db_line, db_len) != db_len) {
+		if (write(l->db_wfd, db_line, db_len) != db_len) {
 			__DEBUG("%s:length:<%d>", "ERROR: Data AOF **ERROR**", db_len);
 			return db_offset;
 		}
@@ -131,7 +130,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		len = buf->NUL;
 		line = buffer_detach(buf);
 
-		if (write(l->fd, line, len) != len)
+		if (write(l->idx_wfd, line, len) != len)
 			__DEBUG("%s,buffer is:%s,buffer length:<%d>", "ERROR: Log AOF **ERROR**", line, len);
 	}
 
@@ -145,7 +144,7 @@ void log_trunc(struct log *l)
 	buffer_clear(l->buf);
 	buffer_clear(l->db_buf);
 	remove(l->name);
-	l->fd = open(l->name, LSM_CREAT_FLAGS, 0644);
+	l->idx_wfd = open(l->name, LSM_CREAT_FLAGS, 0644);
 }
 
 void log_free(struct log *l)
@@ -153,7 +152,7 @@ void log_free(struct log *l)
 	if (l) {
 		buffer_free(l->buf);
 		remove(l->name);
-		close(l->fd);
+		close(l->idx_wfd);
 		free(l);
 	}
 }

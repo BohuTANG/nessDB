@@ -150,10 +150,9 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 	last = x;
 	for (i = 0 ; i < count; i++) {
-		if (blks[i].opt == ADD) {
+		if (GET64_H(blks[i].offset) == ADD) {
 			memcpy(blks[i].key, x->key,SKIP_KSIZE);
 			blks[i].offset=x->val;
-			blks[i].opt=x->opt;
 		} else
 			count--;
 
@@ -230,7 +229,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	/* Merge */
 	merge = skiplist_new(footer.count + count + 1);
 	for (i = 0; i < footer.count; i++) {
-		if (blks[i].opt == ADD)
+		if (GET64_H(blks[i].offset) == ADD)
 			skiplist_insert(merge, blks[i].key, blks[i].offset, ADD);
 	}
 	
@@ -280,7 +279,7 @@ uint64_t _read_offset(struct sst *sst, const char *key)
 		i = (right -left) / 2 +left;
 		int cmp = strcmp(key, blks[i].key);
 		if (cmp == 0) {
-			if (blks[i].opt == ADD)
+			if (GET64_H(blks[i].offset) == ADD)
 				off = blks[i].offset;	
 			break ;
 		}
