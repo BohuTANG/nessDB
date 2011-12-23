@@ -28,7 +28,7 @@
 #define KSIZE 	16
 #define VSIZE 	80
 #define BUFFERPOOL	(1024*1024*1024)
-#define V			"1.8.1"
+#define V			"1.8"
 #define LINE 		"+-----------------------------+----------------+------------------------------+-------------------+\n"
 #define LINE1		"---------------------------------------------------------------------------------------------------\n"
 
@@ -123,7 +123,7 @@ void _write_test(long int count)
 		sv.data = val;
 
 		db_add(db, &sk, &sv);
-		if ((i % 10000) == 0) {
+		if ((i % 50000) == 0) {
 			fprintf(stderr,"random write finished %d ops%30s\r", i, "");
 			fflush(stderr);
 		}
