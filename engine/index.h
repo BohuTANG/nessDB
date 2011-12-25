@@ -24,7 +24,7 @@ struct index{
 	int meta_lsn;
 	int max_mtbl;
 	int max_mtbl_size;
-	int queue;
+	volatile int queue;
 
 	char basedir[INDEX_NSIZE];
 	char name[INDEX_NSIZE];

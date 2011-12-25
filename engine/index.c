@@ -112,7 +112,9 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	snprintf(dbfile, 1024, "%s/%s.db", idx->basedir, name);
 	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
 
-	pthread_create(&_bgmerge, NULL, _merge_job, idx);
+	if (pthread_create(&_bgmerge, NULL, _merge_job, idx) != 0) {
+		perror("Can't create background merge thread!");
+	}
 
 	return idx;
 }
