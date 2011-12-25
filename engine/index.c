@@ -55,7 +55,7 @@ void *_merge_job(void *arg)
 		if (ml && ml->stable) {
 			_ismerge = 1;
 
-			__DEBUG("---->>>>> Back merge start, count:<%d>", ml->list->count);
+			__DEBUG("---->>>>> Background merge start, merge count:<%d>", ml->list->count);
 			list = ml->list;
 			sst_merge(idx->sst, list);
 			skiplist_free(list);
@@ -65,7 +65,8 @@ void *_merge_job(void *arg)
 
 			/* TODO: need to free ml*/
 			_ismerge = 0;
-			__DEBUG("---->>>>> Back merge end, next merge count:<%d>", 1);
+			idx->queue--;
+			__DEBUG("---->>>>> Back merge end, waiting merge queue count:<%d>", idx->queue);
 		}
 	}
 }
@@ -81,6 +82,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	_ensure_dir_exists(dir);
 	
 	idx->lsn = 0;
+	idx->queue = 0;
 	idx->max_mtbl = 1;
 	idx->max_mtbl_size = max_mtbl_size;
 	memset(idx->basedir, 0, INDEX_NSIZE);
@@ -141,6 +143,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		ml->nxt = NULL;
 
 		idx->last = ml;
+		idx->queue++;
 	}
 	skiplist_insert(list, sk->data, db_offset, sv == NULL?DEL:ADD);
 
