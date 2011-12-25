@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include "sst.h"
 #include "index.h"
@@ -35,6 +36,39 @@
 
 #define TOLOG (0)
 #define DB_DIR "ndbs"
+
+static volatile int _ismerge = 0;
+static volatile int _nojob = 0;
+static pthread_t _bgmerge;
+
+void *_merge_job(void *arg)
+{
+	struct m_list *ml = NULL;
+	struct skiplist *list = NULL;
+	struct index *idx =(struct index*)arg;
+	while (1) {
+		sleep(1);
+		if (_nojob)
+			continue;
+
+		ml = idx->head;
+		if (ml && ml->stable) {
+			_ismerge = 1;
+
+			__DEBUG("---->>>>> Back merge start, count:<%d>", ml->list->count);
+			list = ml->list;
+			sst_merge(idx->sst, list);
+			skiplist_free(list);
+
+			idx->head = ml->nxt;
+			idx->head->pre = NULL;
+
+			/* TODO: need to free ml*/
+			_ismerge = 0;
+			__DEBUG("---->>>>> Back merge end, next merge count:<%d>", 1);
+		}
+	}
+}
 
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size)
 {
@@ -56,20 +90,27 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	memcpy(idx->name, name, INDEX_NSIZE);
 
 	/* mtable */
-	idx->mtbls = calloc(1, sizeof(struct skiplist*));
-	idx->mtbls[0] = skiplist_new(idx->max_mtbl_size);
+	idx->head = calloc(1, sizeof(struct m_list));
+	idx->head->stable = 0;
+	idx->head->list = skiplist_new(max_mtbl_size);
+	idx->head->pre = NULL;
+	idx->head->nxt = NULL;
+
+	idx->last = idx->head;
 
 	/* sst */
 	idx->sst = sst_new(idx->basedir);
 
 	/* log */
 	idx->log = log_new(idx->basedir, idx->name, TOLOG);
-	log_recovery(idx->log, idx->mtbls[0]);
+	log_recovery(idx->log, idx->head->list);
 
 
 	memset(dbfile, 0, 1024);
 	snprintf(dbfile, 1024, "%s/%s.db", idx->basedir, name);
 	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
+
+	pthread_create(&_bgmerge, NULL, _merge_job, idx);
 
 	return idx;
 }
@@ -80,7 +121,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	struct skiplist *list;
 
 	db_offset = log_append(idx->log, sk, sv);
-	list = idx->mtbls[idx->lsn];
+	list = idx->last->list;
 
 	if (!list) {
 		__DEBUG("ERROR: List<%d> is NULL", idx->lsn);
@@ -88,62 +129,43 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	if (!skiplist_notfull(list)) {
-		sst_merge(idx->sst, idx->mtbls[0]);
-		skiplist_free(idx->mtbls[0]);
+		struct m_list *ml = malloc(sizeof(struct m_list));
 
-		log_trunc(idx->log);
-
+		ml->stable = 0;
+		idx->last->stable = 1;
 		list = skiplist_new(idx->max_mtbl_size);
-		idx->mtbls[idx->lsn] = list;
+		ml->list = list;
+
+		idx->last->nxt = ml;
+		ml->pre = idx->last;
+		ml->nxt = NULL;
+
+		idx->last = ml;
 	}
-	skiplist_insert(list, sk->data, db_offset, ADD);
+	skiplist_insert(list, sk->data, db_offset, sv == NULL?DEL:ADD);
 
 	return 1;
 }
 
 void index_flush(struct index *idx)
 {
-	struct skiplist *list;
-
-	list = idx->mtbls[idx->lsn];
-
-	if (!list) {
-		__DEBUG("ERROR: List<%d> is NULL", idx->lsn);
-		return ;
+	/* Stop background job */
+	_nojob = 1;
+	while(1) {
+		if(_ismerge == 0) {
+			struct m_list *ml = idx->head;
+			struct skiplist *list = NULL;
+			while (ml != NULL) {
+				list = ml->list;
+				sst_merge(idx->sst, list);
+				skiplist_free(list);
+				free(ml);
+				ml = ml->nxt;
+			}
+			return;
+		} else
+			sleep(1);
 	}
-
-	sst_merge(idx->sst, idx->mtbls[0]);
-	skiplist_free(idx->mtbls[0]);
-
-	log_trunc(idx->log);
-
-	list = skiplist_new(idx->max_mtbl_size);
-	idx->mtbls[idx->lsn] = list;
-}
-
-void index_remove(struct index *idx, struct slice *sk)
-{
-	uint64_t db_offset;
-	struct skiplist *list;
-
-	db_offset = log_append(idx->log, sk, NULL);
-	list = idx->mtbls[idx->lsn];
-
-	if (!list) {
-		__DEBUG("ERROR: List<%d> is NULL", idx->lsn);
-		return;
-	}
-
-	if (!skiplist_notfull(list)) {
-		sst_merge(idx->sst, idx->mtbls[0]);
-		skiplist_free(idx->mtbls[0]);
-
-		log_trunc(idx->log);
-
-		list = skiplist_new(idx->max_mtbl_size);
-		idx->mtbls[idx->lsn] = list;
-	}
-	skiplist_insert(list, sk->data, db_offset, DEL);
 }
 
 char *index_get(struct index *idx, struct slice *sk)
@@ -151,13 +173,23 @@ char *index_get(struct index *idx, struct slice *sk)
 	int vlen = 0;
 	int result = 0;
 	uint64_t off = 0UL;
-	struct skiplist *list = idx->mtbls[idx->lsn];
-	struct skipnode *node = skiplist_lookup(list, sk->data);
 
+	struct skipnode *node = NULL;
+	struct m_list *ml = idx->last;
+	struct skiplist *list = NULL;
+	while (ml != NULL) {
+		list = ml->list;
+		node = skiplist_lookup(list, sk->data);
+		if (node)
+			break;
+		ml = ml->pre;
+	}
 	if (node && node->opt == ADD)
 		off = node->val;
-	else 
+	else { 
+		/* TODO: lock */
 		off = sst_getoff(idx->sst, sk);
+	}
 
 	if (off != 0) {
 		lseek(idx->db_rfd, off, SEEK_SET);

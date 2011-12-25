@@ -13,7 +13,7 @@
 #include "db.h"
 
 #define DB "ness"
-#define LIST_SIZE	(5000000)
+#define LIST_SIZE	(2500000)
 
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
@@ -50,9 +50,8 @@ int db_exists(struct nessdb *db, struct slice *sk)
 
 void db_remove(struct nessdb *db, struct slice *sk)
 {
-	index_remove(db->idx, sk);
+	index_add(db->idx, sk, NULL);
 }
-
 
 void db_info(struct nessdb *db, char *infos)
 {

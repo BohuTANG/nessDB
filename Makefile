@@ -44,8 +44,8 @@ $(LIBRARY): $(LIB_OBJS)
 	$(AR) -rs $@ $(LIB_OBJS)
 
 db-bench: bench/db-bench.o $(LIB_OBJS)
-	$(CC)  bench/db-bench.o $(LIB_OBJS)  -o $@
+	$(CC) -pthread  bench/db-bench.o $(LIB_OBJS)  -o $@
 
 db-server: server/db-server.o $(SVR_OBJS) $(LIB_OBJS)
-	$(CC)  server/db-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
+	$(CC) -pthread server/db-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
 
