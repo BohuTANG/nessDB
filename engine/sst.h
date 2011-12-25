@@ -10,6 +10,7 @@
 #define _SST_H
 
 #include <stdint.h>
+#include <pthread.h>
 #include "skiplist.h"
 #include "meta.h"
 #include "util.h"
@@ -24,6 +25,7 @@ struct sst{
 	char name[SST_NSIZE];
 	uint32_t lsn;
 	struct meta *meta;
+	pthread_mutex_t sst_mutex[MAX_SST];
 };
 
 struct sst *sst_new(const char *basedir);

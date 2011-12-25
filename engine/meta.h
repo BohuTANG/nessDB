@@ -13,7 +13,6 @@
 #include "skiplist.h"
 #include "util.h"
 
-#define META_SIZE (100000)
 #define META_NODE_SIZE sizeof(struct meta_node)
 
 struct meta_node{
@@ -26,7 +25,7 @@ struct meta_node{
 struct meta{
 	int32_t sn;
 	int32_t size;
-	struct meta_node nodes[META_SIZE];
+	struct meta_node nodes[MAX_SST];
 };
 
 struct meta *meta_new();

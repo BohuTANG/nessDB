@@ -14,6 +14,7 @@
 #define SST_FLEN (1024)
 #define INDEX_NSIZE (1024)
 #define LOG_NSIZE (1024)
+#define MAX_SST (100000)
 
 struct slice{
 	char *data;
