@@ -42,6 +42,24 @@ static volatile int _nojob = 0;
 static pthread_t _bgmerge;
 static pthread_mutex_t _idx_mutex;
 
+static inline void _atomic_inc(volatile int *addr)
+{
+	__asm__ __volatile__(
+			"lock; incl %0\n\t"
+			:"=m"(*addr)
+			:"m"(*addr)
+			);
+}
+
+static inline void _atomic_dec(volatile int *addr)
+{
+	__asm__ __volatile__(
+			"lock; decl %0\n\t"
+			:"=m"(*addr)
+			:"m"(*addr)
+			);
+}
+
 void *_merge_job(void *arg)
 {
 	struct m_list *ml = NULL;
@@ -55,8 +73,7 @@ void *_merge_job(void *arg)
 
 		ml = idx->head;
 		if (ml && ml->stable) {
-			_ismerge = 1;
-
+			_atomic_inc(&_ismerge);
 			__DEBUG("---->>>>> Background merge start, merge count:<%d>", ml->list->count);
 			list = ml->list;
 			sst_merge(idx->sst, list);
@@ -69,7 +86,7 @@ void *_merge_job(void *arg)
 
 			/* TODO: need to free ml, and truncate the log */
 			idx->queue--;
-			_ismerge = 0;
+			_atomic_dec(&_ismerge);
 			__DEBUG("---->>>>> Back merge end, waiting merge queue count:<%d>", idx->queue);
 		} else
 			sleep(5);
@@ -165,7 +182,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 void index_flush(struct index *idx)
 {
 	/* Stop background job */
-	_nojob = 1;
+	_atomic_inc(&_nojob);
 	while(1) {
 		if(_ismerge == 0) {
 			struct m_list *ml = idx->head;
