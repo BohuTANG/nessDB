@@ -61,7 +61,10 @@ void *_merge_job(void *arg)
 			idx->head->pre = NULL;
 			pthread_mutex_unlock(&_idx_mutex);
 
-			/* TODO: need to free ml, and truncate the log */
+			/* Remove the log which has been merged */
+			log_remove(idx->log, ml->lsn);
+
+			/* TODO: need to free ml */
 			idx->queue--;
 			_ismerge = 0;
 			__DEBUG("---->>>>> Back merge end, waiting merge queue count:<%d>", idx->queue);
@@ -76,7 +79,7 @@ void *_merge_job(void *arg)
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size)
 {
 	char dir[INDEX_NSIZE];
-	char dbfile[1024];
+	char dbfile[DB_NSIZE];
 	struct index *idx = malloc(sizeof(struct index));
 
 	memset(dir, 0, INDEX_NSIZE);
@@ -93,6 +96,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	memset(idx->name, 0, INDEX_NSIZE);
 	memcpy(idx->name, name, INDEX_NSIZE); /* mtable */
 	idx->head = calloc(1, sizeof(struct m_list));
+	idx->head->lsn = idx->lsn;
 	idx->head->stable = 0;
 	idx->head->list = skiplist_new(max_mtbl_size);
 	idx->head->pre = NULL;
@@ -104,12 +108,11 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	idx->sst = sst_new(idx->basedir);
 
 	/* log */
-	idx->log = log_new(idx->basedir, idx->name, TOLOG);
+	idx->log = log_new(idx->basedir, idx->lsn, TOLOG);
 	log_recovery(idx->log, idx->head->list);
 
-
-	memset(dbfile, 0, 1024);
-	snprintf(dbfile, 1024, "%s/%s.db", idx->basedir, name);
+	memset(dbfile, 0, DB_NSIZE);
+	snprintf(dbfile, DB_NSIZE, "%s/%s.db", idx->basedir, name);
 	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
 
 	if (pthread_create(&_bgmerge, NULL, _merge_job, idx) != 0) {
@@ -136,6 +139,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		struct m_list *ml = malloc(sizeof(struct m_list));
 
 		ml->stable = 0;
+		ml->lsn = idx->lsn;
 		idx->last->stable = 1;
 		list = skiplist_new(idx->max_mtbl_size);
 		ml->list = list;
@@ -149,6 +153,8 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		pthread_mutex_unlock(&_idx_mutex);
 
 		idx->queue++;
+		idx->lsn++;
+		log_next(idx->log, idx->lsn);
 	}
 	skiplist_insert(list, sk->data, db_offset, sv == NULL?DEL:ADD);
 
@@ -158,12 +164,14 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 void _index_flush(struct index *idx)
 {
 	/* Stop background job */
+	struct m_list *ml;
+	struct skiplist *list;
+
 	_stopjob = 1;
 	__DEBUG("%s", "Waiting for flushing the reset of indixes to disk....");
 	while (_ismerge == 1);
 
-	struct m_list *ml = idx->head;
-	struct skiplist *list = NULL;
+	ml = idx->head;
 	while (ml != NULL) {
 		list = ml->list;
 		__DEBUG("Front-merge start,count:<%d>", list->count);
@@ -184,6 +192,7 @@ char *index_get(struct index *idx, struct slice *sk)
 	struct skipnode *node = NULL;
 	struct m_list *ml = idx->last;
 	struct skiplist *list = NULL;
+
 	while (ml != NULL) {
 		list = ml->list;
 		node = skiplist_lookup(list, sk->data);
@@ -201,15 +210,22 @@ char *index_get(struct index *idx, struct slice *sk)
 	if (off != 0) {
 		lseek(idx->db_rfd, off, SEEK_SET);
 		result = read(idx->db_rfd, &vlen, sizeof(int));
+		if(FILE_ERR(result)) 
+			goto out_get;
+
 		if(result == sizeof(int)) {
 			char *data = malloc(vlen + 1);
 			memset(data, 0, vlen+1);
 			result = read(idx->db_rfd, data, vlen);
-			if (result != -1)
-				return data;
+			if(FILE_ERR(result)) {
+				free(data);
+				goto out_get;
+			}
+			return data;
 		}
 	}
 
+out_get:
 	return NULL;
 }
 

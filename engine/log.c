@@ -42,7 +42,7 @@ int _file_exists(const char *path)
 	return 0;
 }
 
-struct log *log_new(const char *basedir, const char *name, int islog)
+struct log *log_new(const char *basedir, int lsn, int islog)
 {
 	int result;
 	struct log *l;
@@ -52,12 +52,15 @@ struct log *log_new(const char *basedir, const char *name, int islog)
 	l = malloc(sizeof(struct log));
 	l->islog = islog;
 
-	memset(log_name, 0 ,LOG_NSIZE);
-	snprintf(log_name, LOG_NSIZE, "%s/%s.log", basedir, name);
+	memset(log_name, 0, LOG_NSIZE);
+	snprintf(log_name, LOG_NSIZE, "%s/%d.log", basedir, lsn);
 	memcpy(l->name, log_name, LOG_NSIZE);
 
+	memset(l->basedir, 0, LOG_NSIZE);
+	memcpy(l->basedir, basedir, LOG_NSIZE);
+
 	memset(db_name, 0, LOG_NSIZE);
-	snprintf(db_name, LOG_NSIZE, "%s/%s.db", basedir, name);
+	snprintf(db_name, LOG_NSIZE, "%s/ness.db", basedir);
 
 	if (_file_exists(log_name))
 		l->idx_wfd = open(log_name, LSM_OPEN_FLAGS, 0644);
@@ -86,11 +89,7 @@ struct log *log_new(const char *basedir, const char *name, int islog)
 
 int log_recovery(struct log *l, struct skiplist *list)
 {
-	int sizes = lseek(l->idx_wfd, 0, SEEK_END);
-	if (sizes > 0)
-		__DEBUG("%s", "WARNING: Find log file,need to recover");
-	/* TODO: log read */
-	return 0;
+	/* TODO: all log read */
 }
 
 uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
@@ -138,12 +137,25 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 	return db_offset;
 }
 
-
-void log_trunc(struct log *l)
+void log_remove(struct log *l, int lsn)
 {
+	char log_name[LOG_NSIZE];
+	memset(log_name, 0 ,LOG_NSIZE);
+	snprintf(log_name, LOG_NSIZE, "%s/%d.log", l->basedir, lsn);
+	remove(log_name);
+}
+
+void log_next(struct log *l, int lsn)
+{
+	char log_name[LOG_NSIZE];
+	memset(log_name, 0 ,LOG_NSIZE);
+	snprintf(log_name, LOG_NSIZE, "%s/%d.log", l->basedir, lsn);
+	memcpy(l->name, log_name, LOG_NSIZE);
+
 	buffer_clear(l->buf);
 	buffer_clear(l->db_buf);
-	remove(l->name);
+
+	close(l->idx_wfd);
 	l->idx_wfd = open(l->name, LSM_CREAT_FLAGS, 0644);
 }
 
@@ -151,7 +163,6 @@ void log_free(struct log *l)
 {
 	if (l) {
 		buffer_free(l->buf);
-		remove(l->name);
 		close(l->idx_wfd);
 		free(l);
 	}

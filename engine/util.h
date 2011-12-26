@@ -13,8 +13,11 @@
 #define SST_NSIZE (16)
 #define SST_FLEN (1024)
 #define INDEX_NSIZE (1024)
+#define DB_NSIZE (1024)
 #define LOG_NSIZE (1024)
 #define MAX_SST (100000)
+
+#define FILE_ERR(a) (a == -1)
 
 struct slice{
 	char *data;

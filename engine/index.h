@@ -13,6 +13,7 @@
 
 struct m_list {
 	int stable;
+	int lsn;
 	struct skiplist *list;
 	struct m_list *pre;
 	struct m_list *nxt;
