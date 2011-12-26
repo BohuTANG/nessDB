@@ -40,6 +40,7 @@
 static volatile int _ismerge = 0;
 static volatile int _nojob = 0;
 static pthread_t _bgmerge;
+static pthread_mutex_t _idx_mutex;
 
 void *_merge_job(void *arg)
 {
@@ -48,8 +49,10 @@ void *_merge_job(void *arg)
 	struct index *idx =(struct index*)arg;
 	while (1) {
 		sleep(1);
-		if (_nojob)
-			continue;
+		if (_nojob) {
+			__DEBUG("%s", "---->>>> Background merge thread exit normal.");
+			break;
+		}
 
 		ml = idx->head;
 		if (ml && ml->stable) {
@@ -60,15 +63,20 @@ void *_merge_job(void *arg)
 			sst_merge(idx->sst, list);
 			skiplist_free(list);
 
+			pthread_mutex_lock(&_idx_mutex);
 			idx->head = ml->nxt;
 			idx->head->pre = NULL;
+			pthread_mutex_unlock(&_idx_mutex);
 
-			/* TODO: need to free ml*/
-			_ismerge = 0;
+			/* TODO: need to free ml, and truncate the log */
 			idx->queue--;
+			_ismerge = 0;
 			__DEBUG("---->>>>> Back merge end, waiting merge queue count:<%d>", idx->queue);
-		}
+		} else
+			sleep(5);
 	}
+
+	return NULL;
 }
 
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size)
@@ -140,11 +148,14 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		list = skiplist_new(idx->max_mtbl_size);
 		ml->list = list;
 
+		pthread_mutex_lock(&_idx_mutex);
 		idx->last->nxt = ml;
 		ml->pre = idx->last;
 		ml->nxt = NULL;
 
-		idx->last = ml;
+		idx->last = ml;	
+		pthread_mutex_unlock(&_idx_mutex);
+
 		idx->queue++;
 	}
 	skiplist_insert(list, sk->data, db_offset, sv == NULL?DEL:ADD);
@@ -158,18 +169,21 @@ void index_flush(struct index *idx)
 	_nojob = 1;
 	while(1) {
 		if(_ismerge == 0) {
-			struct m_list *ml = idx->head;
+			struct m_list *ml = idx->head, *cur;
 			struct skiplist *list = NULL;
 			while (ml != NULL) {
+				cur = ml;
 				list = ml->list;
+				__DEBUG("Front-merge start,count:<%d>", list->count);
 				sst_merge(idx->sst, list);
+				idx->queue--;
+				__DEBUG("Front-merge end,merge queue count:<%d>", idx->queue);
 				skiplist_free(list);
 				free(ml);
-				ml = ml->nxt;
+				ml = cur->nxt;
 			}
 			return;
-		} else
-			sleep(1);
+		}
 	}
 }
 

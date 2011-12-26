@@ -25,11 +25,11 @@ struct skipnode{
 };
 
 struct skiplist{
-	struct  skipnode *hdr;                 
-	size_t count;
-	size_t size;
+	int count;
+	int size;
 	int level; 
 	char pool_embedded[1024];
+	struct  skipnode *hdr;                 
 	struct pool *pool;
 };
 
