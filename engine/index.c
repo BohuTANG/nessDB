@@ -38,42 +38,19 @@
 #define DB_DIR "ndbs"
 
 static volatile int _ismerge = 0;
-static volatile int _nojob = 0;
+static volatile int _stopjob = 0;
 static pthread_t _bgmerge;
 static pthread_mutex_t _idx_mutex;
-
-static inline void _atomic_inc(volatile int *addr)
-{
-	__asm__ __volatile__(
-			"lock; incl %0\n\t"
-			:"=m"(*addr)
-			:"m"(*addr)
-			);
-}
-
-static inline void _atomic_dec(volatile int *addr)
-{
-	__asm__ __volatile__(
-			"lock; decl %0\n\t"
-			:"=m"(*addr)
-			:"m"(*addr)
-			);
-}
 
 void *_merge_job(void *arg)
 {
 	struct m_list *ml = NULL;
 	struct skiplist *list = NULL;
 	struct index *idx =(struct index*)arg;
-	while (1) {
-		if (_nojob) {
-			__DEBUG("%s", "---->>>> Background merge thread exit normal.");
-			break;
-		}
-
+	while (_stopjob == 0) {
 		ml = idx->head;
 		if (ml && ml->stable) {
-			_atomic_inc(&_ismerge);
+			_ismerge = 1;
 			__DEBUG("---->>>>> Background merge start, merge count:<%d>", ml->list->count);
 			list = ml->list;
 			sst_merge(idx->sst, list);
@@ -86,12 +63,13 @@ void *_merge_job(void *arg)
 
 			/* TODO: need to free ml, and truncate the log */
 			idx->queue--;
-			_atomic_dec(&_ismerge);
+			_ismerge = 0;
 			__DEBUG("---->>>>> Back merge end, waiting merge queue count:<%d>", idx->queue);
 		} else
 			sleep(5);
 	}
 
+	__DEBUG("%s", "---->>>> Background merge thread exit normal.");
 	return NULL;
 }
 
@@ -113,9 +91,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	memcpy(idx->basedir, dir, INDEX_NSIZE);
 
 	memset(idx->name, 0, INDEX_NSIZE);
-	memcpy(idx->name, name, INDEX_NSIZE);
-
-	/* mtable */
+	memcpy(idx->name, name, INDEX_NSIZE); /* mtable */
 	idx->head = calloc(1, sizeof(struct m_list));
 	idx->head->stable = 0;
 	idx->head->list = skiplist_new(max_mtbl_size);
@@ -179,25 +155,23 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	return 1;
 }
 
-void index_flush(struct index *idx)
+void _index_flush(struct index *idx)
 {
 	/* Stop background job */
-	_atomic_inc(&_nojob);
-	while(1) {
-		if(_ismerge == 0) {
-			struct m_list *ml = idx->head;
-			struct skiplist *list = NULL;
-			while (ml != NULL) {
-				list = ml->list;
-				__DEBUG("Front-merge start,count:<%d>", list->count);
-				sst_merge(idx->sst, list);
-				idx->queue--;
-				__DEBUG("Front-merge end,merge queue count:<%d>", idx->queue);
-				skiplist_free(list);
-				ml = ml->nxt;
-			}
-			return;
-		}
+	_stopjob = 1;
+	__DEBUG("%s", "Waiting for flushing the reset of indixes to disk....");
+	while (_ismerge == 1);
+
+	struct m_list *ml = idx->head;
+	struct skiplist *list = NULL;
+	while (ml != NULL) {
+		list = ml->list;
+		__DEBUG("Front-merge start,count:<%d>", list->count);
+		sst_merge(idx->sst, list);
+		idx->queue--;
+		__DEBUG("Front-merge end,merge queue count:<%d>", idx->queue);
+		skiplist_free(list);
+		ml = ml->nxt;
 	}
 }
 
@@ -242,7 +216,7 @@ char *index_get(struct index *idx, struct slice *sk)
 void index_free(struct index *idx)
 {
 	close(idx->db_rfd);
-	index_flush(idx);
+	_index_flush(idx);
 	log_free(idx->log);
 	free(idx);
 }

@@ -58,11 +58,6 @@ void db_info(struct nessdb *db, char *infos)
 	/*TODO*/
 }
 
-void db_flush(struct nessdb *db)
-{
-	index_flush(db->idx);
-}
-
 void db_close(struct nessdb *db)
 {
 	index_free(db->idx);
