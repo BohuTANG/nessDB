@@ -48,7 +48,6 @@ void *_merge_job(void *arg)
 	struct skiplist *list = NULL;
 	struct index *idx =(struct index*)arg;
 	while (1) {
-		sleep(1);
 		if (_nojob) {
 			__DEBUG("%s", "---->>>> Background merge thread exit normal.");
 			break;
@@ -169,18 +168,16 @@ void index_flush(struct index *idx)
 	_nojob = 1;
 	while(1) {
 		if(_ismerge == 0) {
-			struct m_list *ml = idx->head, *cur;
+			struct m_list *ml = idx->head;
 			struct skiplist *list = NULL;
 			while (ml != NULL) {
-				cur = ml;
 				list = ml->list;
 				__DEBUG("Front-merge start,count:<%d>", list->count);
 				sst_merge(idx->sst, list);
 				idx->queue--;
 				__DEBUG("Front-merge end,merge queue count:<%d>", idx->queue);
 				skiplist_free(list);
-				free(ml);
-				ml = cur->nxt;
+				ml = ml->nxt;
 			}
 			return;
 		}
