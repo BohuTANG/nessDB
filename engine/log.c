@@ -90,6 +90,7 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 int log_recovery(struct log *l, struct skiplist *list)
 {
 	/* TODO: all log read */
+	return 0;
 }
 
 uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)

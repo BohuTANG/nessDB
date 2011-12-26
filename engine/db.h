@@ -16,7 +16,7 @@ struct nessdb {
 	struct index *idx;
 };
 
-struct nessdb *db_open(size_t bufferpool_size, const char *basedir);
+struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog);
 void *db_get(struct nessdb *db, struct slice *sk);
 int db_exists(struct nessdb *db, struct slice *sk);
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv);

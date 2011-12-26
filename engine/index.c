@@ -34,7 +34,6 @@
 #include "buffer.h"
 #include "debug.h"
 
-#define TOLOG (0)
 #define DB_DIR "ndbs"
 
 static volatile int _ismerge = 0;
@@ -44,11 +43,13 @@ static pthread_mutex_t _idx_mutex;
 
 void *_merge_job(void *arg)
 {
+	volatile int lsn = 0;
 	struct m_list *ml = NULL;
 	struct skiplist *list = NULL;
 	struct index *idx =(struct index*)arg;
 	while (_stopjob == 0) {
 		ml = idx->head;
+		lsn = ml->lsn;
 		if (ml && ml->stable) {
 			_ismerge = 1;
 			__DEBUG("---->>>>> Background merge start, merge count:<%d>", ml->list->count);
@@ -62,7 +63,7 @@ void *_merge_job(void *arg)
 			pthread_mutex_unlock(&_idx_mutex);
 
 			/* Remove the log which has been merged */
-			log_remove(idx->log, ml->lsn);
+			log_remove(idx->log, lsn);
 
 			/* TODO: need to free ml */
 			idx->queue--;
@@ -71,12 +72,10 @@ void *_merge_job(void *arg)
 		} else
 			sleep(5);
 	}
-
-	__DEBUG("%s", "---->>>> Background merge thread exit normal.");
 	return NULL;
 }
 
-struct index *index_new(const char *basedir, const char *name, int max_mtbl_size)
+struct index *index_new(const char *basedir, const char *name, int max_mtbl_size, int tolog)
 {
 	char dir[INDEX_NSIZE];
 	char dbfile[DB_NSIZE];
@@ -108,7 +107,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	idx->sst = sst_new(idx->basedir);
 
 	/* log */
-	idx->log = log_new(idx->basedir, idx->lsn, TOLOG);
+	idx->log = log_new(idx->basedir, idx->lsn, tolog);
 	log_recovery(idx->log, idx->head->list);
 
 	memset(dbfile, 0, DB_NSIZE);
@@ -139,7 +138,6 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		struct m_list *ml = malloc(sizeof(struct m_list));
 
 		ml->stable = 0;
-		ml->lsn = idx->lsn;
 		idx->last->stable = 1;
 		list = skiplist_new(idx->max_mtbl_size);
 		ml->list = list;
@@ -154,7 +152,8 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 		idx->queue++;
 		idx->lsn++;
-		log_next(idx->log, idx->lsn);
+		ml->lsn = idx->lsn;
+		log_next(idx->log, ml->lsn);
 	}
 	skiplist_insert(list, sk->data, db_offset, sv == NULL?DEL:ADD);
 
@@ -174,10 +173,8 @@ void _index_flush(struct index *idx)
 	ml = idx->head;
 	while (ml != NULL) {
 		list = ml->list;
-		__DEBUG("Front-merge start,count:<%d>", list->count);
 		sst_merge(idx->sst, list);
 		idx->queue--;
-		__DEBUG("Front-merge end,merge queue count:<%d>", idx->queue);
 		skiplist_free(list);
 		ml = ml->nxt;
 	}

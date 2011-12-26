@@ -16,12 +16,12 @@
 #define LIST_SIZE	(10000000)
 
 
-struct nessdb *db_open(size_t bufferpool_size, const char *basedir)
+struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog)
 {
 	struct nessdb *db;
 	 	
 	db = malloc(sizeof(struct nessdb));
-	db->idx = index_new(basedir, DB, LIST_SIZE);
+	db->idx = index_new(basedir, DB, LIST_SIZE, tolog);
 
 	return db;
 }

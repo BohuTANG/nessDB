@@ -24,7 +24,7 @@
 #include "../engine/util.h"
 #include "../engine/debug.h"
 
-
+#define TOLOG (0)
 #define KSIZE 	16
 #define VSIZE 	80
 #define BUFFERPOOL	(1024*1024*1024)
@@ -108,7 +108,7 @@ void _write_test(long int count)
 	struct slice sk, sv;
 	struct nessdb *db;
 
-	db = db_open(BUFFERPOOL, getcwd(NULL,0));
+	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
 	char key[KSIZE];
 	char val[VSIZE];
 
@@ -148,7 +148,7 @@ void _read_test(long int count)
 	struct slice sk;
 	struct nessdb *db;
 
-	db = db_open(BUFFERPOOL, getcwd(NULL,0));
+	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
 
 	char key[KSIZE];
 
@@ -187,7 +187,7 @@ void _readone_test(char *key)
 	struct slice sk;
 	struct nessdb *db;
 
-	db = db_open(BUFFERPOOL, getcwd(NULL,0));
+	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
 
 	sk.data = key;
 	sk.len = KSIZE;
