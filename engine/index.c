@@ -205,11 +205,13 @@ char *index_get(struct index *idx, struct slice *sk)
 	}
 
 	if (off != 0) {
+		__be32 blen;
 		lseek(idx->db_rfd, off, SEEK_SET);
-		result = read(idx->db_rfd, &vlen, sizeof(int));
+		result = read(idx->db_rfd, &blen, sizeof(int));
 		if(FILE_ERR(result)) 
 			goto out_get;
 
+		vlen = from_be32(blen);
 		if(result == sizeof(int)) {
 			char *data = malloc(vlen + 1);
 			memset(data, 0, vlen+1);

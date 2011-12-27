@@ -50,8 +50,8 @@
 
 struct footer{
 	char key[SKIP_KSIZE];
-	int count;
-	int crc;
+	__be32 count;
+	__be32 crc;
 };
 
 void _sst_load(struct sst *sst)
@@ -65,6 +65,8 @@ void _sst_load(struct sst *sst)
 	dd = opendir(sst->basedir);
 	while ((de = readdir(dd)) != NULL) {
 		if (strstr(de->d_name, ".sst")) {
+			int fcount = 0;
+			int fcrc = 0;
 			struct meta_node mn;
 			struct footer footer;
 			char sst_file[SST_FLEN];
@@ -80,16 +82,18 @@ void _sst_load(struct sst *sst)
 			if (result == -1)
 				abort();
 
-			if (footer.crc != F_CRC) {
-				__DEBUG("Error:crc wrong,crc:<%d>,index<%s>", footer.crc, sst_file);
+			fcount = from_be32(footer.count);
+			fcrc = from_be32(footer.crc);
+			if (fcrc != F_CRC) {
+				__DEBUG("Error:crc wrong,crc:<%d>,index<%s>", fcrc, sst_file);
 				close(fd);
 				continue;
 			}
 
-			all_count += footer.count;
+			all_count += fcount;
 						
 			/* Set meta */
-			mn.count = footer.count;
+			mn.count = fcount;
 			memset(mn.end, 0, SKIP_KSIZE);
 			memcpy(mn.end, footer.key, SKIP_KSIZE);
 
@@ -153,7 +157,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 		if (x->opt == ADD) {
 			memset(blks[i].key, 0, SKIP_KSIZE);
 			memcpy(blks[i].key, x->key,SKIP_KSIZE);
-			blks[i].offset=x->val;
+			blks[i].offset=to_be64(x->val);
 		} else
 			count--;
 
@@ -165,8 +169,8 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 		perror("Error un-mmapping the file");
 	}
 	
-	footer.count = count;
-	footer.crc = F_CRC;
+	footer.count = to_be32(count);
+	footer.crc = to_be32(F_CRC);
 	memset(footer.key, 0, SKIP_KSIZE);
 	memcpy(footer.key, last->key, SKIP_KSIZE);
 
@@ -199,6 +203,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	int i;
 	int fd;
 	int result;
+	int fcount;
 	int blk_sizes;
 	char file[SST_FLEN];
 	struct sst_block *blks;
@@ -218,7 +223,9 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	if (result == -1)
 		abort();
 
-	blk_sizes = footer.count * sizeof(struct sst_block);
+	fcount = from_be32(footer.count);
+
+	blk_sizes = fcount * sizeof(struct sst_block);
 
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
@@ -228,9 +235,9 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	}
 
 	/* Merge */
-	merge = skiplist_new(footer.count + count + 1);
-	for (i = 0; i < footer.count; i++) {
-			skiplist_insert(merge, blks[i].key, blks[i].offset, ADD);
+	merge = skiplist_new(fcount + count + 1);
+	for (i = 0; i < fcount; i++) {
+			skiplist_insert(merge, blks[i].key, from_be64(blks[i].offset), ADD);
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
@@ -245,6 +252,7 @@ out:
 uint64_t _read_offset(struct sst *sst, struct slice *sk)
 {
 	int fd;
+	int fcount;
 	int blk_sizes;
 	int result;
 	uint64_t off = 0UL;
@@ -265,7 +273,8 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	if (result == -1)
 		abort();
 
-	blk_sizes = footer.count * sizeof(struct sst_block);
+	fcount = from_be32(footer.count);
+	blk_sizes = fcount * sizeof(struct sst_block);
 
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
@@ -274,12 +283,12 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 		goto out;
 	}
 
-	size_t left = 0, right = footer.count, i = 0;
+	size_t left = 0, right = fcount, i = 0;
 	while (left < right) {
 		i = (right -left) / 2 +left;
 		int cmp = strcmp(sk->data, blks[i].key);
 		if (cmp == 0) {
-			off = blks[i].offset;	
+			off = from_be64(blks[i].offset);	
 			break ;
 		}
 

@@ -92,31 +92,31 @@ void buffer_putc(struct buffer *b, const char c)
 }
 
 /*
- * Little-Endian
+ * Big-Endian
  */
 void buffer_putint(struct buffer *b, int val)
 {
 	_buffer_extendby(b, sizeof(int));
-	b->buf[b->NUL++] = val & 0xff;
-	b->buf[b->NUL++] = (val >> 8) & 0xff;
-	b->buf[b->NUL++] = (val >> 16) & 0xff;
 	b->buf[b->NUL++] = (val >> 24) & 0xff;
+	b->buf[b->NUL++] = (val >> 16) & 0xff;
+	b->buf[b->NUL++] = (val >> 8) & 0xff;
+	b->buf[b->NUL++] = val & 0xff;
 }
 
 /*
- * Little-Endian
+ * Big-Endian
  */
 void buffer_putlong(struct buffer *b, uint64_t val)
 {
 	_buffer_extendby(b, sizeof(uint64_t));
-	b->buf[b->NUL++] = val & 0xff;
-	b->buf[b->NUL++] = (val >> 8) & 0xff;
-	b->buf[b->NUL++] = (val >> 16) & 0xff;
-	b->buf[b->NUL++] = (val >> 24) & 0xff;
-	b->buf[b->NUL++] = (val >> 32) & 0xff;
-	b->buf[b->NUL++] = (val >> 40) & 0xff;
-	b->buf[b->NUL++] = (val >> 48) & 0xff;
 	b->buf[b->NUL++] = (val >> 56) & 0xff;
+	b->buf[b->NUL++] = (val >> 48) & 0xff;
+	b->buf[b->NUL++] = (val >> 40) & 0xff;
+	b->buf[b->NUL++] = (val >> 32) & 0xff;
+	b->buf[b->NUL++] = (val >> 24) & 0xff;
+	b->buf[b->NUL++] = (val >> 16) & 0xff;
+	b->buf[b->NUL++] = (val >> 8) & 0xff;
+	b->buf[b->NUL++] = val & 0xff;
 }
 
 char * buffer_detach(struct buffer *b)
