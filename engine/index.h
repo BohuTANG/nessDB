@@ -9,14 +9,13 @@
 #ifndef _INDEX_H
 #define _INDEX_H
 
+#include <pthread.h>
+#include "skiplist.h"
 #include "util.h"
 
-struct m_list {
-	int stable;
-	int lsn;
+struct idx_park{
 	struct skiplist *list;
-	struct m_list *pre;
-	struct m_list *nxt;
+	int lsn;
 };
 
 struct index{
@@ -25,14 +24,14 @@ struct index{
 	int meta_lsn;
 	int max_mtbl;
 	int max_mtbl_size;
-	volatile int queue;
 
 	char basedir[INDEX_NSIZE];
 	char name[INDEX_NSIZE];
 	struct log *log;
 	struct sst *sst;
-	struct m_list *head;
-	struct m_list *last;
+	struct skiplist *list;
+	struct idx_park *park;
+	pthread_mutex_t merge_mutex;
 };
 
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size, int tolog);

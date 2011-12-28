@@ -228,9 +228,9 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	blk_sizes = fcount * sizeof(struct sst_block);
 
 	/* Blocks read */
-	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
+	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-	    perror("Error:read_mmap, mmapping the file");
+		perror("Error:read_mmap, mmapping the file");
 		goto out;
 	}
 
@@ -445,7 +445,7 @@ void sst_merge(struct sst *sst, struct skiplist *list)
 		 _flush_new_list(sst, x, list->count);
 	else
 		_flush_list(sst, x, list->hdr, list->count);
-
+	skiplist_free(list);
 }
 
 uint64_t sst_getoff(struct sst *sst, struct slice *sk)
