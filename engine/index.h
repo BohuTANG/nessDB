@@ -31,6 +31,7 @@ struct index{
 	struct sst *sst;
 	struct skiplist *list;
 	struct idx_park *park;
+	pthread_attr_t attr;
 	pthread_mutex_t merge_mutex;
 };
 

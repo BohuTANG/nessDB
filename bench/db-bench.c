@@ -123,7 +123,7 @@ void _write_test(long int count)
 		sv.data = val;
 
 		db_add(db, &sk, &sv);
-		if ((i % 50000) == 0) {
+		if ((i % 10000) == 0) {
 			fprintf(stderr,"random write finished %d ops%30s\r", i, "");
 			fflush(stderr);
 		}

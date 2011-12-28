@@ -42,7 +42,6 @@ void *_merge_job(void *arg)
 	struct sst *sst;
 	struct log *log;
 
-	__DEBUG("%s", "------------------------------------------>start to merge...");
 	/* Lock bengin */
 	idx = (struct index*)arg;
 	lsn = idx->park->lsn;
@@ -59,8 +58,6 @@ void *_merge_job(void *arg)
 
 	/* Lock end */
 	log_remove(log, lsn);
-
-	__DEBUG("%s", "------------------------------------------>end merge...");
 
 out:
 	pthread_detach(pthread_self());
@@ -104,6 +101,11 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	snprintf(dbfile, DB_NSIZE, "%s/%s.db", idx->basedir, name);
 	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
 
+	/* Detached thread attr */
+	pthread_attr_init(&idx->attr);
+	pthread_attr_setdetachstate(&idx->attr, PTHREAD_CREATE_DETACHED);
+
+
 	return idx;
 }
 
@@ -133,7 +135,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		pthread_t tid;
 		idx->park->list = list;
 		idx->park->lsn = idx->lsn;
-		pthread_create(&tid, NULL, _merge_job, idx);
+		pthread_create(&tid, &idx->attr, _merge_job, idx);
 
 		/* New mtable is born */
 		new_list = skiplist_new(idx->max_mtbl_size);
@@ -220,6 +222,7 @@ out_get:
 void index_free(struct index *idx)
 {
 	_index_flush(idx);
+	pthread_attr_destroy(&idx->attr);
 	log_free(idx->log);
 	close(idx->db_rfd);
 	free(idx->park);
