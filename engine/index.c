@@ -42,7 +42,7 @@ void *_merge_job(void *arg)
 	struct sst *sst;
 	struct log *log;
 
-	/* Lock bengin */
+	/* Lock begin */
 	idx = (struct index*)arg;
 	lsn = idx->park->lsn;
 	list = idx->park->list;
@@ -126,9 +126,9 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 		/* If the detached-merge thread isnot finished,hold on it 
 		 * Notice: it will block the current process, 
-		 * but it happens only once in a thousand yesrs on production environment.
+		 * but it happens only once in a thousand years on production environment.
 		*/
-		while(pthread_mutex_trylock(&idx->merge_mutex) != 0);
+		pthread_mutex_lock(&idx->merge_mutex);
 		pthread_mutex_unlock(&idx->merge_mutex);
 
 		/* Start to merge with detached thread */
@@ -153,7 +153,7 @@ void _index_flush(struct index *idx)
 {
 	struct skiplist *list;
 
-	while(pthread_mutex_trylock(&idx->merge_mutex) != 0);
+	pthread_mutex_lock(&idx->merge_mutex);
 	pthread_mutex_unlock(&idx->merge_mutex);
 
 	list = idx->list;

@@ -44,7 +44,7 @@
 #include "sst.h"
 #include "debug.h"
 
-#define SST_MAX (2<<14)
+#define SST_MAX (25000)
 #define BLK_MAGIC (20111225)
 #define F_CRC (2011)
 
@@ -56,22 +56,18 @@ struct footer{
 
 void _sst_load(struct sst *sst)
 {
-	int fd;
-	int all_count = 0;
-	int result;
+	int fd, result, all_count = 0;
 	DIR *dd;
 	struct dirent *de;
 
 	dd = opendir(sst->basedir);
 	while ((de = readdir(dd)) != NULL) {
 		if (strstr(de->d_name, ".sst")) {
-			int fcount = 0;
-			int fcrc = 0;
+			int fcount = 0, fcrc = 0;
 			struct meta_node mn;
 			struct footer footer;
 			char sst_file[SST_FLEN];
 			int fsize = sizeof(struct footer);
-
 
 			memset(sst_file, 0, SST_FLEN);
 			snprintf(sst_file, SST_FLEN, "%s/%s", sst->basedir, de->d_name);
