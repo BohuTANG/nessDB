@@ -456,7 +456,6 @@ void sst_merge(struct sst *sst, struct skiplist *list)
 
 uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 {
-	/* Have some bugs to fixed */
 	uint64_t off = 0UL;
 	struct meta_node *meta_info;
 
