@@ -9,6 +9,7 @@
 #ifndef _DEBUG_H
 #define _DEBUG_H
 
+#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
 

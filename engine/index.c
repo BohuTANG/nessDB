@@ -182,8 +182,9 @@ char *index_get(struct index *idx, struct slice *sk)
 	cur_list = idx->list;
 	node = skiplist_lookup(cur_list, sk->data);
 	if (node){
-		if(node->opt == ADD)
-			value_off = node->val;
+		if(node->opt == DEL)
+			goto out_get;
+		value_off = node->val;
 	} else {
 		merge_list = idx->park->list;
 		if (merge_list) {

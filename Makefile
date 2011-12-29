@@ -17,6 +17,9 @@ LIB_OBJS = \
 	./engine/skiplist.o		\
 	./engine/log.o		\
 	./engine/buffer.o	\
+	./engine/ht.o		\
+	./engine/level.o	\
+	./engine/llru.o
 
 SVR_OBJS = \
 	./server/ae.o \

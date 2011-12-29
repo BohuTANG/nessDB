@@ -9,10 +9,12 @@
 #ifndef _DB_H
 #define _DB_H
 
+#include "llru.h"
 #include "index.h"
 #include "util.h"
 
 struct nessdb {
+	struct llru *lru;
 	struct index *idx;
 };
 
