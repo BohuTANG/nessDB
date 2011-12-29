@@ -61,7 +61,7 @@ void _sst_load(struct sst *sst)
 	struct dirent *de;
 
 	dd = opendir(sst->basedir);
-	while ((de = readdir(dd)) != NULL) {
+	while ((de = readdir(dd))) {
 		if (strstr(de->d_name, ".sst")) {
 			int fcount = 0, fcrc = 0;
 			struct meta_node mn;
@@ -372,10 +372,10 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 		/* If m is NULL, cur->key more larger than meta's largest area
 		 * need to create new index-file
 		 */
-		if(meta_info == NULL){
+		if(!meta_info){
 
 			/* If merge is NULL,it has no merge*/
-			if(merge != NULL) {
+			if(merge) {
 				struct skipnode *h = merge->hdr->forward[0];
 				_flush_merge_list(sst, h, merge->count);
 				skiplist_free(merge);
@@ -398,7 +398,7 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 			 */
 			int cmp = strcmp(sst->name, meta_info->index_name);
 			if(cmp == 0) {
-				if (merge == NULL)
+				if (!merge)
 					merge = _read_mmap(sst,count);	
 
 				skiplist_insert_node(merge, cur);
@@ -451,7 +451,7 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 	struct meta_node *meta_info;
 
 	meta_info = meta_get(sst->meta, sk->data);
-	if(meta_info == NULL)
+	if(!meta_info)
 		return 0UL;
 
 	memcpy(sst->name, meta_info->index_name, SST_NSIZE);

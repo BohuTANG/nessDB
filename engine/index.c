@@ -129,12 +129,13 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		 * but it happens only once in a thousand years on production environment.
 		*/
 		pthread_mutex_lock(&idx->merge_mutex);
-		pthread_mutex_unlock(&idx->merge_mutex);
 
 		/* Start to merge with detached thread */
 		pthread_t tid;
 		idx->park->list = list;
 		idx->park->lsn = idx->lsn;
+		pthread_mutex_unlock(&idx->merge_mutex);
+
 		pthread_create(&tid, &idx->attr, _merge_job, idx);
 
 		/* New mtable is born */
