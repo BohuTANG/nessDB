@@ -303,16 +303,26 @@ out:
 	return off;
 }
 
-void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count)
+void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct meta_node *meta)
 {
 	int mul;
 	int rem;
 
 	/* Less than 2x SST_MAX,compact one index file */
 	if (count <= SST_MAX * 2) {
-		x = _write_mmap(sst, x, count, 0);
+		if (meta) {
+			pthread_mutex_lock(&sst->meta->mutexs[meta->lsn]);
+			x = _write_mmap(sst, x, count, 0);
+			pthread_mutex_unlock(&sst->meta->mutexs[meta->lsn]);
+		} else 
+			x = _write_mmap(sst, x, count, 0);
 	} else {
-		x = _write_mmap(sst, x, SST_MAX, 0);
+		if (meta) {
+			pthread_mutex_lock(&sst->meta->mutexs[meta->lsn]);
+			x = _write_mmap(sst, x, SST_MAX, 0);
+			pthread_mutex_unlock(&sst->meta->mutexs[meta->lsn]);
+		} else
+			x = _write_mmap(sst, x, SST_MAX, 0);
 
 		/* first+last */
 		mul = (count - SST_MAX * 2) / SST_MAX;
@@ -364,10 +374,10 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 	struct skipnode *cur = x;
 	struct skipnode *first = hdr;
 	struct skiplist *merge = NULL;
+	struct meta_node *meta_info = NULL;
 
 	while(cur != first) {
-
-		struct meta_node *meta_info = meta_get(sst->meta, cur->key);
+		meta_info = meta_get(sst->meta, cur->key);
 
 		/* If m is NULL, cur->key more larger than meta's largest area
 		 * need to create new index-file
@@ -377,7 +387,7 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 			/* If merge is NULL,it has no merge*/
 			if(merge) {
 				struct skipnode *h = merge->hdr->forward[0];
-				_flush_merge_list(sst, h, merge->count);
+				_flush_merge_list(sst, h, merge->count, NULL);
 				skiplist_free(merge);
 				merge = NULL;
 			}
@@ -406,7 +416,7 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 				if (merge) {
 					struct skipnode *h = merge->hdr->forward[0];
 
-					_flush_merge_list(sst, h, merge->count);
+					_flush_merge_list(sst, h, merge->count, meta_info);
 					skiplist_free(merge);
 					merge = NULL;
 				}
@@ -427,7 +437,7 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 
 	if (merge) {
 		struct skipnode *h = merge->hdr->forward[0];
-		_flush_merge_list(sst, h, merge->count);
+		_flush_merge_list(sst, h, merge->count, meta_info);
 		skiplist_free(merge);
 	}
 }
@@ -455,7 +465,13 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 		return 0UL;
 
 	memcpy(sst->name, meta_info->index_name, SST_NSIZE);
+
+	/* If get one record from on-disk sst file, 
+	 * this file must not be operated by bg-merge thread
+	*/
+	pthread_mutex_lock(&sst->meta->mutexs[meta_info->lsn]);
 	off = _read_offset(sst, sk);
+	pthread_mutex_unlock(&sst->meta->mutexs[meta_info->lsn]);
 
 	return off;
 }

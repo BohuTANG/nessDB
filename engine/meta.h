@@ -10,6 +10,8 @@
 #define _META_H
 
 #include <stdint.h>
+#include <pthread.h>
+
 #include "skiplist.h"
 #include "util.h"
 
@@ -25,7 +27,8 @@ struct meta_node{
 struct meta{
 	int32_t sn;
 	int32_t size;
-	struct meta_node nodes[MAX_SST];
+	struct meta_node nodes[META_MAX];
+	pthread_mutex_t mutexs[META_MAX];
 };
 
 struct meta *meta_new();

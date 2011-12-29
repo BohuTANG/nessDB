@@ -18,12 +18,12 @@
 #define O_BINARY 0
 #endif
 
-#define SST_NSIZE (16)
-#define SST_FLEN (1024)
+#define SST_NSIZE (16)		/* sst index file name size */
+#define SST_FLEN (1024)		/* sst index file full path size */
+#define META_MAX (100000)	/* max index file count */
 #define INDEX_NSIZE (1024)
 #define DB_NSIZE (1024)
 #define LOG_NSIZE (1024)
-#define MAX_SST (100000)
 
 #define FILE_ERR(a) (a == -1)
 
