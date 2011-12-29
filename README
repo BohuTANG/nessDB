@@ -13,15 +13,28 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 
   LAYOUT
   ======
-  (1) mtable : which is a sorted 'LSM-Tree' in memory and active for  recently ADD/UPDATE/DELETE operations.
+  (1) mtable : which is a key sorted 'LSM-Tree' in memory and active for ADD/UPDATE/DELETE operations.
+  	+skiplist.c
+
   (2) log : mtable's snapshot on-disk for data-recovery.
-  (3) on-disk-index : LSM-Tree indices.
+  	+log.c
+
+  (3) sst : on-disk index file, key sorted too.
+  	+sst.c
+
+  (4) bg-merge : a background merge thread. It will start when one mtable is FULL.
+  	+index.c
+
+  (5) level-LRU : a level LRU cache on memory, it includes Old_Level_LRU and New_Level_LRU two levels.
+  	+level.c
+	+llru.c
 
   V1.8 FEATURES
   =============
-  a. Better performance on Random-Read/Random-Write
+  a. Better performances on Random-Read/Random-Write
   b. Log recovery
-  c. Using LSM-Tree
+  c. Using LSM-Tree as storage engine
+  d. Level LRU
 
   HOW TODO
   ========
