@@ -58,7 +58,8 @@ memtable
 
 on-disk sst
 ===========
-  'sst' is on-disk index file(key is stored), each '.sst' file's max count is limited by 'SST_MAX' macro,which is defined in 'sst.c', default count is 25000.
+  'sst' is on-disk index file(key is stored), each '.sst' file's max count is limited by 'SST_MAX' macro,
+   which is defined in 'sst.c', default count is 25000.
  
  a 'sst' index file layout:
  +------------------------------------------+
@@ -107,7 +108,7 @@ on disk db
  +--------+--------+--------+--------+
  |            value N                |
  +--------+--------+--------+--------+
- 'magic number' is a int number for datas is not start from '0' offset
+ 'magic number' is a int number for datas not start from '0' offset
   
 
 
