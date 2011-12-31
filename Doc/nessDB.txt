@@ -19,14 +19,14 @@ OVERALL LAYOUT
 	+--------------------------------+       +---------------------------------+ 
 	|          memtable              |       |         background-merge        |
 	|--------------------------------|------>|---------------------------------|
-	|  key-stored memory table       |       |background merge detached thread |
+	|  key-sorted memory table       |       |background merge detached thread |
 	+--------------+-----------------+       +---------------------------------+
 		       |
 		       |
 	+--------------+-----------------+
 	|         on-disk sst            |
 	|--------------------------------|
-	|  key-stored disk index files   |
+	|  key-sorted disk index files   |
 	+--------------+-----------------+
 		       |
 		       |
@@ -41,6 +41,11 @@ OVERALL LAYOUT
 	|---------------------------------|
 	|         disk log file           |
 	+---------------------------------+
+
+	nessDB has three kinds file on disk, there are: '.sst', '.db' and '.log'
+	'.sst' file is index file, all keys are sorted and all indexes file don't contain overlapping keys
+	'.db' file is data file 
+	'.log' is reconvery file
 
 memtable
 =========
@@ -58,7 +63,7 @@ memtable
 
 on-disk sst
 ===========
-  'sst' is on-disk index file(key is stored), the max number of one '.sst' file is limited by 'SST_MAX' macro,
+  'sst' is on-disk index file(key is sorted), the max number of one '.sst' file is limited by 'SST_MAX' macro,
    which is defined in 'sst.c', default count is 25000.
  
  a 'sst' index file layout:
