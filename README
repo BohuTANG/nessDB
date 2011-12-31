@@ -13,32 +13,22 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 
   LAYOUT
   ======
-  (1) mtable : which is a key sorted 'LSM-Tree' in memory and active for ADD/UPDATE/DELETE operations.
-  	+skiplist.c
-
-  (2) log : mtable's snapshot on-disk for data-recovery.
-  	+log.c
-
-  (3) sst : on-disk index file, key sorted too.
-  	+sst.c
-
-  (4) bg-merge : a background merge thread. It will start when one mtable is FULL.
-  	+index.c
-
-  (5) level-LRU : a level LRU cache on memory, it includes Old_Level_LRU and New_Level_LRU two levels.
-  	+level.c
-	+llru.c
-
+  For more details, please refer to documentations which in 'Doc' folder.
+  
   V1.8 FEATURES
   =============
   a. Better performances on Random-Read/Random-Write
   b. Log recovery
   c. Using LSM-Tree as storage engine
-  d. Level LRU
+  d. Background detached-thread merging
+  e. Level LRU
 
   HOW TODO
   ========
   $make db-bench
   $./db-bench <write | read > <count> or $./db-bench readone <key>
+
+  If you want delete all idnexes/db/logs, your should do:
+  $make cleandb
 
   Thanks for your attention!

@@ -52,13 +52,13 @@ memtable
  |   key  | value-offset |  operation |
  +--------+--------------+-------------+
  'key' is entry key(is distint,or will be covered)
- 'value-offset' is the offset of data storage in 'db' file
+ 'value-offset' is the offset of one entry data which stored in the 'db' file
  'operation' is 'ADD' or 'DEL' action.
 
 
 on-disk sst
 ===========
-  'sst' is on-disk index file(key is stored), each '.sst' file's max count is limited by 'SST_MAX' macro,
+  'sst' is on-disk index file(key is stored), the max number of one '.sst' file is limited by 'SST_MAX' macro,
    which is defined in 'sst.c', default count is 25000.
  
  a 'sst' index file layout:
@@ -69,17 +69,17 @@ on-disk sst
  +------------------------------------------+
  |     ... more sst blocks ...              |
  +------------------------------------------+
- |          sst block N                     |
+ i          sst block N                     |
  +------------------------------------------+
  |             FOOTER                       |
  +------------------------------------------+
 
  'sst block' structured:
- +--------+-------------------------+
- |   key  | value-offset(big-endian | 
- +--------+-------------------------+
+ +--------+--------------------------+
+ |   key  | value-offset(big-endian) | 
+ +--------+--------------------------+
  'key' is entry key(is distint,or will be covered)
- 'value-offset' is the offset of data storage in 'db' file
+ 'value-offset' is the offset of one entry data which stored in the 'db' file
  NOTICE: all 'sst block' operations are 'ADD'('DEL' operation entries are filtered when written to index file)
 
 
@@ -91,25 +91,111 @@ on-disk sst
  'count' is all entries's count of current sorted index file
  'crc' is used to verify the current index file
 
-on disk db
+on-disk db
 ==========
  It is the 'value' storage file.
  'db' structured:
- +--------+--------+--------+--------+
- | 	    magic number             |
- +--------+--------+--------+--------+
- |           value 1 len             |
- +--------+--------+--------+--------+
- |            value 1                |
- +--------+--------+--------+--------+
+ +-----------------------------------+
+ | 	         magic number            |
+ +-----------------+-----------------+
+ |  value 1 length |   value 1       |
+ +-----------------+-----------------+
  |      ... all the others ...       |
- +--------+--------+--------+--------+
- |           value N len             |
- +--------+--------+--------+--------+
- |            value N                |
- +--------+--------+--------+--------+
- 'magic number' is a int number for datas not start from '0' offset
+ +-----------------+-----------------+
+ |  value N length |   value N       |
+ +-----------------+-----------------+
+ 'magic number' is a integer for datas not start from '0' offset
   
 
+
+on-disk log
+===========
+ 'on-disk log' is prepared for data recovery when storage engine shutdown than expected.
+ Each memtable is mapping one log file on disk. Actually, there are at most two 'log' files exists:
+ one is merging memtable's, and another is current active memtable's.
+ When background detached-thread is done, the merging memtable's log will be deleted immediately.
+
+ 'log' structured:
+ +---------------+----------+-------------+------------+
+ |  key 1 length |   key 1  | data offset | operation  |
+ +---------------+----------+-------------+------------+
+ |               ... all the others ...                |
+ +---------------+----------+-------------+------------+
+ |  key N length |   key N  | data offset | operation  |
+ +---------------+----------+-------------+------------+
+
+ When nessDB reopen again, it checks is some 'log' files exists
+ if exists, recovery it(read log file and add entry to current active memtable)
+
+
+All of the above is about nessDB's architecture and main structure layout.
+Now, let's show the processes of 'WRITE' and 'READ'.
+
+WRITE PROCESS
+=============
+
+	      +----------------------+     +-------------------------------+   +--------------------------+
+	 ---->|  write to log first  |+--->|  write to active memtable     |-->|    create new  memtable  |---> add to the memtable
+	      +----------------------+     +-------------------------------+   +--------------------------+
+		                                         |
+		                                         | if active is full(memtable becomes immutable) 
+		                                         v
+		                           +-------------------------------+
+		                           | create one thread to do merge |
+		                           +-------------------------------+
+		                                         |
+		                                         |
+		                                         v
+		                           +-------------------------------+
+		                           |delete merging memtable'ss log |
+		                           +-------------------------------+
+		                                         |
+		                                         v
+		                           +-------------------------------+
+		                           |      exit the merging thread  |
+		                           +-------------------------------+
+
+
+ Summarize: 
+	since merging is on background thread, so can't block the front-end writing, 
+	and nessDB has read/write-locking, so concurrent writing/reading is allowed on the same index file.
+
+READ PROCESS
+=============
+
+	        +----------------------------+
+	 +----->| lookup from active metable |
+	^       +-----------+----------------+
+	|                   |
+	|            exists | not exists
+	|            +------+------------------------+
+	|            |                               |
+	|            v                               v
+	| +------------------------+     +-----------------------+
+	| + read data from db file |     |  get data from LLRU   |
+	| +------------------------+     +-----------------------+
+	|                                     exists | not exists
+	|<-------------------------------------------+-----------------+
+	|                                                              |
+	|                                               +--------------v-------------------+
+	|                                               |  get index file info from meta   |
+	|                                               +--------------+-------------------+
+	|                                                              |
+	|                                                              |
+	|                                               +--------------v-------------------+
+	|                                               | read data offset from index file |
+	|                                               +--------------+-------------------+
+	|                                                              |
+	|                                                              |
+	|                                               +--------------v-------------------+
+	|                                               |     read data from db file       |
+	|                                               +--------------+-------------------+
+	|                                                              |
+	\--------------------------------------------------------------/
+
+
+END?
+=====
+Yes, I guess and hope so.
 
 
