@@ -165,10 +165,12 @@ void _index_flush(struct index *idx)
 	log_remove(idx->log, idx->lsn);
 }
 
-char *index_get(struct index *idx, struct slice *sk)
+/*
+ * Return status: -1:error 0:NULL 1:exists
+ */
+int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 {
-	int value_len;
-	int result;
+	int ret = 0, value_len, result;
 	uint64_t value_off = 0UL;
 
 	struct skipnode *node;
@@ -182,8 +184,10 @@ char *index_get(struct index *idx, struct slice *sk)
 	cur_list = idx->list;
 	node = skiplist_lookup(cur_list, sk->data);
 	if (node){
-		if(node->opt == DEL)
+		if(node->opt == DEL) {
+			ret  = -1;
 			goto out_get;
+		}
 		value_off = node->val;
 	} else {
 		merge_list = idx->park->list;
@@ -201,8 +205,10 @@ char *index_get(struct index *idx, struct slice *sk)
 		__be32 be32len;
 		lseek(idx->db_rfd, value_off, SEEK_SET);
 		result = read(idx->db_rfd, &be32len, sizeof(int));
-		if(FILE_ERR(result)) 
+		if(FILE_ERR(result)) {
+			ret = -1;
 			goto out_get;
+		}
 
 		value_len = from_be32(be32len);
 		if(result == sizeof(int)) {
@@ -211,14 +217,17 @@ char *index_get(struct index *idx, struct slice *sk)
 			result = read(idx->db_rfd, data, value_len);
 			if(FILE_ERR(result)) {
 				free(data);
+				ret = -1;
 				goto out_get;
 			}
-			return data;
+			sv->len = value_len;
+			sv->data = data;
+			return 1;
 		}
 	}
 
 out_get:
-	return NULL;
+	return ret;
 }
 
 void index_free(struct index *idx)

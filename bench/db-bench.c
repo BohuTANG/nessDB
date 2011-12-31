@@ -143,9 +143,11 @@ void _write_test(long int count)
 void _read_test(long int count)
 {
 	int i;
+	int ret;
 	double cost;
 	long long start,end;
 	struct slice sk;
+	struct slice sv;
 	struct nessdb *db;
 
 	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
@@ -155,12 +157,11 @@ void _read_test(long int count)
 	start = _ustime();
 	for (i = 0; i < count; i++) {
 		_random_key(key, KSIZE);
-		sk.data = key;
 		sk.len = KSIZE;
-
-		char *data = db_get(db, &sk);
-		if (data) 
-			free(data);
+		sk.data = key;
+		ret = db_get(db, &sk, &sv);
+		if (ret) 
+			free(sv.data);
 
 		if ((i % 10000) == 0) {
 			fprintf(stderr,"random read finished %d ops%30s\r", i, "");
@@ -184,18 +185,19 @@ void _read_test(long int count)
 
 void _readone_test(char *key)
 {
+	int ret;
 	struct slice sk;
+	struct slice sv;
 	struct nessdb *db;
 
 	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
-
-	sk.data = key;
 	sk.len = KSIZE;
+	sk.data = key;
 
-	char *data = db_get(db, &sk);
-	if (data){ 
-		__DEBUG("Get Key:<%s>--->value is :<%s>", key, data);
-		free(data);
+	ret = db_get(db, &sk, &sv);
+	if (ret){ 
+		__DEBUG("Get Key:<%s>--->value is :<%s>", key, sv.data);
+		free(sv.data);
 	} else
 		__DEBUG("Get Key:<%s>,but value is NULL", key);
 	db_close(db);

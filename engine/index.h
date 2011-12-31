@@ -37,7 +37,7 @@ struct index{
 
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size, int tolog);
 int index_add(struct index *idx, struct slice *sk, struct slice *sv);
-char *index_get(struct index *idx, struct slice *sk);
+int index_get(struct index *idx, struct slice *sk, struct slice *sv);
 void index_free(struct index *idx);
 
 #endif

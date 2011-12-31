@@ -206,8 +206,8 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 							 }
 				case CMD_MSET:{
 								  int i;
-								  int c=req->argc;
-								  for(i=1;i<c;i+=2){
+								  int c = req->argc;
+								  for (i = 1; i < c; i += 2) {
 									  struct slice sk, sv;
 									  sk.len = strlen(req->argv[i]);
 									  sk.data = req->argv[i];
@@ -217,88 +217,96 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 									  db_add(_svr.db, &sk, &sv);
 								  }
 
-								  resp=response_new(0,OK);
-								  response_detch(resp,sent_buf);
-								  write(fd,sent_buf,strlen(sent_buf));
+								  resp=response_new(0, OK);
+								  response_detch(resp, sent_buf);
+								  write(fd,sent_buf, strlen(sent_buf));
 								  response_dump(resp);
 								  response_free(resp);
 								  break;
 							  }
 
 				case CMD_GET:{
+								 int ret;
 								 struct slice sk;
-								 void* result;
+								 struct slice sv;
 								 if (req->argc == 2) {
 									 sk.len=strlen(req->argv[1]);
 									 sk.data = req->argv[1];
-									 result=db_get(_svr.db, &sk);
-									 if(result==NULL)
+									 ret = db_get(_svr.db, &sk, &sv);
+									 if(!ret)
 										 resp=response_new(0,OK_404);
 									 else{
 										 resp=response_new(1,OK_200);
-										 resp->argv[0]=result;
+										 resp->argv[0] = sv.data;
 									 }
-									 response_detch(resp,sent_buf);
+									 response_detch(resp, sent_buf);
 									 write(fd,sent_buf,strlen(sent_buf));
 									 response_dump(resp);
 									 response_free(resp);
 
-									 if(result)
-										 free(result);
+									 if (ret)
+										 free(sv.data);
 									 break;
 								 }
 							 }
 				case CMD_MGET:{
+								  int i;
+								  int ret;
 								  int c=req->argc;
 								  int sub_c=c-1;
-								  char **vals=calloc(c,sizeof(char*));
-								  int i;
-								  resp=response_new(sub_c,OK_200);
+								  char **vals = calloc(c, sizeof(char*));
+								  resp=response_new(sub_c, OK_200);
 
-								  for(i=1;i<c;i++){
+								  for (i = 1; i < c; i++){
 									  struct slice sk;
+									  struct slice sv;
 									  sk.len = strlen(req->argv[i]);
 									  sk.data = req->argv[i];
 
-									  vals[i-1]=db_get(_svr.db, &sk);
-									  resp->argv[i-1]=vals[i-1];
+									  ret = db_get(_svr.db, &sk, &sv);
+									  if (ret)
+										  vals[i-1] = sv.data;
+									  else
+										  vals[i-1] = NULL;
+
+									  resp->argv[i-1] = vals[i-1];
 								  }
 
-								  response_detch(resp,sent_buf);
-								  write(fd,sent_buf,strlen(sent_buf));
+								  response_detch(resp, sent_buf);
+								  write(fd, sent_buf, strlen(sent_buf));
 								  response_dump(resp);
 								  response_free(resp);
 
-								  for(i=0;i<sub_c;i++){
-									  if(vals[i])
+								  for (i = 0; i < sub_c; i++){
+									  if (vals[i])
 										  free(vals[i]);	
 								  }
 								  free(vals);
 								  break;
 							  }
 				case CMD_INFO:{
-								  char infos[BUF_SIZE]={0};	
+								  char infos[BUF_SIZE] = {0};	
 								  db_info(_svr.db, infos);
-								  resp=response_new(1,OK_200);
-								  resp->argv[0]=infos;
-								  response_detch(resp,sent_buf);
-								  write(fd,sent_buf,strlen(sent_buf));
+								  resp = response_new(1, OK_200);
+								  resp->argv[0] = infos;
+								  response_detch(resp, sent_buf);
+								  write(fd,sent_buf, strlen(sent_buf));
 								  response_dump(resp);
 								  response_free(resp);
 								  break;
 							  }
 
 				case CMD_DEL:{
-								 for(int i=1;i<req->argc;i++){
+								 for (int i = 1; i < req->argc; i++){
 									 struct slice sk;
 									 sk.len = strlen(req->argv[i]);
 									 sk.data = req->argv[i];
 									 db_remove(_svr.db, &sk);
 								 }
 
-								 resp=response_new(0,OK);
-								 response_detch(resp,sent_buf);
-								 write(fd,sent_buf,strlen(sent_buf));
+								 resp = response_new(0, OK);
+								 response_detch(resp, sent_buf);
+								 write(fd, sent_buf, strlen(sent_buf));
 								 response_dump(resp);
 								 response_free(resp);
 								 break;
@@ -316,9 +324,9 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 								break;
 
 __default:				default:{
-						resp=response_new(0,ERR);
-							response_detch(resp,sent_buf);
-							write(fd,sent_buf,strlen(sent_buf));
+						resp = response_new(0, ERR);
+							response_detch(resp, sent_buf);
+							write(fd, sent_buf, strlen(sent_buf));
 							response_dump(resp);
 							response_free(resp);
 							break;
@@ -366,17 +374,17 @@ int main()
 {
 	/*signal_init();*/
 
-	_svr.bindaddr="127.0.0.1";
-	_svr.port=6379;
+	_svr.bindaddr = "127.0.0.1";
+	_svr.port = 6379;
 
 	_svr.db = nessdb_open();
-	_svr.el=aeCreateEventLoop();
-	_svr.fd=anetTcpServer(_svr.neterr,_svr.port,_svr.bindaddr);
+	_svr.el = aeCreateEventLoop();
+	_svr.fd = anetTcpServer(_svr.neterr, _svr.port, _svr.bindaddr);
 
 	aeCreateTimeEvent(_svr.el, 3000, server_cron, NULL, NULL);
 
 	/*handler*/
-	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE,accept_handler, NULL) == AE_ERR) 
+	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE, accept_handler, NULL) == AE_ERR) 
 		printf("creating file event");
 
 	aeMain(_svr.el);

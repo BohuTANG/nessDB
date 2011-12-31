@@ -83,15 +83,15 @@ unsigned char _table[256]={
  */
 static const struct cmds _cmds[]=
 {
-	{"ping",CMD_PING},
-	{"get",CMD_GET},
-	{"mget",CMD_MGET},
-	{"set",CMD_SET},
-	{"mset",CMD_MSET},
-	{"del",CMD_DEL},
-	{"info",CMD_INFO},
-	{"exists",CMD_EXISTS},
-	{"unknow cmd",CMD_UNKNOW}
+	{"ping", CMD_PING},
+	{"get", CMD_GET},
+	{"mget", CMD_MGET},
+	{"set", CMD_SET},
+	{"mset", CMD_MSET},
+	{"del", CMD_DEL},
+	{"info", CMD_INFO},
+	{"exists", CMD_EXISTS},
+	{"unknow cmd", CMD_UNKNOW}
 };
 
 enum{
@@ -102,42 +102,42 @@ enum{
 struct request *request_new(char *querybuf)
 {
 	struct request *req;
-	req=calloc(1,sizeof(struct request));
-	req->querybuf=querybuf;
+	req = calloc(1, sizeof(struct request));
+	req->querybuf = querybuf;
 	return req;
 }
 
 
-int req_state_len(struct request *req,char *sb)
+int req_state_len(struct request *req, char *sb)
 {
-	int term=0,first=0;
+	int term = 0, first = 0;
 	char c;
-	int i=req->pos;
-	int pos=i;
-	while((c=req->querybuf[i])!='\0'){
+	int i = req->pos;
+	int pos = i;
+	while ((c = req->querybuf[i]) != '\0') {
 		first++;
 		pos++;
 		switch(c){
 			case '\r':
-				term=1;
+				term = 1;
 				break;
 				  
 			case '\n':
-				  if(term){
-					req->pos=pos;
+				  if (term) {
+					req->pos = pos;
 					return STATE_CONTINUE;
 				}
 				else
 					return STATE_FAIL;
 			default:
-				if(first==1){
+				if (first == 1) {
 					/* the first symbol is not '*' or '$'*/
-					if(_table[(unsigned char)c]!=3)
+					if (_table[(unsigned char)c] != 3)
 						return STATE_FAIL;
-				}else{
+				} else {
 					/* the symbol must be numeral*/
-					if(_table[(unsigned char)c]==2){
-						*sb=c;
+					if (_table[(unsigned char)c] == 2) {
+						*sb = c;
 						sb++;
 					}
 					else
@@ -155,46 +155,46 @@ int req_state_len(struct request *req,char *sb)
 int request_parse(struct request *req)
 {
 	int  i;
-	char sb[BUF_SIZE]={0};
+	char sb[BUF_SIZE] = {0};
 
-	if(req_state_len(req,sb)!=STATE_CONTINUE){
-		fprintf(stderr,"argc format ***ERROR***,buffer:%s,len-buf:%s\n",req->querybuf,sb);
+	if (req_state_len(req, sb) != STATE_CONTINUE) {
+		fprintf(stderr,"argc format ***ERROR***,buffer:%s,len-buf:%s\n", req->querybuf, sb);
 		return 0;
 	}
-	req->argc=atoi(sb);
+	req->argc = atoi(sb);
 
-	req->argv=(char**)calloc(req->argc,sizeof(char*));
-	for(i=0;i<req->argc;i++){
+	req->argv = (char**)calloc(req->argc, sizeof(char*));
+	for (i = 0; i < req->argc; i++){ 
 		int argv_len;
 		char *v;
 
 		/*parse argv len*/
-		memset(sb,0,BUF_SIZE);
-		if(req_state_len(req,sb)!=STATE_CONTINUE){
-			fprintf(stderr,"argv's length format ***ERROR***,packet:%s\n",sb);
+		memset(sb, 0, BUF_SIZE);
+		if (req_state_len(req, sb) != STATE_CONTINUE) {
+			fprintf(stderr,"argv's length format ***ERROR***,packet:%s\n", sb);
 			return 0;
 		}
-		argv_len=atoi(sb);
+		argv_len = atoi(sb);
 
 		/*get argv*/
-		v=(char*)calloc(argv_len,sizeof(char));
-		memset(v,0,argv_len);
-		memcpy(v,req->querybuf+(req->pos),argv_len);
-		req->argv[i]=v;	
-		req->pos+=(argv_len+2);
+		v = (char*)calloc(argv_len, sizeof(char));
+		memset(v, 0 ,argv_len);
+		memcpy(v, req->querybuf+(req->pos), argv_len);
+		req->argv[i] = v;	
+		req->pos += (argv_len + 2);
 
-		if(i==0){
-			int k,cmd_size;
-			for(k=0;k<argv_len;k++){
-				if(v[k]>='A' && v[k]<='Z')
-					v[k]+=32;
+		if (i == 0) {
+			int k, cmd_size;
+			for (k = 0; k < argv_len; k++) {
+				if (v[k] >= 'A' && v[k] <= 'Z')
+					v[k] += 32;
 			}
 
-			cmd_size=sizeof(_cmds)/sizeof(struct cmds);
-			req->cmd=CMD_UNKNOW;
-			for(int l=0;l<cmd_size;l++){
-				if(strcmp(v,_cmds[l].method)==0){
-					req->cmd=_cmds[l].cmd;
+			cmd_size = sizeof(_cmds) / sizeof(struct cmds);
+			req->cmd = CMD_UNKNOW;
+			for (int l = 0; l < cmd_size; l++) {
+				if (strcmp(v, _cmds[l].method) == 0) {
+					req->cmd = _cmds[l].cmd;
 					break;
 				}
 			}
@@ -210,10 +210,10 @@ void request_dump(struct request *req)
 		return;
 
 	printf("request-dump--->{");
-	printf("argc:<%d>\n",req->argc);
-	printf("\t\tcmd:<%s>\n",_cmds[req->cmd].method);
-	for(i=0;i<req->argc;i++){
-		printf("\t\targv[%d]:<%s>\n",i,req->argv[i]);
+	printf("argc:<%d>\n", req->argc);
+	printf("\t\tcmd:<%s>\n", _cmds[req->cmd].method);
+	for (i = 0; i < req->argc; i++) {
+		printf("\t\targv[%d]:<%s>\n", i, req->argv[i]);
 	}
 	printf("}\n\n");
 }
@@ -222,7 +222,7 @@ void request_free(struct request *req)
 {
 	int i;
 	if(req){
-		for(i=0;i<req->argc;i++){
+		for (i = 0; i < req->argc; i++) {
 			if(req->argv[i])
 				free(req->argv[i]);
 		}

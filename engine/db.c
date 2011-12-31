@@ -36,37 +36,46 @@ int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 	return index_add(db->idx, sk, sv);
 }
 
-void *db_get(struct nessdb *db, struct slice *sk)
+int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
+	int ret = 0;
 	char *data;
-	struct slice *sv;
-	sv = llru_get(db->lru, sk);
-	if (sv) {
-		__DEBUG("db get from llru,key:<%s>, data:<%s>", sk->data, sv->data);
-		data = malloc(sv->len);
-		memcpy(data, sv->data, sv->len);
-	} else {
-		struct slice sv_clone;
+	struct slice *sv_l;
 
-		data = index_get(db->idx, sk);
-		if (data) {
-			sv_clone.len = strlen(data);
+	sv_l = llru_get(db->lru, sk);
+	if (sv_l) {
+		data = malloc(sv_l->len);
+		memcpy(data, sv_l->data, sv_l->len);
+		sv->len = sv_l->len;
+		sv->data = data;
+		ret = 1;
+	} else {
+		ret = index_get(db->idx, sk, sv);
+		if (ret) {
+			struct slice sv_clone;
+
+			/* Clone new data for LLRU object */
+			data = malloc(sv->len);
+			memcpy(data, sv->data, sv->len);
+
+			sv_clone.len = sv->len;
 			sv_clone.data = data;
 			llru_set(db->lru, sk, &sv_clone);
 		}
+
 	}
 
-	return data;
+	return ret;
 }
 
 int db_exists(struct nessdb *db, struct slice *sk)
 {
-	char *val = index_get(db->idx, sk);
-	if(val) {
-		free(val);
+	struct slice sv;
+	int ret = index_get(db->idx, sk, &sv);
+	if(ret) {
+		free(sv.data);
 		return 1;
 	}
-
 	return 0;
 }
 
