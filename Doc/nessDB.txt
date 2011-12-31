@@ -152,7 +152,7 @@ WRITE PROCESS
 	                                         |
 	                                         v
 	                           +-------------------------------+
-	                           |delete merging memtable'ss log |
+	                           | delete merging memtable's log |
 	                           +-------------------------------+
 	                                         |
 	                                         v
