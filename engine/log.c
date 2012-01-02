@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <dirent.h>
 
 #include "buffer.h"
 #include "log.h"
@@ -53,7 +54,7 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	l->islog = islog;
 
 	memset(log_name, 0, LOG_NSIZE);
-	snprintf(log_name, LOG_NSIZE, "%s/%d.log", basedir, lsn);
+	snprintf(log_name, LOG_NSIZE, "%s/%d.log", basedir, 0);
 	memcpy(l->name, log_name, LOG_NSIZE);
 
 	memset(l->basedir, 0, LOG_NSIZE);
@@ -83,22 +84,105 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	l->buf = buffer_new(256);
 	l->db_buf = buffer_new(1024);
 
-
 	return l;
+}
+
+void _log_read(char *logname, struct skiplist *list)
+{
+	int rem;
+	int fd = open(logname, O_RDWR, 0644);
+	int size = lseek(fd, 0, SEEK_END);
+
+	if (fd == -1)
+		return;
+
+	rem = size;
+	if (size == 0)
+		return;
+
+	lseek(fd, 0, SEEK_SET);
+	while(rem > 0) {
+		int isize = 0;
+		int klen, opt;
+		uint64_t off;
+		char key[SKIP_KSIZE];
+		char klenstr[4], offstr[8], optstr[4];
+
+		memset(klenstr, 0, 4);
+		memset(offstr, 0, 8);
+		memset(optstr, 0, 4);
+		
+		/* read key length */
+		read(fd, &klenstr, sizeof(int));
+		klen = u32_from_big((unsigned char*)klenstr);
+		isize += sizeof(int);
+		
+		/* read key */
+		memset(key, 0, SKIP_KSIZE);
+		read(fd, &key, klen);
+		isize += klen;
+
+		/* read data offset */
+		read(fd, &offstr, sizeof(uint64_t));
+		off = u64_from_big((unsigned char*)offstr);
+		isize += sizeof(uint64_t);
+
+		/* read opteration */
+		read(fd, &optstr, sizeof(int));
+		opt = u32_from_big((unsigned char*)optstr);
+		isize += sizeof(int);
+
+		skiplist_insert(list, key, off, opt == 0? ADD : DEL);
+
+		rem -= isize;
+	}
 }
 
 int log_recovery(struct log *l, struct skiplist *list)
 {
-	/* TODO: all log read */
+	DIR *dd;
+	int  isnew = 1;
+	char logname[LOG_NSIZE];
+	char new_log[LOG_NSIZE];
+	char old_log[LOG_NSIZE];
+	struct dirent *de;
+
+	memset(new_log, 0, LOG_NSIZE);
+	memset(old_log, 0, LOG_NSIZE);
+
+	dd = opendir(l->basedir);
+	while ((de = readdir(dd))) {
+		char *p = strstr(de->d_name, ".log");
+		if (p) {
+			if (isnew == 1) {
+				memcpy(new_log, de->d_name, LOG_NSIZE);
+				isnew = 0;
+			} else 
+				memcpy(old_log, de->d_name, LOG_NSIZE);
+		}
+	}
+	closedir(dd);
+
+	/* TODO: stable log revoery */
+	memset(logname, 0, LOG_NSIZE);
+	snprintf(logname, LOG_NSIZE, "%s/%s", l->basedir, old_log);
+	_log_read(logname, list);
+	remove(logname);
+
+	memset(logname, 0, LOG_NSIZE);
+	snprintf(logname, LOG_NSIZE, "%s/%s", l->basedir, new_log);
+	_log_read(logname, list);
+	remove(logname);
+
 	return 0;
 }
 
 uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 {
-	char *line;
-	char *db_line;
 	int len;
 	int db_len;
+	char *line;
+	char *db_line;
 	struct buffer *buf = l->buf;
 	struct buffer *db_buf = l->db_buf;
 	uint64_t db_offset = l->db_alloc;
@@ -123,9 +207,9 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		buffer_putnstr(buf, sk->data, sk->len);
 		buffer_putlong(buf, db_offset);
 		if(sv)
-			buffer_putint(buf, 1);
-		else
 			buffer_putint(buf, 0);
+		else
+			buffer_putint(buf, 1);
 
 		len = buf->NUL;
 		line = buffer_detach(buf);

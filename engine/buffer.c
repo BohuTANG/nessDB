@@ -103,6 +103,16 @@ void buffer_putint(struct buffer *b, int val)
 	b->buf[b->NUL++] = val & 0xff;
 }
 
+uint32_t u32_from_big(unsigned char *buf) {
+	uint32_t val = 0;
+
+	val |= buf[0] << 24;
+	val |= buf[1] << 16;
+	val |= buf[2] << 8;
+	val |= buf[3];
+	return val;
+}
+
 /*
  * Big-Endian
  */
@@ -117,6 +127,20 @@ void buffer_putlong(struct buffer *b, uint64_t val)
 	b->buf[b->NUL++] = (val >> 16) & 0xff;
 	b->buf[b->NUL++] = (val >> 8) & 0xff;
 	b->buf[b->NUL++] = val & 0xff;
+}
+
+uint64_t u64_from_big(unsigned char *buf) {
+	uint64_t val = 0;
+
+	val |= (uint64_t) buf[0] << 56;
+	val |= (uint64_t) buf[1] << 48;
+	val |= (uint64_t) buf[2] << 40;
+	val |= (uint64_t) buf[3] << 32;
+	val |= buf[4] << 24;
+	val |= buf[5] << 16;
+	val |= buf[6] << 8;
+	val |= buf[7];
+	return val;
 }
 
 char * buffer_detach(struct buffer *b)

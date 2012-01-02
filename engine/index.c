@@ -96,6 +96,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	/* log */
 	idx->log = log_new(idx->basedir, idx->lsn, tolog);
 	log_recovery(idx->log, idx->list);
+	log_next(idx->log, 0);
 
 	memset(dbfile, 0, DB_NSIZE);
 	snprintf(dbfile, DB_NSIZE, "%s/%s.db", idx->basedir, name);
