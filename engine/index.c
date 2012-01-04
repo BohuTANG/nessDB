@@ -1,6 +1,6 @@
 /*
- * LSM-Tree storage engine
- * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with BSD. See COPYING.BSD file.
  *
@@ -50,7 +50,7 @@ void *_merge_job(void *arg)
 	log = idx->log;
 
 	if(list == NULL)
-		goto out;
+		goto merge_out;
 
 	pthread_mutex_lock(&idx->merge_mutex);
 	sst_merge(sst, list);
@@ -59,7 +59,7 @@ void *_merge_job(void *arg)
 	/* Lock end */
 	log_remove(log, lsn);
 
-out:
+merge_out:
 	pthread_detach(pthread_self());
 	pthread_exit(NULL);
 }
@@ -73,7 +73,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 
 	memset(dir, 0, INDEX_NSIZE);
 	snprintf(dir, INDEX_NSIZE, "%s/%s", basedir, DB_DIR);
-	_ensure_dir_exists(dir);
+	ensure_dir_exists(dir);
 	
 	idx->lsn = 0;
 	idx->max_mtbl = 1;
@@ -95,7 +95,29 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 
 	/* log */
 	idx->log = log_new(idx->basedir, idx->lsn, tolog);
-	log_recovery(idx->log, idx->list);
+
+	/*
+	 * Log Recovery Processes:
+	 * 1) read old log file and add entries to memtable
+	 * 2) read new log file and add entries to memtable
+	 * 3) merge the current active log's memtable
+	 * 4) remove old log file,new log file
+	 * 5) create new memtable and log file
+	 */
+	if (log_recovery(idx->log, idx->list)) {
+		__DEBUG("%s", "logs need to recovery....");
+		/* Merge log entries */
+		sst_merge(idx->sst, idx->list);
+
+		/* Remove old&new log files */
+		remove(idx->log->log_new);
+		remove(idx->log->log_old);
+
+		/* Create new memtable */
+		idx->list = skiplist_new(idx->max_mtbl_size);
+	}
+
+	/* Create new log:0.log */
 	log_next(idx->log, 0);
 
 	memset(dbfile, 0, DB_NSIZE);
@@ -105,7 +127,6 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	/* Detached thread attr */
 	pthread_attr_init(&idx->attr);
 	pthread_attr_setdetachstate(&idx->attr, PTHREAD_CREATE_DETACHED);
-
 
 	return idx;
 }
@@ -151,10 +172,14 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	return 1;
 }
 
+/*
+ * When db is normally closed, flush current active memtable to disk sst
+ */
 void _index_flush(struct index *idx)
 {
 	struct skiplist *list;
 
+	/* Waiting  bg merging thread done */
 	pthread_mutex_lock(&idx->merge_mutex);
 	pthread_mutex_unlock(&idx->merge_mutex);
 

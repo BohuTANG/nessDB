@@ -1,6 +1,6 @@
 /*
- * LSM-Tree storage engine
- * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with BSD. See COPYING.BSD file.
  *
@@ -21,6 +21,8 @@ struct log{
 	uint64_t db_alloc;
 	char name[LOG_NSIZE];
 	char basedir[LOG_NSIZE];
+	char log_old[LOG_NSIZE];
+	char log_new[LOG_NSIZE];
 	struct buffer *buf;
 	struct buffer *db_buf;
 };

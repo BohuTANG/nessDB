@@ -1,6 +1,6 @@
 /*
- * LSM-Tree storage engine
- * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with BSD. See COPYING.BSD file.
  *
@@ -50,7 +50,7 @@ static void _mkdirs(const char *path)
 	_portable_mkdir(tmp);
 }
 
-void _ensure_dir_exists(const char *path)
+void ensure_dir_exists(const char *path)
 {
 	struct stat st;
 	if(stat(path, &st) != 0) {

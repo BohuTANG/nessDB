@@ -1,6 +1,6 @@
 /*
- * nessDB
- * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with BSD. See COPYING.BSD file.
  *
@@ -24,7 +24,7 @@
 #include "../engine/util.h"
 #include "../engine/debug.h"
 
-#define TOLOG (0)
+#define TOLOG (1)
 #define KSIZE 	16
 #define VSIZE 	80
 #define BUFFERPOOL	(1024*1024*1024)

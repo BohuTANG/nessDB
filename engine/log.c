@@ -1,6 +1,6 @@
 /*
- * LSM-Tree storage engine
- * Copyright (c) 2011, BohuTANG <overred.shuttler at gmail dot com>
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with BSD. See COPYING.BSD file.
  *
@@ -63,10 +63,6 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	memset(db_name, 0, LOG_NSIZE);
 	snprintf(db_name, LOG_NSIZE, "%s/ness.db", basedir);
 
-	if (_file_exists(log_name))
-		l->idx_wfd = open(log_name, LSM_OPEN_FLAGS, 0644);
-	else
-		l->idx_wfd = open(log_name, LSM_CREAT_FLAGS, 0644);
 
 	if (_file_exists(db_name)) {
 		l->db_wfd = open(db_name, LSM_OPEN_FLAGS, 0644);
@@ -141,8 +137,7 @@ void _log_read(char *logname, struct skiplist *list)
 int log_recovery(struct log *l, struct skiplist *list)
 {
 	DIR *dd;
-	int  isnew = 1;
-	char logname[LOG_NSIZE];
+	int ret = 0;
 	char new_log[LOG_NSIZE];
 	char old_log[LOG_NSIZE];
 	struct dirent *de;
@@ -154,27 +149,30 @@ int log_recovery(struct log *l, struct skiplist *list)
 	while ((de = readdir(dd))) {
 		char *p = strstr(de->d_name, ".log");
 		if (p) {
-			if (isnew == 1) {
+			if (ret == 0) 
 				memcpy(new_log, de->d_name, LOG_NSIZE);
-				isnew = 0;
-			} else 
+			else 
 				memcpy(old_log, de->d_name, LOG_NSIZE);
+			ret = 1;
 		}
 	}
 	closedir(dd);
 
-	/* TODO: stable log revoery */
-	memset(logname, 0, LOG_NSIZE);
-	snprintf(logname, LOG_NSIZE, "%s/%s", l->basedir, old_log);
-	_log_read(logname, list);
-	remove(logname);
+	/* 
+	 * Get the two log files:new and old 
+	 * Read must be sequential,read old then read new
+	 */
+	if (ret) {
+		memset(l->log_old, 0, LOG_NSIZE);
+		snprintf(l->log_old, LOG_NSIZE, "%s/%s", l->basedir, old_log);
+		_log_read(l->log_old, list);
 
-	memset(logname, 0, LOG_NSIZE);
-	snprintf(logname, LOG_NSIZE, "%s/%s", l->basedir, new_log);
-	_log_read(logname, list);
-	remove(logname);
+		memset(l->log_new, 0, LOG_NSIZE);
+		snprintf(l->log_new, LOG_NSIZE, "%s/%s", l->basedir, new_log);
+		_log_read(l->log_new, list);
+	}
 
-	return 0;
+	return ret;
 }
 
 uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
