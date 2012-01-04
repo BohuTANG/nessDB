@@ -142,6 +142,9 @@ int log_recovery(struct log *l, struct skiplist *list)
 	char old_log[LOG_NSIZE];
 	struct dirent *de;
 
+	if (!l->islog)
+		return 0;
+
 	memset(new_log, 0, LOG_NSIZE);
 	memset(old_log, 0, LOG_NSIZE);
 

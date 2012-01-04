@@ -92,7 +92,7 @@ void db_info(struct nessdb *db, char *infos)
 
 void db_close(struct nessdb *db)
 {
-	index_free(db->idx);
 	llru_free(db->lru);
+	index_free(db->idx);
 	free(db);
 }

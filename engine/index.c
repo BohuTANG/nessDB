@@ -184,11 +184,10 @@ void _index_flush(struct index *idx)
 	pthread_mutex_unlock(&idx->merge_mutex);
 
 	list = idx->list;
-	if (!list) 
-		return;
-
-	sst_merge(idx->sst, list);
-	log_remove(idx->log, idx->lsn);
+	if (list && list->count > 0) {
+		sst_merge(idx->sst, list);
+		log_remove(idx->log, idx->lsn);
+	}
 }
 
 /*
