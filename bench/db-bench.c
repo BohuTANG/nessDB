@@ -24,7 +24,7 @@
 #include "../engine/util.h"
 #include "../engine/debug.h"
 
-#define TOLOG (1)
+#define TOLOG (0)
 #define KSIZE 	16
 #define VSIZE 	80
 #define BUFFERPOOL	(1024*1024*1024)
