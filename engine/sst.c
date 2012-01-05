@@ -477,6 +477,8 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 
 void sst_free(struct sst *sst)
 {
-	if (sst)
+	if (sst) {
+		meta_free(sst->meta);
 		free(sst);
+	}
 }

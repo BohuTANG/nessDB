@@ -49,6 +49,7 @@ void *_merge_job(void *arg)
 	sst = idx->sst;
 	log = idx->log;
 
+
 	if(list == NULL)
 		goto merge_out;
 
@@ -87,6 +88,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	/* sst */
 	idx->sst = sst_new(idx->basedir);
 	idx->list = skiplist_new(max_mtbl_size);
+	pthread_mutex_init(&idx->merge_mutex, NULL);
 
 	/* container */
 	park->list = NULL; 	
@@ -261,6 +263,7 @@ void index_free(struct index *idx)
 	pthread_attr_destroy(&idx->attr);
 	log_free(idx->log);
 	close(idx->db_rfd);
+	sst_free(idx->sst);
 	free(idx->park);
 	free(idx);
 }

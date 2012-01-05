@@ -107,10 +107,13 @@ void _write_test(long int count)
 	long long start,end;
 	struct slice sk, sv;
 	struct nessdb *db;
+	char *path = getcwd(NULL, 0);
 
-	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
 	char key[KSIZE];
 	char val[VSIZE];
+
+	db = db_open(BUFFERPOOL, path, TOLOG);
+	free(path);
 
 	start = _ustime();
 	for (i = 0; i < count; i++) {
