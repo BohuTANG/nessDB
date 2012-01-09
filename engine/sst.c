@@ -307,20 +307,23 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 {
 	int mul;
 	int rem;
+	int lsn;
 
 	/* Less than 2x SST_MAX,compact one index file */
 	if (count <= SST_MAX * 2) {
 		if (meta) {
-			pthread_mutex_lock(&sst->meta->mutexs[meta->lsn]);
+			lsn = meta->lsn;
+			pthread_mutex_lock(&sst->meta->mutexs[lsn]);
 			x = _write_mmap(sst, x, count, 0);
-			pthread_mutex_unlock(&sst->meta->mutexs[meta->lsn]);
+			pthread_mutex_unlock(&sst->meta->mutexs[lsn]);
 		} else 
 			x = _write_mmap(sst, x, count, 0);
 	} else {
 		if (meta) {
-			pthread_mutex_lock(&sst->meta->mutexs[meta->lsn]);
+			lsn = meta->lsn;
+			pthread_mutex_lock(&sst->meta->mutexs[lsn]);
 			x = _write_mmap(sst, x, SST_MAX, 0);
-			pthread_mutex_unlock(&sst->meta->mutexs[meta->lsn]);
+			pthread_mutex_unlock(&sst->meta->mutexs[lsn]);
 		} else
 			x = _write_mmap(sst, x, SST_MAX, 0);
 
@@ -456,6 +459,7 @@ void sst_merge(struct sst *sst, struct skiplist *list)
 
 uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 {
+	int lsn;
 	uint64_t off = 0UL;
 	struct meta_node *meta_info;
 
@@ -468,9 +472,10 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 	/* If get one record from on-disk sst file, 
 	 * this file must not be operated by bg-merge thread
 	*/
-	pthread_mutex_lock(&sst->meta->mutexs[meta_info->lsn]);
+	lsn = meta_info->lsn;
+	pthread_mutex_lock(&sst->meta->mutexs[lsn]);
 	off = _read_offset(sst, sk);
-	pthread_mutex_unlock(&sst->meta->mutexs[meta_info->lsn]);
+	pthread_mutex_unlock(&sst->meta->mutexs[lsn]);
 
 	return off;
 }
