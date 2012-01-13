@@ -91,21 +91,6 @@ void meta_set_byname(struct meta *meta, struct meta_node *node)
 	}
 }
 
-void meta_dump(struct meta *meta)
-{
-	int i;
-	printf("--Meta dump:count<%d>\n", meta->size);
-	for (i = 0; i< meta->size; i++) {
-		struct meta_node n = meta->nodes[i];
-		printf("\t(%d) end:<%s>,indexname:<%s>,hascount:<%d>,lsn:<%d>\n",
-				i,
-				n.end,
-				n.index_name,
-				n.count,
-				n.lsn);
-	}
-}
-
 void meta_free(struct meta *meta)
 {
 	if (meta)

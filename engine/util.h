@@ -20,7 +20,7 @@
 
 #define SST_NSIZE (16)		/* sst index file name size */
 #define SST_FLEN (1024)		/* sst index file full path size */
-#define META_MAX (100000)	/* max index file count */
+#define META_MAX (10000)	/* max index file count */
 #define INDEX_NSIZE (1024)
 #define DB_NSIZE (1024)
 #define LOG_NSIZE (1024)
