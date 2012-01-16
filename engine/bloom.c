@@ -1,9 +1,18 @@
+/*
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
+ * All rights reserved.
+ * Code is licensed with BSD. See COPYING.BSD file.
+ *
+ */
+
 #include <stdlib.h>
 #include <stdarg.h>
 #include "util.h"
 #include "bloom.h"
 
-#define HFUNCNUM 3
+#define BLOOM_SIZE (433494437) /* Large prime */
+#define HFUNCNUM (3)
 
 /**
  * SAX hash function
@@ -47,11 +56,11 @@ static inline unsigned int jdb_hash(const char* key)
 	return (unsigned int) hash;
 }
 
-struct bloom *bloom_new(int size)
+struct bloom *bloom_new()
 {
 	struct bloom *bl = malloc(sizeof(struct bloom));
-	bl->size = size;
-	bl->bitset = calloc((size+1) / CHAR_BIT, sizeof(char));
+	bl->size = BLOOM_SIZE;
+	bl->bitset = calloc((bl->size+1) / CHAR_BIT, sizeof(char));
 	bl->hashfuncs = malloc(HFUNCNUM * sizeof(hashfuncs));
 
 	bl->hashfuncs[0] = sax_hash;
@@ -63,7 +72,8 @@ struct bloom *bloom_new(int size)
 
 void bloom_add(struct bloom *bloom, const char *k)
 {
-	int i, bit;
+	int i;
+	unsigned int bit;
 	if (!k)
 		return;
 
@@ -76,7 +86,8 @@ void bloom_add(struct bloom *bloom, const char *k)
 
 int bloom_get(struct bloom *bloom, const char *k)
 {
-	int i, bit;
+	int i;
+	unsigned int bit;
 	if (!k)
 		return -1;
 
@@ -93,9 +104,9 @@ void bloom_free(struct bloom *bloom)
 	if (bloom) {
 		if (bloom->bitset)
 			free(bloom->bitset);
-		
+
 		if(bloom->hashfuncs)
-		free(bloom->hashfuncs);
+			free(bloom->hashfuncs);
 
 		free(bloom);
 	}

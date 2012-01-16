@@ -47,7 +47,6 @@
 #define SST_MAX (65536) /* 2^16 */
 #define BLK_MAGIC (20111225)
 #define F_CRC (2011)
-#define BLOOM_SIZE (16785407) /* prime */
 
 struct footer{
 	char key[SKIP_KSIZE];
@@ -141,7 +140,7 @@ struct sst *sst_new(const char *basedir)
 	s->meta = meta_new();
 	memcpy(s->basedir, basedir, SST_FLEN);
 
-	s->bloom = bloom_new(BLOOM_SIZE);
+	s->bloom = bloom_new();
 
 	/* SST files load */
 	_sst_load(s);
