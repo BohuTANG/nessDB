@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include "skiplist.h"
 #include "meta.h"
+#include "bloom.h"
 #include "util.h"
 
 struct sst_block{
@@ -25,6 +26,7 @@ struct sst{
 	char name[SST_NSIZE];
 	uint32_t lsn;
 	struct meta *meta;
+	struct bloom *bloom;
 };
 
 struct sst *sst_new(const char *basedir);

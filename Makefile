@@ -19,6 +19,7 @@ LIB_OBJS = \
 	./engine/buffer.o	\
 	./engine/ht.o		\
 	./engine/level.o	\
+	./engine/bloom.o	\
 	./engine/llru.o
 
 SVR_OBJS = \

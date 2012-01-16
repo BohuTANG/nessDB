@@ -47,12 +47,36 @@
 #define SST_MAX (65536) /* 2^16 */
 #define BLK_MAGIC (20111225)
 #define F_CRC (2011)
+#define BLOOM_SIZE (16785407) /* prime */
 
 struct footer{
 	char key[SKIP_KSIZE];
 	__be32 count;
 	__be32 crc;
 };
+
+void _add_bloom(struct sst *sst, int fd, int count)
+{
+	int i;
+	int blk_sizes;
+	struct sst_block *blks;
+
+	blk_sizes = count * sizeof(struct sst_block);
+
+	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (blks == MAP_FAILED) {
+		perror("Error:sst_bloom, mmapping the file");
+		return;
+	}
+
+	for (i = 0; i < count; i++) {
+		/* TODO: add to bloom */
+		bloom_add(sst->bloom, blks[i].key);
+	}
+	
+	if (munmap(blks, blk_sizes) == -1)
+		perror("Error:sst_bloom un-mmapping the file");
+}
 
 void _sst_load(struct sst *sst)
 {
@@ -86,6 +110,9 @@ void _sst_load(struct sst *sst)
 				continue;
 			}
 
+			/* Add to bloom */
+			_add_bloom(sst, fd, fcount);
+
 			all_count += fcount;
 						
 			/* Set meta */
@@ -113,6 +140,8 @@ struct sst *sst_new(const char *basedir)
 
 	s->meta = meta_new();
 	memcpy(s->basedir, basedir, SST_FLEN);
+
+	s->bloom = bloom_new(BLOOM_SIZE);
 
 	/* SST files load */
 	_sst_load(s);
@@ -484,6 +513,7 @@ void sst_free(struct sst *sst)
 {
 	if (sst) {
 		meta_free(sst->meta);
+		bloom_free(sst->bloom);
 		free(sst);
 	}
 }

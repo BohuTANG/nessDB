@@ -27,10 +27,11 @@
 #include <stdio.h>
 
 #include "sst.h"
-#include "index.h"
 #include "log.h"
 #include "buffer.h"
 #include "debug.h"
+#include "bloom.h"
+#include "index.h"
 
 #define DB_DIR "ndbs"
 
@@ -170,6 +171,11 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		log_next(idx->log, idx->lsn);
 	}
 	skiplist_insert(idx->list, sk->data, value_offset, sv == NULL?DEL:ADD);
+	
+	/* Add to Bloomfilter */
+	if (sv) {
+		bloom_add(idx->sst->bloom, sk->data);
+	}
 
 	return 1;
 }
@@ -204,10 +210,17 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	struct skiplist *cur_list;
 	struct skiplist *merge_list;
 
-	/* 1)First lookup from active memtable
- 	 * 2)Then from merge memtable 
- 	 * 3)Last from sst on-disk indexes
+
+	/* 
+	 * 0) Get from bloomfilter,if bloom_get return 1,next
+	 * 1) First lookup from active memtable
+ 	 * 2) Then from merge memtable 
+ 	 * 3) Last from sst on-disk indexes
  	 */
+	ret = bloom_get(idx->sst->bloom, sk->data);
+	if (ret != 1)
+		return ret;
+
 	cur_list = idx->list;
 	node = skiplist_lookup(cur_list, sk->data);
 	if (node){
