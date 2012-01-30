@@ -35,4 +35,37 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   If you want delete all idnexes/db/logs, your should do:
   $make cleandb
 
+  HOW TO USE
+  ==========
+  a. OPEN
+		struct nessdb *db = db_open(bufferpool-size, db-path, islog); //NOTICE: bufferpool-size is bytes
+
+  b. ADD
+  		struct slice sk, sv;
+		sk.len = 3;
+		sk.data = "key";
+		sv.len = 5;
+		sv.data = "value";
+		db_add(db, &sk, &sv);
+
+  c. DELETE
+  		struct slice sk;
+		sk.len = 3;
+		sk.data = "key";
+		db_remove(db, &sk);
+
+  d. READ
+  		struct slice sk, sv;
+		sk.len = 3;
+		sk.data = "key";
+		int ret = db_read(db, &sk, &sv);
+		if (ret) {
+			printf("data is %s", sv.data);
+			free(sv.data);
+		} else
+			print("Not found");
+
+  e. CLOSE
+  		db_close(db);
+
   Thanks for your attention!

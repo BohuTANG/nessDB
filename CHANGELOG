@@ -1,4 +1,3 @@
-2012-01-04 add stable log recovery. (BohuTANG)
 2011-12-29 add slim 'read-lock' and 'write-lock',and add LLRU, this is a big deal. (BohuTANG)
 2011-12-25 add 'background-merge' thread, Merry christmas. (BohuTANG)
 
