@@ -58,8 +58,8 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   		struct slice sk, sv;
 		sk.len = 3;
 		sk.data = "key";
-		int ret = db_read(db, &sk, &sv);
-		if (ret) {
+		int ret = db_get(db, &sk, &sv);
+		if (ret == 1) {
 			printf("data is %s", sv.data);
 			free(sv.data);
 		} else
