@@ -233,19 +233,20 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 									 sk.len=strlen(req->argv[1]);
 									 sk.data = req->argv[1];
 									 ret = db_get(_svr.db, &sk, &sv);
-									 if(!ret)
-										 resp=response_new(0,OK_404);
-									 else{
-										 resp=response_new(1,OK_200);
-										 resp->argv[0] = sv.data;
-									 }
+									 if (ret == 1) {
+										resp=response_new(1,OK_200);
+										resp->argv[0] = sv.data;
+									} else {
+										resp=response_new(0,OK_404);
+										resp->argv[0] = NULL;
+									}
 									 response_detch(resp, sent_buf);
 									 write(fd,sent_buf,strlen(sent_buf));
 									 response_dump(resp);
 									 response_free(resp);
 
-									 if (ret)
-										 free(sv.data);
+									 if (resp->argv[0])
+										 free(resp->argv[0]);
 									 break;
 								 }
 							 }
@@ -264,7 +265,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 									  sk.data = req->argv[i];
 
 									  ret = db_get(_svr.db, &sk, &sv);
-									  if (ret)
+									  if (ret == 1)
 										  vals[i-1] = sv.data;
 									  else
 										  vals[i-1] = NULL;

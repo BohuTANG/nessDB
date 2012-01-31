@@ -43,6 +43,7 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	struct slice *sv_l;
 
 	sv_l = llru_get(db->lru, sk);
+
 	if (sv_l) {
 		data = malloc(sv_l->len);
 		memcpy(data, sv_l->data, sv_l->len);
@@ -51,7 +52,7 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 		ret = 1;
 	} else {
 		ret = index_get(db->idx, sk, sv);
-		if (ret) {
+		if (ret == 1) {
 			struct slice sv_clone;
 
 			/* Clone new data for LLRU object */
