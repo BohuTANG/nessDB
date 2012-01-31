@@ -243,10 +243,9 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 									 response_detch(resp, sent_buf);
 									 write(fd,sent_buf,strlen(sent_buf));
 									 response_dump(resp);
-
-									 if (resp->argv[0])
-										 free(resp->argv[0]);
 									 response_free(resp);
+									 if (ret == 1)
+										 free(sv.data);
 									 break;
 								 }
 								goto __default;
