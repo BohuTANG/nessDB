@@ -108,7 +108,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	 * 5) create new memtable and log file
 	 */
 	if (log_recovery(idx->log, idx->list)) {
-		__DEBUG("%s", "logs need to recovery....");
+		__DEBUG(LEVEL_WARNING, "%s", "logs need to recovery....");
 		/* Merge log entries */
 		sst_merge(idx->sst, idx->list);
 
@@ -143,7 +143,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	list = idx->list;
 
 	if (!list) {
-		__DEBUG("ERROR: List<%d> is NULL", idx->lsn);
+		__DEBUG(LEVEL_ERROR, "ERROR: List<%d> is NULL", idx->lsn);
 		return 0;
 	}
 

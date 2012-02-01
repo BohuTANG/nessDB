@@ -176,8 +176,6 @@ void _read_test(long int count)
 
 	end = _ustime();
 	cost = end - start;
-
- 	cost = end - start;
 	printf(LINE);
 	printf("|Random-Read	(done:%ld): %.6f sec/op; %.1f reads /sec(estimated); cost:%.3f(sec)\n"
 		,count
@@ -199,10 +197,10 @@ void _readone_test(char *key)
 
 	ret = db_get(db, &sk, &sv);
 	if (ret){ 
-		__DEBUG("Get Key:<%s>--->value is :<%s>", key, sv.data);
+		__DEBUG(LEVEL_INFO, "Get Key:<%s>--->value is :<%s>", key, sv.data);
 		free(sv.data);
 	} else
-		__DEBUG("Get Key:<%s>,but value is NULL", key);
+		__DEBUG(LEVEL_INFO, "Get Key:<%s>,but value is NULL", key);
 	db_close(db);
 }
 

@@ -64,17 +64,15 @@ void _add_bloom(struct sst *sst, int fd, int count)
 
 	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		perror("Error:sst_bloom, mmapping the file");
+		__DEBUG(LEVEL_ERROR, "%s", "add_bloom, mmapping the file");
 		return;
 	}
 
-	for (i = 0; i < count; i++) {
-		/* TODO: add to bloom */
+	for (i = 0; i < count; i++) 
 		bloom_add(sst->bloom, blks[i].key);
-	}
 	
 	if (munmap(blks, blk_sizes) == -1)
-		perror("Error:sst_bloom un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "%s", "Error:sst_bloom un-mmapping the file");
 }
 
 void _sst_load(struct sst *sst)
@@ -104,7 +102,12 @@ void _sst_load(struct sst *sst)
 			fcount = from_be32(footer.count);
 			fcrc = from_be32(footer.crc);
 			if (fcrc != F_CRC) {
-				__DEBUG("Error:crc wrong,crc:<%d>,index<%s>", fcrc, sst_file);
+				__DEBUG(LEVEL_ERROR, "Error:crc wrong,crc:<%d>,index<%s>", fcrc, sst_file);
+				close(fd);
+				continue;
+			}
+
+			if (fcount == 0) {
 				close(fd);
 				continue;
 			}
@@ -127,7 +130,7 @@ void _sst_load(struct sst *sst)
 		}
 	}
 	closedir(dd);
-	__DEBUG("Load sst,all entries count:<%d>", all_count);
+	__DEBUG(LEVEL_DEBUG, "Load sst,all entries count:<%d>", all_count);
 }
 
 struct sst *sst_new(const char *basedir)
@@ -190,7 +193,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	}
 
 	if (munmap(blks, sizes) == -1) {
-		perror("Error un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "%s", "write_map:un-mmapping the file");
 	}
 	
 	footer.count = to_be32(count);
@@ -254,7 +257,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		perror("Error:read_mmap, mmapping the file");
+		__DEBUG(LEVEL_ERROR, "%s", "Error:sst_bloom un-mmapping the file");
 		goto out;
 	}
 
@@ -265,7 +268,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
-		perror("Error:read_mmap un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "%s", "read_map:un-mmapping the file");
 
 out:
 	close(fd);
@@ -303,7 +306,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-	    perror("Error:read_offset, mmapping the file");
+		__DEBUG(LEVEL_ERROR, "%s", "Error:read_offset, mmapping the file");
 		goto out;
 	}
 
@@ -323,7 +326,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
-		perror("Error:read_offset, un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "%s", "read_offset:un-mmapping the file");
 
 out:
 	close(fd);

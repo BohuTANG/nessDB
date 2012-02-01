@@ -132,7 +132,7 @@ int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt)
 	}
 
 	if ((x =_pool_alloc(list,sizeof(struct skipnode) + new_level*sizeof(struct skipnode *))) == 0)
-		__DEBUG("%s", "ERROR: Alloc Memory *ERROR*");
+		__DEBUG(LEVEL_ERROR, "%s", "ERROR: Alloc Memory *ERROR*");
 
 	memcpy(x->key, key, SKIP_KSIZE);
 	x->val = val;

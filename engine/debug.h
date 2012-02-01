@@ -13,14 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#ifdef DEBUG
-#define __DEBUG(x...) do {                                  								\
-        fprintf(stderr, "[%d]	%s(line:%d)	", (int)getpid(),  __FUNCTION__, __LINE__); 	\
-        fprintf(stderr, ##x);                               								\
-		fprintf(stderr, "\n");																\
-    } while(0)
-#else
-	#define __DEBUG(x...)
-#endif
+typedef enum{LEVEL_DEBUG = 0, LEVEL_INFO, LEVEL_WARNING, LEVEL_ERROR}DEBUG_LEVEL;
+void __DEBUG(DEBUG_LEVEL level, const char *fmt, ...);
 
 #endif

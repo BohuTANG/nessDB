@@ -83,18 +83,18 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	return l;
 }
 
-void _log_read(char *logname, struct skiplist *list)
+int _log_read(char *logname, struct skiplist *list)
 {
 	int rem;
 	int fd = open(logname, O_RDWR, 0644);
 	int size = lseek(fd, 0, SEEK_END);
 
 	if (fd == -1)
-		return;
+		return 0;
 
 	rem = size;
 	if (size == 0)
-		return;
+		return 0;
 
 	lseek(fd, 0, SEEK_SET);
 	while(rem > 0) {
@@ -132,6 +132,7 @@ void _log_read(char *logname, struct skiplist *list)
 
 		rem -= isize;
 	}
+	return 1;
 }
 
 int log_recovery(struct log *l, struct skiplist *list)
@@ -168,11 +169,15 @@ int log_recovery(struct log *l, struct skiplist *list)
 	if (ret) {
 		memset(l->log_old, 0, LOG_NSIZE);
 		snprintf(l->log_old, LOG_NSIZE, "%s/%s", l->basedir, old_log);
-		_log_read(l->log_old, list);
+		ret = _log_read(l->log_old, list);
+		if (ret != 1)
+			return ret;
 
 		memset(l->log_new, 0, LOG_NSIZE);
 		snprintf(l->log_new, LOG_NSIZE, "%s/%s", l->basedir, new_log);
-		_log_read(l->log_new, list);
+		ret = _log_read(l->log_new, list);
+		if (ret != 1)
+			return ret;
 	}
 
 	return ret;
@@ -196,7 +201,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		db_line = buffer_detach(db_buf);
 
 		if (write(l->db_wfd, db_line, db_len) != db_len) {
-			__DEBUG("%s:length:<%d>", "ERROR: Data AOF **ERROR**", db_len);
+			__DEBUG(LEVEL_ERROR, "%s:length:<%d>", "ERROR: Data AOF **ERROR**", db_len);
 			return db_offset;
 		}
 		l->db_alloc += db_len;
@@ -216,7 +221,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		line = buffer_detach(buf);
 
 		if (write(l->idx_wfd, line, len) != len)
-			__DEBUG("%s,buffer is:%s,buffer length:<%d>", "ERROR: Log AOF **ERROR**", line, len);
+			__DEBUG(LEVEL_ERROR, "%s,buffer is:%s,buffer length:<%d>", "ERROR: Log AOF **ERROR**", line, len);
 	}
 
 

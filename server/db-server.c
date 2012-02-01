@@ -60,6 +60,7 @@
 #include "../engine/db.h"
 #include "../engine/platform.h"
 #include "../engine/util.h"
+#include "../engine/debug.h"
 
 
 struct server{
@@ -111,7 +112,7 @@ void back_trace(int sig_num, siginfo_t * info, void * ucontext)
 
 	uc = (ucontext_t *)ucontext;
 
-	fprintf(stderr, "signal %d (%s), address is %p\n", 
+	__DEBUG(LEVEL_ERROR, "signal %d (%s), address is %p\n", 
 			sig_num, strsignal(sig_num), info->si_addr);
 
 	size = backtrace(array, 50);
@@ -124,7 +125,7 @@ void back_trace(int sig_num, siginfo_t * info, void * ucontext)
 
 	/* skip first stack frame (points here) */
 	for (i = 1; i < size && messages != NULL; ++i)
-		fprintf(stderr, "[bt]: (%d) %s\n", i, messages[i]);
+		__DEBUG(LEVEL_ERROR, "[bt]: (%d) %s\n", i, messages[i]);
 
 	free(messages);
 	exit(EXIT_FAILURE);
@@ -137,7 +138,7 @@ void signal_init()
 	sigact.sa_flags = SA_RESTART | SA_SIGINFO;
 
 	if (sigaction(SIGSEGV, &sigact, (struct sigaction *)NULL) != 0){
-		fprintf(stderr, "error setting signal handler for %d (%s)\n",
+		__DEBUG(LEVEL_ERROR, "error setting signal handler for %d (%s)\n",
 				SIGSEGV, strsignal(SIGSEGV));
 
 		exit(EXIT_FAILURE);
@@ -345,10 +346,8 @@ void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 	int cport, cfd;
 	char cip[128];
 	cfd = anetTcpAccept(_svr.neterr,fd,cip,&cport);
-	if (cfd == AE_ERR) {
-		printf("accept....\n");
+	if (cfd == AE_ERR)
 		return;
-	}
 	_clicount++;
 
 	aeCreateFileEvent(_svr.el,cfd,AE_READABLE,read_handler,NULL);
@@ -356,7 +355,7 @@ void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 
 int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 {
-	printf("%d clients connected\n ",_clicount);
+	__DEBUG(LEVEL_WARNING, "%d clients connected", _clicount);
 	return 3000;
 }
 
@@ -373,7 +372,7 @@ void nessdb_close(struct nessdb *db)
 
 int main()
 {
-	/*signal_init();*/
+	signal_init();
 
 	_svr.bindaddr = "127.0.0.1";
 	_svr.port = 6379;
@@ -386,10 +385,10 @@ int main()
 
 	/*handler*/
 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE, accept_handler, NULL) == AE_ERR) 
-		printf("creating file event");
+		__DEBUG(LEVEL_ERROR, "%s", "creating file event");
 
 	aeMain(_svr.el);
-	printf("oops,exit\n");
+	__DEBUG(LEVEL_ERROR, "%s", "oops,exit");
 	aeDeleteEventLoop(_svr.el);
 	nessdb_close(_svr.db);
 	return 1;

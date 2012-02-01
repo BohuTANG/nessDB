@@ -20,7 +20,8 @@ LIB_OBJS = \
 	./engine/ht.o		\
 	./engine/level.o	\
 	./engine/bloom.o	\
-	./engine/llru.o
+	./engine/llru.o		\
+	./engine/debug.o
 
 SVR_OBJS = \
 	./server/ae.o \
@@ -42,6 +43,7 @@ clean:
 
 cleandb:
 	-rm -rf ndbs
+	-rm -rf *.event
 
 $(LIBRARY): $(LIB_OBJS)
 	rm -f $@
