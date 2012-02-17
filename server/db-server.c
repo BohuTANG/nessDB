@@ -170,14 +170,12 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 		ret=request_parse(req);
 		if(ret==1){
 			char sent_buf[BUF_SIZE]={0};
-			request_dump(req);
 
 			switch(req->cmd){
 				case CMD_PING:{
 								  resp=response_new(0,OK_PONG);
 								  response_detch(resp,sent_buf);
 								  write(fd,sent_buf,strlen(sent_buf));
-								  response_dump(resp);
 								  response_free(resp);
 								  break;
 							  }
@@ -197,7 +195,6 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 									 resp=response_new(0,OK);
 									 response_detch(resp,sent_buf);
 									 write(fd,sent_buf,strlen(sent_buf));
-									 response_dump(resp);
 									 response_free(resp);
 									 break;
 								 }
@@ -219,7 +216,6 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 								  resp=response_new(0, OK);
 								  response_detch(resp, sent_buf);
 								  write(fd,sent_buf, strlen(sent_buf));
-								  response_dump(resp);
 								  response_free(resp);
 								  break;
 							  }
@@ -241,7 +237,6 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 									}
 									 response_detch(resp, sent_buf);
 									 write(fd,sent_buf,strlen(sent_buf));
-									 response_dump(resp);
 									 response_free(resp);
 									 if (ret == 1)
 										 free(sv.data);
@@ -274,7 +269,6 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 
 								  response_detch(resp, sent_buf);
 								  write(fd, sent_buf, strlen(sent_buf));
-								  response_dump(resp);
 								  response_free(resp);
 
 								  for (i = 0; i < sub_c; i++){
@@ -291,7 +285,6 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 								  resp->argv[0] = infos;
 								  response_detch(resp, sent_buf);
 								  write(fd,sent_buf, strlen(sent_buf));
-								  response_dump(resp);
 								  response_free(resp);
 								  break;
 							  }
@@ -307,7 +300,6 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 								 resp = response_new(0, OK);
 								 response_detch(resp, sent_buf);
 								 write(fd, sent_buf, strlen(sent_buf));
-								 response_dump(resp);
 								 response_free(resp);
 								 break;
 							 }
@@ -332,7 +324,6 @@ __default:				default:{
 						resp = response_new(0, ERR);
 							response_detch(resp, sent_buf);
 							write(fd, sent_buf, strlen(sent_buf));
-							response_dump(resp);
 							response_free(resp);
 							break;
 						}
