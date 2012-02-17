@@ -7,7 +7,7 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 /_/ /_/\___//____/ /____/ /_____/ /_____/  
 ================================================================
 
-  nessDB is a fast Key-Value database(embedded), supports Redis-Protocol(PING,SET,MSET,GET,MGET,DEL,EXISTS,INFO).
+  nessDB is a fast Key-Value database(embedded), supports Redis-Protocol(PING,SET,MSET,GET,MGET,DEL,EXISTS,INFO,SHUTDOWN).
   Which is written in ANSI C with BSD LICENSE and works in most POSIX systems without external dependencies.
 
   nessDB is very efficient on disk-based random access, since it's using log-structured-merge (LSM) trees.

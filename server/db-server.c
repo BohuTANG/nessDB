@@ -36,7 +36,6 @@
 #define _XOPEN_SOURCE
 #endif
 
-
 #if defined(__linux__) || defined(__APPLE__)
 	# include <execinfo.h>
 	# include <ucontext.h>
@@ -61,7 +60,6 @@
 #include "../engine/platform.h"
 #include "../engine/util.h"
 #include "../engine/debug.h"
-
 
 struct server{
 	char *bindaddr;
@@ -323,6 +321,11 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 									else
 										write(fd,":-1\r\n",5);
 								}
+								break;
+
+				case CMD_SHUTDOWN:
+								db_close(_svr.db);
+								exit(2);
 								break;
 
 __default:				default:{
