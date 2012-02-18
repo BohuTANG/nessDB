@@ -105,6 +105,7 @@ void response_free(struct response *res)
 {
 	if(res){
 		free(res->argv);
+		free(res);
 	}
 }
 
