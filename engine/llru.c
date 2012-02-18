@@ -53,15 +53,16 @@ void _llru_set_node(struct llru *lru, struct level_node *n)
 {
 	if (n != NULL) {
 		if (n->hits == -1) {
-			if (lru->level_new.used_size > lru->level_new.allow_size) {
-				struct level_node *new_last_node = lru->level_new.last;
-				level_remove_link(&lru->level_new, new_last_node);
-				level_set_head(&lru->level_old, new_last_node);
+			/* free the last one */
+			if (lru->level_new.used_size >= lru->level_new.allow_size) {
+				level_free_last(&lru->level_new);
 			}
+
+			/* set n to head*/
 			level_remove_link(&lru->level_new, n);
 			level_set_head(&lru->level_new, n);
 		} else {
-			if (lru->level_old.used_size > lru->level_old.allow_size)
+			if (lru->level_old.used_size >= lru->level_old.allow_size)
 				level_free_last(&lru->level_old);
 
 			n->hits++;
@@ -72,7 +73,7 @@ void _llru_set_node(struct llru *lru, struct level_node *n)
 				lru->level_old.used_size -= n->size;
 				lru->level_new.used_size += n->size;
 			} else
-				level_set_head(&lru->level_old,n);
+				level_set_head(&lru->level_old, n);
 		}
 	}
 }

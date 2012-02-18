@@ -202,8 +202,9 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 								  break;
 							  }
 				case CMD_INFO:{
-								  char infos[BUF_SIZE] = {0};	
-								  db_info(_svr.db, infos);
+								  char *infos;	
+
+								  infos = db_info(_svr.db);
 								  resp = response_new(1, OK_200);
 								  resp->argv[0] = infos;
 								  response_detch(resp, sent_buf);
@@ -277,9 +278,10 @@ int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 }
 
 #define BUFFERPOOL	(700*1024*1024)
+#define TOLOG		(1)
 struct nessdb *nessdb_open()
 {
-	return db_open(BUFFERPOOL, getcwd(NULL, 0), 1);
+	return db_open(BUFFERPOOL, getcwd(NULL, 0), TOLOG);
 }
 
 void nessdb_close(struct nessdb *db)

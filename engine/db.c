@@ -25,6 +25,7 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog)
 	db = malloc(sizeof(struct nessdb));
 	db->idx = index_new(basedir, DB, LIST_SIZE, tolog);
 	db->lru = llru_new(bufferpool_size);
+	db->buf = buffer_new(1024);
 
 	return db;
 }
@@ -78,14 +79,33 @@ void db_remove(struct nessdb *db, struct slice *sk)
 	index_add(db->idx, sk, NULL);
 }
 
-void db_info(struct nessdb *db, char *infos)
+char *db_info(struct nessdb *db)
 {
-	/*TODO*/
+	buffer_clear(db->buf);
+	buffer_scatf(db->buf, 
+	"# Stats\r\n"
+	"total_lru_count:%d\r\n"
+	"total_lru_hot_count:%d\r\n"
+	"total_lru_cold_count:%d\r\n"
+	"total_lru_memory_usage:%d(MB)\r\n"
+	"total_lru_hot_memory_usage:%d(MB)\r\n"
+	"total_lru_cold_meomry_usage:%d(MB)\r\n"
+	"max_allow_lru_memory_usage:%d(MB)\r\n",
+	(db->lru->level_old.count + db->lru->level_new.count),
+	db->lru->level_new.count,
+	db->lru->level_old.count,
+	(db->lru->level_new.used_size + db->lru->level_old.used_size) / (1024 * 1024),
+	db->lru->level_new.used_size / (1024 * 1024),
+	db->lru->level_old.used_size / (1024 * 1024),
+	(db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024));
+
+	return buffer_detach(db->buf);
 }
 
 void db_close(struct nessdb *db)
 {
 	llru_free(db->lru);
 	index_free(db->idx);
+	buffer_free(db->buf);
 	free(db);
 }

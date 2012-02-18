@@ -15,8 +15,6 @@
 #include "level.h"
 
 struct llru{
-	size_t nl_count;
-	size_t ol_count;
 	size_t buffer;
 	uint64_t nl_allowsize;
 	uint64_t nl_used;

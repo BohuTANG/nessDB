@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include "buffer.h"
 
 unsigned _next_power(unsigned x)
@@ -36,6 +37,14 @@ void _buffer_extendby(struct buffer *b, int len)
 	b->buflen = _next_power(len);
 	buffer = realloc(b->buf, b->buflen);
 	b->buf = buffer;
+}
+
+void _string_vprintf(struct buffer *b, const char *fmt, va_list ap)
+{
+	int num_required;
+	while ((num_required = vsnprintf(b->buf + b->NUL, b->buflen - b->NUL, fmt, ap)) >= b->buflen - b->NUL)
+		_buffer_extendby(b, num_required + 1);
+	b->NUL += num_required;
 }
 
 
@@ -141,6 +150,14 @@ uint64_t u64_from_big(unsigned char *buf) {
 	val |= buf[6] << 8;
 	val |= buf[7];
 	return val;
+}
+
+void buffer_scatf(struct buffer *b, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	_string_vprintf(b, fmt, ap);
+	va_end(ap);
 }
 
 char * buffer_detach(struct buffer *b)
