@@ -19,6 +19,9 @@ struct level *level_creat()
 
 void level_set_head(struct level *level, struct level_node *n)
 {
+	if (n == NULL)
+		return;
+
 	level->count++;
 	if (level->first == NULL) {
 		level->first = n;
