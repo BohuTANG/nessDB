@@ -142,13 +142,10 @@ void llru_remove(struct llru *lru, struct slice *sk)
 	n = (struct level_node *)ht_get(lru->ht, sk->data);
 	if (n != NULL) {
 		ht_remove(lru->ht, sk->data);
-		if (n->hits == -1) {
-			lru->level_new.used_size -= n->size;
+		if (n->hits == -1) 
 			level_free_node(&lru->level_new, n);
-		} else {
-			lru->level_old.used_size -= n->size;
+		else 
 			level_free_node(&lru->level_old, n);
-		}
 	}
 }
 
