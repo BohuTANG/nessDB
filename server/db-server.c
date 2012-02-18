@@ -36,10 +36,6 @@
 #define _XOPEN_SOURCE
 #endif
 
-#if defined(__linux__) || defined(__APPLE__)
-	# include <execinfo.h>
-	# include <ucontext.h>
-#endif
 
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -71,80 +67,6 @@ struct server{
 	struct nessdb *db;
 };
 
-static void *get_mcontext_eip(ucontext_t *uc) {
-#if defined(__FreeBSD__)
-	return (void*) uc->uc_mcontext.mc_eip;
-#elif defined(__dietlibc__)
-	return (void*) uc->uc_mcontext.eip;
-#elif defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_6)
-#if __x86_64__
-	return (void*) uc->uc_mcontext->__ss.__rip;
-#elif __i386__
-	return (void*) uc->uc_mcontext->__ss.__eip;
-#else
-	return (void*) uc->uc_mcontext->__ss.__srr0;
-#endif
-#elif defined(__APPLE__) && defined(MAC_OS_X_VERSION_10_6)
-#if defined(_STRUCT_X86_THREAD_STATE64) && !defined(__i386__)
-	return (void*) uc->uc_mcontext->__ss.__rip;
-#else
-	return (void*) uc->uc_mcontext->__ss.__eip;
-#endif
-#elif defined(__i386__)
-	return (void*) uc->uc_mcontext.gregs[14]; /* Linux 32 */
-#elif defined(__X86_64__) || defined(__x86_64__)
-	return (void*) uc->uc_mcontext.gregs[16]; /* Linux 64 */
-#elif defined(__ia64__) /* Linux IA64 */
-	return (void*) uc->uc_mcontext.sc_ip;
-#else
-	return NULL;
-#endif
-}
-
-void back_trace(int sig_num, siginfo_t * info, void * ucontext)
-{
-	void *             array[50];
-	char **            messages;
-	int                size, i;
-	ucontext_t *   uc;
-
-	uc = (ucontext_t *)ucontext;
-
-	__DEBUG(LEVEL_ERROR, "signal %d (%s), address is %p\n", 
-			sig_num, strsignal(sig_num), info->si_addr);
-
-	size = backtrace(array, 50);
-
-	/* overwrite sigaction with caller's address */
-	if(get_mcontext_eip(uc) != NULL){
-		array[1] = get_mcontext_eip(uc);
-	}
-	messages = backtrace_symbols(array, size);
-
-	/* skip first stack frame (points here) */
-	for (i = 1; i < size && messages != NULL; ++i)
-		__DEBUG(LEVEL_ERROR, "[bt]: (%d) %s\n", i, messages[i]);
-
-	free(messages);
-	exit(EXIT_FAILURE);
-}
-
-void signal_init()
-{
-	struct sigaction sigact;
-	sigact.sa_sigaction = back_trace;
-	sigact.sa_flags = SA_RESTART | SA_SIGINFO;
-
-	if (sigaction(SIGSEGV, &sigact, (struct sigaction *)NULL) != 0){
-		__DEBUG(LEVEL_ERROR, "error setting signal handler for %d (%s)\n",
-				SIGSEGV, strsignal(SIGSEGV));
-
-		exit(EXIT_FAILURE);
-	}
-
-}
-
-
 struct server _svr;
 static int _clicount;
 
@@ -161,6 +83,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 	if(nread==0){
 		aeDeleteFileEvent(el, fd, AE_WRITABLE);
 		aeDeleteFileEvent(el, fd, AE_READABLE);
+		close(fd);
 		_clicount--;
 		return;
 	}else{
@@ -364,15 +287,13 @@ void nessdb_close(struct nessdb *db)
 	db_close(db);
 }
 
-int main()
+int main(int argc, char **argv)
 {
-//	signal_init();
-
 	_svr.bindaddr = "127.0.0.1";
 	_svr.port = 6379;
 
 	_svr.db = nessdb_open();
-	_svr.el = aeCreateEventLoop();
+	_svr.el = aeCreateEventLoop(11024);
 	_svr.fd = anetTcpServer(_svr.neterr, _svr.port, _svr.bindaddr);
 
 	aeCreateTimeEvent(_svr.el, 3000, server_cron, NULL, NULL);
