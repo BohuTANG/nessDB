@@ -53,15 +53,7 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	} else {
 		ret = index_get(db->idx, sk, sv);
 		if (ret == 1) {
-			struct slice sv_clone;
-
-			/* Clone new data for LLRU object */
-			data = malloc(sv->len);
-			memcpy(data, sv->data, sv->len);
-
-			sv_clone.len = sv->len;
-			sv_clone.data = data;
-			llru_set(db->lru, sk, &sv_clone);
+			llru_set(db->lru, sk, sv);
 		}
 
 	}

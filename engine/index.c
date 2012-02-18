@@ -218,8 +218,8 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
  	 * 3) Last from sst on-disk indexes
  	 */
 	ret = bloom_get(idx->sst->bloom, sk->data);
-	if (ret != 1)
-		return ret;
+	if (ret == 0)
+		return 0;
 
 	cur_list = idx->list;
 	node = skiplist_lookup(cur_list, sk->data);

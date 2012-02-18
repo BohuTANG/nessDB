@@ -276,7 +276,7 @@ int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 	return 3000;
 }
 
-#define BUFFERPOOL	(300*1024*1024)
+#define BUFFERPOOL	(700*1024*1024)
 struct nessdb *nessdb_open()
 {
 	return db_open(BUFFERPOOL, getcwd(NULL, 0), 1);

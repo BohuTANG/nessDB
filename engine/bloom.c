@@ -89,12 +89,12 @@ int bloom_get(struct bloom *bloom, const char *k)
 	int i;
 	unsigned int bit;
 	if (!k)
-		return -1;
+		return 0;
 
 	for (i = 0; i < HFUNCNUM; i++) {
 		bit = bloom->hashfuncs[i](k) % bloom->size;
 		if (GETBIT(bloom->bitset, bit) == 0)
-			return -1;
+			return 0;
 	}
 	return 1;
 }
