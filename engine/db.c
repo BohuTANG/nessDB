@@ -90,14 +90,17 @@ char *db_info(struct nessdb *db)
 	"total_lru_memory_usage:%d(MB)\r\n"
 	"total_lru_hot_memory_usage:%d(MB)\r\n"
 	"total_lru_cold_meomry_usage:%d(MB)\r\n"
-	"max_allow_lru_memory_usage:%d(MB)\r\n",
+	"max_allow_lru_memory_usage:%d(MB)\r\n\r\n"
+	"total_memtable_count:%d\r\n",
 	(db->lru->level_old.count + db->lru->level_new.count),
 	db->lru->level_new.count,
 	db->lru->level_old.count,
 	(db->lru->level_new.used_size + db->lru->level_old.used_size) / (1024 * 1024),
 	db->lru->level_new.used_size / (1024 * 1024),
 	db->lru->level_old.used_size / (1024 * 1024),
-	(db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024));
+	(db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024),
+
+	db->idx->list->count);
 
 	return buffer_detach(db->buf);
 }
