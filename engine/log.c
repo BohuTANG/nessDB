@@ -85,7 +85,7 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 
 int _log_read(char *logname, struct skiplist *list)
 {
-	int rem;
+	int rem, count = 0, del_count = 0;
 	int fd = open(logname, O_RDWR, 0644);
 	int size = lseek(fd, 0, SEEK_END);
 
@@ -99,7 +99,7 @@ int _log_read(char *logname, struct skiplist *list)
 	lseek(fd, 0, SEEK_SET);
 	while(rem > 0) {
 		int isize = 0;
-		int klen, opt;
+		int klen;
 		uint64_t off;
 		char key[SKIP_KSIZE];
 		char klenstr[4], offstr[8], optstr[4];
@@ -124,14 +124,19 @@ int _log_read(char *logname, struct skiplist *list)
 		isize += sizeof(uint64_t);
 
 		/* read opteration */
-		read(fd, &optstr, sizeof(int));
-		opt = u32_from_big((unsigned char*)optstr);
-		isize += sizeof(int);
-
-		skiplist_insert(list, key, off, opt == 0? ADD : DEL);
+		read(fd, &optstr, 1);
+		isize += 1;
+		if (memcmp(optstr, "A", 1) == 0) {
+			count++;
+			skiplist_insert(list, key, off, ADD);
+		} else {
+			del_count++;
+			skiplist_insert(list, key, off, DEL);
+		}
 
 		rem -= isize;
 	}
+	__DEBUG(LEVEL_DEBUG, "recovery count ADD#%d, DEL#%d", count, del_count);
 	return 1;
 }
 
@@ -153,10 +158,12 @@ int log_recovery(struct log *l, struct skiplist *list)
 	while ((de = readdir(dd))) {
 		char *p = strstr(de->d_name, ".log");
 		if (p) {
-			if (ret == 0) 
+			if (ret == 0) {
 				memcpy(new_log, de->d_name, LOG_NSIZE);
-			else 
+			} else {
 				memcpy(old_log, de->d_name, LOG_NSIZE);
+				ret = 2;
+			}
 			ret = 1;
 		}
 	}
@@ -166,20 +173,22 @@ int log_recovery(struct log *l, struct skiplist *list)
 	 * Get the two log files:new and old 
 	 * Read must be sequential,read old then read new
 	 */
-	if (ret) {
-		memset(l->log_old, 0, LOG_NSIZE);
-		snprintf(l->log_old, LOG_NSIZE, "%s/%s", l->basedir, old_log);
-		ret = _log_read(l->log_old, list);
-		if (ret != 1)
-			return ret;
-
+	if (ret == 1) {
 		memset(l->log_new, 0, LOG_NSIZE);
 		snprintf(l->log_new, LOG_NSIZE, "%s/%s", l->basedir, new_log);
+		__DEBUG(LEVEL_DEBUG, "prepare to recovery log file#%s", l->log_new);
 		ret = _log_read(l->log_new, list);
-		if (ret != 1)
-			return ret;
+		return ret;
 	}
 
+	if (ret == 2) {
+		memset(l->log_old, 0, LOG_NSIZE);
+		snprintf(l->log_old, LOG_NSIZE, "%s/%s", l->basedir, old_log);
+		__DEBUG(LEVEL_DEBUG, "prepare to recovery log file#%s", l->log_old);
+		ret = _log_read(l->log_old, list);
+		return ret;
+
+	}
 	return ret;
 }
 
@@ -213,9 +222,9 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		buffer_putnstr(buf, sk->data, sk->len);
 		buffer_putlong(buf, db_offset);
 		if(sv)
-			buffer_putint(buf, 0);
+			buffer_putnstr(buf, "A", 1);
 		else
-			buffer_putint(buf, 1);
+			buffer_putnstr(buf, "D", 1);
 
 		len = buf->NUL;
 		line = buffer_detach(buf);

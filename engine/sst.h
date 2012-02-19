@@ -30,7 +30,7 @@ struct sst{
 };
 
 struct sst *sst_new(const char *basedir);
-void sst_merge(struct sst *sst, struct skiplist *list);
+void sst_merge(struct sst *sst, struct skiplist *list, int fromlog);
 uint64_t sst_getoff(struct sst *sst, struct slice *sk);
 void sst_free(struct sst *sst);
 

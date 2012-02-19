@@ -55,7 +55,7 @@ void *_merge_job(void *arg)
 		goto merge_out;
 
 	pthread_mutex_lock(&idx->merge_mutex);
-	sst_merge(sst, list);
+	sst_merge(sst, list, 0);
 	pthread_mutex_unlock(&idx->merge_mutex);
 
 	/* Lock end */
@@ -108,9 +108,9 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	 * 5) create new memtable and log file
 	 */
 	if (log_recovery(idx->log, idx->list)) {
-		__DEBUG(LEVEL_WARNING, "%s", "logs need to recovery....");
+		__DEBUG(LEVEL_DEBUG, "prepare to merge logs, merge count #%d....", idx->list->count);
 		/* Merge log entries */
-		sst_merge(idx->sst, idx->list);
+		sst_merge(idx->sst, idx->list, 1);
 
 		/* Remove old&new log files */
 		remove(idx->log->log_new);
@@ -193,7 +193,7 @@ void _index_flush(struct index *idx)
 
 	list = idx->list;
 	if (list && list->count > 0) {
-		sst_merge(idx->sst, list);
+		sst_merge(idx->sst, list, 0);
 		log_remove(idx->log, idx->lsn);
 	}
 }

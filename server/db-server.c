@@ -240,6 +240,7 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 								break;
 
 				case CMD_SHUTDOWN:
+								__DEBUG(LEVEL_ERROR, "%s", "db-server shutdown...");
 								db_close(_svr.db);
 								exit(2);
 								break;

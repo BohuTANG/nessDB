@@ -476,9 +476,20 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 	}
 }
 
-void sst_merge(struct sst *sst, struct skiplist *list)
+void sst_merge(struct sst *sst, struct skiplist *list, int fromlog)
 {
 	struct skipnode *x= list->hdr->forward[0];
+
+	if (fromlog == 1) {
+		struct skipnode *cur = x;
+		struct skipnode *first = list->hdr;
+
+		__DEBUG(LEVEL_DEBUG, "%s", "adding log items to bloomfilter");
+		while (cur != first) {
+			bloom_add(sst->bloom, cur->key);
+			cur = cur->forward[0];
+		}
+	}
 
 	/* First time,index is NULL,need to be created */
 	if (sst->meta->size == 0)
