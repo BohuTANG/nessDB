@@ -143,7 +143,8 @@ int _log_read(char *logname, struct skiplist *list)
 int log_recovery(struct log *l, struct skiplist *list)
 {
 	DIR *dd;
-	int ret = 0;
+	int ret;
+	int flag = 0;
 	char new_log[LOG_NSIZE];
 	char old_log[LOG_NSIZE];
 	struct dirent *de;
@@ -158,13 +159,13 @@ int log_recovery(struct log *l, struct skiplist *list)
 	while ((de = readdir(dd))) {
 		char *p = strstr(de->d_name, ".log");
 		if (p) {
-			if (ret == 0) {
+			if (flag == 0) {
 				memcpy(new_log, de->d_name, LOG_NSIZE);
+				flag |= 0x01;
 			} else {
 				memcpy(old_log, de->d_name, LOG_NSIZE);
-				ret = 2;
+				flag |= 0x10;
 			}
-			ret = 1;
 		}
 	}
 	closedir(dd);
@@ -173,21 +174,22 @@ int log_recovery(struct log *l, struct skiplist *list)
 	 * Get the two log files:new and old 
 	 * Read must be sequential,read old then read new
 	 */
-	if (ret == 1) {
+	if ((flag & 0x01) == 0x01) {
 		memset(l->log_new, 0, LOG_NSIZE);
 		snprintf(l->log_new, LOG_NSIZE, "%s/%s", l->basedir, new_log);
-		__DEBUG(LEVEL_DEBUG, "prepare to recovery log file#%s", l->log_new);
+		__DEBUG(LEVEL_DEBUG, "prepare to recovery from new log#%s", l->log_new);
 		ret = _log_read(l->log_new, list);
-		return ret;
+		if (ret == 0)
+			return ret;
 	}
 
-	if (ret == 2) {
+	if ((flag & 0x10) == 0x10) {
 		memset(l->log_old, 0, LOG_NSIZE);
 		snprintf(l->log_old, LOG_NSIZE, "%s/%s", l->basedir, old_log);
-		__DEBUG(LEVEL_DEBUG, "prepare to recovery log file#%s", l->log_old);
+		__DEBUG(LEVEL_DEBUG, "prepare to recovery from old log#%s", l->log_old);
 		ret = _log_read(l->log_old, list);
-		return ret;
-
+		if (ret == 0)
+			return ret;
 	}
 	return ret;
 }
