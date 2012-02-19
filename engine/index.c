@@ -264,6 +264,8 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 			sv->data = data;
 			return 1;
 		}
+	} else {
+		return 0;
 	}
 
 out_get:

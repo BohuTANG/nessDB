@@ -155,7 +155,7 @@ struct sst *sst_new(const char *basedir)
  */
 void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_new)
 {
-	int i;
+	int i, j, c_clone;
 	int fd;
 	int sizes;
 	int result;
@@ -180,11 +180,13 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	blks = mmap(0, sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
 	last = x;
-	for (i = 0 ; i < count; i++) {
+	c_clone = count;
+	for (i = 0, j= 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
-			memset(blks[i].key, 0, SKIP_KSIZE);
-			memcpy(blks[i].key, x->key,SKIP_KSIZE);
-			blks[i].offset=to_be64(x->val);
+			memset(blks[j].key, 0, SKIP_KSIZE);
+			memcpy(blks[j].key, x->key,SKIP_KSIZE);
+			blks[j].offset=to_be64(x->val);
+			j++;
 		} else
 			count--;
 
