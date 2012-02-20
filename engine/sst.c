@@ -488,7 +488,8 @@ void sst_merge(struct sst *sst, struct skiplist *list, int fromlog)
 
 		__DEBUG(LEVEL_DEBUG, "%s", "adding log items to bloomfilter");
 		while (cur != first) {
-			bloom_add(sst->bloom, cur->key);
+			if (cur->opt == ADD)
+				bloom_add(sst->bloom, cur->key);
 			cur = cur->forward[0];
 		}
 	}

@@ -9,6 +9,7 @@
 #ifndef _DB_H
 #define _DB_H
 
+#include <time.h>
 #include "llru.h"
 #include "index.h"
 #include "buffer.h"
@@ -18,6 +19,7 @@ struct nessdb {
 	struct llru *lru;
 	struct index *idx;
 	struct buffer *buf;
+	time_t start_time;
 };
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog);

@@ -143,7 +143,7 @@ int _log_read(char *logname, struct skiplist *list)
 int log_recovery(struct log *l, struct skiplist *list)
 {
 	DIR *dd;
-	int ret;
+	int ret = 0;
 	int flag = 0;
 	char new_log[LOG_NSIZE];
 	char old_log[LOG_NSIZE];
