@@ -22,6 +22,7 @@ struct index{
 	int lsn;
 	int db_rfd;
 	int meta_lsn;
+	int bg_merge_count;
 	int max_mtbl;
 	int max_mtbl_size;
 

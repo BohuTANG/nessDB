@@ -50,6 +50,8 @@ void *_merge_job(void *arg)
 	sst = idx->sst;
 	log = idx->log;
 
+	idx->bg_merge_count++;
+
 
 	if(list == NULL)
 		goto merge_out;
@@ -78,6 +80,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	ensure_dir_exists(dir);
 	
 	idx->lsn = 0;
+	idx->bg_merge_count = 0;
 	idx->max_mtbl = 1;
 	idx->max_mtbl_size = max_mtbl_size;
 	memset(idx->basedir, 0, INDEX_NSIZE);

@@ -85,7 +85,7 @@ char *db_info(struct nessdb *db)
 	time_t uptime = time(NULL) - db->start_time;
 	buffer_clear(db->buf);
 	buffer_scatf(db->buf, 
-			"#Server\r\n"
+			"# Server\r\n"
 			"gcc_version:%d.%d.%d\r\n"
 			"process_id:%ld\r\n"
 			"uptime_in_seconds:%ld\r\n"
@@ -99,7 +99,8 @@ char *db_info(struct nessdb *db)
 			"total_lru_hot_memory_usage:%d(MB)\r\n"
 			"total_lru_cold_meomry_usage:%d(MB)\r\n"
 			"max_allow_lru_memory_usage:%d(MB)\r\n\r\n"
-			"total_memtable_count:%d\r\n",
+			"total_memtable_count:%d\r\n"
+			"total_background_merge_count:%d\r\n",
 #ifdef __GNUC__
 			__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__,
 #else
@@ -117,7 +118,8 @@ char *db_info(struct nessdb *db)
 			db->lru->level_old.used_size / (1024 * 1024),
 			(db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024),
 
-			db->idx->list->count);
+			db->idx->list->count,
+			db->idx->bg_merge_count);
 
 	return buffer_detach(db->buf);
 }
