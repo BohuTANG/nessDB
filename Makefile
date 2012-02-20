@@ -30,7 +30,7 @@ SVR_OBJS = \
 	./server/response.o \
 	./server/zmalloc.o \
 
-LIBRARY = libnessdb.a
+LIBRARY = libnessdb.so
 
 all: $(LIBRARY)
 
@@ -46,8 +46,7 @@ cleandb:
 	-rm -rf *.event
 
 $(LIBRARY): $(LIB_OBJS)
-	rm -f $@
-	$(AR) -rs $@ $(LIB_OBJS)
+	$(CC) -fPIC -shared $(LIB_OBJS) -o libnessdb.so
 
 db-bench: bench/db-bench.o $(LIB_OBJS)
 	$(CC) -pthread  bench/db-bench.o $(LIB_OBJS)  -o $@
