@@ -15,6 +15,7 @@
 #include "debug.h"
 
 #define DB "ness"
+#define DB_VERSION "1.8.1"
 #define LIST_SIZE	(5000000)
 
 
@@ -32,7 +33,6 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog)
 
 	return db;
 }
-
 
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
@@ -104,9 +104,11 @@ char *db_info(struct nessdb *db)
 	int total_lru_cold_memory_usage = db->lru->level_old.used_size / (1024 * 1024);
 	int max_allow_lru_memory_usage = (db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024);
 
+
 	buffer_clear(db->buf);
 	buffer_scatf(db->buf, 
 			"# Server\r\n"
+			"nessDB_version:%s\r\n"
 			"gcc_version:%d.%d.%d\r\n"
 			"process_id:%ld\r\n"
 			"uptime_in_seconds:%d\r\n"
@@ -127,6 +129,7 @@ char *db_info(struct nessdb *db)
 			"total_lru_cold_meomry_usage:%d(MB)\r\n"
 			"max_allow_lru_memory_usage:%d(MB)\r\n"
 		,
+			DB_VERSION,
 #ifdef __GNUC__
 			__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__,
 #else
