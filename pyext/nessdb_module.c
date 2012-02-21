@@ -75,7 +75,7 @@ pynessdb_db_exists(PyObject *self, PyObject *args)
     int ret;
     struct slice sk;
 
-    if (PyArg_ParseTuple(args, "lsi", &db,&sk.data,&sk.len))
+    if (!PyArg_ParseTuple(args, "lsi", &db,&sk.data,&sk.len))
         return NULL;
     ret = db_exists((struct nessdb*)db, &sk);
     if (ret==1) { 
