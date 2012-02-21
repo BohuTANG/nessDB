@@ -25,6 +25,7 @@ struct index{
 	int bg_merge_count;
 	int max_mtbl;
 	int max_mtbl_size;
+	uint64_t bloom_hits;
 
 	char basedir[INDEX_NSIZE];
 	char name[INDEX_NSIZE];
