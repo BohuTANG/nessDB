@@ -27,18 +27,10 @@ pynessdb_db_add(PyObject *self, PyObject *args)
 {
     struct slice sk, sv;
     long db;
-    char *sk_data=NULL;
-    int sk_len;
-    char *sv_data=NULL;
-    int sv_len;
     int ret;
     
-    if (!PyArg_ParseTuple(args, "lsisi", &db, &sk_data, &sk_len, &sv_data, &sv_len))
+    if (!PyArg_ParseTuple(args, "lsisi", &db, &sk.data, &sk.len, &sv.data, &sv.len))
         return NULL;
-    sk.data=sk_data;
-    sk.len=sk_len;
-    sv.data=sv_data;
-    sv.len=sv_len;
     ret=db_add((struct nessdb*)db, &sk, &sv);
     return Py_BuildValue("i", ret);
 }
@@ -49,13 +41,9 @@ pynessdb_db_remove(PyObject *self, PyObject *args)
 {
     struct slice sk;
     long db;
-    char *sk_data;
-    int sk_len;
     
-    if (!PyArg_ParseTuple(args, "lsi", &db,&sk_data,&sk_len))
+    if (!PyArg_ParseTuple(args, "lsi", &db,&sk.data,&sk.len))
         return NULL;
-    sk.data=sk_data;
-    sk.len=sk_len;
     db_remove((struct nessdb*)db, &sk);
     Py_INCREF(Py_None);
     return Py_None;
@@ -66,14 +54,10 @@ pynessdb_db_get(PyObject *self, PyObject *args)
 {
     struct slice sk, sv;
     long db;
-    char *sk_data;
-    int sk_len;
     int ret;
     
-    if (!PyArg_ParseTuple(args, "lsi", &db,&sk_data,&sk_len))
+    if (!PyArg_ParseTuple(args, "lsi", &db,&sk.data,&sk.len))
         return NULL;
-    sk.data=sk_data;
-    sk.len=sk_len;
     ret = db_get((struct nessdb*)db, &sk, &sv);
     if (ret == 1) {
         PyObject *value=PyString_FromStringAndSize(sv.data,sv.len);
