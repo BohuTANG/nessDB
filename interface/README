@@ -7,7 +7,7 @@ The folder style is:
 
 For example:
  python:
-	+ REAME
+	+ README
 	+ .gitignore
 	+ ...
 
