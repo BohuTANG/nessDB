@@ -1,0 +1,16 @@
+*.o
+*~
+*.lo
+.*.swp
+*.a
+*.so
+ndbs/*
+db-bench
+db-server
+core
+*.event
+
+*.pyc
+build
+test.db
+
