@@ -9,3 +9,8 @@ db-bench
 db-server
 core
 *.event
+
+*.pyc
+pyext/build
+test.db
+
