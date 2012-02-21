@@ -1,0 +1,19 @@
+This folder is for nessDB's adapter with other languages(such as python,lua...)
+The folder style is:
+ language folder:
+	+ README
+	+ .gitignore
+	+ ...
+
+For example:
+ python:
+	+ README
+	+ .gitignore
+	+ ...
+
+
+Welcome to contribute, guys!
+
+
+
+

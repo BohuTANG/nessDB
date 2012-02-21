@@ -50,8 +50,6 @@ void *_merge_job(void *arg)
 	sst = idx->sst;
 	log = idx->log;
 
-	idx->bg_merge_count++;
-
 
 	if(list == NULL)
 		goto merge_out;
@@ -80,6 +78,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	ensure_dir_exists(dir);
 	
 	idx->lsn = 0;
+	idx->bloom_hits = 0;
 	idx->bg_merge_count = 0;
 	idx->max_mtbl = 1;
 	idx->max_mtbl_size = max_mtbl_size;
@@ -151,6 +150,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	if (!skiplist_notfull(list)) {
+		idx->bg_merge_count++;
 
 		/* If the detached-merge thread isnot finished,hold on it 
 		 * Notice: it will block the current process, 
@@ -223,7 +223,8 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	ret = bloom_get(idx->sst->bloom, sk->data);
 	if (ret == 0)
 		return 0;
-
+	
+	idx->bloom_hits++;
 	cur_list = idx->list;
 	node = skiplist_lookup(cur_list, sk->data);
 	if (node){
