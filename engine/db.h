@@ -20,6 +20,8 @@ struct nessdb {
 	struct index *idx;
 	struct buffer *buf;
 	time_t start_time;
+	uint64_t lru_cached;
+	uint64_t lru_missing;
 };
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog);

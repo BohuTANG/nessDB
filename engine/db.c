@@ -27,6 +27,8 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog)
 	db->lru = llru_new(bufferpool_size);
 	db->buf = buffer_new(1024);
 	db->start_time = time(NULL);
+	db->lru_cached = 0;
+	db->lru_missing = 0;
 
 	return db;
 }
@@ -47,12 +49,16 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	sv_l = llru_get(db->lru, sk);
 
 	if (sv_l) {
+		db->lru_cached++;
+
 		data = malloc(sv_l->len);
 		memcpy(data, sv_l->data, sv_l->len);
 		sv->len = sv_l->len;
 		sv->data = data;
 		ret = 1;
 	} else {
+		db->lru_missing++;
+
 		ret = index_get(db->idx, sk, sv);
 		if (ret == 1) {
 			llru_set(db->lru, sk, sv);
@@ -83,43 +89,65 @@ void db_remove(struct nessdb *db, struct slice *sk)
 char *db_info(struct nessdb *db)
 {
 	time_t uptime = time(NULL) - db->start_time;
+	int upday = uptime / (3600 * 24);
+
+	int total_lru_count = (db->lru->level_new.count + db->lru->level_old.count);
+	int total_lru_hot_count = db->lru->level_new.count;
+	int total_lru_cold_count = db->lru->level_old.count;
+	int total_lru_cached_count = db->lru_cached;
+	int total_lru_missing_count = db->lru_missing;
+	int total_memtable_count = db->idx->list->count;
+	int total_bg_merge_count = db->idx->bg_merge_count;
+
+	int total_lru_memory_usage = (db->lru->level_new.used_size + db->lru->level_old.used_size) / (1024 * 1024);
+	int total_lru_hot_memory_usage = db->lru->level_new.used_size / (1024 * 1024);
+	int total_lru_cold_memory_usage = db->lru->level_old.used_size / (1024 * 1024);
+	int max_allow_lru_memory_usage = (db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024);
+
 	buffer_clear(db->buf);
 	buffer_scatf(db->buf, 
 			"# Server\r\n"
 			"gcc_version:%d.%d.%d\r\n"
 			"process_id:%ld\r\n"
-			"uptime_in_seconds:%ld\r\n"
-			"uptime_in_days:%ld\r\n\r\n"
+			"uptime_in_seconds:%d\r\n"
+			"uptime_in_days:%d\r\n\r\n"
 
 			"# Stats\r\n"
 			"total_lru_count:%d\r\n"
 			"total_lru_hot_count:%d\r\n"
 			"total_lru_cold_count:%d\r\n"
+			"total_lru_hits_count:%d\r\n"
+			"total_lru_missing_count:%d\r\n"
+			"total_memtable_count:%d\r\n"
+			"total_bg_merge_count:%d\r\n\r\n"
+
+			"# Memory\r\n"
 			"total_lru_memory_usage:%d(MB)\r\n"
 			"total_lru_hot_memory_usage:%d(MB)\r\n"
 			"total_lru_cold_meomry_usage:%d(MB)\r\n"
-			"max_allow_lru_memory_usage:%d(MB)\r\n\r\n"
-			"total_memtable_count:%d\r\n"
-			"total_background_merge_count:%d\r\n",
+			"max_allow_lru_memory_usage:%d(MB)\r\n"
+		,
 #ifdef __GNUC__
 			__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__,
 #else
 			0,0,0,
 #endif
-			(long) getpid(),
+			(long)getpid(),
 			uptime,
-			uptime/(3600*24),
+			upday,
 
-			(db->lru->level_old.count + db->lru->level_new.count),
-			db->lru->level_new.count,
-			db->lru->level_old.count,
-			(db->lru->level_new.used_size + db->lru->level_old.used_size) / (1024 * 1024),
-			db->lru->level_new.used_size / (1024 * 1024),
-			db->lru->level_old.used_size / (1024 * 1024),
-			(db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024),
+			total_lru_count,
+			total_lru_hot_count,
+			total_lru_cold_count, 
+			total_lru_cached_count,
+			total_lru_missing_count,
+			total_memtable_count, 
+			total_bg_merge_count,
 
-			db->idx->list->count,
-			db->idx->bg_merge_count);
+			total_lru_memory_usage ,
+			total_lru_hot_memory_usage,
+			total_lru_cold_memory_usage,
+			max_allow_lru_memory_usage);
 
 	return buffer_detach(db->buf);
 }
