@@ -69,6 +69,38 @@ pynessdb_db_get(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+pynessdb_db_exists(PyObject *self, PyObject *args)
+{
+    long db;
+    int ret;
+    struct slice sk;
+
+    if (PyArg_ParseTuple(args, "lsi", &db,&sk.data,&sk.len))
+        return NULL;
+    ret = db_exists((struct nessdb*)db, &sk);
+    if (ret==1) { 
+        Py_INCREF(Py_True);
+        return Py_True;
+    } else {
+        Py_INCREF(Py_False);
+        return Py_False;
+    }
+}
+
+static PyObject *
+pynessdb_db_info(PyObject *self, PyObject *args)
+{
+    long db;
+    char* ret;
+    
+    if (!PyArg_ParseTuple(args, "l", &db))
+        return NULL;
+    ret = db_info((struct nessdb*)db);
+    return Py_BuildValue("s", ret);
+}
+
+
+static PyObject *
 pynessdb_db_close(PyObject *self, PyObject *args)
 {
     long db=0;
@@ -87,6 +119,8 @@ static PyMethodDef NessDBMethods[] = {
     {"db_add",  pynessdb_db_add, METH_VARARGS,""},
     {"db_remove",  pynessdb_db_remove, METH_VARARGS,""},
     {"db_get",  pynessdb_db_get, METH_VARARGS,""},
+    {"db_exists",  pynessdb_db_exists, METH_VARARGS,""},
+    {"db_info", pynessdb_db_info, METH_VARARGS,""},
     {"db_close",  pynessdb_db_close, METH_VARARGS,""},
     {NULL, NULL, 0, NULL}
 };
