@@ -13,7 +13,7 @@ from distutils.core import setup, Extension
 os.environ["CFLAGS"] = "-Wno-strict-prototypes -std=c99"
 
 pyext_path=os.path.abspath(os.path.dirname(__file__))
-nessdb_path=os.path.dirname(pyext_path)
+nessdb_path=os.path.dirname(os.path.dirname(pyext_path))
 cfiles=glob.glob(os.path.join(nessdb_path,"engine/*.c"))
 
 ext_nessdb = Extension('_nessdb',
