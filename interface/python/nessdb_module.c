@@ -14,11 +14,11 @@ pynessdb_db_open(PyObject *self, PyObject *args)
 {
     int bufferpool_size;
     const char *db_path;
-    int tolog;
+    int is_log_recovery;
     
-    if (!PyArg_ParseTuple(args, "sii", &db_path,&bufferpool_size,&tolog))
+    if (!PyArg_ParseTuple(args, "sii", &db_path,&bufferpool_size,&is_log_recovery))
         return NULL;
-    struct nessdb *ret = db_open(bufferpool_size,db_path,tolog);
+    struct nessdb *ret = db_open(bufferpool_size,db_path,is_log_recovery);
     return Py_BuildValue("l", ret);
 }
 
