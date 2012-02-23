@@ -1,0 +1,5 @@
+This is a low level nessDB LuaJIT FFI binding.
+It expose nessDB structures and fonctions.
+It's more a "Think in C" than a "Think in Lua" binding.
+
+The main use is for my nessDB testing.
