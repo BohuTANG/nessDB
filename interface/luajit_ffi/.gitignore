@@ -1,0 +1,11 @@
+*.o
+*~
+*.lo
+.*.swp
+*.a
+*.so
+ndbs/*
+db-bench
+db-server
+core
+*.event
