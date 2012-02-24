@@ -1,5 +1,12 @@
 This is a low level nessDB LuaJIT FFI binding.
-It expose nessDB structures and functions.
-It's more a "Think in C" than a "Think in Lua" binding.
+It expose nessDB C structures and C functions.
+It's a "Think in C" binding.
 
 The main use is for my nessDB testing.
+
+HOW TO TEST :
+First, compile libnessdb.so
+cd interface/luajit_ffi
+luajit ./nessdb.lua
+OR
+./nessdb.lua (only work if execute bit is set)

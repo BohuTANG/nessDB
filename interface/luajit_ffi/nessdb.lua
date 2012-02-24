@@ -1,3 +1,4 @@
+#!/usr/bin/env luajit
 -- Quick and dirty low level nessDB LuaJIT FFI binding
 -- The main use is for quick nessDB testing, a real binding should be more user friendly
 -- Copyright (C) 2012 Olivier Goudron
@@ -17,9 +18,9 @@ char *db_info(struct nessdb *db);
 void db_close(struct nessdb *db);
 ]]
 
-local nessdb = ffi.load("./libnessdb.so")
-local kbuf = ffi.new("char[255]") -- max key size in bytes
-local vbuf = ffi.new("char[255]") -- max value size in bytes
+local nessdb = ffi.load("../../libnessdb.so") -- libnessdb.so library path
+local kbuf = ffi.new("char[33]") -- max key size in bytes + 1
+local vbuf = ffi.new("char[1025]") -- max value size in bytes + 1
 local sk = ffi.new("struct slice")
 local sv = ffi.new("struct slice")
 sk.data = kbuf
@@ -72,29 +73,33 @@ end
 db = db_open(".")
 
 -- testing add
-for n = 1,100 do
-	print(db_add(db, "key" .. n, "value" .. n) .. " add : " .. ffi.string(sk.data) .. " / " .. ffi.string(sv.data))
+for n = 1,10 do
+	local exit_code = db_add(db, "key" .. n, "value" .. n)
+	print("Function add : " .. ffi.string(sk.data) .. " / " .. ffi.string(sv.data) .. " > exit_code = " .. exit_code)
 end
 
 -- testing get
-for n = 1,101 do
-	print(db_get(db, "key" .. n) .. " get : " .. ffi.string(sk.data) .. " / " .. ffi.string(sv.data))
+for n = 1,10 do
+	local exit_code = db_get(db, "key" .. n)
+	print("Function get : " .. ffi.string(sk.data) .. " / " .. ffi.string(sv.data) .. " > exit_code = " .. exit_code)
 end
 
 -- testing exists
-for n = 1,101 do
-	print(db_exists(db, "key" .. n) .. " exists : " .. ffi.string(sk.data))
+for n = 1,10 do
+	local exit_code = db_exists(db, "key" .. n)
+	print("Function exists : " .. ffi.string(sk.data) .. " > exit_code = " .. exit_code)
 end
 
 -- testing remove
-for n = 1,100 do
+for n = 1,10 do
 	db_remove(db, "key" .. n)
-	print(" remove : " .. ffi.string(sk.data))
+	print("Function remove : " .. ffi.string(sk.data))
 end
 
--- testing exists
-for n = 1,101 do
-	print(db_exists(db, "key" .. n) .. " exists : " .. ffi.string(sk.data))
+-- testing exists again
+for n = 1,10 do
+	local exit_code = db_exists(db, "key" .. n)
+	print("Function exists : " .. ffi.string(sk.data) .. " > exit_code = " .. exit_code)
 end
 
 -- db info and close
