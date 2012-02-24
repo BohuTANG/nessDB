@@ -31,7 +31,7 @@ local function print_buf(message)
 end
 
 local function db_open(path)
-	return nessdb.db_open(1024, path, 1)
+	return nessdb.db_open(10580, path, 1) -- buffer pool size = (max_key_size + max_value_size) * number of LRU slots wanted
 end
 
 local function db_add(db, key, value)
