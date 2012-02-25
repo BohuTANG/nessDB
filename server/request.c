@@ -78,7 +78,8 @@ unsigned char _table[256]={
 
 #define BUF_SIZE (1024*10)
 
-/*support commands collection
+/*
+ *support commands collection
  *if support one,to add it here
  */
 static const struct cmds _cmds[]=
@@ -95,7 +96,7 @@ static const struct cmds _cmds[]=
 	{"unknow cmd", CMD_UNKNOW}
 };
 
-enum{
+enum {
 	STATE_CONTINUE,
 	STATE_FAIL
 };
@@ -117,7 +118,7 @@ int req_state_len(struct request *req, char *sb)
 	while ((c = req->querybuf[i]) != '\0') {
 		first++;
 		pos++;
-		switch(c){
+		switch (c) {
 			case '\r':
 				term = 1;
 				break;
@@ -126,8 +127,7 @@ int req_state_len(struct request *req, char *sb)
 				  if (term) {
 					req->pos = pos;
 					return STATE_CONTINUE;
-				}
-				else
+				} else
 					return STATE_FAIL;
 			default:
 				if (first == 1) {
@@ -139,8 +139,7 @@ int req_state_len(struct request *req, char *sb)
 					if (_table[(unsigned char)c] == 2) {
 						*sb = c;
 						sb++;
-					}
-					else
+					} else
 						return STATE_FAIL;
 				}
 				break;
@@ -164,7 +163,7 @@ int request_parse(struct request *req)
 	req->argc = atoi(sb);
 
 	req->argv = (char**)calloc(req->argc, sizeof(char*));
-	for (i = 0; i < req->argc; i++){ 
+	for (i = 0; i < req->argc; i++) { 
 		int argv_len;
 		char *v;
 

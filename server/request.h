@@ -1,14 +1,23 @@
 #ifndef _REQUEST_H
 #define _REQUEST_H
 
-typedef enum{CMD_PING, CMD_GET, CMD_MGET, CMD_SET, CMD_MSET, CMD_DEL, CMD_INFO, CMD_EXISTS, CMD_SHUTDOWN, CMD_UNKNOW}CMD;
+typedef enum {CMD_PING, 
+	CMD_GET, 
+	CMD_MGET,
+	CMD_SET, 
+	CMD_MSET, 
+	CMD_DEL, 
+	CMD_INFO, 
+	CMD_EXISTS, 
+	CMD_SHUTDOWN, 
+	CMD_UNKNOW} CMD;
 
-struct  cmds{
+struct  cmds {
 	char method[256];
 	CMD cmd;
 };
 
-struct request{
+struct request {
 	char *querybuf;
 	int argc;
 	char **argv;

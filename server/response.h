@@ -1,12 +1,17 @@
 #ifndef _RESPONSE_H
 #define _RESPONSE_H
 
-/*OK:"+OK"
+/*
+ *OK:"+OK"
  *OK_200: without "+OK"
  *OK_404:"$-1"
  *ERR:"-OK"
  */
-typedef enum{OK,OK_200,OK_404,OK_PONG,ERR}STATUS;
+typedef enum {OK,
+	OK_200,
+	OK_404,
+	OK_PONG,
+	ERR} STATUS;
 
 struct response{
 	int argc;

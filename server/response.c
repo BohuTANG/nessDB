@@ -31,22 +31,22 @@
 #include <string.h>
 #include "response.h"
 
-struct response *response_new(int argc,STATUS status)
+struct response *response_new(int argc, STATUS status)
 {
 	struct response *res;
-	res=calloc(1,sizeof(struct response));
-	res->argv=calloc(argc,sizeof(char*));
-	res->argc=argc;
-	res->status=status;
+	res = calloc(1, sizeof(struct response));
+	res->argv = calloc(argc, sizeof(char*));
+	res->argc = argc;
+	res->status = status;
 	return res;
 }
 
 
 #define BUF_SIZE (10240)
-void response_detch(struct response *res,char *ackbuf)
+void response_detch(struct response *res, char *ackbuf)
 {
 	int i;
-	switch(res->status){
+	switch (res->status) {
 		case OK:
 			strcat(ackbuf,"+OK\r\n");
 			break;
@@ -66,23 +66,23 @@ void response_detch(struct response *res,char *ackbuf)
 			strcat(ackbuf,"-ERROR\r\n");
 			return;;
 	}
-	if(res->argc>1){
-		char buf[BUF_SIZE]={0};
-		snprintf(buf,sizeof buf,"*%d\r\n",res->argc);
-		strcat(ackbuf,buf);
+	if (res->argc > 1) {
+		char buf[BUF_SIZE] = {0};
+		snprintf(buf, sizeof buf, "*%d\r\n", res->argc);
+		strcat(ackbuf, buf);
 	}
 
-	for(i=0;i<res->argc;i++){
-		char ls[BUF_SIZE]={0};
-		if(res->argv[i]==NULL){
-			strcat(ackbuf,"$-1\r\n");
-		}else{
-			int l=strlen(res->argv[i]);
-			snprintf(ls,sizeof ls,"$%d\r\n",l);
-			strcat(ackbuf,ls);
+	for (i = 0; i < res->argc; i++) {
+		char ls[BUF_SIZE] = {0};
+		if (res->argv[i] == NULL){
+			strcat(ackbuf, "$-1\r\n");
+		} else {
+			int l = strlen(res->argv[i]);
+			snprintf(ls, sizeof ls, "$%d\r\n", l);
+			strcat(ackbuf, ls);
 
-			strcat(ackbuf,res->argv[i]);
-			strcat(ackbuf,"\r\n");
+			strcat(ackbuf, res->argv[i]);
+			strcat(ackbuf, "\r\n");
 		}
 	}
 }
@@ -90,20 +90,20 @@ void response_detch(struct response *res,char *ackbuf)
 void response_dump(struct response *res)
 {
 	int i;
-	if(!res)
+	if (!res)
 		return;
 
 	printf("response-dump--->{");
-	printf("argc:<%d>\n",res->argc);
-	for(i=0;i<res->argc;i++){
-		printf("\t\targv[%d]:<%s>\n",i,res->argv[i]);
+	printf("argc:<%d>\n", res->argc);
+	for (i = 0; i < res->argc; i++) {
+		printf("\t\targv[%d]:<%s>\n", i, res->argv[i]);
 	}
 	printf("}\n\n");
 }
 
 void response_free(struct response *res)
 {
-	if(res){
+	if (res) {
 		free(res->argv);
 		free(res);
 	}
