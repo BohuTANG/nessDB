@@ -28,7 +28,6 @@ struct meta{
 	int32_t sn;
 	int32_t size;
 	struct meta_node nodes[META_MAX];
-	pthread_mutex_t mutexs[META_MAX];
 };
 
 struct meta *meta_new();

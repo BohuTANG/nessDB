@@ -22,14 +22,9 @@
 
 struct meta *meta_new()
 {
-	int j;
 	struct meta *m = malloc(sizeof(struct meta));
 	m->sn = 0;
 	m->size = 0;
-
-	for (j = 0; j < META_MAX; j++) 
-		pthread_mutex_init(&m->mutexs[j], NULL);
-
 	return m;
 }
 

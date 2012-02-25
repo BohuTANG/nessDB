@@ -16,6 +16,12 @@
 #include "bloom.h"
 #include "util.h"
 
+struct mutexer{
+	volatile int lsn;
+	pthread_mutex_t mutex;
+};
+
+
 struct sst_block{
 	char key[SKIP_KSIZE];
 	__be64  offset;
@@ -27,6 +33,7 @@ struct sst{
 	uint32_t lsn;
 	struct meta *meta;
 	struct bloom *bloom;
+	struct mutexer mutexer;
 };
 
 struct sst *sst_new(const char *basedir);

@@ -144,6 +144,8 @@ struct sst *sst_new(const char *basedir)
 	memcpy(s->basedir, basedir, SST_FLEN);
 
 	s->bloom = bloom_new();
+	s->mutexer.lsn = -1;
+	pthread_mutex_init(&s->mutexer.mutex, NULL);
 
 	/* SST files load */
 	_sst_load(s);
@@ -346,17 +348,21 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 	if (count <= SST_MAX * 2) {
 		if (meta) {
 			lsn = meta->lsn;
-			pthread_mutex_lock(&sst->meta->mutexs[lsn]);
+			sst->mutexer.lsn = lsn;
+			pthread_mutex_lock(&sst->mutexer.mutex);
 			x = _write_mmap(sst, x, count, 0);
-			pthread_mutex_unlock(&sst->meta->mutexs[lsn]);
+			pthread_mutex_unlock(&sst->mutexer.mutex);
+			sst->mutexer.lsn = -1;
 		} else 
 			x = _write_mmap(sst, x, count, 0);
 	} else {
 		if (meta) {
 			lsn = meta->lsn;
-			pthread_mutex_lock(&sst->meta->mutexs[lsn]);
+			sst->mutexer.lsn = lsn;
+			pthread_mutex_lock(&sst->mutexer.mutex);
 			x = _write_mmap(sst, x, SST_MAX, 0);
-			pthread_mutex_unlock(&sst->meta->mutexs[lsn]);
+			pthread_mutex_unlock(&sst->mutexer.mutex);
+			sst->mutexer.lsn = -1;
 		} else
 			x = _write_mmap(sst, x, SST_MAX, 0);
 
@@ -516,11 +522,15 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 
 	/* If get one record from on-disk sst file, 
 	 * this file must not be operated by bg-merge thread
-	*/
+	 */
 	lsn = meta_info->lsn;
-	pthread_mutex_lock(&sst->meta->mutexs[lsn]);
-	off = _read_offset(sst, sk);
-	pthread_mutex_unlock(&sst->meta->mutexs[lsn]);
+	if (sst->mutexer.lsn == lsn) {
+		pthread_mutex_lock(&sst->mutexer.mutex);
+		off = _read_offset(sst, sk);
+		pthread_mutex_unlock(&sst->mutexer.mutex);
+	} else {
+		off = _read_offset(sst, sk);
+	}
 
 	return off;
 }
