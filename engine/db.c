@@ -88,6 +88,7 @@ void db_remove(struct nessdb *db, struct slice *sk)
 
 char *db_info(struct nessdb *db)
 {
+	int arch_bits = (sizeof(long) == 8) ? 64 : 32;
 	time_t uptime = time(NULL) - db->start_time;
 	int upday = uptime / (3600 * 24);
 
@@ -109,6 +110,7 @@ char *db_info(struct nessdb *db)
 	buffer_scatf(db->buf, 
 			"# Server\r\n"
 			"nessDB_version:%s\r\n"
+			"arch_bits:%d\r\n"
 			"gcc_version:%d.%d.%d\r\n"
 			"process_id:%ld\r\n"
 			"uptime_in_seconds:%d\r\n"
@@ -130,6 +132,7 @@ char *db_info(struct nessdb *db)
 			"max_allow_lru_memory_usage:%d(MB)\r\n"
 		,
 			DB_VERSION,
+			arch_bits,
 #ifdef __GNUC__
 			__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__,
 #else
