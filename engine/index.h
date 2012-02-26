@@ -23,6 +23,8 @@ struct index{
 	int db_rfd;
 	int meta_lsn;
 	int bg_merge_count;
+	int mtbl_add_count;
+	int mtbl_rem_count;
 	int max_mtbl;
 	int max_mtbl_size;
 	uint64_t bloom_hits;
@@ -40,6 +42,7 @@ struct index{
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size, int tolog);
 int index_add(struct index *idx, struct slice *sk, struct slice *sv);
 int index_get(struct index *idx, struct slice *sk, struct slice *sv);
+uint64_t index_allcount(struct index *idx);
 void index_free(struct index *idx);
 
 #endif

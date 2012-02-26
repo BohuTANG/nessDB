@@ -98,6 +98,7 @@ char *db_info(struct nessdb *db)
 	int total_lru_cached_count = db->lru_cached;
 	int total_lru_missing_count = db->lru_missing;
 	int total_memtable_count = db->idx->list->count;
+	uint64_t total_count = index_allcount(db->idx);
 	int total_bg_merge_count = db->idx->bg_merge_count;
 
 	int total_lru_memory_usage = (db->lru->level_new.used_size + db->lru->level_old.used_size) / (1024 * 1024);
@@ -123,6 +124,7 @@ char *db_info(struct nessdb *db)
 			"total_lru_hits_count:%d\r\n"
 			"total_lru_missing_count:%d\r\n"
 			"total_memtable_count:%d\r\n"
+			"total_count(in sst):%llu\r\n"
 			"total_bg_merge_count:%d\r\n\r\n"
 
 			"# Memory\r\n"
@@ -148,6 +150,7 @@ char *db_info(struct nessdb *db)
 			total_lru_cached_count,
 			total_lru_missing_count,
 			total_memtable_count, 
+			total_count,
 			total_bg_merge_count,
 
 			total_lru_memory_usage ,

@@ -166,6 +166,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 		pthread_create(&tid, &idx->attr, _merge_job, idx);
 
+		idx->mtbl_rem_count = 0;
 		/* New mtable is born */
 		new_list = skiplist_new(idx->max_mtbl_size);
 		idx->list = new_list;
@@ -173,12 +174,13 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		idx->lsn++;
 		log_next(idx->log, idx->lsn);
 	}
-	skiplist_insert(idx->list, sk->data, value_offset, sv == NULL?DEL:ADD);
+	skiplist_insert(idx->list, sk->data, value_offset, sv == NULL ? DEL : ADD);
 	
 	/* Add to Bloomfilter */
 	if (sv) {
 		bloom_add(idx->sst->bloom, sk->data);
-	}
+	} else
+		idx->mtbl_rem_count++;
 
 	return 1;
 }
@@ -274,6 +276,18 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 
 out_get:
 	return ret;
+}
+
+uint64_t index_allcount(struct index *idx)
+{
+	int i, size;
+	uint64_t c = 0UL;
+	
+	size = idx->sst->meta->size;
+	for (i = 0; i < size; i++)
+		c += idx->sst->meta->nodes[i].count;
+
+	return c;
 }
 
 void index_free(struct index *idx)
