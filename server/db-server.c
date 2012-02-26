@@ -298,6 +298,18 @@ int main(int argc, char **argv)
 	_svr.db = nessdb_open();
 	_svr.el = aeCreateEventLoop(11024);
 	_svr.fd = anetTcpServer(_svr.neterr, _svr.port, _svr.bindaddr);
+	if (_svr.fd == ANET_ERR) {
+		__DEBUG(LEVEL_ERROR, "openning port #%d:%s", _svr.port, _svr.neterr);
+		exit(1);
+	}
+
+	/*
+	 * set nonblock
+	 */
+	if (anetNonBlock(_svr.neterr, _svr.fd) == ANET_ERR) {
+		__DEBUG(LEVEL_ERROR, "set nonblock #%s",_svr.neterr);
+		exit(1);
+	}
 
 	aeCreateTimeEvent(_svr.el, 3000, server_cron, NULL, NULL);
 
