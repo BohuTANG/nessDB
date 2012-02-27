@@ -195,6 +195,10 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 		last = x;
 		x = x->forward[0];
 	}
+	
+	if (msync(blks, sizes, MS_SYNC) == -1) {
+		__DEBUG(LEVEL_ERROR, "%s", "write_map: msync error");
+	}
 
 	if (munmap(blks, sizes) == -1) {
 		__DEBUG(LEVEL_ERROR, "%s", "write_map:un-mmapping the file");
