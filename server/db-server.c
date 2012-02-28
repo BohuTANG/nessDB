@@ -304,7 +304,7 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 * set nonblock
+	 * set nonblock: single process no effect
 	 */
 	if (anetNonBlock(_svr.neterr, _svr.fd) == ANET_ERR) {
 		__DEBUG(LEVEL_ERROR, "set nonblock #%s",_svr.neterr);

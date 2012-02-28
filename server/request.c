@@ -122,9 +122,9 @@ int req_state_len(struct request *req, char *sb)
 			case '\r':
 				term = 1;
 				break;
-				  
+
 			case '\n':
-				  if (term) {
+				if (term) {
 					req->pos = pos;
 					return STATE_CONTINUE;
 				} else
@@ -149,7 +149,6 @@ int req_state_len(struct request *req, char *sb)
 
 	return STATE_FAIL;
 }
-
 
 int request_parse(struct request *req)
 {
@@ -176,8 +175,8 @@ int request_parse(struct request *req)
 		argv_len = atoi(sb);
 
 		/*get argv*/
-		v = (char*)calloc(argv_len, sizeof(char));
-		memset(v, 0 ,argv_len);
+		v = (char*)calloc(argv_len + 1, sizeof(char));
+		memset(v, 0 ,argv_len + 1);
 		memcpy(v, req->querybuf+(req->pos), argv_len);
 		req->argv[i] = v;	
 		req->pos += (argv_len + 2);
@@ -205,7 +204,7 @@ int request_parse(struct request *req)
 void request_dump(struct request *req)
 {
 	int i;
-	if(!req)
+	if (!req)
 		return;
 
 	printf("request-dump--->{");
@@ -220,9 +219,9 @@ void request_dump(struct request *req)
 void request_free(struct request *req)
 {
 	int i;
-	if(req){
+	if (req) {
 		for (i = 0; i < req->argc; i++) {
-			if(req->argv[i])
+			if (req->argv[i])
 				free(req->argv[i]);
 		}
 		free(req->argv);

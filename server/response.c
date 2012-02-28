@@ -61,7 +61,7 @@ void response_detch(struct response *res, char *ackbuf)
 		case OK_PONG:
 			strcat(ackbuf,"+PONG\r\n");
 			return;	
-		
+
 		case ERR:
 			strcat(ackbuf,"-ERROR\r\n");
 			return;;
@@ -108,6 +108,4 @@ void response_free(struct response *res)
 		free(res);
 	}
 }
-
-
 
