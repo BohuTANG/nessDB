@@ -58,3 +58,46 @@ void ensure_dir_exists(const char *path)
 	}
 }
 
+/**
+ * SAX hash function
+ */
+unsigned int sax_hash(const char *key)
+{
+	unsigned int h = 0;
+	while (*key) {
+		h ^= (h << 5) + (h >> 2) + (unsigned char) *key;
+		++key;
+	}
+	return h;
+}
+
+/**
+ * SDBM hash function
+ */
+unsigned int sdbm_hash(const char *key)
+{
+	unsigned int h = 0;
+	while (*key) {
+		h = (unsigned char) *key + (h << 6) + (h << 16) - h;
+		++key;
+	}
+	return h;
+}
+
+/**
+ * Jdb hash function
+ */
+unsigned int jdb_hash(const char *key)
+{
+	if (!key) {
+		return 0;
+	}
+	unsigned int hash = 5381;
+	unsigned int c;
+	while ((c = *key++))
+		hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
+
+	return (unsigned int) hash;
+}
+
+

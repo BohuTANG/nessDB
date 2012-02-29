@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "skiplist.h"
-
+#include "config.h"
 #include "debug.h"
 
 #define cmp_lt(a, b) (strcmp(a, b) < 0)
@@ -134,7 +134,7 @@ int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt)
 	if ((x =_pool_alloc(list,sizeof(struct skipnode) + new_level*sizeof(struct skipnode *))) == 0)
 		__DEBUG(LEVEL_ERROR, "%s", "ERROR: Alloc Memory *ERROR*");
 
-	memcpy(x->key, key, SKIP_KSIZE);
+	memcpy(x->key, key, NESSDB_MAX_KEY_SIZE);
 	x->val = val;
 	x->opt = opt;
 

@@ -14,10 +14,11 @@
 #include "index.h"
 #include "buffer.h"
 #include "util.h"
+#include "config.h"
 
 struct nessdb {
 	struct llru *lru;
-	struct index *idx;
+	struct index *idx_group[NESSDB_MAX_CGROUPS];
 	struct buffer *buf;
 	time_t start_time;
 	uint64_t lru_cached;

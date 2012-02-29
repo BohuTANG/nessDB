@@ -47,21 +47,21 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 {
 	int result;
 	struct log *l;
-	char log_name[LOG_NSIZE];
-	char db_name[LOG_NSIZE];
+	char log_name[FILE_PATH_SIZE];
+	char db_name[FILE_PATH_SIZE];
 
 	l = malloc(sizeof(struct log));
 	l->islog = islog;
 
-	memset(log_name, 0, LOG_NSIZE);
-	snprintf(log_name, LOG_NSIZE, "%s/%d.log", basedir, 0);
-	memcpy(l->name, log_name, LOG_NSIZE);
+	memset(log_name, 0, FILE_PATH_SIZE);
+	snprintf(log_name, FILE_PATH_SIZE, "%s/%d.log", basedir, 0);
+	memcpy(l->name, log_name, FILE_PATH_SIZE);
 
-	memset(l->basedir, 0, LOG_NSIZE);
-	memcpy(l->basedir, basedir, LOG_NSIZE);
+	memset(l->basedir, 0, FILE_PATH_SIZE);
+	memcpy(l->basedir, basedir, FILE_PATH_SIZE);
 
-	memset(db_name, 0, LOG_NSIZE);
-	snprintf(db_name, LOG_NSIZE, "%s/ness.db", basedir);
+	memset(db_name, 0, FILE_PATH_SIZE);
+	snprintf(db_name, FILE_PATH_SIZE, "%s/ness.db", basedir);
 
 
 	if (_file_exists(db_name)) {
@@ -101,7 +101,7 @@ int _log_read(char *logname, struct skiplist *list)
 		int isize = 0;
 		int klen;
 		uint64_t off;
-		char key[SKIP_KSIZE];
+		char key[NESSDB_MAX_KEY_SIZE];
 		char klenstr[4], offstr[8], optstr[4];
 
 		memset(klenstr, 0, 4);
@@ -114,7 +114,7 @@ int _log_read(char *logname, struct skiplist *list)
 		isize += sizeof(int);
 		
 		/* read key */
-		memset(key, 0, SKIP_KSIZE);
+		memset(key, 0, NESSDB_MAX_KEY_SIZE);
 		read(fd, &key, klen);
 		isize += klen;
 
@@ -145,25 +145,25 @@ int log_recovery(struct log *l, struct skiplist *list)
 	DIR *dd;
 	int ret = 0;
 	int flag = 0;
-	char new_log[LOG_NSIZE];
-	char old_log[LOG_NSIZE];
+	char new_log[FILE_PATH_SIZE];
+	char old_log[FILE_PATH_SIZE];
 	struct dirent *de;
 
 	if (!l->islog)
 		return 0;
 
-	memset(new_log, 0, LOG_NSIZE);
-	memset(old_log, 0, LOG_NSIZE);
+	memset(new_log, 0, FILE_PATH_SIZE);
+	memset(old_log, 0, FILE_PATH_SIZE);
 
 	dd = opendir(l->basedir);
 	while ((de = readdir(dd))) {
 		char *p = strstr(de->d_name, ".log");
 		if (p) {
 			if (flag == 0) {
-				memcpy(new_log, de->d_name, LOG_NSIZE);
+				memcpy(new_log, de->d_name, FILE_PATH_SIZE);
 				flag |= 0x01;
 			} else {
-				memcpy(old_log, de->d_name, LOG_NSIZE);
+				memcpy(old_log, de->d_name, FILE_PATH_SIZE);
 				flag |= 0x10;
 			}
 		}
@@ -175,8 +175,8 @@ int log_recovery(struct log *l, struct skiplist *list)
 	 * Read must be sequential,read old then read new
 	 */
 	if ((flag & 0x01) == 0x01) {
-		memset(l->log_new, 0, LOG_NSIZE);
-		snprintf(l->log_new, LOG_NSIZE, "%s/%s", l->basedir, new_log);
+		memset(l->log_new, 0, FILE_PATH_SIZE);
+		snprintf(l->log_new, FILE_PATH_SIZE, "%s/%s", l->basedir, new_log);
 		__DEBUG(LEVEL_DEBUG, "prepare to recovery from new log#%s", l->log_new);
 		ret = _log_read(l->log_new, list);
 		if (ret == 0)
@@ -184,8 +184,8 @@ int log_recovery(struct log *l, struct skiplist *list)
 	}
 
 	if ((flag & 0x10) == 0x10) {
-		memset(l->log_old, 0, LOG_NSIZE);
-		snprintf(l->log_old, LOG_NSIZE, "%s/%s", l->basedir, old_log);
+		memset(l->log_old, 0, FILE_PATH_SIZE);
+		snprintf(l->log_old, FILE_PATH_SIZE, "%s/%s", l->basedir, old_log);
 		__DEBUG(LEVEL_DEBUG, "prepare to recovery from old log#%s", l->log_old);
 		ret = _log_read(l->log_old, list);
 		if (ret == 0)
@@ -241,18 +241,18 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 
 void log_remove(struct log *l, int lsn)
 {
-	char log_name[LOG_NSIZE];
-	memset(log_name, 0 ,LOG_NSIZE);
-	snprintf(log_name, LOG_NSIZE, "%s/%d.log", l->basedir, lsn);
+	char log_name[FILE_PATH_SIZE];
+	memset(log_name, 0 ,FILE_PATH_SIZE);
+	snprintf(log_name, FILE_PATH_SIZE, "%s/%d.log", l->basedir, lsn);
 	remove(log_name);
 }
 
 void log_next(struct log *l, int lsn)
 {
-	char log_name[LOG_NSIZE];
-	memset(log_name, 0 ,LOG_NSIZE);
-	snprintf(log_name, LOG_NSIZE, "%s/%d.log", l->basedir, lsn);
-	memcpy(l->name, log_name, LOG_NSIZE);
+	char log_name[FILE_PATH_SIZE];
+	memset(log_name, 0 ,FILE_PATH_SIZE);
+	snprintf(log_name, FILE_PATH_SIZE, "%s/%d.log", l->basedir, lsn);
+	memcpy(l->name, log_name, FILE_PATH_SIZE);
 
 	buffer_clear(l->buf);
 	buffer_clear(l->db_buf);

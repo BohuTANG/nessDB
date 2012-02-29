@@ -9,57 +9,15 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include "util.h"
+#include "config.h"
 #include "bloom.h"
 
-#define BLOOM_SIZE (433494437) /* Large prime */
 #define HFUNCNUM (3)
-
-/**
- * SAX hash function
- */
-static inline unsigned int sax_hash(const char *key)
-{
-	unsigned int h = 0;
-	while (*key) {
-		h ^= (h << 5) + (h >> 2) + (unsigned char) *key;
-		++key;
-	}
-	return h;
-}
-
-/**
- * SDBM hash function
- */
-static inline unsigned int sdbm_hash(const char *key)
-{
-	unsigned int h = 0;
-	while (*key) {
-		h = (unsigned char) *key + (h << 6) + (h << 16) - h;
-		++key;
-	}
-	return h;
-}
-
-/**
- * Jdb hash function
- */
-static inline unsigned int jdb_hash(const char* key)
-{
-	if (!key) {
-		return 0;
-	}
-	unsigned int hash = 5381;
-	unsigned int c;
-	while ((c = *key++))
-		hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
-
-	return (unsigned int) hash;
-}
 
 struct bloom *bloom_new()
 {
 	struct bloom *bl = malloc(sizeof(struct bloom));
-	bl->size = BLOOM_SIZE;
+	bl->size = BLOOM_BITS;
 	bl->bitset = calloc((bl->size+1) / CHAR_BIT, sizeof(char));
 	bl->hashfuncs = malloc(HFUNCNUM * sizeof(hashfuncs));
 

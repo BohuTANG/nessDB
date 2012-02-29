@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include "skiplist.h"
 #include "util.h"
+#include "config.h"
 #include "platform.h"
 
 struct log{
@@ -19,10 +20,10 @@ struct log{
 	int db_wfd;
 	int islog;
 	uint64_t db_alloc;
-	char name[LOG_NSIZE];
-	char basedir[LOG_NSIZE];
-	char log_old[LOG_NSIZE];
-	char log_new[LOG_NSIZE];
+	char name[FILE_PATH_SIZE];
+	char basedir[FILE_PATH_SIZE];
+	char log_old[FILE_PATH_SIZE];
+	char log_new[FILE_PATH_SIZE];
 	struct buffer *buf;
 	struct buffer *db_buf;
 };

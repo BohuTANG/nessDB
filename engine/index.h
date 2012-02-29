@@ -29,8 +29,8 @@ struct index{
 	int max_mtbl_size;
 	uint64_t bloom_hits;
 
-	char basedir[INDEX_NSIZE];
-	char name[INDEX_NSIZE];
+	char basedir[FILE_PATH_SIZE];
+	char name[FILE_NAME_SIZE];
 	struct log *log;
 	struct sst *sst;
 	struct skiplist *list;

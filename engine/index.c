@@ -1,8 +1,8 @@
 /*
- * nessDB storage engine
- * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
- * All rights reserved.
- * Code is licensed with BSD. See COPYING.BSD file.
+ * nessdb storage engine
+ * copyright (c) 2011-2012, bohutang <overred.shuttler at gmail dot com>
+ * all rights reserved.
+ * code is licensed with bsd. see copying.bsd file.
  *
  */
 
@@ -32,8 +32,6 @@
 #include "debug.h"
 #include "bloom.h"
 #include "index.h"
-
-#define DB_DIR "ndbs"
 
 void *_merge_job(void *arg)
 {
@@ -68,25 +66,22 @@ merge_out:
 
 struct index *index_new(const char *basedir, const char *name, int max_mtbl_size, int tolog)
 {
-	char dir[INDEX_NSIZE];
-	char dbfile[DB_NSIZE];
+	char dbfile[FILE_PATH_SIZE];
 	struct index *idx = malloc(sizeof(struct index));
 	struct idx_park *park = malloc(sizeof(struct idx_park));
 
-	memset(dir, 0, INDEX_NSIZE);
-	snprintf(dir, INDEX_NSIZE, "%s/%s", basedir, DB_DIR);
-	ensure_dir_exists(dir);
+	ensure_dir_exists(basedir);
 	
 	idx->lsn = 0;
 	idx->bloom_hits = 0;
 	idx->bg_merge_count = 0;
 	idx->max_mtbl = 1;
 	idx->max_mtbl_size = max_mtbl_size;
-	memset(idx->basedir, 0, INDEX_NSIZE);
-	memcpy(idx->basedir, dir, INDEX_NSIZE);
+	memset(idx->basedir, 0, FILE_PATH_SIZE);
+	memcpy(idx->basedir, basedir, FILE_PATH_SIZE);
 
-	memset(idx->name, 0, INDEX_NSIZE);
-	memcpy(idx->name, name, INDEX_NSIZE); 
+	memset(idx->name, 0, FILE_NAME_SIZE);
+	memcpy(idx->name, name, FILE_NAME_SIZE); 
 
 	/* sst */
 	idx->sst = sst_new(idx->basedir);
@@ -125,8 +120,8 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	/* Create new log:0.log */
 	log_next(idx->log, 0);
 
-	memset(dbfile, 0, DB_NSIZE);
-	snprintf(dbfile, DB_NSIZE, "%s/%s.db", idx->basedir, name);
+	memset(dbfile, 0, FILE_PATH_SIZE);
+	snprintf(dbfile, FILE_PATH_SIZE, "%s/%s.db", idx->basedir, name);
 	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
 
 	/* Detached thread attr */

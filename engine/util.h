@@ -18,13 +18,6 @@
 #define O_BINARY 0
 #endif
 
-#define SST_NSIZE (16)		/* sst index file name size */
-#define SST_FLEN (1024)		/* sst index file full path size */
-#define META_MAX (10000)	/* max index file count */
-#define INDEX_NSIZE (1024)
-#define DB_NSIZE (1024)
-#define LOG_NSIZE (1024)
-
 #define FILE_ERR(a) (a == -1)
 
 #ifdef __CHECKER__
@@ -116,4 +109,8 @@ struct slice{
 };
 
 void ensure_dir_exists(const char *path);
+
+unsigned int sax_hash(const char *key);
+unsigned int sdbm_hash(const char *key);
+unsigned int jdb_hash(const char *key);
 #endif

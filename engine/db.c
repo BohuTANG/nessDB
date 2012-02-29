@@ -10,34 +10,54 @@
 #include <string.h>
 #include <assert.h>
 
-#include "llru.h"
 #include "db.h"
 #include "debug.h"
+#include "util.h"
 
 #define DB "ness"
 #define DB_VERSION "1.8.1"
-#define LIST_SIZE	(5000000)
+#define LIST_SIZE	(2000000)
 
-
-struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int tolog)
+unsigned int _get_idx(const char *key)
 {
+	if (NESSDB_MAX_CGROUPS < 2)
+		return 0;
+
+	return jdb_hash(key) % NESSDB_MAX_CGROUPS;
+}
+
+struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_recovery)
+{
+	int i, cgroup;
+	char buff_dir[FILE_PATH_SIZE];
 	struct nessdb *db;
+
+	cgroup = NESSDB_MAX_CGROUPS;
+	if (cgroup < 2)
+		cgroup = 1;
 	 	
 	db = malloc(sizeof(struct nessdb));
-	db->idx = index_new(basedir, DB, LIST_SIZE, tolog);
 	db->lru = llru_new(bufferpool_size);
 	db->buf = buffer_new(1024);
 	db->start_time = time(NULL);
 	db->lru_cached = 0;
 	db->lru_missing = 0;
 
+	for (i = 0; i < cgroup; i++) {
+		memset(buff_dir, FILE_PATH_SIZE, 0);
+		snprintf(buff_dir, FILE_PATH_SIZE, "%s/ndbs/%d", basedir, i);
+		db->idx_group[i] = index_new(buff_dir, DB, MTBL_MAX_COUNT, is_log_recovery); 
+	}
+
 	return db;
 }
 
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
+	int idx = _get_idx(sk->data);
+
 	llru_remove(db->lru, sk);
-	return index_add(db->idx, sk, sv);
+	return index_add(db->idx_group[idx], sk, sv);
 }
 
 int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
@@ -45,6 +65,7 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	int ret = 0;
 	char *data;
 	struct slice *sv_l;
+	int idx = _get_idx(sk->data);
 
 	sv_l = llru_get(db->lru, sk);
 
@@ -59,7 +80,7 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	} else {
 		db->lru_missing++;
 
-		ret = index_get(db->idx, sk, sv);
+		ret = index_get(db->idx_group[idx], sk, sv);
 		if (ret == 1) {
 			llru_set(db->lru, sk, sv);
 		}
@@ -72,7 +93,9 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 int db_exists(struct nessdb *db, struct slice *sk)
 {
 	struct slice sv;
-	int ret = index_get(db->idx, sk, &sv);
+	int idx = _get_idx(sk->data);
+	int ret = index_get(db->idx_group[idx], sk, &sv);
+
 	if (ret == 1) {
 		free(sv.data);
 		return 1;
@@ -82,8 +105,10 @@ int db_exists(struct nessdb *db, struct slice *sk)
 
 void db_remove(struct nessdb *db, struct slice *sk)
 {
+	int idx = _get_idx(sk->data);
+
 	llru_remove(db->lru, sk);
-	index_add(db->idx, sk, NULL);
+	index_add(db->idx_group[idx], sk, NULL);
 }
 
 char *db_info(struct nessdb *db)
@@ -97,9 +122,9 @@ char *db_info(struct nessdb *db)
 	int total_lru_cold_count = db->lru->level_old.count;
 	int total_lru_cached_count = db->lru_cached;
 	int total_lru_missing_count = db->lru_missing;
-	int total_memtable_count = db->idx->list->count;
-	uint64_t total_count = index_allcount(db->idx);
-	int total_bg_merge_count = db->idx->bg_merge_count;
+	int total_memtable_count = 0;//db->idx->list->count;
+	uint64_t total_count = 0;//index_allcount(db->idx);
+	int total_bg_merge_count = 0;//db->idx->bg_merge_count;
 
 	int total_lru_memory_usage = (db->lru->level_new.used_size + db->lru->level_old.used_size) / (1024 * 1024);
 	int total_lru_hot_memory_usage = db->lru->level_new.used_size / (1024 * 1024);
@@ -163,8 +188,12 @@ char *db_info(struct nessdb *db)
 
 void db_close(struct nessdb *db)
 {
+	int i;
+
+	for (i = 0; i < NESSDB_MAX_CGROUPS; i++)
+		index_free(db->idx_group[i]);
+
 	llru_free(db->lru);
-	index_free(db->idx);
 	buffer_free(db->buf);
 	free(db);
 }

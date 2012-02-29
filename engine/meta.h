@@ -14,12 +14,13 @@
 
 #include "skiplist.h"
 #include "util.h"
+#include "config.h"
 
 #define META_NODE_SIZE sizeof(struct meta_node)
 
 struct meta_node{
-	char end[SKIP_KSIZE];
-	char index_name[SST_NSIZE];
+	char end[NESSDB_MAX_KEY_SIZE];
+	char index_name[FILE_NAME_SIZE];
 	uint32_t count;
 	uint32_t lsn;
 };
@@ -27,7 +28,7 @@ struct meta_node{
 struct meta{
 	int32_t sn;
 	int32_t size;
-	struct meta_node nodes[META_MAX];
+	struct meta_node nodes[META_MAX_COUNT];
 };
 
 struct meta *meta_new();

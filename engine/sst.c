@@ -44,12 +44,11 @@
 #include "sst.h"
 #include "debug.h"
 
-#define SST_MAX (65536) /* 2^16 */
 #define BLK_MAGIC (20111225)
 #define F_CRC (2011)
 
 struct footer{
-	char key[SKIP_KSIZE];
+	char key[NESSDB_MAX_KEY_SIZE];
 	__be32 count;
 	__be32 crc;
 };
@@ -87,11 +86,11 @@ void _sst_load(struct sst *sst)
 			int fcount = 0, fcrc = 0;
 			struct meta_node mn;
 			struct footer footer;
-			char sst_file[SST_FLEN];
+			char sst_file[FILE_PATH_SIZE];
 			int fsize = sizeof(struct footer);
 
-			memset(sst_file, 0, SST_FLEN);
-			snprintf(sst_file, SST_FLEN, "%s/%s", sst->basedir, de->d_name);
+			memset(sst_file, 0, FILE_PATH_SIZE);
+			snprintf(sst_file, FILE_PATH_SIZE, "%s/%s", sst->basedir, de->d_name);
 			
 			fd = open(sst_file, O_RDWR, 0644);
 			lseek(fd, -fsize, SEEK_END);
@@ -119,11 +118,11 @@ void _sst_load(struct sst *sst)
 						
 			/* Set meta */
 			mn.count = fcount;
-			memset(mn.end, 0, SKIP_KSIZE);
-			memcpy(mn.end, footer.key, SKIP_KSIZE);
+			memset(mn.end, 0, NESSDB_MAX_KEY_SIZE);
+			memcpy(mn.end, footer.key, NESSDB_MAX_KEY_SIZE);
 
-			memset(mn.index_name, 0, SST_NSIZE);
-			memcpy(mn.index_name, de->d_name, SST_NSIZE);
+			memset(mn.index_name, 0, FILE_NAME_SIZE);
+			memcpy(mn.index_name, de->d_name, FILE_NAME_SIZE);
 			meta_set(sst->meta, &mn);
 		
 			close(fd);
@@ -141,7 +140,7 @@ struct sst *sst_new(const char *basedir)
 	s->lsn = 0;
 
 	s->meta = meta_new();
-	memcpy(s->basedir, basedir, SST_FLEN);
+	memcpy(s->basedir, basedir, FILE_PATH_SIZE);
 
 	s->bloom = bloom_new();
 	s->mutexer.lsn = -1;
@@ -162,7 +161,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	int fd;
 	int sizes;
 	int result;
-	char file[SST_FLEN];
+	char file[FILE_PATH_SIZE];
 	struct skipnode *last;
 	struct sst_block *blks;
 	struct footer footer;
@@ -171,8 +170,8 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 	sizes = count * sizeof(struct sst_block);
 
-	memset(file, 0, SST_FLEN);
-	snprintf(file, SST_FLEN, "%s/%s", sst->basedir, sst->name);
+	memset(file, 0, FILE_PATH_SIZE);
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
 	fd = open(file, O_RDWR | O_CREAT | O_TRUNC, 0644);
 
 	lseek(fd, sizes - 1, SEEK_SET);
@@ -186,8 +185,8 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	c_clone = count;
 	for (i = 0, j= 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
-			memset(blks[j].key, 0, SKIP_KSIZE);
-			memcpy(blks[j].key, x->key,SKIP_KSIZE);
+			memset(blks[j].key, 0, NESSDB_MAX_KEY_SIZE);
+			memcpy(blks[j].key, x->key,NESSDB_MAX_KEY_SIZE);
 			blks[j].offset=to_be64(x->val);
 			j++;
 		} else
@@ -209,8 +208,8 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	
 	footer.count = to_be32(count);
 	footer.crc = to_be32(F_CRC);
-	memset(footer.key, 0, SKIP_KSIZE);
-	memcpy(footer.key, last->key, SKIP_KSIZE);
+	memset(footer.key, 0, NESSDB_MAX_KEY_SIZE);
+	memcpy(footer.key, last->key, NESSDB_MAX_KEY_SIZE);
 
 	result = write(fd,&footer, fsize);
 	if (result == -1)
@@ -220,11 +219,11 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	struct meta_node mn;
 
 	mn.count = count;
-	memset(mn.end, 0, SKIP_KSIZE);
-	memcpy(mn.end, last->key, SKIP_KSIZE);
+	memset(mn.end, 0, NESSDB_MAX_KEY_SIZE);
+	memcpy(mn.end, last->key, NESSDB_MAX_KEY_SIZE);
 
-	memset(mn.index_name, 0, SST_NSIZE);
-	memcpy(mn.index_name, sst->name, SST_NSIZE);
+	memset(mn.index_name, 0, FILE_NAME_SIZE);
+	memcpy(mn.index_name, sst->name, FILE_NAME_SIZE);
 	
 	if (need_new) 
 		meta_set(sst->meta, &mn);
@@ -243,14 +242,14 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	int result;
 	int fcount;
 	int blk_sizes;
-	char file[SST_FLEN];
+	char file[FILE_PATH_SIZE];
 	struct sst_block *blks;
 	struct skiplist *merge = NULL;
 	struct footer footer;
 	int fsize = sizeof(struct footer);
 
-	memset(file, 0, SST_FLEN);
-	snprintf(file, SST_FLEN, "%s/%s", sst->basedir, sst->name);
+	memset(file, 0, FILE_PATH_SIZE);
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
 
 	fd = open(file, O_RDWR, 0644);
 	result = lseek(fd, -fsize, SEEK_END);
@@ -294,13 +293,13 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	int blk_sizes;
 	int result;
 	uint64_t off = 0UL;
-	char file[SST_FLEN];
+	char file[FILE_PATH_SIZE];
 	struct sst_block *blks;
 	struct footer footer;
 	int fsize = sizeof(struct footer);
 
-	memset(file, 0, SST_FLEN);
-	snprintf(file, SST_FLEN, "%s/%s", sst->basedir, sst->name);
+	memset(file, 0, FILE_PATH_SIZE);
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
 
 	fd = open(file, O_RDWR, 0644);
 	result = lseek(fd, -fsize, SEEK_END);
@@ -351,8 +350,8 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 	int rem;
 	int lsn;
 
-	/* Less than 2x SST_MAX,compact one index file */
-	if (count <= SST_MAX * 2) {
+	/* Less than 2x SST_MAX_COUNT,compact one index file */
+	if (count <= SST_MAX_COUNT * 2) {
 		if (meta) {
 			lsn = meta->lsn;
 			sst->mutexer.lsn = lsn;
@@ -367,27 +366,27 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 			lsn = meta->lsn;
 			sst->mutexer.lsn = lsn;
 			pthread_mutex_lock(&sst->mutexer.mutex);
-			x = _write_mmap(sst, x, SST_MAX, 0);
+			x = _write_mmap(sst, x, SST_MAX_COUNT, 0);
 			pthread_mutex_unlock(&sst->mutexer.mutex);
 			sst->mutexer.lsn = -1;
 		} else
-			x = _write_mmap(sst, x, SST_MAX, 0);
+			x = _write_mmap(sst, x, SST_MAX_COUNT, 0);
 
 		/* first+last */
-		mul = (count - SST_MAX * 2) / SST_MAX;
-		rem = count % SST_MAX;
+		mul = (count - SST_MAX_COUNT * 2) / SST_MAX_COUNT;
+		rem = count % SST_MAX_COUNT;
 
 		for (int i = 0; i < mul; i++) {
-			memset(sst->name, 0, SST_NSIZE);
-			snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
-			x = _write_mmap(sst, x, SST_MAX, 1);
+			memset(sst->name, 0, FILE_NAME_SIZE);
+			snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
 		}
 
-		/* The remain part,will be larger than SST_MAX */
-		memset(sst->name, 0, SST_NSIZE);
-		snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
+		/* The remain part,will be larger than SST_MAX_COUNT */
+		memset(sst->name, 0, FILE_NAME_SIZE);
+		snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
 
-		x = _write_mmap(sst, x, rem + SST_MAX, 1);
+		x = _write_mmap(sst, x, rem + SST_MAX_COUNT, 1);
 	}	
 }
 
@@ -396,23 +395,23 @@ void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 	int mul ;
 	int rem;
 
-	if (count <= SST_MAX * 2) {
-		memset(sst->name, 0, SST_NSIZE);
-		snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
+	if (count <= SST_MAX_COUNT * 2) {
+		memset(sst->name, 0, FILE_NAME_SIZE);
+		snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
 		x = _write_mmap(sst, x, count, 1);
 	} else {
-		mul = count / SST_MAX;
-		rem = count % SST_MAX;
+		mul = count / SST_MAX_COUNT;
+		rem = count % SST_MAX_COUNT;
 
 		for (int i = 0; i < (mul - 1); i++) {
-			memset(sst->name, 0, SST_NSIZE);
-			snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
-			x = _write_mmap(sst, x, SST_MAX, 1);
+			memset(sst->name, 0, FILE_NAME_SIZE);
+			snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
 		}
 
-		memset(sst->name, 0, SST_NSIZE);
-		snprintf(sst->name, SST_NSIZE, "%d.sst", sst->meta->size); 
-		x = _write_mmap(sst, x, SST_MAX + rem, 1);
+		memset(sst->name, 0, FILE_NAME_SIZE);
+		snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+		x = _write_mmap(sst, x, SST_MAX_COUNT + rem, 1);
 	}
 }
 
@@ -470,8 +469,8 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 					merge = NULL;
 				}
 
-				memset(sst->name, 0, SST_NSIZE);
-				memcpy(sst->name, meta_info->index_name, SST_NSIZE);
+				memset(sst->name, 0, FILE_NAME_SIZE);
+				memcpy(sst->name, meta_info->index_name, FILE_NAME_SIZE);
 				merge = _read_mmap(sst, count);
 
 				/* Add to merge list */
@@ -525,7 +524,7 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 	if(!meta_info)
 		return 0UL;
 
-	memcpy(sst->name, meta_info->index_name, SST_NSIZE);
+	memcpy(sst->name, meta_info->index_name, FILE_NAME_SIZE);
 
 	/* If get one record from on-disk sst file, 
 	 * this file must not be operated by bg-merge thread

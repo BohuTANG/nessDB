@@ -10,14 +10,14 @@
 #define _SKIPLIST_H
 
 #include <stdint.h>
+#include "config.h"
 
 #define MAXLEVEL (15)
-#define SKIP_KSIZE (32)
 
 typedef enum {ADD,DEL} OPT;
 
 struct skipnode{
-    char key[SKIP_KSIZE];
+    char key[NESSDB_MAX_KEY_SIZE];
 	uint64_t  val;
 	unsigned opt:24;                   
     struct skipnode *forward[1]; 
