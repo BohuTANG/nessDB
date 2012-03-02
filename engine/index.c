@@ -1,8 +1,8 @@
 /*
- * nessdb storage engine
- * copyright (c) 2011-2012, bohutang <overred.shuttler at gmail dot com>
- * all rights reserved.
- * code is licensed with bsd. see copying.bsd file.
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
+ * All rights reserved.
+ * Code is licensed with BSD. See COPYING.BSD file.
  *
  */
 

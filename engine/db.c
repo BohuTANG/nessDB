@@ -16,7 +16,6 @@
 
 #define DB "ness"
 #define DB_VERSION "1.8.1"
-#define LIST_SIZE	(2000000)
 
 unsigned int _get_idx(const char *key)
 {
@@ -122,14 +121,22 @@ char *db_info(struct nessdb *db)
 	int total_lru_cold_count = db->lru->level_old.count;
 	int total_lru_cached_count = db->lru_cached;
 	int total_lru_missing_count = db->lru_missing;
-	int total_memtable_count = 0;//db->idx->list->count;
-	uint64_t total_count = 0;//index_allcount(db->idx);
-	int total_bg_merge_count = 0;//db->idx->bg_merge_count;
+	int total_memtable_count = 0;
+	uint64_t total_count = 0UL;
+	int total_bg_merge_count = 0;
 
 	int total_lru_memory_usage = (db->lru->level_new.used_size + db->lru->level_old.used_size) / (1024 * 1024);
 	int total_lru_hot_memory_usage = db->lru->level_new.used_size / (1024 * 1024);
 	int total_lru_cold_memory_usage = db->lru->level_old.used_size / (1024 * 1024);
 	int max_allow_lru_memory_usage = (db->lru->level_old.allow_size + db->lru->level_new.allow_size) / (1024 * 1024);
+
+	int i;
+
+	for (i = 0; i < NESSDB_MAX_CGROUPS; i++) {
+		total_memtable_count += db->idx_group[i]->list->count;
+		total_count += index_allcount(db->idx_group[i]);
+		total_bg_merge_count += db->idx_group[i]->bg_merge_count;
+	}
 
 
 	buffer_clear(db->buf);
