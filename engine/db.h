@@ -18,7 +18,7 @@
 
 struct nessdb {
 	struct llru *lru;
-	struct index *idx_group[NESSDB_MAX_CGROUPS];
+	struct index *idx;
 	struct buffer *buf;
 	time_t start_time;
 	uint64_t lru_cached;
