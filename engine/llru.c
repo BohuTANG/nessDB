@@ -78,7 +78,6 @@ void _llru_set_node(struct llru *lru, struct level_node *n)
 	}
 }
 
-
 void llru_set(struct llru *lru, struct slice *sk, struct slice *sv)
 {
 	size_t size;
@@ -115,7 +114,6 @@ void llru_set(struct llru *lru, struct slice *sk, struct slice *sv)
 	_llru_set_node(lru, n);
 }
 
-
 struct slice *llru_get(struct llru *lru, struct slice *sk)
 {
 	struct level_node *n;
@@ -148,7 +146,6 @@ void llru_remove(struct llru *lru, struct slice *sk)
 			level_free_node(&lru->level_old, n);
 	}
 }
-
 
 void llru_free(struct llru *lru)
 {

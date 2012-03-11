@@ -26,7 +26,6 @@ struct llru{
 	struct level level_new;
 };
 
-
 struct llru *llru_new(size_t buffer_size);
 void llru_set(struct llru *llru, struct slice *sk, struct slice *sv);
 struct slice *llru_get(struct llru *llru, struct slice *sk);

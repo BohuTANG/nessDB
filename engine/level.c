@@ -39,8 +39,10 @@ void level_remove_link(struct level *level, struct level_node *n)
 		return;
 
 	if (n->pre == NULL) {
-		level->first = n->nxt;
-		n->nxt = NULL;
+		if (n->nxt != NULL) {
+			level->first = n->nxt;
+			n->nxt = NULL;
+		}
 	} else {
 		if (n->nxt == NULL) {
 			level->last = n->pre;
@@ -53,7 +55,6 @@ void level_remove_link(struct level *level, struct level_node *n)
 	}
 
 }	
-
 
 void level_free_node(struct level *level, struct level_node *n)
 {
