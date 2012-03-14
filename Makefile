@@ -6,7 +6,7 @@ else
 endif
 
 CC = gcc
-CFLAGS =  -c -std=c99 -Wall  $(DEBUG)	
+CFLAGS =  -c -std=c99 -Wall -fPIC  $(DEBUG)	
 
 LIB_OBJS = \
 	./engine/meta.o		\
@@ -46,7 +46,7 @@ cleandb:
 	-rm -rf *.event
 
 $(LIBRARY): $(LIB_OBJS)
-	$(CC) -pthread  -fPIC -shared -std=c99  engine/*.c -o libnessdb.so
+	$(CC) -pthread  -fPIC -shared $(LIB_OBJS) -o libnessdb.so
 
 db-bench: bench/db-bench.o $(LIB_OBJS)
 	$(CC) -pthread  bench/db-bench.o $(LIB_OBJS)  -o $@
