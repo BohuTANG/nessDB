@@ -15,7 +15,6 @@
 #include "util.h"
 
 #define DB "ness"
-#define DB_VERSION "1.8.1"
 
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_recovery)
 {
@@ -24,7 +23,7 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_r
 
 	db = malloc(sizeof(struct nessdb));
 	db->lru = llru_new(bufferpool_size);
-	db->buf = buffer_new(1024);
+	db->buf = buffer_new(LOG_BUFFER_SIZE);
 	db->start_time = time(NULL);
 	db->lru_cached = 0;
 	db->lru_missing = 0;

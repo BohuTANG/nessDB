@@ -77,8 +77,8 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 		l->db_alloc = sizeof(int);
 	}
 
-	l->buf = buffer_new(256);
-	l->db_buf = buffer_new(1024);
+	l->buf = buffer_new(LOG_BUFFER_SIZE);
+	l->db_buf = buffer_new(LOG_BUFFER_SIZE);
 
 	return l;
 }
