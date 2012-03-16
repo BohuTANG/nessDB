@@ -30,7 +30,7 @@ struct meta *meta_new()
 
 struct meta_node *meta_get(struct meta *meta, char *key)
 {
-	size_t left = 0, right = meta->size, i;
+	uint32_t  left = 0, right = meta->size, i;
 	while (left < right) {
 		i = (right -left) / 2 +left;
 		int cmp = strcmp(key, meta->nodes[i].end);
@@ -43,7 +43,7 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 			left = i + 1;
 	}
 	i = left;
-	if ( i == meta->size)
+	if (i == meta->size)
 		return NULL;
 
 	return &meta->nodes[i];
@@ -76,7 +76,7 @@ void meta_set(struct meta *meta, struct meta_node *node)
 void meta_set_byname(struct meta *meta, struct meta_node *node)
 {
 	int i;
-	for (i = 0; i < meta->size; i++) {
+	for (i = 0; i < (int)meta->size; i++) {
 		int cmp = strcmp(node->index_name, meta->nodes[i].index_name);
 		if (cmp == 0) {
 			memcpy(meta->nodes[i].end, node->end, NESSDB_MAX_KEY_SIZE);

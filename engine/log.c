@@ -49,6 +49,7 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	struct log *l;
 	char log_name[FILE_PATH_SIZE];
 	char db_name[FILE_PATH_SIZE];
+	(void)lsn;
 
 	l = malloc(sizeof(struct log));
 	l->islog = islog;

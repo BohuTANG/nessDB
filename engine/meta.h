@@ -26,8 +26,8 @@ struct meta_node{
 };
 
 struct meta{
-	int32_t sn;
-	int32_t size;
+	uint32_t sn;
+	uint32_t size;
 	struct meta_node nodes[META_MAX_COUNT];
 };
 

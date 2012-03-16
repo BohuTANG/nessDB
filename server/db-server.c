@@ -75,6 +75,8 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 {
 	char buf[BUF_SIZE]={0};
 	int nread;
+	(void) privdata;
+	(void) mask;
 
 	nread=read(fd,buf,BUF_SIZE);
 	if(nread==-1)
@@ -264,6 +266,10 @@ void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 {
 	int cport, cfd;
 	char cip[128];
+	(void) el;
+	(void)privdata;
+	(void)mask;
+
 	cfd = anetTcpAccept(_svr.neterr,fd,cip,&cport);
 	if (cfd == AE_ERR)
 		return;
@@ -274,6 +280,10 @@ void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 
 int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 {
+	(void) eventLoop;
+	(void) id;
+	(void) clientData;
+
 	__DEBUG(LEVEL_WARNING, "%d clients connected", _clicount);
 	return 3000;
 }
@@ -292,6 +302,9 @@ void nessdb_close(struct nessdb *db)
 
 int main(int argc, char **argv)
 {
+	(void) argc;
+	(void) argv;
+
 	_svr.bindaddr = "127.0.0.1";
 	_svr.port = 6379;
 

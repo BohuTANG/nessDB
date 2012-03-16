@@ -1,12 +1,6 @@
-UNAME := $(shell uname)
-ifeq ($(UNAME), Linux)
-	DEBUG = -g -rdynamic -ggdb -DDEBUG
-else
-	DEBUG =	-g -ggdb -DDEBUG
-endif
-
 CC = gcc
-CFLAGS =  -c -std=c99 -Wall -fPIC  $(DEBUG)	
+CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG)	
+DEBUG =	-g -ggdb -DDEBUG
 
 LIB_OBJS = \
 	./engine/meta.o		\
