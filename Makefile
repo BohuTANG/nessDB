@@ -3,26 +3,26 @@ DEBUG =	-g -ggdb -DDEBUG
 CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG)	
 
 LIB_OBJS = \
-	./engine/meta.o		\
-	./engine/sst.o		\
+	./engine/meta.o	\
+	./engine/sst.o	\
 	./engine/index.o	\
-	./engine/db.o		\
-	./engine/util.o		\
-	./engine/skiplist.o		\
-	./engine/log.o		\
+	./engine/db.o	\
+	./engine/util.o	\
+	./engine/skiplist.o	\
+	./engine/log.o	\
 	./engine/buffer.o	\
-	./engine/ht.o		\
+	./engine/ht.o	\
 	./engine/level.o	\
 	./engine/bloom.o	\
-	./engine/llru.o		\
+	./engine/llru.o	\
 	./engine/debug.o
 
 SVR_OBJS = \
-	./server/ae.o \
-	./server/anet.o \
-	./server/request.o \
-	./server/response.o \
-	./server/zmalloc.o \
+	./server/ae.o	\
+	./server/anet.o	\
+	./server/request.o	\
+	./server/response.o	\
+	./server/zmalloc.o
 
 LIBRARY = libnessdb.so
 
