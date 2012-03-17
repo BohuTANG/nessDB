@@ -179,7 +179,6 @@ int request_append(struct request *req, const char *buf, int n)
 	return 1;
 }
 
-
 int request_parse(struct request *req)
 {
 	int l;
@@ -294,7 +293,6 @@ void request_clean(struct request *req)
 void request_free(struct request *req)
 {
 	if (req) {
-		free(req->argv);
 		free(req);
 	}
 }

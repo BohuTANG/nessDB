@@ -34,6 +34,7 @@ struct request {
 struct request *request_new();
 int  request_parse(struct request *request);
 int request_append(struct request *request, const char *buf, int n);
+void request_clean(struct request *request);
 void request_free(struct request *request);
 void request_dump(struct request *request);
 

@@ -277,8 +277,10 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 		}
 
 		/* got whole command */
-		if (err == 1)
+		if (err == 1) {
 			_process_cmd(fd, req);
+			request_clean(req);
+		}
 	}
 }
 
