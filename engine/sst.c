@@ -349,6 +349,7 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 	int mul;
 	int rem;
 	int lsn;
+	int i;
 
 	/* Less than 2x SST_MAX_COUNT,compact one index file */
 	if (count <= SST_MAX_COUNT * 2) {
@@ -376,7 +377,7 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 		mul = (count - SST_MAX_COUNT * 2) / SST_MAX_COUNT;
 		rem = count % SST_MAX_COUNT;
 
-		for (int i = 0; i < mul; i++) {
+		for (i = 0; i < mul; i++) {
 			memset(sst->name, 0, FILE_NAME_SIZE);
 			snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
 			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
@@ -394,6 +395,7 @@ void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 {
 	int mul ;
 	int rem;
+	int i;
 
 	if (count <= SST_MAX_COUNT * 2) {
 		memset(sst->name, 0, FILE_NAME_SIZE);
@@ -403,7 +405,7 @@ void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 		mul = count / SST_MAX_COUNT;
 		rem = count % SST_MAX_COUNT;
 
-		for (int i = 0; i < (mul - 1); i++) {
+		for (i = 0; i < (mul - 1); i++) {
 			memset(sst->name, 0, FILE_NAME_SIZE);
 			snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
 			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);

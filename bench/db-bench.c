@@ -46,8 +46,10 @@ long long _ustime(void)
 
 void _random_key(char *key,int length) {
 	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
+	int i;
+
 	memset(key, 0, length);
-	for (int i = 0; i < length; i++)
+	for (i = 0; i < length; i++)
 		key[i] = salt[rand() % length];
 }
 

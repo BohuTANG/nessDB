@@ -152,7 +152,8 @@ int req_state_len(struct request *req, char *sb)
 
 int request_parse(struct request *req)
 {
-	int  i;
+	int i;
+	int l;
 	char sb[BUF_SIZE] = {0};
 
 	if (req_state_len(req, sb) != STATE_CONTINUE) {
@@ -190,7 +191,7 @@ int request_parse(struct request *req)
 
 			cmd_size = sizeof(_cmds) / sizeof(struct cmds);
 			req->cmd = CMD_UNKNOW;
-			for (int l = 0; l < cmd_size; l++) {
+			for (l = 0; l < cmd_size; l++) {
 				if (strcmp(v, _cmds[l].method) == 0) {
 					req->cmd = _cmds[l].cmd;
 					break;

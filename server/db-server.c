@@ -216,7 +216,9 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 							  }
 
 				case CMD_DEL:{
-								 for (int i = 1; i < req->argc; i++){
+								 int i;
+
+								 for (i = 1; i < req->argc; i++){
 									 struct slice sk;
 									 sk.len = strlen(req->argv[i]);
 									 sk.data = req->argv[i];
