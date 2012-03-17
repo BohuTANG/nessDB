@@ -1,6 +1,8 @@
 #ifndef _REQUEST_H
 #define _REQUEST_H
 
+#define REQ_MAX_BUFFSIZE (10240)
+
 typedef enum {CMD_PING, 
 	CMD_GET, 
 	CMD_MGET,
@@ -18,15 +20,20 @@ struct  cmds {
 };
 
 struct request {
-	char *querybuf;
+	char querybuf[REQ_MAX_BUFFSIZE];
 	int argc;
 	char **argv;
-	size_t pos;
+	int pos;
+	int multilen;
+	int lastlen;
+	int len;
+	int idx;
 	CMD cmd;
 };
 
-struct request *request_new(char *querybuf);
+struct request *request_new();
 int  request_parse(struct request *request);
+int request_append(struct request *request, const char *buf, int n);
 void request_free(struct request *request);
 void request_dump(struct request *request);
 

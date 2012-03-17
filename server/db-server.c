@@ -57,6 +57,7 @@
 #include "../engine/util.h"
 #include "../engine/debug.h"
 
+#define BUF_SIZE (10240)
 struct server{
 	char *bindaddr;
 	int port;
@@ -70,197 +71,214 @@ struct server{
 struct server _svr;
 static int _clicount;
 
-#define BUF_SIZE (10240)
+void _process_cmd(int fd, struct request *req)
+{
+	char sent_buf[BUF_SIZE];
+	struct response *resp;
+
+	memset(sent_buf, 0, BUF_SIZE);
+	/* request_dump(req);*/
+	switch(req->cmd){
+		case CMD_PING:{
+						  resp=response_new(0,OK_PONG);
+						  response_detch(resp,sent_buf);
+						  write(fd,sent_buf,strlen(sent_buf));
+						  response_free(resp);
+						  break;
+					  }
+
+		case CMD_SET:{
+						 struct slice sk, sv;
+
+						 if(req->argc == 3) {
+							 sk.len = strlen(req->argv[1]);
+							 sk.data = req->argv[1];
+
+							 sv.len = strlen(req->argv[2]);
+							 sv.data = req->argv[2];
+
+							 db_add(_svr.db, &sk, &sv);
+
+							 resp=response_new(0,OK);
+							 response_detch(resp,sent_buf);
+							 write(fd,sent_buf,strlen(sent_buf));
+							 response_free(resp);
+							 break;
+						 }
+						 goto __default;
+					 }
+		case CMD_MSET:{
+						  int i;
+						  int c = req->argc;
+						  for (i = 1; i < c; i += 2) {
+							  struct slice sk, sv;
+
+							  /* should do NULL detect */
+							  sk.len = strlen(req->argv[i]);
+							  sk.data = req->argv[i];
+
+							  sv.len = strlen(req->argv[i+1]);
+							  sv.data = req->argv[i+1];
+							  db_add(_svr.db, &sk, &sv);
+						  }
+
+						  resp=response_new(0, OK);
+						  response_detch(resp, sent_buf);
+						  write(fd,sent_buf, strlen(sent_buf));
+						  response_free(resp);
+						  break;
+					  }
+
+		case CMD_GET:{
+						 int ret;
+						 struct slice sk;
+						 struct slice sv;
+						 if (req->argc == 2) {
+							 sk.len=strlen(req->argv[1]);
+							 sk.data = req->argv[1];
+							 ret = db_get(_svr.db, &sk, &sv);
+							 if (ret == 1) {
+								 resp=response_new(1,OK_200);
+								 resp->argv[0] = sv.data;
+							 } else {
+								 resp=response_new(0,OK_404);
+								 resp->argv[0] = NULL;
+							 }
+							 response_detch(resp, sent_buf);
+							 write(fd,sent_buf,strlen(sent_buf));
+							 response_free(resp);
+							 if (ret == 1)
+								 free(sv.data);
+							 break;
+						 }
+						 goto __default;
+					 }
+		case CMD_MGET:{
+						  int i;
+						  int ret;
+						  int c=req->argc;
+						  int sub_c=c-1;
+						  char **vals = calloc(c, sizeof(char*));
+						  resp=response_new(sub_c, OK_200);
+
+						  for (i = 1; i < c; i++){
+							  struct slice sk;
+							  struct slice sv;
+							  sk.len = strlen(req->argv[i]);
+							  sk.data = req->argv[i];
+
+							  ret = db_get(_svr.db, &sk, &sv);
+							  if (ret == 1)
+								  vals[i-1] = sv.data;
+							  else
+								  vals[i-1] = NULL;
+
+							  resp->argv[i-1] = vals[i-1];
+						  }
+
+						  response_detch(resp, sent_buf);
+						  write(fd, sent_buf, strlen(sent_buf));
+						  response_free(resp);
+
+						  for (i = 0; i < sub_c; i++){
+							  if (vals[i])
+								  free(vals[i]);	
+						  }
+						  free(vals);
+						  break;
+					  }
+		case CMD_INFO:{
+						  char *infos;	
+
+						  infos = db_info(_svr.db);
+						  resp = response_new(1, OK_200);
+						  resp->argv[0] = infos;
+						  response_detch(resp, sent_buf);
+						  write(fd,sent_buf, strlen(sent_buf));
+						  response_free(resp);
+						  break;
+					  }
+
+		case CMD_DEL:{
+						 int i;
+
+						 for (i = 1; i < req->argc; i++){
+							 struct slice sk;
+							 sk.len = strlen(req->argv[i]);
+							 sk.data = req->argv[i];
+							 db_remove(_svr.db, &sk);
+						 }
+
+						 resp = response_new(0, OK);
+						 response_detch(resp, sent_buf);
+						 write(fd, sent_buf, strlen(sent_buf));
+						 response_free(resp);
+						 break;
+					 }
+		case CMD_EXISTS:{
+							struct slice sk;
+							sk.len = strlen(req->argv[1]);
+							sk.data = req->argv[1];
+							int ret= db_exists(_svr.db, &sk);
+							if(ret)
+								write(fd,":1\r\n",4);
+							else
+								write(fd,":-1\r\n",5);
+						}
+						break;
+
+		case CMD_SHUTDOWN:
+						__DEBUG(LEVEL_ERROR, "%s", "db-server shutdown...");
+						db_close(_svr.db);
+						exit(2);
+						break;
+
+__default:				default:{
+									resp = response_new(0, ERR);
+									response_detch(resp, sent_buf);
+									write(fd, sent_buf, strlen(sent_buf));
+									response_free(resp);
+									break;
+								}
+	}
+
+}
+
+
 void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 {
-	char buf[BUF_SIZE]={0};
+	int err;
 	int nread;
-	(void) privdata;
 	(void) mask;
+	char buf[BUF_SIZE]={0};
+	struct request *req = (struct request*)privdata;
 
-	nread=read(fd,buf,BUF_SIZE);
-	if(nread==-1)
+	nread = read(fd, buf, BUF_SIZE);
+	if (nread == 1)
 		return;
 
-	if(nread==0){
+	if (nread == 0) {
+		request_free(req);
 		aeDeleteFileEvent(el, fd, AE_WRITABLE);
 		aeDeleteFileEvent(el, fd, AE_READABLE);
 		close(fd);
 		_clicount--;
 		return;
-	}else{
-		int ret;
-		struct request *req=request_new(buf);
-		struct response *resp;
-		ret=request_parse(req);
-		if(ret==1){
-			char sent_buf[BUF_SIZE]={0};
-
-			switch(req->cmd){
-				case CMD_PING:{
-								  resp=response_new(0,OK_PONG);
-								  response_detch(resp,sent_buf);
-								  write(fd,sent_buf,strlen(sent_buf));
-								  response_free(resp);
-								  break;
-							  }
-
-				case CMD_SET:{
-								 struct slice sk, sv;
-
-								 if(req->argc == 3) {
-									 sk.len = strlen(req->argv[1]);
-									 sk.data = req->argv[1];
-
-									 sv.len = strlen(req->argv[2]);
-									 sv.data = req->argv[2];
-
-									 db_add(_svr.db, &sk, &sv);
-
-									 resp=response_new(0,OK);
-									 response_detch(resp,sent_buf);
-									 write(fd,sent_buf,strlen(sent_buf));
-									 response_free(resp);
-									 break;
-								 }
-								 goto __default;
-							 }
-				case CMD_MSET:{
-								  int i;
-								  int c = req->argc;
-								  for (i = 1; i < c; i += 2) {
-									  struct slice sk, sv;
-									  sk.len = strlen(req->argv[i]);
-									  sk.data = req->argv[i];
-
-									  sv.len = strlen(req->argv[i+1]);
-									  sv.data = req->argv[i+1];
-									  db_add(_svr.db, &sk, &sv);
-								  }
-
-								  resp=response_new(0, OK);
-								  response_detch(resp, sent_buf);
-								  write(fd,sent_buf, strlen(sent_buf));
-								  response_free(resp);
-								  break;
-							  }
-
-				case CMD_GET:{
-								 int ret;
-								 struct slice sk;
-								 struct slice sv;
-								 if (req->argc == 2) {
-									 sk.len=strlen(req->argv[1]);
-									 sk.data = req->argv[1];
-									 ret = db_get(_svr.db, &sk, &sv);
-									 if (ret == 1) {
-										resp=response_new(1,OK_200);
-										resp->argv[0] = sv.data;
-									} else {
-										resp=response_new(0,OK_404);
-										resp->argv[0] = NULL;
-									}
-									 response_detch(resp, sent_buf);
-									 write(fd,sent_buf,strlen(sent_buf));
-									 response_free(resp);
-									 if (ret == 1)
-										 free(sv.data);
-									 break;
-								 }
-								goto __default;
-							 }
-				case CMD_MGET:{
-								  int i;
-								  int ret;
-								  int c=req->argc;
-								  int sub_c=c-1;
-								  char **vals = calloc(c, sizeof(char*));
-								  resp=response_new(sub_c, OK_200);
-
-								  for (i = 1; i < c; i++){
-									  struct slice sk;
-									  struct slice sv;
-									  sk.len = strlen(req->argv[i]);
-									  sk.data = req->argv[i];
-
-									  ret = db_get(_svr.db, &sk, &sv);
-									  if (ret == 1)
-										  vals[i-1] = sv.data;
-									  else
-										  vals[i-1] = NULL;
-
-									  resp->argv[i-1] = vals[i-1];
-								  }
-
-								  response_detch(resp, sent_buf);
-								  write(fd, sent_buf, strlen(sent_buf));
-								  response_free(resp);
-
-								  for (i = 0; i < sub_c; i++){
-									  if (vals[i])
-										  free(vals[i]);	
-								  }
-								  free(vals);
-								  break;
-							  }
-				case CMD_INFO:{
-								  char *infos;	
-
-								  infos = db_info(_svr.db);
-								  resp = response_new(1, OK_200);
-								  resp->argv[0] = infos;
-								  response_detch(resp, sent_buf);
-								  write(fd,sent_buf, strlen(sent_buf));
-								  response_free(resp);
-								  break;
-							  }
-
-				case CMD_DEL:{
-								 int i;
-
-								 for (i = 1; i < req->argc; i++){
-									 struct slice sk;
-									 sk.len = strlen(req->argv[i]);
-									 sk.data = req->argv[i];
-									 db_remove(_svr.db, &sk);
-								 }
-
-								 resp = response_new(0, OK);
-								 response_detch(resp, sent_buf);
-								 write(fd, sent_buf, strlen(sent_buf));
-								 response_free(resp);
-								 break;
-							 }
-				case CMD_EXISTS:{
-									struct slice sk;
-									sk.len = strlen(req->argv[1]);
-									sk.data = req->argv[1];
-									int ret= db_exists(_svr.db, &sk);
-									if(ret)
-										write(fd,":1\r\n",4);
-									else
-										write(fd,":-1\r\n",5);
-								}
-								break;
-
-				case CMD_SHUTDOWN:
-								__DEBUG(LEVEL_ERROR, "%s", "db-server shutdown...");
-								db_close(_svr.db);
-								exit(2);
-								break;
-
-__default:				default:{
-						resp = response_new(0, ERR);
-							response_detch(resp, sent_buf);
-							write(fd, sent_buf, strlen(sent_buf));
-							response_free(resp);
-							break;
-						}
-			}
-
+	} else {
+		request_append(req, buf, nread);
+		err = request_parse(req);
+		if (err == -1) {
+			request_free(req);
+			aeDeleteFileEvent(el, fd, AE_WRITABLE);
+			aeDeleteFileEvent(el, fd, AE_READABLE);
+			close(fd);
+			_clicount--;
+			return;
 		}
 
-		request_free(req);
+		/* got whole command */
+		if (err == 1)
+			_process_cmd(fd, req);
 	}
 }
 
@@ -271,13 +289,15 @@ void accept_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 	(void) el;
 	(void)privdata;
 	(void)mask;
+	struct request *req;
 
+	req = request_new();
 	cfd = anetTcpAccept(_svr.neterr,fd,cip,&cport);
 	if (cfd == AE_ERR)
 		return;
 	_clicount++;
 
-	aeCreateFileEvent(_svr.el,cfd,AE_READABLE,read_handler,NULL);
+	aeCreateFileEvent(_svr.el,cfd,AE_READABLE,read_handler,req);
 }
 
 int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)

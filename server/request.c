@@ -35,6 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "request.h"
+#include "../engine/debug.h"
 
 /* useful symbols:
  * '*' and '$' states are:3
@@ -101,11 +102,17 @@ enum {
 	STATE_FAIL
 };
 
-struct request *request_new(char *querybuf)
+struct request *request_new()
 {
 	struct request *req;
+
 	req = calloc(1, sizeof(struct request));
-	req->querybuf = querybuf;
+	memset(req->querybuf, 0, REQ_MAX_BUFFSIZE);
+	req->pos = 0;
+	req->multilen = 0;
+	req->lastlen = 0;
+	req->len = 0;
+	req->idx = 0;
 	return req;
 }
 
@@ -150,55 +157,112 @@ int req_state_len(struct request *req, char *sb)
 	return STATE_FAIL;
 }
 
+void _reset_request(struct request *req) 
+{
+	req->multilen = 0;
+	req->lastlen = 0;
+	req->pos = 0;
+	req->idx = 0;
+	req->len = 0;
+}
+
+int request_append(struct request *req, const char *buf, int n)
+{
+	if ((req->len + n) > REQ_MAX_BUFFSIZE){
+		__DEBUG(LEVEL_ERROR, "req->len #%d", req->len);
+		return -1;
+	}
+
+	memcpy(req->querybuf + req->len, buf, n); 
+	req->len += n;
+
+	return 1;
+}
+
+
 int request_parse(struct request *req)
 {
-	int i;
 	int l;
 	char sb[BUF_SIZE] = {0};
 
-	if (req_state_len(req, sb) != STATE_CONTINUE) {
-		fprintf(stderr,"argc format ***ERROR***,buffer:%s,len-buf:%s\n", req->querybuf, sb);
-		return 0;
-	}
-	req->argc = atoi(sb);
+	if (req->multilen == 0) {
+		if (req_state_len(req, sb) != STATE_CONTINUE) {
+			__DEBUG(LEVEL_ERROR,"argc error,buffer:%s", req->querybuf);
+			return -1;
+		}
+		req->argc = atoi(sb);
+		req->multilen = req->argc;
 
-	req->argv = (char**)calloc(req->argc, sizeof(char*));
-	for (i = 0; i < req->argc; i++) { 
+		req->argv = (char**)calloc(req->argc, sizeof(char*));
+	}
+
+	while (req->multilen) {
 		int argv_len;
 		char *v;
 
-		/*parse argv len*/
-		memset(sb, 0, BUF_SIZE);
-		if (req_state_len(req, sb) != STATE_CONTINUE) {
-			fprintf(stderr,"argv's length format ***ERROR***,packet:%s\n", sb);
-			return 0;
-		}
-		argv_len = atoi(sb);
-
-		/*get argv*/
-		v = (char*)calloc(argv_len + 1, sizeof(char));
-		memset(v, 0 ,argv_len + 1);
-		memcpy(v, req->querybuf+(req->pos), argv_len);
-		req->argv[i] = v;	
-		req->pos += (argv_len + 2);
-
-		if (i == 0) {
-			int k, cmd_size;
-			for (k = 0; k < argv_len; k++) {
-				if (v[k] >= 'A' && v[k] <= 'Z')
-					v[k] += 32;
+		if (req->lastlen == 0) {
+			/*parse argv len*/
+			memset(sb, 0, BUF_SIZE);
+			if (req_state_len(req, sb) != STATE_CONTINUE) {
+				__DEBUG(LEVEL_ERROR, "argv's len error,packet:%s\n", sb);
+				return -1;
 			}
+			argv_len = atoi(sb);
+		} else {
+			argv_len = req->lastlen;
+		}
 
-			cmd_size = sizeof(_cmds) / sizeof(struct cmds);
-			req->cmd = CMD_UNKNOW;
-			for (l = 0; l < cmd_size; l++) {
-				if (strcmp(v, _cmds[l].method) == 0) {
-					req->cmd = _cmds[l].cmd;
-					break;
+		if ((req->pos + argv_len) < req->len) {
+			/*get argv*/
+			v = (char*)calloc(argv_len + 1, sizeof(char));
+			memset(v, 0 ,argv_len + 1);
+			memcpy(v, req->querybuf+(req->pos), argv_len);
+
+			if (req->idx == 0) {
+
+				int k, cmd_size;
+				for (k = 0; k < argv_len; k++) {
+					if (v[k] >= 'A' && v[k] <= 'Z')
+						v[k] += 32;
+				}
+
+				cmd_size = sizeof(_cmds) / sizeof(struct cmds);
+				req->cmd = CMD_UNKNOW;
+				for (l = 0; l < cmd_size; l++) {
+					if (strcmp(v, _cmds[l].method) == 0) {
+						req->cmd = _cmds[l].cmd;
+						break;
+					}
 				}
 			}
+			req->argv[req->idx++] = v;	
+			req->pos += (argv_len + 2);
+
+			/* clean tags */
+			req->lastlen = 0;
+			req->multilen--;
+		} else {
+			req->lastlen = argv_len;
+			return 0;
 		}
 	}
+
+	if(req->pos < req->len) {
+		char bufclone[REQ_MAX_BUFFSIZE];
+		int buflen = req->len - req->pos;
+
+		memset(bufclone, 0, REQ_MAX_BUFFSIZE);
+		memcpy(bufclone, req->querybuf + req->pos, buflen);
+
+		memset(req->querybuf, 0, REQ_MAX_BUFFSIZE);
+		memcpy(req->querybuf, bufclone, buflen);
+		req->len = buflen;
+		req->pos = 0;
+	} else {
+		memset(req->querybuf, 0, REQ_MAX_BUFFSIZE);
+		_reset_request(req);
+	}
+
 	return 1;
 }
 
@@ -217,14 +281,19 @@ void request_dump(struct request *req)
 	printf("}\n\n");
 }
 
-void request_free(struct request *req)
+void request_clean(struct request *req)
 {
 	int i;
+	for (i = 0; i < req->argc; i++) {
+		if (req->argv[i])
+			free(req->argv[i]);
+	}
+	free(req->argv);
+}
+
+void request_free(struct request *req)
+{
 	if (req) {
-		for (i = 0; i < req->argc; i++) {
-			if (req->argv[i])
-				free(req->argv[i]);
-		}
 		free(req->argv);
 		free(req);
 	}
