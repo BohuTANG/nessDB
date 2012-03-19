@@ -254,10 +254,8 @@ void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 	struct request *req = (struct request*)privdata;
 
 	nread = read(fd, buf, BUF_SIZE);
-	if (nread == 1)
-		return;
 
-	if (nread == 0) {
+	if (nread < 1) {
 		request_free(req);
 		aeDeleteFileEvent(el, fd, AE_WRITABLE);
 		aeDeleteFileEvent(el, fd, AE_READABLE);
