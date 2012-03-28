@@ -38,6 +38,7 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_r
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	llru_remove(db->lru, sk);
+
 	return index_add(db->idx, sk, sv);
 }
 
@@ -79,6 +80,7 @@ int db_exists(struct nessdb *db, struct slice *sk)
 		free(sv.data);
 		return 1;
 	}
+
 	return 0;
 }
 

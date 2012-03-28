@@ -36,10 +36,12 @@
 int _file_exists(const char *path)
 {
 	int fd = open(path, O_RDWR);
+
 	if (fd > -1) {
 		close(fd);
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -137,6 +139,7 @@ int _log_read(char *logname, struct skiplist *list)
 
 		rem -= isize;
 	}
+
 	__DEBUG(LEVEL_DEBUG, "recovery count ADD#%d, DEL#%d", count, del_count);
 	return 1;
 }
@@ -243,6 +246,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 void log_remove(struct log *l, int lsn)
 {
 	char log_name[FILE_PATH_SIZE];
+
 	memset(log_name, 0 ,FILE_PATH_SIZE);
 	snprintf(log_name, FILE_PATH_SIZE, "%s/%d.log", l->basedir, lsn);
 	remove(log_name);
@@ -251,6 +255,7 @@ void log_remove(struct log *l, int lsn)
 void log_next(struct log *l, int lsn)
 {
 	char log_name[FILE_PATH_SIZE];
+
 	memset(log_name, 0 ,FILE_PATH_SIZE);
 	snprintf(log_name, FILE_PATH_SIZE, "%s/%d.log", l->basedir, lsn);
 	memcpy(l->name, log_name, FILE_PATH_SIZE);

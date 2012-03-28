@@ -17,6 +17,7 @@
 struct bloom *bloom_new()
 {
 	struct bloom *bl = malloc(sizeof(struct bloom));
+
 	bl->size = BLOOM_BITS;
 	bl->bitset = calloc((bl->size+1) / CHAR_BIT, sizeof(char));
 	bl->hashfuncs = malloc(HFUNCNUM * sizeof(hashfuncs));
@@ -32,6 +33,7 @@ void bloom_add(struct bloom *bloom, const char *k)
 {
 	int i;
 	unsigned int bit;
+
 	if (!k)
 		return;
 
@@ -39,6 +41,7 @@ void bloom_add(struct bloom *bloom, const char *k)
 		bit = bloom->hashfuncs[i](k) % bloom->size;
 		SETBIT_1(bloom->bitset, bit);
 	}
+
 	bloom->count++;
 }
 
@@ -46,6 +49,7 @@ int bloom_get(struct bloom *bloom, const char *k)
 {
 	int i;
 	unsigned int bit;
+
 	if (!k)
 		return 0;
 
@@ -54,6 +58,7 @@ int bloom_get(struct bloom *bloom, const char *k)
 		if (GETBIT(bloom->bitset, bit) == 0)
 			return 0;
 	}
+
 	return 1;
 }
 

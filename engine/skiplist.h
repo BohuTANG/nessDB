@@ -17,10 +17,11 @@
 typedef enum {ADD,DEL} OPT;
 
 struct skipnode{
-    char key[NESSDB_MAX_KEY_SIZE];
 	uint64_t  val;
 	unsigned opt:24;                   
-    struct skipnode *forward[1]; 
+
+	char key[NESSDB_MAX_KEY_SIZE];
+	struct skipnode *forward[1]; 
 	struct skipnode *next;
 };
 
@@ -28,6 +29,7 @@ struct skiplist{
 	int count;
 	int size;
 	int level; 
+
 	char pool_embedded[1024];
 	struct  skipnode *hdr;                 
 	struct pool *pool;

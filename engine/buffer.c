@@ -42,15 +42,17 @@ void _buffer_extendby(struct buffer *b, int len)
 void _string_vprintf(struct buffer *b, const char *fmt, va_list ap)
 {
 	int num_required;
+	
 	while ((num_required = vsnprintf(b->buf + b->NUL, b->buflen - b->NUL, fmt, ap)) >= b->buflen - b->NUL)
 		_buffer_extendby(b, num_required + 1);
+
 	b->NUL += num_required;
 }
-
 
 struct buffer *buffer_new(size_t reserve)
 {
 	struct buffer *b = malloc(sizeof(struct buffer));
+
 	b->buf = NULL;
 	b->NUL = 0;
 	b->buflen = 0;
@@ -71,6 +73,7 @@ void buffer_free(struct buffer *b)
 void buffer_clear(struct buffer *b)
 {
 	b->NUL = 0;
+
 	if (b->buf)
 		b->buf[b->NUL] = '\0';
 }
@@ -155,6 +158,7 @@ uint64_t u64_from_big(unsigned char *buf) {
 void buffer_scatf(struct buffer *b, const char *fmt, ...)
 {
 	va_list ap;
+
 	va_start(ap, fmt);
 	_string_vprintf(b, fmt, ap);
 	va_end(ap);
@@ -163,6 +167,7 @@ void buffer_scatf(struct buffer *b, const char *fmt, ...)
 char * buffer_detach(struct buffer *b)
 {
 	char *buffer = b->buf;
+
 	b->NUL = 0;
 	return buffer;
 }
@@ -170,6 +175,7 @@ char * buffer_detach(struct buffer *b)
 void buffer_dump(struct buffer *b)
 {
 	int i;
+
 	printf("--buffer dump:buflen<%d>,pos<%d>\n", b->buflen, b->NUL);
 
 	for (i = 0; i < b->NUL; i++)

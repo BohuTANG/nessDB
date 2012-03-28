@@ -69,6 +69,7 @@ struct skiplist *skiplist_new(size_t size)
 {
 	int i;
 	struct skiplist *list = malloc(sizeof(struct skiplist));
+
 	list->hdr = malloc(sizeof(struct skipnode) + MAXLEVEL*sizeof(struct skipnode *));
 
 	for (i = 0; i <= MAXLEVEL; i++)
@@ -156,6 +157,7 @@ struct skipnode *skiplist_lookup(struct skiplist *list, char* data)
 {
 	int i;
 	struct skipnode *x = list->hdr;
+
 	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NIL 
 				&& cmp_lt(x->forward[i]->key, data))

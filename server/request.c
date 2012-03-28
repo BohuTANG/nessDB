@@ -113,6 +113,7 @@ struct request *request_new()
 	req->lastlen = 0;
 	req->len = 0;
 	req->idx = 0;
+
 	return req;
 }
 
@@ -122,6 +123,7 @@ int req_state_len(struct request *req, char *sb)
 	char c;
 	int i = req->pos;
 	int pos = i;
+
 	while ((c = req->querybuf[i]) != '\0') {
 		first++;
 		pos++;
@@ -268,25 +270,30 @@ int request_parse(struct request *req)
 void request_dump(struct request *req)
 {
 	int i;
+
 	if (!req)
 		return;
 
 	printf("request-dump--->{");
 	printf("argc:<%d>\n", req->argc);
 	printf("\t\tcmd:<%s>\n", _cmds[req->cmd].method);
+
 	for (i = 0; i < req->argc; i++) {
 		printf("\t\targv[%d]:<%s>\n", i, req->argv[i]);
 	}
+
 	printf("}\n\n");
 }
 
 void request_clean(struct request *req)
 {
 	int i;
+	
 	for (i = 0; i < req->argc; i++) {
 		if (req->argv[i])
 			free(req->argv[i]);
 	}
+
 	free(req->argv);
 }
 

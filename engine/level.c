@@ -12,9 +12,7 @@
 
 struct level *level_creat()
 {
-	struct level *lev;
-	lev = malloc(sizeof(struct level));
-	return lev;
+	return  malloc(sizeof(struct level));
 }
 
 void level_set_head(struct level *level, struct level_node *n)
@@ -23,6 +21,7 @@ void level_set_head(struct level *level, struct level_node *n)
 		return;
 
 	level->count++;
+
 	if (level->first == NULL) {
 		level->first = n;
 	} else {
@@ -35,6 +34,7 @@ void level_set_head(struct level *level, struct level_node *n)
 void level_remove_link(struct level *level, struct level_node *n)
 {
 	level->count--;
+
 	if (n == NULL)
 		return;
 
@@ -73,6 +73,7 @@ void level_free_node(struct level *level, struct level_node *n)
 void level_free_last(struct level *level)
 {
 	struct level_node *n;
+
 	n = level->last;
 	level_free_node(level, n);
 }
