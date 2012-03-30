@@ -28,7 +28,7 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_r
 	db->lru_cached = 0;
 	db->lru_missing = 0;
 
-	memset(buff_dir, FILE_PATH_SIZE, 0);
+	memset(buff_dir, 0, FILE_PATH_SIZE);
 	snprintf(buff_dir, FILE_PATH_SIZE, "%s/ndbs", basedir);
 	db->idx = index_new(buff_dir, DB, MTBL_MAX_COUNT, is_log_recovery); 
 
