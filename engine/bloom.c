@@ -24,7 +24,7 @@ struct bloom *bloom_new()
 
 	bl->hashfuncs[0] = sax_hash;
 	bl->hashfuncs[1] = sdbm_hash;
-	bl->hashfuncs[2] = jdb_hash;
+	bl->hashfuncs[2] = djb_hash;
 
 	return bl;
 }

@@ -12,8 +12,6 @@
 #include <stdint.h>
 #include "skiplist.h"
 #include "util.h"
-#include "config.h"
-#include "platform.h"
 
 struct log{
 	int idx_wfd;

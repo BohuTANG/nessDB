@@ -1,6 +1,34 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#ifndef __USE_FILE_OFFSET64
+	#define __USE_FILE_OFFSET64
+#endif
+
+#ifndef __USE_LARGEFILE64
+	#define __USE_LARGEFILE64
+#endif
+
+#ifndef _LARGEFILE64_SOURCE
+	#define _LARGEFILE64_SOURCE
+#endif
+
+#ifndef O_BINARY
+	#define O_BINARY (0) 
+#endif
+
+#if defined(__linux__)
+	# define n_open open64
+	# define n_lseek lseek64
+	# define n_fstat fstat64
+	# define LSM_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE)
+	# define LSM_OPEN_FLAGS   (O_RDWR | O_BINARY | O_LARGEFILE)
+#else
+	# define open64 open
+	# define LSM_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY)
+	# define LSM_OPEN_FLAGS   (O_RDWR | O_BINARY)
+#endif
+
 #define NESSDB_MAX_KEY_SIZE (24) /* max key size */
 #define LOG_BUFFER_SIZE (2048) /* log buffer size*/
 #define MTBL_MAX_COUNT (6000000) /* max count in memtable */

@@ -87,17 +87,16 @@ unsigned int sdbm_hash(const char *key)
 /**
  * Jdb hash function
  */
-unsigned int jdb_hash(const char *key)
+unsigned int djb_hash(const char *key)
 {
-	if (!key) {
-		return 0;
-	}
-	unsigned int hash = 5381;
-	unsigned int c;
-	while ((c = *key++))
-		hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
+	unsigned int h = 5381;
 
-	return (unsigned int) hash;
+	while (*key) {
+		h = ((h<< 5) + h) + (unsigned int) *key;  /* hash * 33 + c */
+		++key;
+	}
+
+	return h;
 }
 
 

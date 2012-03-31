@@ -15,7 +15,9 @@
 #else
 /* Unix */
 #include <arpa/inet.h> /* htonl/ntohl */
-#define O_BINARY 0
+	#ifndef O_BINARY 
+		#define O_BINARY 0
+	#endif
 #endif
 
 #define FILE_ERR(a) (a == -1)
@@ -112,5 +114,5 @@ void ensure_dir_exists(const char *path);
 
 unsigned int sax_hash(const char *key);
 unsigned int sdbm_hash(const char *key);
-unsigned int jdb_hash(const char *key);
+unsigned int djb_hash(const char *key);
 #endif

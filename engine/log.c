@@ -6,18 +6,7 @@
  *
  */
 
-#ifndef __USE_FILE_OFFSET64
-	#define __USE_FILE_OFFSET64
-#endif
-
-#ifndef __USE_LARGEFILE64
-	#define __USE_LARGEFILE64
-#endif
-
-#ifndef _LARGEFILE64_SOURCE
-	#define _LARGEFILE64_SOURCE
-#endif
-
+#include "config.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -35,7 +24,7 @@
 
 int _file_exists(const char *path)
 {
-	int fd = open(path, O_RDWR);
+	int fd = n_open(path, O_RDWR);
 
 	if (fd > -1) {
 		close(fd);
@@ -53,7 +42,7 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	char db_name[FILE_PATH_SIZE];
 	(void)lsn;
 
-	l = malloc(sizeof(struct log));
+	l = calloc(1, sizeof(struct log));
 	l->islog = islog;
 
 	memset(log_name, 0, FILE_PATH_SIZE);
@@ -68,12 +57,12 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 
 
 	if (_file_exists(db_name)) {
-		l->db_wfd = open(db_name, LSM_OPEN_FLAGS, 0644);
-		l->db_alloc = lseek(l->db_wfd, 0, SEEK_END);
+		l->db_wfd = n_open(db_name, LSM_OPEN_FLAGS, 0644);
+		l->db_alloc = n_lseek(l->db_wfd, 0, SEEK_END);
 	} else {
 		int magic = DB_MAGIC;
 
-		l->db_wfd = open(db_name, LSM_CREAT_FLAGS, 0644);
+		l->db_wfd = n_open(db_name, LSM_CREAT_FLAGS, 0644);
 		result = write(l->db_wfd, &magic, sizeof(int));
 		if (result == -1) 
 			perror("write magic error\n");
@@ -287,6 +276,7 @@ void log_free(struct log *l)
 {
 	if (l) {
 		buffer_free(l->buf);
+		buffer_free(l->db_buf);
 		close(l->idx_wfd);
 		free(l);
 	}

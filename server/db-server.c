@@ -53,7 +53,6 @@
 #include "request.h"
 #include "response.h"
 #include "../engine/db.h"
-#include "../engine/platform.h"
 #include "../engine/util.h"
 #include "../engine/debug.h"
 
