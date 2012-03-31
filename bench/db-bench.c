@@ -43,14 +43,13 @@ long long _ustime(void)
 	return ust / 1000000;
 }
 
-
 void _random_key(char *key,int length) {
 	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
 	int i;
 
-	memset(key, 0, length);
 	for (i = 0; i < length; i++)
 		key[i] = salt[rand() % length];
+
 }
 
 void _print_header(int count)
@@ -111,8 +110,11 @@ void _write_test(long int count)
 	struct nessdb *db;
 	char *path = getcwd(NULL, 0);
 
-	char key[KSIZE];
-	char val[VSIZE];
+	char key[KSIZE + 1];
+	char val[VSIZE + 1];
+
+	memset(key, 0, KSIZE + 1);
+	memset(val, 0, VSIZE + 1);
 
 	db = db_open(BUFFERPOOL, path, TOLOG);
 	free(path);

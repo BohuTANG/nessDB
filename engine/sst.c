@@ -211,7 +211,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	memset(footer.key, 0, NESSDB_MAX_KEY_SIZE);
 	memcpy(footer.key, last->key, NESSDB_MAX_KEY_SIZE);
 
-	result = write(fd,&footer, fsize);
+	result = write(fd, &footer, fsize);
 	if (result == -1)
 		abort();
 

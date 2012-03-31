@@ -35,6 +35,7 @@ static void _mkdirs(const char *path)
 	char tmp[256] = {0};
 	char *p = NULL;
 	size_t len;
+
 	snprintf(tmp, sizeof(tmp), "%s", path);
 	len = strlen(tmp);
 	if(tmp[len - 1] == '/') {
@@ -53,6 +54,7 @@ static void _mkdirs(const char *path)
 void ensure_dir_exists(const char *path)
 {
 	struct stat st;
+
 	if(stat(path, &st) != 0) {
 		_mkdirs(path);
 	}
@@ -64,6 +66,7 @@ void ensure_dir_exists(const char *path)
 unsigned int sax_hash(const char *key)
 {
 	unsigned int h = 0;
+
 	while (*key) {
 		h ^= (h << 5) + (h >> 2) + (unsigned char) *key;
 		++key;
@@ -77,6 +80,7 @@ unsigned int sax_hash(const char *key)
 unsigned int sdbm_hash(const char *key)
 {
 	unsigned int h = 0;
+
 	while (*key) {
 		h = (unsigned char) *key + (h << 6) + (h << 16) - h;
 		++key;
