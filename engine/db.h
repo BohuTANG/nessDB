@@ -10,11 +10,6 @@
 #define _DB_H
 
 #include <time.h>
-#include "llru.h"
-#include "index.h"
-#include "buffer.h"
-#include "util.h"
-#include "config.h"
 
 struct nessdb {
 	struct llru *lru;

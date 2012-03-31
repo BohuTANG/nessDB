@@ -10,9 +10,13 @@
 #include <string.h>
 #include <assert.h>
 
+#include "llru.h"
+#include "index.h"
+#include "buffer.h"
+#include "util.h"
+#include "config.h"
 #include "db.h"
 #include "debug.h"
-#include "util.h"
 
 #define DB "ness"
 

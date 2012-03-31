@@ -52,9 +52,9 @@
 #include "ae.h"
 #include "request.h"
 #include "response.h"
-#include "../engine/db.h"
 #include "../engine/util.h"
 #include "../engine/debug.h"
+#include "../engine/db.h"
 
 #define BUF_SIZE (10240)
 struct server{

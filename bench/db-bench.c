@@ -20,9 +20,9 @@
 #include <time.h>
 #include <sys/time.h>	
 #include <string.h>
-#include "../engine/db.h"
 #include "../engine/util.h"
 #include "../engine/debug.h"
+#include "../engine/db.h"
 
 #define TOLOG (0)
 #define KSIZE 	16
