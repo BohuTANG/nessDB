@@ -181,6 +181,9 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 		abort();
 
 	blks = mmap(0, sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (blks == MAP_FAILED) {
+		__PANIC("map error when write");
+	}
 
 	last = x;
 	c_clone = count;
@@ -255,11 +258,12 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	fd = open(file, O_RDWR, 0644);
 	result = lseek(fd, -fsize, SEEK_END);
 	if (result == -1) {
-		abort();
+		__PANIC("lseek error");
 	}
 	result = read(fd, &footer, fsize);
-	if (result == -1)
-		abort();
+	if (result == -1) {
+		__PANIC("read error when read footer");
+	}
 
 	fcount = from_be32(footer.count);
 
@@ -268,7 +272,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		__DEBUG(LEVEL_ERROR, "Un-mmapping the file");
+		__PANIC("map error when read");
 		goto out;
 	}
 
@@ -317,7 +321,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		__PANIC("Map_failed when read");
+		__DEBUG(LEVEL_ERROR, "Map_failed when read");
 		goto out;
 	}
 

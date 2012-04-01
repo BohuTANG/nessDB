@@ -362,11 +362,14 @@ int main(int argc, char **argv)
 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE, accept_handler, NULL) == AE_ERR) 
 		__DEBUG(LEVEL_ERROR, "creating file event");
 
-	__DEBUG(LEVEL_INFO, "nessDB server starting, port:%d, pid:%d", PORT, (int)getpid());
+	__DEBUG(LEVEL_INFO, "nessDB server starting, port:%d, pid:%d", PORT, (long)getpid());
 	printf("%s", _ascii_logo);
+
 	aeMain(_svr.el);
+
 	__DEBUG(LEVEL_ERROR, "oops,exit");
 	aeDeleteEventLoop(_svr.el);
 	nessdb_close(_svr.db);
+
 	return 1;
 }
