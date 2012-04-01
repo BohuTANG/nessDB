@@ -56,6 +56,15 @@
 #include "../engine/debug.h"
 #include "../engine/db.h"
 
+char *_ascii_logo =
+"\n=================================================\n"
+"nessDB v1.8 with LSM-Tree ________________\n" 
+"_____________________________  __ \\__  __ )\n"
+"__  __ \\  _ \\_  ___/_  ___/_  / / /_  __  |\n"
+"_  / / /  __/(__  )_(__  )_  /_/ /_  /_/ / \n"
+"/_/ /_/\\___//____/ /____/ /_____/ /_____/  \n"
+"=================================================\n\n";
+
 #define BUF_SIZE (10240)
 struct server{
 	char *bindaddr;
@@ -351,6 +360,7 @@ int main(int argc, char **argv)
 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE, accept_handler, NULL) == AE_ERR) 
 		__DEBUG(LEVEL_ERROR, "creating file event");
 
+	printf("%s", _ascii_logo);
 	aeMain(_svr.el);
 	__DEBUG(LEVEL_ERROR, "oops,exit");
 	aeDeleteEventLoop(_svr.el);
