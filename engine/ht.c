@@ -9,29 +9,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "util.h"
 #include "ht.h"
-
-/**
- * Djb hash function
- */
-static size_t _djb_hash(const char* key)
-{
-    unsigned int c;
-    unsigned int hash = 5381;
-
-    if (!key) {
-        return 0;
-    }
-
-    while ((c = *key++))
-	hash = ((hash << 5) + hash) + (unsigned int)c;  /* hash * 33 + c */
-
-   return (size_t) hash;
-}
 
 static size_t find_slot(struct ht *ht, void *key)
 {
-	return _djb_hash((const char*)key) % ht->cap;
+	return djb_hash((const char*)key) % ht->cap;
 }
 
 void ht_init(struct ht *ht, size_t cap)

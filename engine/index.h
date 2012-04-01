@@ -9,10 +9,10 @@
 #ifndef _INDEX_H
 #define _INDEX_H
 
+#include "config.h"
 #include <pthread.h>
 #include "skiplist.h"
 #include "util.h"
-#include "config.h"
 
 struct idx_park{
 	struct skiplist *list;
