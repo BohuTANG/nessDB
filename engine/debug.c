@@ -13,16 +13,18 @@ void __debug_raw(int level, const char *msg, char *file, int line)
 	char buf[64];
 
 	strftime(buf, sizeof(buf),"%d %b %I:%M:%S", localtime(&now));
-	fprintf(stderr, "[%d] %s %c %s \n", (int)getpid(), buf, c[level], msg);
 
 	if (level == LEVEL_ERROR) {
+		
 		fp = fopen(EVENT_NAME, "a");
 		if (fp) { 
+			fprintf(stderr,"[%d] %s %c %s %s:%d\n", (int)getpid(), buf, c[level], msg, file, line);
 			fprintf(fp,"[%d] %s %c %s %s:%d\n", (int)getpid(), buf, c[level], msg, file, line);
 			fflush(fp);
 			fclose(fp);
 		}
-	}
+	} else
+		fprintf(stderr, "[%d] %s %c %s \n", (int)getpid(), buf, c[level], msg);
 }
 
 void __debug(char *file, int line, DEBUG_LEVEL level, const char *fmt, ...)

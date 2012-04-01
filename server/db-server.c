@@ -330,13 +330,15 @@ void nessdb_close(struct nessdb *db)
 	db_close(db);
 }
 
+#define HOST ("127.0.0.1")
+#define PORT (6379)
 int main(int argc, char **argv)
 {
 	(void) argc;
 	(void) argv;
 
-	_svr.bindaddr = "127.0.0.1";
-	_svr.port = 6379;
+	_svr.bindaddr = HOST;
+	_svr.port = PORT;
 
 	_svr.db = nessdb_open();
 	_svr.el = aeCreateEventLoop(11024);
@@ -360,6 +362,7 @@ int main(int argc, char **argv)
 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE, accept_handler, NULL) == AE_ERR) 
 		__DEBUG(LEVEL_ERROR, "creating file event");
 
+	__DEBUG(LEVEL_INFO, "nessDB server starting, port:%d, pid:%d", PORT, (int)getpid());
 	printf("%s", _ascii_logo);
 	aeMain(_svr.el);
 	__DEBUG(LEVEL_ERROR, "oops,exit");
