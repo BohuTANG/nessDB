@@ -102,7 +102,7 @@ int _log_read(char *logname, struct skiplist *list)
 		
 		/* read key length */
 		if (read(fd, &klenstr, sizeof(int)) != sizeof(int)) {
-			__DEBUG(LEVEL_ERROR, "%s", "read error when read key length");
+			__PANIC("error when read key length");
 			return -1;
 		}
 
@@ -112,7 +112,7 @@ int _log_read(char *logname, struct skiplist *list)
 		/* read key */
 		memset(key, 0, NESSDB_MAX_KEY_SIZE);
 		if (read(fd, &key, klen) != klen) {
-			__DEBUG(LEVEL_ERROR, "%s", "read error when read key");
+			__PANIC("error when read key");
 			return -1;
 		}
 
@@ -120,7 +120,7 @@ int _log_read(char *logname, struct skiplist *list)
 
 		/* read data offset */
 		if (read(fd, &offstr, sizeof(uint64_t)) != sizeof(uint64_t)) {
-			__DEBUG(LEVEL_ERROR, "%s", "read error when read data offset");
+			__PANIC("read error when read data offset");
 			return -1;
 		}
 
@@ -129,7 +129,7 @@ int _log_read(char *logname, struct skiplist *list)
 
 		/* read opteration */
 		if (read(fd, &optstr, 1) != 1) {
-			__DEBUG(LEVEL_ERROR, "%s", "read error when read opteration");
+			__PANIC("read error when read opteration");
 			return -1;
 		}
 
@@ -221,7 +221,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		db_line = buffer_detach(db_buf);
 
 		if (write(l->db_wfd, db_line, db_len) != db_len) {
-			__DEBUG(LEVEL_ERROR, "%s:length:<%d>", "ERROR: Data AOF **ERROR**", db_len);
+			__PANIC("value aof error when write, length:<%d>", db_len);
 			return db_offset;
 		}
 		l->db_alloc += db_len;
@@ -241,7 +241,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		line = buffer_detach(buf);
 
 		if (write(l->idx_wfd, line, len) != len)
-			__DEBUG(LEVEL_ERROR, "%s,buffer is:%s,buffer length:<%d>", "ERROR: Log AOF **ERROR**", line, len);
+			__DEBUG(LEVEL_ERROR, "log aof error, buffer is:%s,buffer length:<%d>", line, len);
 	}
 
 

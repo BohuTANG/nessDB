@@ -144,7 +144,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	list = idx->list;
 
 	if (!list) {
-		__DEBUG(LEVEL_ERROR, "ERROR: List<%d> is NULL", idx->lsn);
+		__PANIC("List<%d> is NULL", idx->lsn);
 		return 0;
 	}
 
@@ -206,12 +206,12 @@ void _index_flush(struct index *idx)
 
 	if (log_idx_fd > 0) {
 		if (fsync(log_idx_fd) == -1)
-			__DEBUG(LEVEL_ERROR, "%s", "fsync idx fd error when db close");
+			__DEBUG(LEVEL_ERROR, "fsync idx fd error when db close");
 	}
 
 	if (log_db_fd > 0) {
 		if (fsync(log_db_fd) == -1)
-			__DEBUG(LEVEL_ERROR, "%s", "fsync db fd error when db close");
+			__DEBUG(LEVEL_ERROR, "fsync db fd error when db close");
 	}
 }
 

@@ -227,7 +227,7 @@ void _process_cmd(int fd, struct request *req)
 						break;
 
 		case CMD_SHUTDOWN:
-						__DEBUG(LEVEL_ERROR, "%s", "db-server shutdown...");
+						__DEBUG(LEVEL_ERROR, "db-server shutdown...");
 						db_close(_svr.db);
 						exit(2);
 						break;
@@ -333,7 +333,7 @@ int main(int argc, char **argv)
 	_svr.el = aeCreateEventLoop(11024);
 	_svr.fd = anetTcpServer(_svr.neterr, _svr.port, _svr.bindaddr);
 	if (_svr.fd == ANET_ERR) {
-		__DEBUG(LEVEL_ERROR, "openning port #%d:%s", _svr.port, _svr.neterr);
+		__PANIC("openning port error #%d:%s", _svr.port, _svr.neterr);
 		exit(1);
 	}
 
@@ -349,10 +349,10 @@ int main(int argc, char **argv)
 
 	/*handler*/
 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE, accept_handler, NULL) == AE_ERR) 
-		__DEBUG(LEVEL_ERROR, "%s", "creating file event");
+		__DEBUG(LEVEL_ERROR, "creating file event");
 
 	aeMain(_svr.el);
-	__DEBUG(LEVEL_ERROR, "%s", "oops,exit");
+	__DEBUG(LEVEL_ERROR, "oops,exit");
 	aeDeleteEventLoop(_svr.el);
 	nessdb_close(_svr.db);
 	return 1;

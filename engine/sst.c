@@ -63,7 +63,7 @@ void _add_bloom(struct sst *sst, int fd, int count)
 
 	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		__DEBUG(LEVEL_ERROR, "%s", "add_bloom, mmapping the file");
+		__PANIC("Error:Can't mmap file when add bloom");
 		return;
 	}
 
@@ -71,7 +71,7 @@ void _add_bloom(struct sst *sst, int fd, int count)
 		bloom_add(sst->bloom, blks[i].key);
 	
 	if (munmap(blks, blk_sizes) == -1)
-		__DEBUG(LEVEL_ERROR, "%s", "Error:sst_bloom un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "Error:un-mmapping the file");
 }
 
 void _sst_load(struct sst *sst)
@@ -101,7 +101,7 @@ void _sst_load(struct sst *sst)
 			fcount = from_be32(footer.count);
 			fcrc = from_be32(footer.crc);
 			if (fcrc != F_CRC) {
-				__DEBUG(LEVEL_ERROR, "Error:crc wrong,crc:<%d>,index<%s>", fcrc, sst_file);
+				__DEBUG(LEVEL_ERROR, "Crc wrong, sst file maybe broken, crc:<%d>,index<%s>", fcrc, sst_file);
 				close(fd);
 				continue;
 			}
@@ -128,6 +128,7 @@ void _sst_load(struct sst *sst)
 			close(fd);
 		}
 	}
+
 	closedir(dd);
 	__DEBUG(LEVEL_DEBUG, "Load sst,all entries count:<%d>", all_count);
 }
@@ -198,12 +199,12 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 #ifdef MSYNC
 	if (msync(blks, sizes, MS_SYNC) == -1) {
-		__DEBUG(LEVEL_ERROR, "%s", "write_map: msync error");
+		__DEBUG(LEVEL_ERROR, "Msync error");
 	}
 #endif
 
 	if (munmap(blks, sizes) == -1) {
-		__DEBUG(LEVEL_ERROR, "%s", "write_map:un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "Un-mmapping the file");
 	}
 	
 	footer.count = to_be32(count);
@@ -267,7 +268,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		__DEBUG(LEVEL_ERROR, "%s", "Error:sst_bloom un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "Un-mmapping the file");
 		goto out;
 	}
 
@@ -278,7 +279,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
-		__DEBUG(LEVEL_ERROR, "%s", "read_map:un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "Un-mmapping the file");
 
 out:
 	close(fd);
@@ -316,7 +317,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		__DEBUG(LEVEL_ERROR, "%s", "Error:read_offset, mmapping the file");
+		__PANIC("Map_failed when read");
 		goto out;
 	}
 
@@ -336,7 +337,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
-		__DEBUG(LEVEL_ERROR, "%s", "read_offset:un-mmapping the file");
+		__DEBUG(LEVEL_ERROR, "un-mmapping the file");
 
 out:
 	close(fd);
@@ -500,7 +501,7 @@ void sst_merge(struct sst *sst, struct skiplist *list, int fromlog)
 		struct skipnode *cur = x;
 		struct skipnode *first = list->hdr;
 
-		__DEBUG(LEVEL_DEBUG, "%s", "adding log items to bloomfilter");
+		__DEBUG(LEVEL_DEBUG, "adding log items to bloomfilter");
 		while (cur != first) {
 			if (cur->opt == ADD)
 				bloom_add(sst->bloom, cur->key);

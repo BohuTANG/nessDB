@@ -5,7 +5,7 @@
 
 #define EVENT_NAME "ness.event"
 
-void __debug_raw(int level, const char *msg) 
+void __debug_raw(int level, const char *msg, char *file, int line) 
 {
 	const char *c = ".-*#";
 	time_t now = time(NULL);
@@ -13,19 +13,19 @@ void __debug_raw(int level, const char *msg)
 	char buf[64];
 
 	strftime(buf, sizeof(buf),"%d %b %I:%M:%S", localtime(&now));
-	fprintf(stderr, "[%d] %s %c %s\n", (int)getpid(), buf, c[level], msg);
+	fprintf(stderr, "[%d] %s %c %s \n", (int)getpid(), buf, c[level], msg);
 
-	if (level == LEVEL_ERROR || level == LEVEL_DEBUG) {
+	if (level == LEVEL_ERROR) {
 		fp = fopen(EVENT_NAME, "a");
 		if (fp) { 
-			fprintf(fp,"[%d] %s %c %s\n", (int)getpid(), buf, c[level], msg);
+			fprintf(fp,"[%d] %s %c %s %s:%d\n", (int)getpid(), buf, c[level], msg, file, line);
 			fflush(fp);
 			fclose(fp);
 		}
 	}
 }
 
-void __DEBUG(DEBUG_LEVEL level, const char *fmt, ...) 
+void __debug(char *file, int line, DEBUG_LEVEL level, const char *fmt, ...)
 {
 	va_list ap;
 	char msg[1024];
@@ -34,5 +34,5 @@ void __DEBUG(DEBUG_LEVEL level, const char *fmt, ...)
 	vsnprintf(msg, sizeof(msg), fmt, ap);
 	va_end(ap);
 
-	__debug_raw((int)level,msg);
+	__debug_raw((int)level,msg, file, line);
 }
