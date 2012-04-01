@@ -6,6 +6,10 @@
  *
  */
 
+#ifndef _GNU_SOURCE
+	#define _GNU_SOURCE
+#endif
+
 #ifndef __USE_FILE_OFFSET64
 	#define __USE_FILE_OFFSET64
 #endif
@@ -195,6 +199,19 @@ void _index_flush(struct index *idx)
 	if (list && list->count > 0) {
 		sst_merge(idx->sst, list, 0);
 		log_remove(idx->log, idx->lsn);
+	}
+
+	int log_idx_fd = idx->log->idx_wfd;
+	int log_db_fd = idx->log->db_wfd;
+
+	if (log_idx_fd > 0) {
+		if (fsync(log_idx_fd) == -1)
+			__DEBUG(LEVEL_ERROR, "%s", "fsync idx fd error when db close");
+	}
+
+	if (log_db_fd > 0) {
+		if (fsync(log_db_fd) == -1)
+			__DEBUG(LEVEL_ERROR, "%s", "fsync db fd error when db close");
 	}
 }
 

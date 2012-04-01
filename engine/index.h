@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "skiplist.h"
 #include "util.h"
+#include "config.h"
 
 struct idx_park{
 	struct skiplist *list;
