@@ -95,13 +95,13 @@ void _sst_load(struct sst *sst)
 			fd = open(sst_file, O_RDWR, 0644);
 			lseek(fd, -fsize, SEEK_END);
 			result = read(fd, &footer, sizeof(struct footer));
-			if (result == -1)
-				abort();
+			if (result != sizeof(struct footer))
+				__PANIC("read footer error");
 
 			fcount = from_be32(footer.count);
 			fcrc = from_be32(footer.crc);
 			if (fcrc != F_CRC) {
-				__DEBUG(LEVEL_ERROR, "Crc wrong, sst file maybe broken, crc:<%d>,index<%s>", fcrc, sst_file);
+				__PANIC("Crc wrong, sst file maybe broken, crc:<%d>,index<%s>", fcrc, sst_file);
 				close(fd);
 				continue;
 			}
@@ -174,11 +174,15 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	memset(file, 0, FILE_PATH_SIZE);
 	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
 	fd = open(file, O_RDWR | O_CREAT | O_TRUNC, 0644);
+	if (fd == -1)
+		__PANIC("create sst file error");
 
-	lseek(fd, sizes - 1, SEEK_SET);
+	if (lseek(fd, sizes - 1, SEEK_SET) == -1)
+		__PANIC("lseek sst error");
+
 	result = write(fd, "", 1);
 	if (result == -1)
-		abort();
+		__PANIC("write empty error");
 
 	blks = mmap(0, sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
@@ -256,12 +260,15 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
 
 	fd = open(file, O_RDWR, 0644);
+	if (fd == -1)
+		__PANIC("open sst error when read map");
+
 	result = lseek(fd, -fsize, SEEK_END);
-	if (result == -1) {
-		__PANIC("lseek error");
-	}
+	if (result == -1)
+		__PANIC("lseek footer  error");
+
 	result = read(fd, &footer, fsize);
-	if (result == -1) {
+	if (result != fsize) {
 		__PANIC("read error when read footer");
 	}
 
@@ -307,13 +314,22 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
 
 	fd = open(file, O_RDWR, 0644);
+	if (fd == -1) {
+		__DEBUG(LEVEL_ERROR, "open sst error when read offset");
+		return 0UL;
+	}
+	
 	result = lseek(fd, -fsize, SEEK_END);
 	if (result == -1) {
-		abort();
+		__DEBUG(LEVEL_ERROR, "lseek error when read offset");
+		goto out;
 	}
+
 	result = read(fd, &footer, fsize);
-	if (result == -1)
-		abort();
+	if (result == -1) {
+		__DEBUG(LEVEL_ERROR, "read footer error when read offset");
+		goto out;
+	}
 
 	fcount = from_be32(footer.count);
 	blk_sizes = fcount * sizeof(struct sst_block);

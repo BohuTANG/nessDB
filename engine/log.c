@@ -58,11 +58,17 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 
 	if (_file_exists(db_name)) {
 		l->db_wfd = n_open(db_name, LSM_OPEN_FLAGS, 0644);
+		if (l->db_wfd == -1)
+			__PANIC("open db error");
+
 		l->db_alloc = n_lseek(l->db_wfd, 0, SEEK_END);
 	} else {
 		int magic = DB_MAGIC;
 
 		l->db_wfd = n_open(db_name, LSM_CREAT_FLAGS, 0644);
+		if (l->db_wfd == -1)
+			__PANIC("create db error");
+
 		result = write(l->db_wfd, &magic, sizeof(int));
 		if (result == -1) 
 			perror("write magic error\n");
@@ -270,6 +276,9 @@ void log_next(struct log *l, int lsn)
 
 	close(l->idx_wfd);
 	l->idx_wfd = open(l->name, LSM_CREAT_FLAGS, 0644);
+
+	if (l->idx_wfd == -1)
+		__PANIC("create new log error");
 }
 
 void log_free(struct log *l)
