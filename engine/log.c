@@ -55,7 +55,6 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	memset(db_name, 0, FILE_PATH_SIZE);
 	snprintf(db_name, FILE_PATH_SIZE, "%s/ness.db", basedir);
 
-
 	if (_file_exists(db_name)) {
 		l->db_wfd = n_open(db_name, LSM_OPEN_FLAGS, 0644);
 		if (l->db_wfd == -1)
@@ -84,17 +83,28 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 int _log_read(char *logname, struct skiplist *list)
 {
 	int rem, count = 0, del_count = 0;
-	int fd = open(logname, O_RDWR, 0644);
-	int size = lseek(fd, 0, SEEK_END);
+	int fd, size;
 
-	if (fd == -1)
+	fd = open(logname, O_RDWR, 0644);
+
+	if (fd == -1) {
+		__DEBUG(LEVEL_ERROR, "open log error when log read, file:<%s>", logname);
 		return 0;
+	}
+	
+	size = lseek(fd, 0, SEEK_END);
+	if (size == 0) {
+		__DEBUG(LEVEL_ERROR, "seek end error when log read,file:<%s>", logname);
+		return 0;
+	}
 
 	rem = size;
-	if (size == 0)
-		return 0;
 
-	lseek(fd, 0, SEEK_SET);
+	if (lseek(fd, 0, SEEK_SET) == -1) {
+		__DEBUG(LEVEL_ERROR, "seek begin when log read,file:<%s>", logname);
+		return 0;
+	}
+
 	while(rem > 0) {
 		int isize = 0;
 		int klen;
@@ -192,7 +202,9 @@ int log_recovery(struct log *l, struct skiplist *list)
 	if ((flag & 0x01) == 0x01) {
 		memset(l->log_new, 0, FILE_PATH_SIZE);
 		snprintf(l->log_new, FILE_PATH_SIZE, "%s/%s", l->basedir, new_log);
+
 		__DEBUG(LEVEL_DEBUG, "prepare to recovery from new log#%s", l->log_new);
+
 		ret = _log_read(l->log_new, list);
 		if (ret == 0)
 			return ret;
@@ -201,11 +213,14 @@ int log_recovery(struct log *l, struct skiplist *list)
 	if ((flag & 0x10) == 0x10) {
 		memset(l->log_old, 0, FILE_PATH_SIZE);
 		snprintf(l->log_old, FILE_PATH_SIZE, "%s/%s", l->basedir, old_log);
+
 		__DEBUG(LEVEL_DEBUG, "prepare to recovery from old log#%s", l->log_old);
+
 		ret = _log_read(l->log_old, list);
 		if (ret == 0)
 			return ret;
 	}
+
 	return ret;
 }
 
@@ -230,6 +245,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 			__PANIC("value aof error when write, length:<%d>", db_len);
 			return db_offset;
 		}
+
 		l->db_alloc += db_len;
 	}
 
@@ -238,6 +254,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		buffer_putint(buf, sk->len);
 		buffer_putnstr(buf, sk->data, sk->len);
 		buffer_putlong(buf, db_offset);
+
 		if(sv)
 			buffer_putnstr(buf, "A", 1);
 		else
@@ -247,9 +264,8 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		line = buffer_detach(buf);
 
 		if (write(l->idx_wfd, line, len) != len)
-			__DEBUG(LEVEL_ERROR, "log aof error, buffer is:%s,buffer length:<%d>", line, len);
+			__PANIC("log aof error, buffer is:%s,buffer length:<%d>", line, len);
 	}
-
 
 	return db_offset;
 }
