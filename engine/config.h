@@ -18,13 +18,15 @@
 #endif
 
 #if defined(__linux__)
-	# define n_open open64
-	# define n_lseek lseek64
-	# define n_fstat fstat64
+	# define n_open (open64)
+	# define n_lseek (lseek64)
+	# define n_fstat (fstat64)
 	# define LSM_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE)
 	# define LSM_OPEN_FLAGS   (O_RDWR | O_BINARY | O_LARGEFILE)
 #else
-	# define open64 open
+	# define n_open (open)
+	# define n_lseek (lseek)
+	# define n_fstat (fstat)
 	# define LSM_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY)
 	# define LSM_OPEN_FLAGS   (O_RDWR | O_BINARY)
 #endif
