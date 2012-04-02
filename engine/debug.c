@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
+#include <errno.h>
+#include <string.h>
 #include "debug.h"
 
 #define EVENT_NAME "ness.event"
@@ -18,8 +20,8 @@ void __debug_raw(int level, const char *msg, char *file, int line)
 		
 		fp = fopen(EVENT_NAME, "a");
 		if (fp) { 
-			fprintf(stderr,"[%d] %s %c %s %s:%d\n", (int)getpid(), buf, c[level], msg, file, line);
-			fprintf(fp,"[%d] %s %c %s %s:%d\n", (int)getpid(), buf, c[level], msg, file, line);
+			fprintf(stderr,"[%d] %s %c %s, error:%s %s:%d\n", (int)getpid(), buf, c[level], msg, strerror(errno), file, line);
+			fprintf(fp,"[%d] %s %c %s, error:%s %s:%d\n", (int)getpid(), buf, c[level], msg, strerror(errno), file, line);
 			fflush(fp);
 			fclose(fp);
 		}
