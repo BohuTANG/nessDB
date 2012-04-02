@@ -115,6 +115,8 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	memset(dbfile, 0, FILE_PATH_SIZE);
 	snprintf(dbfile, FILE_PATH_SIZE, "%s/%s.db", idx->basedir, name);
 	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
+	if (idx->db_rfd == -1)
+		__PANIC("index read fd error");
 
 	/* Detached thread attr */
 	pthread_attr_init(&idx->attr);
@@ -249,7 +251,11 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 
 	if (value_off != 0UL) {
 		__be32 be32len;
-		lseek(idx->db_rfd, value_off, SEEK_SET);
+		if (lseek(idx->db_rfd, value_off, SEEK_SET) == -1) {
+			__DEBUG(LEVEL_ERROR, "seek error when index get");
+			goto out_get;
+		}
+
 		result = read(idx->db_rfd, &be32len, sizeof(int));
 		if(FILE_ERR(result)) {
 			ret = -1;
