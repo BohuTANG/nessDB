@@ -27,18 +27,20 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   e. Level LRU
   f. Support billion data
 
-  HOW TODO
-  ========
+  HOW TODO BENCHMARK
+  ==================
   $make db-bench
-  $./db-bench <write | read > <count> or $./db-bench readone <key>
+  $./db-bench <write | read > <count> 
+	or 
+  $./db-bench readone <key>
 
-  If you want delete all idnexes/db/logs, your should do:
+  If you want delete all idnexes/db/logs, you should do:
   $make cleandb
 
-  HOW TO USE
-  ==========
+  HOW TO USE AS DB ENGINE
+  =======================
   a. OPEN
-		struct nessdb *db = db_open(bufferpool-size, db-path, islog); //NOTICE: bufferpool-size is bytes
+		struct nessdb *db = db_open(bufferpool-size, db-path, is_log_recovery); //NOTICE: bufferpool-size is bytes
 
   b. ADD
   		struct slice sk, sv;
@@ -67,5 +69,13 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 
   e. CLOSE
   		db_close(db);
+
+  HOW TO USE AS DB SERVER
+  =======================
+  $make db-server
+  $./db-server
+  Now, you can connect it with anyone redis-client, even can use the the redis-benchmark for performance testing(Note the db-server only support a few redis command).
+
+
 
   Thanks for your attention!
