@@ -16,7 +16,13 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 
   LAYOUT
   ======
-  For more details, please refer to documentations which in 'Doc' folder.
+  Doc		-- Documentations
+  bench		-- Benchmark testing
+  engine	-- The kernel of storage
+  server	-- Database server
+  interface	-- Others binding of nessDB(python, lua)
+  tools		-- Some tools of nessDB
+
   
   V1.8 FEATURES
   =============
@@ -26,6 +32,7 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   d. Background detached-thread merging
   e. Level LRU
   f. Support billion data
+  For more details, please refer to documentations which in 'Doc' folder.
 
   HOW TODO BENCHMARK
   ==================
