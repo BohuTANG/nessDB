@@ -49,10 +49,10 @@ OVERALL LAYOUT
 	|         disk log file           |
 	+---------------------------------+
 
-	nessDB has three kinds file on disk, there are: '.sst', '.db' and '.log'
-	'.sst' file is index file, all keys are sorted and all indexes file don't contain overlapping keys
-	'.db' file is data file 
-	'.log' is recovery file
+	nessDB has three kinds file on disk, there are: '*.sst', '*.db' and '*.log'
+	'*.sst' is index file, all keys are sorted and all indexes file don't contain overlapping keys
+	'*.db' is data file 
+	'*.log' is data recovery file
 
 1) memtable(in memory)
 ======================
@@ -81,10 +81,10 @@ OVERALL LAYOUT
 
 3) sst(on-disk)
 ================
-  'sst' is on-disk index file(key is sorted), the max number of one '.sst' file is limited by 'SST_MAX' macro,
-   which is defined in 'sst.c', default count is 25000.
+  '*.sst' is on-disk index file(key is sorted), the max number of one '*.sst' file is limited by 'SST_MAX' macro,
+   which is defined in 'config.h', default count is 25000.
  
- a 'sst' index file layout:
+ a '*.sst' index file layout:
  +------------------------------------------+
  |          sst block 1                     |
  +------------------------------------------+
@@ -118,7 +118,7 @@ OVERALL LAYOUT
 4) db(on-disk)
 =============
  It is the 'value' storage file.
- 'db' structured:
+ 'db' structured as follow:
  +-----------------------------------+
  | 	         magic number        |
  +-----------------+-----------------+
@@ -128,15 +128,15 @@ OVERALL LAYOUT
  +-----------------+-----------------+
  |  value N length |   value N       |
  +-----------------+-----------------+
- 'magic number' is a integer for datas not start from '0' offset
+ 'magic number' is an integer for datas not start from '0' offset
   
 
 
 5) log(on-disk)
 ===============
- 'log' is prepared for data recovery when storage engine shutdown than expected.
+ '*.log' is prepared for data recovery when storage engine shutdown than expected.
  Each memtable is mapping one log file on disk. Actually, there are at most two 'log' files exists:
- one is merging memtable's, and another is current active memtable's.
+ one is merging memtable's(immutable, read only), and another is current active memtable's.
  When background detached-thread is done, the merging memtable's log will be deleted immediately.
 
  'log' structured:
@@ -148,7 +148,7 @@ OVERALL LAYOUT
  |  key N length |   key N  | data offset | operation  |
  +---------------+----------+-------------+------------+
 
- When nessDB reopen again, it checks is some 'log' files exists
+ When nessDB reopen again, it checks is some '*.log' files exists
  if exists, recovery it(read log file and add entry to current active memtable)
 
 6) background-merge
@@ -164,7 +164,7 @@ OVERALL LAYOUT
                                  | start background merging thread |
                                  +---------------------------------+
 
- This is a detached-thread to merge immutable memtable(full) entries to on-disk file(.sst)
+ This is a detached-thread to merge immutable memtable(full) entries to on-disk file(*.sst)
 
 
 
