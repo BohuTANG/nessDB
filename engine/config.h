@@ -44,6 +44,7 @@
 #define BLOOM_BITS (433494437) /* bloom filter bits */
 #define FILE_PATH_SIZE (1024) /* file full path */
 #define FILE_NAME_SIZE (256) /* file name size */
-#define DB_VERSION "1.8.1"
+#define DB_VERSION ("1.8.1")
+#define DB_NAME ("ness.db")
 
 #endif

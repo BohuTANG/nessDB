@@ -17,11 +17,14 @@ static size_t find_slot(struct ht *ht, void *key)
 	return djb_hash((const char*)key) % ht->cap;
 }
 
-void ht_init(struct ht *ht, size_t cap)
+struct ht *ht_new(size_t cap)
 {
-	ht->size = 0;
+	struct ht *ht = calloc(1, sizeof(struct ht));
+
 	ht->cap = cap;
 	ht->nodes = calloc(cap, sizeof(struct ht_node*));
+
+	return ht;
 }
 
 void ht_set(struct ht *ht, void *key, void *value)
@@ -86,4 +89,5 @@ void ht_remove(struct ht *ht, void *key)
 void ht_free(struct ht *ht)
 {
 	free(ht->nodes);
+	free(ht);
 }

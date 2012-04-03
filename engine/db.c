@@ -17,8 +17,6 @@
 #include "db.h"
 #include "debug.h"
 
-#define DB "ness"
-
 struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_recovery)
 {
 	char buff_dir[FILE_PATH_SIZE];
@@ -33,7 +31,7 @@ struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_r
 
 	memset(buff_dir, 0, FILE_PATH_SIZE);
 	snprintf(buff_dir, FILE_PATH_SIZE, "%s/ndbs", basedir);
-	db->idx = index_new(buff_dir, DB, MTBL_MAX_COUNT, is_log_recovery); 
+	db->idx = index_new(buff_dir, MTBL_MAX_COUNT, is_log_recovery); 
 
 	return db;
 }

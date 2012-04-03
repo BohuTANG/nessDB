@@ -53,7 +53,7 @@ merge_out:
 	pthread_exit(NULL);
 }
 
-struct index *index_new(const char *basedir, const char *name, int max_mtbl_size, int tolog)
+struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 {
 	char dbfile[FILE_PATH_SIZE];
 	struct index *idx = malloc(sizeof(struct index));
@@ -68,9 +68,6 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	idx->max_mtbl_size = max_mtbl_size;
 	memset(idx->basedir, 0, FILE_PATH_SIZE);
 	memcpy(idx->basedir, basedir, FILE_PATH_SIZE);
-
-	memset(idx->name, 0, FILE_NAME_SIZE);
-	memcpy(idx->name, name, FILE_NAME_SIZE); 
 
 	/* sst */
 	idx->sst = sst_new(idx->basedir);
@@ -110,7 +107,7 @@ struct index *index_new(const char *basedir, const char *name, int max_mtbl_size
 	log_next(idx->log, 0);
 
 	memset(dbfile, 0, FILE_PATH_SIZE);
-	snprintf(dbfile, FILE_PATH_SIZE, "%s/%s.db", idx->basedir, name);
+	snprintf(dbfile, FILE_PATH_SIZE, "%s/%s", idx->basedir, DB_NAME);
 	idx->db_rfd = open(dbfile, LSM_OPEN_FLAGS, 0644);
 	if (idx->db_rfd == -1)
 		__PANIC("index read fd error");

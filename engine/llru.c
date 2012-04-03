@@ -20,28 +20,15 @@ struct llru *llru_new(size_t buffer_size)
 	size_t size_level_new;
 	size_t size_level_old;
 	struct llru *lru;
-	struct ht *ht;
 
 	size_level_new = buffer_size * RATIO;
 	size_level_old = buffer_size - size_level_new;
 	
-	ht = calloc(1, sizeof(struct ht));
 	lru = calloc(1, sizeof(struct llru));
-	lru->ht = ht;
-
-	ht_init(lru->ht,PRIME);
+	lru->ht = ht_new(PRIME);
 
 	lru->level_old.allow_size = size_level_old;
-	lru->level_old.count = 0;
-	lru->level_old.used_size = 0;
-	lru->level_old.first = NULL;
-	lru->level_old.last = NULL;
-
 	lru->level_new.allow_size = size_level_new;
-	lru->level_new.count = 0;
-	lru->level_new.used_size = 0;
-	lru->level_new.first = NULL;
-	lru->level_new.last = NULL;
 
 	if (buffer_size > 1023)
 		lru->buffer = 1;
@@ -150,7 +137,6 @@ void llru_remove(struct llru *lru, struct slice *sk)
 void llru_free(struct llru *lru)
 {
 	ht_free(lru->ht);
-	free(lru->ht);
 	free(lru);
 }
 

@@ -53,7 +53,7 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	memcpy(l->basedir, basedir, FILE_PATH_SIZE);
 
 	memset(db_name, 0, FILE_PATH_SIZE);
-	snprintf(db_name, FILE_PATH_SIZE, "%s/ness.db", basedir);
+	snprintf(db_name, FILE_PATH_SIZE, "%s/%s", basedir, DB_NAME);
 
 	if (_file_exists(db_name)) {
 		l->db_wfd = n_open(db_name, LSM_OPEN_FLAGS, 0644);

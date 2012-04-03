@@ -30,7 +30,6 @@ struct index{
 	uint64_t bloom_hits;
 
 	char basedir[FILE_PATH_SIZE];
-	char name[FILE_NAME_SIZE];
 	struct log *log;
 	struct sst *sst;
 	struct skiplist *list;
@@ -39,7 +38,7 @@ struct index{
 	pthread_mutex_t merge_mutex;
 };
 
-struct index *index_new(const char *basedir, const char *name, int max_mtbl_size, int tolog);
+struct index *index_new(const char *basedir, int max_mtbl_size, int tolog);
 int index_add(struct index *idx, struct slice *sk, struct slice *sv);
 int index_get(struct index *idx, struct slice *sk, struct slice *sv);
 uint64_t index_allcount(struct index *idx);
