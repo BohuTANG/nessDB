@@ -29,7 +29,7 @@ LONG_SIZE = 8
 """
 	Be careful with the KEY_SIZE, must same as config.h
 """
-KEY_SIZE = 32
+KEY_SIZE = 24
 
 FOOTER_SIZE = 40
 MAGIC = "2012"
