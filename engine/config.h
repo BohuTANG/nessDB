@@ -1,6 +1,11 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+
+#ifndef _GNU_SOURCE
+	#define _GNU_SOURCE
+#endif
+
 #ifndef __USE_FILE_OFFSET64
 	#define __USE_FILE_OFFSET64
 #endif

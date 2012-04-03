@@ -70,7 +70,8 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 
 		result = write(l->db_wfd, &magic, sizeof(int));
 		if (result == -1) 
-			perror("write magic error\n");
+			__PANIC("write magic error");
+
 		l->db_alloc = sizeof(int);
 	}
 

@@ -15,13 +15,11 @@
 #include "meta.h"
 #include "bloom.h"
 #include "util.h"
-#include "config.h"
 
 struct mutexer{
 	volatile int lsn;
 	pthread_mutex_t mutex;
 };
-
 
 struct sst_block{
 	char key[NESSDB_MAX_KEY_SIZE];

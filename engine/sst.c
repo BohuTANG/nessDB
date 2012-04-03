@@ -28,7 +28,7 @@
  * Code is licensed with BSD. See COPYING.BSD file.
  * 
  */
-
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +39,6 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <assert.h>
 
 #include "sst.h"
 #include "debug.h"
