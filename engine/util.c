@@ -18,7 +18,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-
+#include <sys/time.h>
 #include "util.h"
 
 static void _portable_mkdir(const char *path)
@@ -101,6 +101,17 @@ unsigned int djb_hash(const char *key)
 	}
 
 	return h;
+}
+
+long long get_ustime_sec(void)
+{
+	struct timeval tv;
+	long long ust;
+
+	gettimeofday(&tv, NULL);
+	ust = ((long long)tv.tv_sec)*1000000;
+	ust += tv.tv_usec;
+	return ust / 1000000;
 }
 
 

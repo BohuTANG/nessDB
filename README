@@ -81,7 +81,7 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   =======================
   $make db-server
   $./db-server
-  Now, you can connect it with anyone redis-client, even can use the the redis-benchmark for performance testing(Note the db-server only support a few redis command).
+  Now, you can connect it with anyone redis-client, even can use the redis-benchmark for performance testing(Note the db-server only support a few redis command).
 
 
 

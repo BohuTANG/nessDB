@@ -17,8 +17,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <time.h>
-#include <sys/time.h>	
 #include <string.h>
 #include "../engine/util.h"
 #include "../engine/debug.h"
@@ -31,17 +29,6 @@
 #define V			"1.8"
 #define LINE 		"+-----------------------------+----------------+------------------------------+-------------------+\n"
 #define LINE1		"---------------------------------------------------------------------------------------------------\n"
-
-long long _ustime(void)
-{
-	struct timeval tv;
-	long long ust;
-
-	gettimeofday(&tv, NULL);
-	ust = ((long long)tv.tv_sec)*1000000;
-	ust += tv.tv_usec;
-	return ust / 1000000;
-}
 
 void _random_key(char *key,int length) {
 	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -119,7 +106,7 @@ void _write_test(long int count)
 	db = db_open(BUFFERPOOL, path, TOLOG);
 	free(path);
 
-	start = _ustime();
+	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
 		_random_key(key, KSIZE);
 		snprintf(val, VSIZE, "val:%d", i);
@@ -135,13 +122,14 @@ void _write_test(long int count)
 			fflush(stderr);
 		}
 	}
+
 	db_close(db);
 
-	end = _ustime();
+	end = get_ustime_sec();
 	cost = end -start;
 
 	printf(LINE);
-	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); cost:%.3f(sec)\n"
+	printf("|Random-Write	(done:%ld): %.6f sec/op; %.1f writes/sec(estimated); cost:%.3f(sec);\n"
 		,count, (double)(cost / count)
 		,(double)(count / cost)
 		,cost);	
@@ -161,7 +149,7 @@ void _read_test(long int count)
 
 	char key[KSIZE];
 
-	start = _ustime();
+	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
 		_random_key(key, KSIZE);
 		sk.len = KSIZE;
@@ -178,7 +166,8 @@ void _read_test(long int count)
 
 	db_close(db);
 
-	end = _ustime();
+	end = get_ustime_sec();
+
 	cost = end - start;
 	printf(LINE);
 	printf("|Random-Read	(done:%ld): %.6f sec/op; %.1f reads /sec(estimated); cost:%.3f(sec)\n"

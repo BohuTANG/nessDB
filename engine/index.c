@@ -25,6 +25,7 @@
 void *_merge_job(void *arg)
 {
 	int lsn;
+	long long start, end, cost;
 	struct index *idx;
 	struct skiplist *list;
 	struct sst *sst;
@@ -41,9 +42,16 @@ void *_merge_job(void *arg)
 	if(list == NULL)
 		goto merge_out;
 
+	start = get_ustime_sec();
+
 	pthread_mutex_lock(&idx->merge_mutex);
 	sst_merge(sst, list, 0);
 	pthread_mutex_unlock(&idx->merge_mutex);
+	
+	end = get_ustime_sec();
+	cost = end - start;
+	if (cost > idx->max_merge_time)
+		idx->max_merge_time = cost;
 
 	/* Lock end */
 	log_remove(log, lsn);

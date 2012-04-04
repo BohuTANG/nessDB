@@ -97,6 +97,7 @@ char *db_info(struct nessdb *db)
 	time_t uptime = time(NULL) - db->start_time;
 	int upday = uptime / (3600 * 24);
 
+	long long max_merge_time = db->idx->max_merge_time;
 	int total_lru_count = (db->lru->level_new.count + db->lru->level_old.count);
 	int total_lru_hot_count = db->lru->level_new.count;
 	int total_lru_cold_count = db->lru->level_old.count;
@@ -119,7 +120,8 @@ char *db_info(struct nessdb *db)
 			"gcc_version:%d.%d.%d\r\n"
 			"process_id:%ld\r\n"
 			"uptime_in_seconds:%d\r\n"
-			"uptime_in_days:%d\r\n\r\n"
+			"uptime_in_days:%d\r\n"
+			"max_merge_time_sec:%lu\r\n\r\n"
 
 			"# Stats\r\n"
 			"total_lru_count:%d\r\n"
@@ -147,6 +149,7 @@ char *db_info(struct nessdb *db)
 			(long)getpid(),
 			uptime,
 			upday,
+			max_merge_time,
 
 			total_lru_count,
 			total_lru_hot_count,
