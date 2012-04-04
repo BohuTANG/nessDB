@@ -24,7 +24,7 @@
 
 void *_merge_job(void *arg)
 {
-	int lsn;
+	int lsn, list_count;
 	long long start, end, cost;
 	struct index *idx;
 	struct skiplist *list;
@@ -35,6 +35,7 @@ void *_merge_job(void *arg)
 	idx = (struct index*)arg;
 	lsn = idx->park->lsn;
 	list = idx->park->list;
+	list_count = list->count;
 	sst = idx->sst;
 	log = idx->log;
 
@@ -50,8 +51,10 @@ void *_merge_job(void *arg)
 	
 	end = get_ustime_sec();
 	cost = end - start;
-	if (cost > idx->max_merge_time)
+	if (cost > idx->max_merge_time) {
+		idx->slowest_merge_count = list_count;
 		idx->max_merge_time = cost;
+	}
 
 	/* Lock end */
 	log_remove(log, lsn);
@@ -181,15 +184,27 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
  */
 void _index_flush(struct index *idx)
 {
+	int list_count;
 	struct skiplist *list;
+	long long start, cost;
 
 	/* Waiting  bg merging thread done */
 	pthread_mutex_lock(&idx->merge_mutex);
 	pthread_mutex_unlock(&idx->merge_mutex);
 
 	list = idx->list;
+	list_count = list->count;
+
 	if (list && list->count > 0) {
+		start = get_ustime_sec();
 		sst_merge(idx->sst, list, 0);
+		cost = get_ustime_sec() - start;
+
+		if (cost > idx->max_merge_time) {
+			idx->slowest_merge_count = list_count;
+			idx->max_merge_time = cost;
+		}
+
 		log_remove(idx->log, idx->lsn);
 	}
 
@@ -301,6 +316,15 @@ uint64_t index_allcount(struct index *idx)
 void index_free(struct index *idx)
 {
 	_index_flush(idx);
+
+	if (idx->max_merge_time > 0) {
+		__DEBUG(LEVEL_INFO, "max merge time:%lu sec;"
+				"the slowest merge-count:%d and merge-speed:%.1f/sec"
+				, idx->max_merge_time
+				, idx->slowest_merge_count
+				, (double) (idx->slowest_merge_count / idx->max_merge_time));
+	}
+
 	pthread_attr_destroy(&idx->attr);
 	log_free(idx->log);
 	close(idx->db_rfd);

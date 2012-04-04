@@ -27,7 +27,8 @@ struct index{
 	int mtbl_rem_count;
 	int max_mtbl;
 	int max_mtbl_size;
-	long long max_merge_time;
+	int slowest_merge_count; /* the max merge time's count */
+	long long max_merge_time; /* the slowest merge time cost */
 	uint64_t bloom_hits;
 
 	char basedir[FILE_PATH_SIZE];
