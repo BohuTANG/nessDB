@@ -42,6 +42,7 @@ void _llru_set_node(struct llru *lru, struct level_node *n)
 		if (n->hits == -1) {
 			/* free the last one */
 			if (lru->level_new.used_size >= lru->level_new.allow_size) {
+				ht_remove(lru->ht, n->sk.data);
 				level_free_last(&lru->level_new);
 			}
 
@@ -49,8 +50,10 @@ void _llru_set_node(struct llru *lru, struct level_node *n)
 			level_remove_link(&lru->level_new, n);
 			level_set_head(&lru->level_new, n);
 		} else {
-			if (lru->level_old.used_size >= lru->level_old.allow_size)
+			if (lru->level_old.used_size >= lru->level_old.allow_size) {
+				ht_remove(lru->ht, n->sk.data);
 				level_free_last(&lru->level_old);
+			}
 
 			n->hits++;
 			level_remove_link(&lru->level_old, n);
