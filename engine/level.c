@@ -70,10 +70,11 @@ void level_free_node(struct level *level, struct level_node *n)
 	}
 }
 
-void level_free_last(struct level *level)
+void level_free_last(struct level *level, struct ht *h)
 {
 	struct level_node *n;
 
 	n = level->last;
+	ht_remove(h, n->sk.data);
 	level_free_node(level, n);
 }

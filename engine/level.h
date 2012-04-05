@@ -10,6 +10,7 @@
 #define _LEVEL_H
 
 #include <stdint.h>
+#include "ht.h"
 #include "util.h"
 
 struct level{
@@ -33,7 +34,7 @@ struct level_node{
 struct level *level_creat();
 void level_set_head(struct level *level, struct level_node *node);
 void level_remove_link(struct level *, struct level_node *node);
-void level_free_last(struct level *level);
+void level_free_last(struct level *level, struct ht *h);
 void level_free_node(struct level *level, struct level_node *node);
 void level_free(struct level *level);
 
