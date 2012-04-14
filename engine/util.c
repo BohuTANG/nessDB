@@ -60,49 +60,6 @@ void ensure_dir_exists(const char *path)
 	}
 }
 
-/**
- * SAX hash function
- */
-unsigned int sax_hash(const char *key)
-{
-	unsigned int h = 0;
-
-	while (*key) {
-		h ^= (h << 5) + (h >> 2) + (unsigned char) *key;
-		++key;
-	}
-	return h;
-}
-
-/**
- * SDBM hash function
- */
-unsigned int sdbm_hash(const char *key)
-{
-	unsigned int h = 0;
-
-	while (*key) {
-		h = (unsigned char) *key + (h << 6) + (h << 16) - h;
-		++key;
-	}
-	return h;
-}
-
-/**
- * Jdb hash function
- */
-unsigned int djb_hash(const char *key)
-{
-	unsigned int h = 5381;
-
-	while (*key) {
-		h = ((h<< 5) + h) + (unsigned int) *key;  /* hash * 33 + c */
-		++key;
-	}
-
-	return h;
-}
-
 long long get_ustime_sec(void)
 {
 	struct timeval tv;
@@ -113,5 +70,4 @@ long long get_ustime_sec(void)
 	ust += tv.tv_usec;
 	return ust / 1000000;
 }
-
 

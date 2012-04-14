@@ -4,6 +4,9 @@
 .*.swp
 *.a
 *.so
+*.gcno
+*.gcda
+*.gcov
 ndbs/*
 db-bench
 db-server
