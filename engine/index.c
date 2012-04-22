@@ -67,14 +67,11 @@ merge_out:
 struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 {
 	char dbfile[FILE_PATH_SIZE];
-	struct index *idx = malloc(sizeof(struct index));
-	struct idx_park *park = malloc(sizeof(struct idx_park));
+	struct index *idx = calloc(1, sizeof(struct index));
+	struct idx_park *park = calloc(1, sizeof(struct idx_park));
 
 	ensure_dir_exists(basedir);
 	
-	idx->lsn = 0;
-	idx->bloom_hits = 0;
-	idx->bg_merge_count = 0;
 	idx->max_mtbl = 1;
 	idx->max_mtbl_size = max_mtbl_size;
 	memset(idx->basedir, 0, FILE_PATH_SIZE);
@@ -86,7 +83,6 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	pthread_mutex_init(&idx->merge_mutex, NULL);
 
 	/* container */
-	park->list = NULL; 	
 	park->lsn = idx->lsn;
 	idx->park = park;
 

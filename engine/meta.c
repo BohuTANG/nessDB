@@ -22,11 +22,7 @@
 
 struct meta *meta_new()
 {
-	struct meta *m = malloc(sizeof(struct meta));
-
-	m->sn = 0;
-	m->size = 0;
-	return m;
+	return calloc(1, sizeof(struct meta));
 }
 
 struct meta_node *meta_get(struct meta *meta, char *key)
@@ -62,10 +58,8 @@ void meta_set(struct meta *meta, struct meta_node *node)
 		size_t i = (right -left) / 2 +left;
 		int cmp = strcmp(node->end, meta->nodes[i].end);
 
-		if (cmp == 0) {
-			memcpy(meta->nodes[i].end, node->end, NESSDB_MAX_KEY_SIZE);
+		if (cmp == 0)
 			return ;
-		}
 
 		if (cmp < 0)
 			right = i;

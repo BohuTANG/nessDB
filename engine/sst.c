@@ -136,8 +136,7 @@ struct sst *sst_new(const char *basedir)
 {
 	struct sst *s;
 
-	s = malloc(sizeof(struct sst));
-	s->lsn = 0;
+	s = calloc(1, sizeof(struct sst));
 
 	s->meta = meta_new();
 	memcpy(s->basedir, basedir, FILE_PATH_SIZE);
@@ -193,7 +192,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	for (i = 0, j= 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
 			memset(blks[j].key, 0, NESSDB_MAX_KEY_SIZE);
-			memcpy(blks[j].key, x->key,NESSDB_MAX_KEY_SIZE);
+			memcpy(blks[j].key, x->key, strlen(x->key));
 			blks[j].offset=to_be64(x->val);
 			j++;
 		} else
@@ -216,11 +215,11 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	footer.count = to_be32(count);
 	footer.crc = to_be32(F_CRC);
 	memset(footer.key, 0, NESSDB_MAX_KEY_SIZE);
-	memcpy(footer.key, last->key, NESSDB_MAX_KEY_SIZE);
+	memcpy(footer.key, last->key, strlen(last->key));
 
 	result = write(fd, &footer, fsize);
 	if (result == -1)
-		abort();
+		__PANIC("write footer");
 
 	/* Set meta */
 	struct meta_node mn;

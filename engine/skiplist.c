@@ -27,10 +27,8 @@ struct pool {
 struct pool *_pool_new()
 {
 	unsigned int p_size = 8092 - sizeof(struct pool);
-	struct pool *pool = malloc(sizeof(struct pool) + p_size);
+	struct pool *pool = calloc(1, sizeof(struct pool) + p_size);
 
-	memset(pool, 0, p_size);
-	pool->next = NULL;
 	pool->ptr = (char*)(pool + 1);
 	pool->rem = p_size;
 	
@@ -68,19 +66,16 @@ void *_pool_alloc(struct skiplist *list, size_t size)
 struct skiplist *skiplist_new(size_t size)
 {
 	int i;
-	struct skiplist *list = malloc(sizeof(struct skiplist));
+	struct skiplist *list = calloc(1, sizeof(struct skiplist));
 
 	list->hdr = malloc(sizeof(struct skipnode) + MAXLEVEL*sizeof(struct skipnode *));
 
 	for (i = 0; i <= MAXLEVEL; i++)
 		list->hdr->forward[i] = NIL;
 
-	list->level = 0;
 	list->size = size;
-	list->count = 0;
 	list->pool = (struct pool *) list->pool_embedded;
-	list->pool->rem = 0;
-	list->pool->next = NULL;
+
 	return list;
 }
 

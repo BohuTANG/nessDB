@@ -12,19 +12,18 @@
 #include "config.h"
 #include "bloom.h"
 
-#define HFUNCNUM (3)
+#define HFUNCNUM (2)
 
 struct bloom *bloom_new()
 {
-	struct bloom *bl = malloc(sizeof(struct bloom));
+	struct bloom *bl = calloc(1, sizeof(struct bloom));
 
 	bl->size = BLOOM_BITS;
 	bl->bitset = calloc((bl->size+1) / CHAR_BIT, sizeof(char));
 	bl->hashfuncs = malloc(HFUNCNUM * sizeof(hashfuncs));
 
 	bl->hashfuncs[0] = sax_hash;
-	bl->hashfuncs[1] = sdbm_hash;
-	bl->hashfuncs[2] = djb_hash;
+	bl->hashfuncs[1] = djb_hash;
 
 	return bl;
 }
