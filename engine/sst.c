@@ -50,15 +50,51 @@ struct footer{
 	char key[NESSDB_MAX_KEY_SIZE];
 	__be32 count;
 	__be32 crc;
+	__be32 size;
+	__be32 max_len;
 };
 
-void _add_bloom(struct sst *sst, int fd, int count)
+struct stats {
+	int mmap_size;
+	int max_len;
+};
+
+void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
+{
+	size_t i;
+	int real_count = 0;
+	int max_len = 0;
+
+	struct skipnode *node = x;
+
+	memset(stats, 0, sizeof(struct stats));
+	for (i = 0; i < count; i++) {
+		if (node->opt == ADD) {
+			int klen = strlen(node->key);
+
+			real_count++;
+			max_len = klen > max_len ? klen : max_len;
+		}
+
+		node = node->forward[0];
+	}
+
+	stats->max_len = max_len;
+	stats->mmap_size = (max_len + sizeof(uint64_t)) * real_count ;
+}
+
+void _add_bloom(struct sst *sst, int fd, int count, int max_len)
 {
 	int i;
 	int blk_sizes;
-	struct sst_block *blks;
+	struct inner_block{
+		char key[max_len];
+		__be64 offset;
+	};
 
-	blk_sizes = count * sizeof(struct sst_block);
+	struct inner_block *blks;
+
+	blk_sizes = count * sizeof(struct inner_block);
 
 	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
@@ -111,7 +147,7 @@ void _sst_load(struct sst *sst)
 			}
 
 			/* Add to bloom */
-			_add_bloom(sst, fd, fcount);
+			_add_bloom(sst, fd, fcount, from_be32(footer.max_len));
 
 			all_count += fcount;
 						
@@ -151,9 +187,6 @@ struct sst *sst_new(const char *basedir)
 	return s;
 }
 
-/*
- * Write node to index file
- */
 void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_new)
 {
 	int i, j, c_clone;
@@ -162,12 +195,20 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	int result;
 	char file[FILE_PATH_SIZE];
 	struct skipnode *last;
-	struct sst_block *blks;
 	struct footer footer;
+	struct stats stats;
 
 	int fsize = sizeof(struct footer);
 
-	sizes = count * sizeof(struct sst_block);
+	_prepare_stats(x, count, &stats);
+	sizes = stats.mmap_size;
+
+	struct inner_block {
+		char key[stats.max_len];
+		__be64 offset;
+	};
+
+	struct inner_block *blks;
 
 	memset(file, 0, FILE_PATH_SIZE);
 	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
@@ -191,7 +232,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	c_clone = count;
 	for (i = 0, j= 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
-			memset(blks[j].key, 0, NESSDB_MAX_KEY_SIZE);
+			memset(blks[j].key, 0, stats.max_len);
 			memcpy(blks[j].key, x->key, strlen(x->key));
 			blks[j].offset=to_be64(x->val);
 			j++;
@@ -214,6 +255,8 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	
 	footer.count = to_be32(count);
 	footer.crc = to_be32(F_CRC);
+	footer.size = to_be32(sizes);
+	footer.max_len = to_be32(stats.max_len);
 	memset(footer.key, 0, NESSDB_MAX_KEY_SIZE);
 	memcpy(footer.key, last->key, strlen(last->key));
 
@@ -249,7 +292,6 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	int fcount;
 	int blk_sizes;
 	char file[FILE_PATH_SIZE];
-	struct sst_block *blks;
 	struct skiplist *merge = NULL;
 	struct footer footer;
 	int fsize = sizeof(struct footer);
@@ -270,9 +312,15 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 		__PANIC("read error when read footer");
 	}
 
-	fcount = from_be32(footer.count);
+	struct inner_block {
+		char key[from_be32(footer.max_len)];
+		__be64 offset;
+	};
 
-	blk_sizes = fcount * sizeof(struct sst_block);
+	struct inner_block *blks;
+
+	fcount = from_be32(footer.count);
+	blk_sizes = from_be32(footer.size);
 
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -304,7 +352,6 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	int result;
 	uint64_t off = 0UL;
 	char file[FILE_PATH_SIZE];
-	struct sst_block *blks;
 	struct footer footer;
 	int fsize = sizeof(struct footer);
 
@@ -320,23 +367,36 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	result = lseek(fd, -fsize, SEEK_END);
 	if (result == -1) {
 		__DEBUG(LEVEL_ERROR, "lseek error when read offset");
-		goto out;
+		close(fd);
+		return off;
 	}
 
 	result = read(fd, &footer, fsize);
 	if (result == -1) {
 		__DEBUG(LEVEL_ERROR, "read footer error when read offset");
-		goto out;
+		close(fd);
+		return off;
 	}
 
+	int max_len = from_be32(footer.max_len);
+
+	struct inner_block {
+		char key[max_len];
+		__be64 offset;
+	};
+
+	struct inner_block *blks;
+
+
 	fcount = from_be32(footer.count);
-	blk_sizes = fcount * sizeof(struct sst_block);
+	blk_sizes = from_be32(footer.size);
 
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
 		__DEBUG(LEVEL_ERROR, "Map_failed when read");
-		goto out;
+		close(fd);
+		return off;
 	}
 
 	size_t left = 0, right = fcount, i = 0;
@@ -357,9 +417,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	if (munmap(blks, blk_sizes) == -1)
 		__DEBUG(LEVEL_ERROR, "un-mmapping the file");
 
-out:
 	close(fd);
-
 	return off;
 }
 
