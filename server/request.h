@@ -14,15 +14,20 @@ typedef enum {CMD_PING,
 	CMD_SHUTDOWN, 
 	CMD_UNKNOW} CMD;
 
-struct  cmds {
+struct cmds {
 	char method[256];
 	CMD cmd;
+};
+
+struct term {
+	int len;
+	char *data;
 };
 
 struct request {
 	char querybuf[REQ_MAX_BUFFSIZE];
 	int argc;
-	char **argv;
+	struct term **argv;
 	int pos;
 	int multilen;
 	int lastlen;
@@ -35,6 +40,7 @@ struct request *request_new();
 int  request_parse(struct request *request);
 int request_append(struct request *request, const char *buf, int n);
 void request_clean(struct request *request);
+void request_free_value(struct request *request);
 void request_free(struct request *request);
 void request_dump(struct request *request);
 

@@ -194,7 +194,13 @@ int request_parse(struct request *req)
 		req->argc = atoi(sb);
 		req->multilen = req->argc;
 
-		req->argv = (char**)calloc(req->argc, sizeof(char*));
+		req->argv = (struct term**)calloc(req->argc, sizeof(struct term*));
+		int i;
+
+		for (i = 0; i < req->argc; i++) {
+			struct term *t = calloc(1, sizeof(struct term));
+			req->argv[i] = t;
+		}
 	}
 
 	while (req->multilen) {
@@ -216,8 +222,7 @@ int request_parse(struct request *req)
 		if ((req->pos + argv_len) < req->len) {
 			/*get argv*/
 			v = (char*)calloc(argv_len + 1, sizeof(char));
-			memset(v, 0 ,argv_len + 1);
-			memcpy(v, req->querybuf+(req->pos), argv_len);
+			memcpy(v, req->querybuf + req->pos, argv_len);
 
 			if (req->idx == 0) {
 
@@ -236,7 +241,9 @@ int request_parse(struct request *req)
 					}
 				}
 			}
-			req->argv[req->idx++] = v;	
+
+			req->argv[req->idx]->len = argv_len;
+			req->argv[req->idx++]->data = v;	
 			req->pos += (argv_len + 2);
 
 			/* clean tags */
@@ -279,7 +286,7 @@ void request_dump(struct request *req)
 	printf("\t\tcmd:<%s>\n", _cmds[req->cmd].method);
 
 	for (i = 0; i < req->argc; i++) {
-		printf("\t\targv[%d]:<%s>\n", i, req->argv[i]);
+		printf("\t\targv[%d]:<%s>\n", i, req->argv[i]->data);
 	}
 
 	printf("}\n\n");
@@ -287,14 +294,22 @@ void request_dump(struct request *req)
 
 void request_clean(struct request *req)
 {
-	int i;
-	
-	for (i = 0; i < req->argc; i++) {
-		if (req->argv[i])
-			free(req->argv[i]);
-	}
+	if (req->argv)
+		free(req->argv);
+}
 
-	free(req->argv);
+void request_free_value(struct request *req)
+{
+	int i;
+	if (req) {
+		for (i = 0; i < req->argc; i++) {
+			if (req->argv[i]) {
+				if (req->argv[i]->data)
+					free(req->argv[i]->data);
+				free(req->argv[i]);
+			}
+		}
+	}
 }
 
 void request_free(struct request *req)

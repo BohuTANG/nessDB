@@ -19,8 +19,8 @@ struct bloom *bloom_new()
 	struct bloom *bl = calloc(1, sizeof(struct bloom));
 
 	bl->size = BLOOM_BITS;
-	bl->bitset = calloc((bl->size+1) / CHAR_BIT, sizeof(char));
-	bl->hashfuncs = malloc(HFUNCNUM * sizeof(hashfuncs));
+	bl->bitset = calloc((bl->size + 1) / sizeof(char), sizeof(char));
+	bl->hashfuncs = calloc(HFUNCNUM, sizeof(hashfuncs));
 
 	bl->hashfuncs[0] = sax_hash;
 	bl->hashfuncs[1] = djb_hash;

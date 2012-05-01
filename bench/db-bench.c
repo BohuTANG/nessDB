@@ -31,12 +31,11 @@
 #define LINE1		"---------------------------------------------------------------------------------------------------\n"
 
 void _random_key(char *key,int length) {
-	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
 	int i;
+	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
 
 	for (i = 0; i < length; i++)
 		key[i] = salt[rand() % length];
-
 }
 
 void _print_header(int count)
@@ -144,13 +143,15 @@ void _read_test(long int count)
 	struct slice sk;
 	struct slice sv;
 	struct nessdb *db;
+	char *dir = getcwd(NULL, 0);
 
-	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
+	db = db_open(BUFFERPOOL, dir, TOLOG);
 
-	char key[KSIZE];
+	char key[KSIZE + 1];
 
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
+		memset(key, 0, KSIZE + 1);
 		_random_key(key, KSIZE);
 		sk.len = KSIZE;
 		sk.data = key;
@@ -165,6 +166,7 @@ void _read_test(long int count)
 	}
 
 	db_close(db);
+	free(dir);
 
 	end = get_ustime_sec();
 
@@ -183,10 +185,16 @@ void _readone_test(char *key)
 	struct slice sk;
 	struct slice sv;
 	struct nessdb *db;
+	char *dir = getcwd(NULL, 0);
+	char k[KSIZE + 1];
+	int len = strlen(key);
 
-	db = db_open(BUFFERPOOL, getcwd(NULL,0), TOLOG);
-	sk.len = KSIZE;
-	sk.data = key;
+	memset(k, 0, KSIZE + 1);
+	memcpy(k, key, len);
+
+	db = db_open(BUFFERPOOL, dir, TOLOG);
+	sk.len = (KSIZE + 1);
+	sk.data = k;
 
 	ret = db_get(db, &sk, &sv);
 	if (ret){ 
@@ -194,7 +202,9 @@ void _readone_test(char *key)
 		free(sv.data);
 	} else
 		__DEBUG(LEVEL_INFO, "Get Key:<%s>,but value is NULL", key);
+
 	db_close(db);
+	free(dir);
 }
 
 int main(int argc,char** argv)

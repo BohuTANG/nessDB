@@ -88,9 +88,10 @@ void _process_cmd(int fd, struct request *req)
 	/* request_dump(req);*/
 	switch(req->cmd){
 		case CMD_PING:{
-						  resp=response_new(0,OK_PONG);
+						  resp = response_new(0,OK_PONG);
 						  response_detch(resp,sent_buf);
 						  write(fd,sent_buf,strlen(sent_buf));
+						  request_free_value(req);
 						  response_free(resp);
 						  break;
 					  }
@@ -99,17 +100,19 @@ void _process_cmd(int fd, struct request *req)
 						 struct slice sk, sv;
 
 						 if(req->argc == 3) {
-							 sk.len = strlen(req->argv[1]);
-							 sk.data = req->argv[1];
+							 sk.len = req->argv[1]->len;
+							 sk.data = req->argv[1]->data;
 
-							 sv.len = strlen(req->argv[2]);
-							 sv.data = req->argv[2];
+							 sv.len = req->argv[2]->len;
+							 sv.data = req->argv[2]->data;
 
 							 db_add(_svr.db, &sk, &sv);
 
-							 resp=response_new(0,OK);
+							 resp = response_new(0,OK);
 							 response_detch(resp,sent_buf);
 							 write(fd,sent_buf,strlen(sent_buf));
+
+							 request_free_value(req);
 							 response_free(resp);
 							 break;
 						 }
@@ -122,17 +125,20 @@ void _process_cmd(int fd, struct request *req)
 							  struct slice sk, sv;
 
 							  /* should do NULL detect */
-							  sk.len = strlen(req->argv[i]);
-							  sk.data = req->argv[i];
+							  sk.len = req->argv[i]->len;
+							  sk.data = req->argv[i]->data;
 
-							  sv.len = strlen(req->argv[i+1]);
-							  sv.data = req->argv[i+1];
+							  sv.len = req->argv[i+1]->len;
+							  sv.data = req->argv[i+1]->data;
 							  db_add(_svr.db, &sk, &sv);
+							  
 						  }
 
-						  resp=response_new(0, OK);
+						  resp = response_new(0, OK);
 						  response_detch(resp, sent_buf);
 						  write(fd,sent_buf, strlen(sent_buf));
+
+						  request_free_value(req);
 						  response_free(resp);
 						  break;
 					  }
@@ -142,18 +148,20 @@ void _process_cmd(int fd, struct request *req)
 						 struct slice sk;
 						 struct slice sv;
 						 if (req->argc == 2) {
-							 sk.len=strlen(req->argv[1]);
-							 sk.data = req->argv[1];
+							 sk.len = req->argv[1]->len;
+							 sk.data = req->argv[1]->data;
 							 ret = db_get(_svr.db, &sk, &sv);
 							 if (ret == 1) {
-								 resp=response_new(1,OK_200);
+								 resp = response_new(1,OK_200);
 								 resp->argv[0] = sv.data;
 							 } else {
-								 resp=response_new(0,OK_404);
+								 resp = response_new(0,OK_404);
 								 resp->argv[0] = NULL;
 							 }
 							 response_detch(resp, sent_buf);
 							 write(fd,sent_buf,strlen(sent_buf));
+
+							 request_free_value(req);
 							 response_free(resp);
 							 if (ret == 1)
 								 free(sv.data);
@@ -172,8 +180,8 @@ void _process_cmd(int fd, struct request *req)
 						  for (i = 1; i < c; i++){
 							  struct slice sk;
 							  struct slice sv;
-							  sk.len = strlen(req->argv[i]);
-							  sk.data = req->argv[i];
+							  sk.len = req->argv[i]->len;
+							  sk.data = req->argv[i]->data;
 
 							  ret = db_get(_svr.db, &sk, &sv);
 							  if (ret == 1)
@@ -186,6 +194,8 @@ void _process_cmd(int fd, struct request *req)
 
 						  response_detch(resp, sent_buf);
 						  write(fd, sent_buf, strlen(sent_buf));
+
+						  request_free_value(req);
 						  response_free(resp);
 
 						  for (i = 0; i < sub_c; i++){
@@ -203,6 +213,7 @@ void _process_cmd(int fd, struct request *req)
 						  resp->argv[0] = infos;
 						  response_detch(resp, sent_buf);
 						  write(fd,sent_buf, strlen(sent_buf));
+						  request_free_value(req);
 						  response_free(resp);
 						  break;
 					  }
@@ -212,21 +223,22 @@ void _process_cmd(int fd, struct request *req)
 
 						 for (i = 1; i < req->argc; i++){
 							 struct slice sk;
-							 sk.len = strlen(req->argv[i]);
-							 sk.data = req->argv[i];
+							 sk.len = req->argv[i]->len;
+							 sk.data = req->argv[i]->data;
 							 db_remove(_svr.db, &sk);
 						 }
 
 						 resp = response_new(0, OK);
 						 response_detch(resp, sent_buf);
 						 write(fd, sent_buf, strlen(sent_buf));
+						 request_free_value(req);
 						 response_free(resp);
 						 break;
 					 }
 		case CMD_EXISTS:{
 							struct slice sk;
-							sk.len = strlen(req->argv[1]);
-							sk.data = req->argv[1];
+							sk.len = req->argv[1]->len;
+							sk.data = req->argv[1]->data;
 							int ret= db_exists(_svr.db, &sk);
 							if(ret)
 								write(fd,":1\r\n",4);
@@ -245,13 +257,13 @@ __default:				default:{
 									resp = response_new(0, ERR);
 									response_detch(resp, sent_buf);
 									write(fd, sent_buf, strlen(sent_buf));
+									request_free_value(req);
 									response_free(resp);
 									break;
 								}
 	}
 
 }
-
 
 void read_handler(aeEventLoop *el, int fd, void *privdata, int mask)
 {
