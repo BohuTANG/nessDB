@@ -52,18 +52,42 @@ struct footer{
 	__be32 crc;
 	__be32 size;
 	__be32 max_len;
+	__be16 aligned;
+	__be64 base_offset;
 };
 
 struct stats {
 	int mmap_size;
 	int max_len;
+	uint64_t base;
+	short aligned;
 };
+
+static inline int _aligned_bytes(uint64_t delta)
+{
+	int i;
+	uint64_t _ua[] = {
+		0xffffUL,
+		0xffffffffUL,
+		0xffffffffffffffff
+	};
+
+	for (i = 0; i < 3; i++) {
+		if (delta <= _ua[i])
+			break;
+	}
+
+	return 1<<i;
+}
 
 void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 {
 	size_t i;
 	int real_count = 0;
 	int max_len = 0;
+	uint64_t min = 0UL;
+	uint64_t max = 0UL;
+	uint64_t delta = 0UL;
 
 	struct skipnode *node = x;
 
@@ -71,9 +95,12 @@ void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 	for (i = 0; i < count; i++) {
 		if (node->opt == ADD) {
 			int klen = strlen(node->key);
+			uint64_t off = from_be64(node->val);
 
 			real_count++;
 			max_len = klen > max_len ? klen : max_len;
+			min = off < min ? off : min;
+			max = off > max ? off : max;
 		}
 
 		node = node->forward[0];
@@ -81,6 +108,9 @@ void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 
 	stats->max_len = max_len;
 	stats->mmap_size = (max_len + sizeof(uint64_t)) * real_count ;
+	stats->base = min;
+	delta = (max - min);
+	stats->aligned = _aligned_bytes(delta);
 }
 
 void _add_bloom(struct sst *sst, int fd, int count, int max_len)
@@ -187,6 +217,9 @@ struct sst *sst_new(const char *basedir)
 	return s;
 }
 
+
+#define be(x) (__be##x)
+
 void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_new)
 {
 	int i, j, c_clone;
@@ -205,7 +238,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 	struct inner_block {
 		char key[stats.max_len];
-		__be64 offset;
+		char offset[stats.aligned];
 	};
 
 	struct inner_block *blks;
@@ -234,7 +267,9 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 		if (x->opt == ADD) {
 			memset(blks[j].key, 0, stats.max_len);
 			memcpy(blks[j].key, x->key, strlen(x->key));
-			blks[j].offset=to_be64(x->val);
+			blks[j].offset = be(16)(x->val);
+
+
 			j++;
 		} else
 			count--;
