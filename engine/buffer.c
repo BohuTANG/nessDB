@@ -10,8 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include "buffer.h"
-
+#include "buffer.h" 
 unsigned _next_power(unsigned x)
 {
 	--x;
@@ -103,9 +102,6 @@ void buffer_putc(struct buffer *b, const char c)
 	b->buf[b->NUL] = '\0';
 }
 
-/*
- * Big-Endian
- */
 void buffer_putint(struct buffer *b, int val)
 {
 	_buffer_extendby(b, sizeof(int));
@@ -113,6 +109,21 @@ void buffer_putint(struct buffer *b, int val)
 	b->buf[b->NUL++] = (val >> 16) & 0xff;
 	b->buf[b->NUL++] = (val >> 8) & 0xff;
 	b->buf[b->NUL++] = val & 0xff;
+}
+
+void buffer_putshort(struct buffer *b, short val)
+{
+	_buffer_extendby(b, sizeof(short));
+	b->buf[b->NUL++] = (val >> 8) & 0xff;
+	b->buf[b->NUL++] = val & 0xff;
+}
+
+uint16_t u16_from_big(unsigned char *buf) {
+	uint16_t val = 0;
+
+	val |= buf[2] << 8;
+	val |= buf[3];
+	return val;
 }
 
 uint32_t u32_from_big(unsigned char *buf) {
@@ -125,9 +136,6 @@ uint32_t u32_from_big(unsigned char *buf) {
 	return val;
 }
 
-/*
- * Big-Endian
- */
 void buffer_putlong(struct buffer *b, uint64_t val)
 {
 	_buffer_extendby(b, sizeof(uint64_t));

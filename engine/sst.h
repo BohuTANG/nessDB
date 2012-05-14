@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <pthread.h>
+#include "buffer.h"
 #include "skiplist.h"
 #include "meta.h"
 #include "bloom.h"
@@ -28,6 +29,7 @@ struct sst{
 	struct meta *meta;
 	struct bloom *bloom;
 	struct mutexer mutexer;
+	struct buffer *buf;
 };
 
 struct sst *sst_new(const char *basedir);

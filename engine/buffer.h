@@ -29,6 +29,8 @@ void buffer_putnstr(struct buffer *b, const char *str, size_t n);
 void buffer_putint(struct buffer *b, int val);
 void buffer_scatf(struct buffer *b, const char *fmt, ...);
 void buffer_putlong(struct buffer *b, uint64_t val);
+void buffer_putshort(struct buffer *b, short val);
+uint16_t u16_from_big(unsigned char *buf);
 uint32_t u32_from_big(unsigned char *buf);
 uint64_t u64_from_big(unsigned char *buf);
 

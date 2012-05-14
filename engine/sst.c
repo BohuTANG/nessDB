@@ -113,13 +113,13 @@ void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 	stats->aligned = _aligned_bytes(delta);
 }
 
-void _add_bloom(struct sst *sst, int fd, int count, int max_len)
+void _add_bloom(struct sst *sst, int fd, int count, int max_len, short aligned)
 {
 	int i;
 	int blk_sizes;
 	struct inner_block{
 		char key[max_len];
-		__be64 offset;
+		char offset[aligned];
 	};
 
 	struct inner_block *blks;
@@ -153,6 +153,7 @@ void _sst_load(struct sst *sst)
 			struct footer footer;
 			char sst_file[FILE_PATH_SIZE];
 			int fsize = sizeof(struct footer);
+			short aligned;
 
 			memset(sst_file, 0, FILE_PATH_SIZE);
 			snprintf(sst_file, FILE_PATH_SIZE, "%s/%s", sst->basedir, de->d_name);
@@ -165,6 +166,8 @@ void _sst_load(struct sst *sst)
 
 			fcount = from_be32(footer.count);
 			fcrc = from_be32(footer.crc);
+			aligned = from_be16(footer.aligned);
+
 			if (fcrc != F_CRC) {
 				__PANIC("Crc wrong, sst file maybe broken, crc:<%d>,index<%s>", fcrc, sst_file);
 				close(fd);
@@ -177,7 +180,7 @@ void _sst_load(struct sst *sst)
 			}
 
 			/* Add to bloom */
-			_add_bloom(sst, fd, fcount, from_be32(footer.max_len));
+			_add_bloom(sst, fd, fcount, from_be32(footer.max_len), aligned);
 
 			all_count += fcount;
 						
@@ -210,15 +213,13 @@ struct sst *sst_new(const char *basedir)
 	s->bloom = bloom_new();
 	s->mutexer.lsn = -1;
 	pthread_mutex_init(&s->mutexer.mutex, NULL);
+	s->buf= buffer_new(1024*1024*4);
 
 	/* SST files load */
 	_sst_load(s);
 	
 	return s;
 }
-
-
-#define be(x) (__be##x)
 
 void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_new)
 {
@@ -265,10 +266,13 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	c_clone = count;
 	for (i = 0, j= 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
-			memset(blks[j].key, 0, stats.max_len);
-			memcpy(blks[j].key, x->key, strlen(x->key));
-			blks[j].offset = be(16)(x->val);
-
+			buffer_putstr(sst->buf, x->key);
+			if (stats.aligned == 8)
+				buffer_putlong(sst->buf, x->val);
+			else if (stats.aligned == 4)
+				buffer_putint(sst->buf, x->val);
+			else
+				buffer_putshort(sst->buf, x->val);
 
 			j++;
 		} else
@@ -277,6 +281,9 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 		last = x;
 		x = x->forward[0];
 	}
+
+	char *strings = buffer_detach(sst->buf);
+	memcpy(blks, strings, sizes);
 
 #ifdef MSYNC
 	if (msync(blks, sizes, MS_SYNC) == -1) {
@@ -292,6 +299,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	footer.crc = to_be32(F_CRC);
 	footer.size = to_be32(sizes);
 	footer.max_len = to_be32(stats.max_len);
+	footer.aligned = to_be16(stats.aligned);
 	memset(footer.key, 0, NESSDB_MAX_KEY_SIZE);
 	memcpy(footer.key, last->key, strlen(last->key));
 
@@ -347,9 +355,9 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 		__PANIC("read error when read footer");
 	}
 
-	struct inner_block {
+	struct inner_block{
 		char key[from_be32(footer.max_len)];
-		__be64 offset;
+		char offset[from_be16(footer.aligned)];
 	};
 
 	struct inner_block *blks;
@@ -367,7 +375,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	/* Merge */
 	merge = skiplist_new(fcount + count + 1);
 	for (i = 0; i < fcount; i++) {
-			skiplist_insert(merge, blks[i].key, from_be64(blks[i].offset), ADD);
+		skiplist_insert(merge, blks[i].key, u64_from_big((unsigned char*)blks[i].offset), ADD);
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
@@ -385,6 +393,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	int fcount;
 	int blk_sizes;
 	int result;
+	short aligned;
 	uint64_t off = 0UL;
 	char file[FILE_PATH_SIZE];
 	struct footer footer;
@@ -414,10 +423,11 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	}
 
 	int max_len = from_be32(footer.max_len);
+	aligned = from_be16(footer.aligned);
 
 	struct inner_block {
 		char key[max_len];
-		__be64 offset;
+		char offset[aligned];
 	};
 
 	struct inner_block *blks;
@@ -439,7 +449,13 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 		i = (right -left) / 2 +left;
 		int cmp = strcmp(sk->data, blks[i].key);
 		if (cmp == 0) {
-			off = from_be64(blks[i].offset);	
+			if (aligned == 8)
+				off = u64_from_big((unsigned char*)blks[i].offset);	
+			else if (aligned == 4)
+				off = u32_from_big((unsigned char*)blks[i].offset);	
+			else
+				off = u16_from_big((unsigned char*)blks[i].offset);	
+
 			break ;
 		}
 
@@ -660,6 +676,7 @@ void sst_free(struct sst *sst)
 	if (sst) {
 		meta_free(sst->meta);
 		bloom_free(sst->bloom);
+		buffer_free(sst->buf);
 		free(sst);
 	}
 }

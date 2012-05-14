@@ -277,9 +277,10 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 
 		value_len = from_be32(be32len);
 		if(result == sizeof(int)) {
-			char *data = malloc(value_len + 1);
-			memset(data, 0, value_len + 1);
+			char *data = calloc(1, value_len + 1);
 			result = read(idx->db_rfd, data, value_len);
+			data[value_len] = 0;
+
 			if(FILE_ERR(result)) {
 				free(data);
 				ret = -1;
@@ -308,7 +309,6 @@ uint64_t index_allcount(struct index *idx)
 
 	return c;
 }
-
 void index_free(struct index *idx)
 {
 	_index_flush(idx);

@@ -54,8 +54,10 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	if (sv_l) {
 		db->lru_cached++;
 
-		data = malloc(sv_l->len + 1);
+		data = calloc(1, sv_l->len + 1);
 		memcpy(data, sv_l->data, sv_l->len);
+		data[sv_l->len] = 0;
+
 		sv->len = sv_l->len;
 		sv->data = data;
 		ret = 1;
