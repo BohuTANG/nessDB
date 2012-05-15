@@ -52,8 +52,6 @@ struct footer{
 	__be32 crc;
 	__be32 size;
 	__be32 max_len;
-	__be16 aligned;
-	__be64 base_offset;
 };
 
 struct stats {
@@ -87,7 +85,6 @@ void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 	int max_len = 0;
 	uint64_t min = 0UL;
 	uint64_t max = 0UL;
-	uint64_t delta = 0UL;
 
 	struct skipnode *node = x;
 
@@ -108,18 +105,15 @@ void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 
 	stats->max_len = max_len;
 	stats->mmap_size = (max_len + sizeof(uint64_t)) * real_count ;
-	stats->base = min;
-	delta = (max - min);
-	stats->aligned = _aligned_bytes(delta);
 }
 
-void _add_bloom(struct sst *sst, int fd, int count, int max_len, short aligned)
+void _add_bloom(struct sst *sst, int fd, int count, int max_len)
 {
 	int i;
 	int blk_sizes;
 	struct inner_block{
 		char key[max_len];
-		char offset[aligned];
+		char offset[8];
 	};
 
 	struct inner_block *blks;
@@ -153,7 +147,6 @@ void _sst_load(struct sst *sst)
 			struct footer footer;
 			char sst_file[FILE_PATH_SIZE];
 			int fsize = sizeof(struct footer);
-			short aligned;
 
 			memset(sst_file, 0, FILE_PATH_SIZE);
 			snprintf(sst_file, FILE_PATH_SIZE, "%s/%s", sst->basedir, de->d_name);
@@ -166,7 +159,6 @@ void _sst_load(struct sst *sst)
 
 			fcount = from_be32(footer.count);
 			fcrc = from_be32(footer.crc);
-			aligned = from_be16(footer.aligned);
 
 			if (fcrc != F_CRC) {
 				__PANIC("Crc wrong, sst file maybe broken, crc:<%d>,index<%s>", fcrc, sst_file);
@@ -180,7 +172,7 @@ void _sst_load(struct sst *sst)
 			}
 
 			/* Add to bloom */
-			_add_bloom(sst, fd, fcount, from_be32(footer.max_len), aligned);
+			_add_bloom(sst, fd, fcount, from_be32(footer.max_len));
 
 			all_count += fcount;
 						
@@ -239,7 +231,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 	struct inner_block {
 		char key[stats.max_len];
-		char offset[stats.aligned];
+		char offset[8];
 	};
 
 	struct inner_block *blks;
@@ -267,12 +259,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	for (i = 0, j= 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
 			buffer_putstr(sst->buf, x->key);
-			if (stats.aligned == 8)
-				buffer_putlong(sst->buf, x->val);
-			else if (stats.aligned == 4)
-				buffer_putint(sst->buf, x->val);
-			else
-				buffer_putshort(sst->buf, x->val);
+			buffer_putlong(sst->buf, x->val);
 
 			j++;
 		} else
@@ -299,7 +286,6 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	footer.crc = to_be32(F_CRC);
 	footer.size = to_be32(sizes);
 	footer.max_len = to_be32(stats.max_len);
-	footer.aligned = to_be16(stats.aligned);
 	memset(footer.key, 0, NESSDB_MAX_KEY_SIZE);
 	memcpy(footer.key, last->key, strlen(last->key));
 
@@ -357,7 +343,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 
 	struct inner_block{
 		char key[from_be32(footer.max_len)];
-		char offset[from_be16(footer.aligned)];
+		char offset[8];
 	};
 
 	struct inner_block *blks;
@@ -393,7 +379,6 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	int fcount;
 	int blk_sizes;
 	int result;
-	short aligned;
 	uint64_t off = 0UL;
 	char file[FILE_PATH_SIZE];
 	struct footer footer;
@@ -423,11 +408,10 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	}
 
 	int max_len = from_be32(footer.max_len);
-	aligned = from_be16(footer.aligned);
 
 	struct inner_block {
 		char key[max_len];
-		char offset[aligned];
+		char offset[8];
 	};
 
 	struct inner_block *blks;
@@ -449,13 +433,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 		i = (right -left) / 2 +left;
 		int cmp = strcmp(sk->data, blks[i].key);
 		if (cmp == 0) {
-			if (aligned == 8)
-				off = u64_from_big((unsigned char*)blks[i].offset);	
-			else if (aligned == 4)
-				off = u32_from_big((unsigned char*)blks[i].offset);	
-			else
-				off = u16_from_big((unsigned char*)blks[i].offset);	
-
+			off = u64_from_big((unsigned char*)blks[i].offset);	
 			break ;
 		}
 
