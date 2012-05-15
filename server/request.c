@@ -171,7 +171,7 @@ void _reset_request(struct request *req)
 int request_append(struct request *req, const char *buf, int n)
 {
 	if ((req->len + n) > REQ_MAX_BUFFSIZE){
-		__DEBUG(LEVEL_ERROR, "req->len #%d", req->len);
+		__ERROR("req->len #%d", req->len);
 		return -1;
 	}
 
@@ -188,7 +188,7 @@ int request_parse(struct request *req)
 
 	if (req->multilen == 0) {
 		if (req_state_len(req, sb) != STATE_CONTINUE) {
-			__DEBUG(LEVEL_ERROR,"argc error,buffer:%s", req->querybuf);
+			__ERROR("argc error,buffer:%s", req->querybuf);
 			return -1;
 		}
 		req->argc = atoi(sb);
@@ -211,7 +211,7 @@ int request_parse(struct request *req)
 			/*parse argv len*/
 			memset(sb, 0, BUF_SIZE);
 			if (req_state_len(req, sb) != STATE_CONTINUE) {
-				__DEBUG(LEVEL_ERROR, "argv's len error,packet:%s\n", sb);
+				__ERROR("argv's len error,packet:%s\n", sb);
 				return -1;
 			}
 			argv_len = atoi(sb);

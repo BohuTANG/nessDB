@@ -130,7 +130,7 @@ void _add_bloom(struct sst *sst, int fd, int count, int max_len)
 		bloom_add(sst->bloom, blks[i].key);
 	
 	if (munmap(blks, blk_sizes) == -1)
-		__DEBUG(LEVEL_ERROR, "Error:un-mmapping the file");
+		__ERROR("Error:un-mmapping the file");
 }
 
 void _sst_load(struct sst *sst)
@@ -274,12 +274,12 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 #ifdef MSYNC
 	if (msync(blks, sizes, MS_SYNC) == -1) {
-		__DEBUG(LEVEL_ERROR, "Msync error");
+		__ERROR("Msync error");
 	}
 #endif
 
 	if (munmap(blks, sizes) == -1) {
-		__DEBUG(LEVEL_ERROR, "Un-mmapping the file");
+		__ERROR("Un-mmapping the file");
 	}
 	
 	footer.count = to_be32(count);
@@ -365,7 +365,7 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
-		__DEBUG(LEVEL_ERROR, "Un-mmapping the file");
+		__ERROR("Un-mmapping the file");
 
 out:
 	close(fd);
@@ -389,20 +389,20 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 
 	fd = open(file, O_RDWR, 0644);
 	if (fd == -1) {
-		__DEBUG(LEVEL_ERROR, "open sst error when read offset");
+		__ERROR("open sst error when read offset");
 		return 0UL;
 	}
 	
 	result = lseek(fd, -fsize, SEEK_END);
 	if (result == -1) {
-		__DEBUG(LEVEL_ERROR, "lseek error when read offset");
+		__ERROR("lseek error when read offset");
 		close(fd);
 		return off;
 	}
 
 	result = read(fd, &footer, fsize);
 	if (result == -1) {
-		__DEBUG(LEVEL_ERROR, "read footer error when read offset");
+		__ERROR("read footer error when read offset");
 		close(fd);
 		return off;
 	}
@@ -423,7 +423,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	/* Blocks read */
 	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		__DEBUG(LEVEL_ERROR, "Map_failed when read");
+		__ERROR("Map_failed when read");
 		close(fd);
 		return off;
 	}
@@ -444,7 +444,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	}
 	
 	if (munmap(blks, blk_sizes) == -1)
-		__DEBUG(LEVEL_ERROR, "un-mmapping the file");
+		__ERROR("un-mmapping the file");
 
 	close(fd);
 	return off;

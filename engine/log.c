@@ -89,20 +89,20 @@ int _log_read(char *logname, struct skiplist *list)
 	fd = open(logname, O_RDWR, 0644);
 
 	if (fd == -1) {
-		__DEBUG(LEVEL_ERROR, "open log error when log read, file:<%s>", logname);
+		__ERROR("open log error when log read, file:<%s>", logname);
 		return 0;
 	}
 	
 	size = lseek(fd, 0, SEEK_END);
 	if (size == 0) {
-		__DEBUG(LEVEL_ERROR, "seek end error when log read,file:<%s>", logname);
+		__ERROR("seek end error when log read,file:<%s>", logname);
 		return 0;
 	}
 
 	rem = size;
 
 	if (lseek(fd, 0, SEEK_SET) == -1) {
-		__DEBUG(LEVEL_ERROR, "seek begin when log read,file:<%s>", logname);
+		__ERROR("seek begin when log read,file:<%s>", logname);
 		return 0;
 	}
 
@@ -162,7 +162,7 @@ int _log_read(char *logname, struct skiplist *list)
 		rem -= isize;
 	}
 
-	__DEBUG(LEVEL_DEBUG, "recovery count ADD#%d, DEL#%d", count, del_count);
+	__DEBUG("recovery count ADD#%d, DEL#%d", count, del_count);
 	return 1;
 }
 
@@ -204,7 +204,7 @@ int log_recovery(struct log *l, struct skiplist *list)
 		memset(l->log_new, 0, FILE_PATH_SIZE);
 		snprintf(l->log_new, FILE_PATH_SIZE, "%s/%s", l->basedir, new_log);
 
-		__DEBUG(LEVEL_DEBUG, "prepare to recovery from new log#%s", l->log_new);
+		__DEBUG("prepare to recovery from new log#%s", l->log_new);
 
 		ret = _log_read(l->log_new, list);
 		if (ret == 0)
@@ -215,7 +215,7 @@ int log_recovery(struct log *l, struct skiplist *list)
 		memset(l->log_old, 0, FILE_PATH_SIZE);
 		snprintf(l->log_old, FILE_PATH_SIZE, "%s/%s", l->basedir, old_log);
 
-		__DEBUG(LEVEL_DEBUG, "prepare to recovery from old log#%s", l->log_old);
+		__DEBUG("prepare to recovery from old log#%s", l->log_old);
 
 		ret = _log_read(l->log_old, list);
 		if (ret == 0)

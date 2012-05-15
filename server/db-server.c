@@ -248,7 +248,7 @@ void _process_cmd(int fd, struct request *req)
 						break;
 
 		case CMD_SHUTDOWN:
-						__DEBUG(LEVEL_ERROR, "db-server shutdown...");
+						__ERROR("db-server shutdown...");
 						db_close(_svr.db);
 						exit(2);
 						break;
@@ -326,7 +326,7 @@ int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 	(void) id;
 	(void) clientData;
 
-	__DEBUG(LEVEL_WARNING, "%d clients connected", _clicount);
+	__WARN("%d clients connected", _clicount);
 	return 3000;
 }
 
@@ -364,7 +364,7 @@ int main(int argc, char **argv)
 	 * set nonblock: single process no effect
 	 */
 	if (anetNonBlock(_svr.neterr, _svr.fd) == ANET_ERR) {
-		__DEBUG(LEVEL_ERROR, "set nonblock #%s",_svr.neterr);
+		__ERROR("set nonblock #%s",_svr.neterr);
 		exit(1);
 	}
 
@@ -372,14 +372,14 @@ int main(int argc, char **argv)
 
 	/*handler*/
 	if (aeCreateFileEvent(_svr.el, _svr.fd, AE_READABLE, accept_handler, NULL) == AE_ERR) 
-		__DEBUG(LEVEL_ERROR, "creating file event");
+		__ERROR("creating file event");
 
-	__DEBUG(LEVEL_INFO, "nessDB server starting, port:%d, pid:%d", PORT, (long)getpid());
+	__INFO("nessDB server starting, port:%d, pid:%d", PORT, (long)getpid());
 	printf("%s", _ascii_logo);
 
 	aeMain(_svr.el);
 
-	__DEBUG(LEVEL_ERROR, "oops,exit");
+	__ERROR("oops,exit");
 	aeDeleteEventLoop(_svr.el);
 	nessdb_close(_svr.db);
 

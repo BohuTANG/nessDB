@@ -98,7 +98,7 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	 * 5) create new memtable and log file
 	 */
 	if (log_recovery(idx->log, idx->list)) {
-		__DEBUG(LEVEL_DEBUG, "prepare to merge logs, merge count #%d....", idx->list->count);
+		__DEBUG("prepare to merge logs, merge count #%d....", idx->list->count);
 		/* Merge log entries */
 		sst_merge(idx->sst, idx->list, 1);
 
@@ -209,12 +209,12 @@ void _index_flush(struct index *idx)
 
 	if (log_idx_fd > 0) {
 		if (fsync(log_idx_fd) == -1)
-			__DEBUG(LEVEL_ERROR, "fsync idx fd error when db close");
+			__ERROR("fsync idx fd error when db close");
 	}
 
 	if (log_db_fd > 0) {
 		if (fsync(log_db_fd) == -1)
-			__DEBUG(LEVEL_ERROR, "fsync db fd error when db close");
+			__ERROR("fsync db fd error when db close");
 	}
 }
 
@@ -265,7 +265,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	if (value_off != 0UL) {
 		__be32 be32len;
 		if (lseek(idx->db_rfd, value_off, SEEK_SET) == -1) {
-			__DEBUG(LEVEL_ERROR, "seek error when index get");
+			__ERROR("seek error when index get");
 			goto out_get;
 		}
 
@@ -314,7 +314,7 @@ void index_free(struct index *idx)
 	_index_flush(idx);
 
 	if (idx->max_merge_time > 0) {
-		__DEBUG(LEVEL_INFO, "max merge time:%lu sec;"
+		__INFO("max merge time:%lu sec;"
 				"the slowest merge-count:%d and merge-speed:%.1f/sec"
 				, idx->max_merge_time
 				, idx->slowest_merge_count

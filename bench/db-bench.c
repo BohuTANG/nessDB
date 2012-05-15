@@ -198,10 +198,10 @@ void _readone_test(char *key)
 
 	ret = db_get(db, &sk, &sv);
 	if (ret){ 
-		__DEBUG(LEVEL_INFO, "Get Key:<%s>--->value is :<%s>", key, sv.data);
+		__INFO("Get Key:<%s>--->value is :<%s>", key, sv.data);
 		free(sv.data);
 	} else
-		__DEBUG(LEVEL_INFO, "Get Key:<%s>,but value is NULL", key);
+		__INFO("Get Key:<%s>,but value is NULL", key);
 
 	db_close(db);
 	free(dir);
