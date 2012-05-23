@@ -35,7 +35,7 @@ void _random_key(char *key,int length) {
 	char salt[36]= "abcdefghijklmnopqrstuvwxyz0123456789";
 
 	for (i = 0; i < length; i++)
-		key[i] = salt[rand() % length];
+		key[i] = salt[rand() % 36];
 }
 
 void _print_header(int count)
