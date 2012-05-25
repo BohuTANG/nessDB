@@ -190,7 +190,7 @@ void _sst_load(struct sst *sst)
 	}
 
 	closedir(dd);
-	__DEBUG(LEVEL_DEBUG, "Load sst,all entries count:<%d>", all_count);
+	__DEBUG("Load sst,all entries count:<%d>", all_count);
 }
 
 struct sst *sst_new(const char *basedir)

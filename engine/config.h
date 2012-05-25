@@ -36,8 +36,8 @@
 	# define LSM_OPEN_FLAGS   (O_RDWR | O_BINARY)
 #endif
 
-#define NESSDB_MAX_KEY_SIZE (24) /* max key size */
-#define LOG_BUFFER_SIZE (2048) /* log buffer size*/
+#define NESSDB_MAX_KEY_SIZE (32) /* max key size */
+#define LOG_BUFFER_SIZE (1024*10) /* log buffer size*/
 #define MTBL_MAX_COUNT (5000000) /* max count in memtable */
 #define SST_MAX_COUNT (65536) /* one sst's max count entries */
 #define META_MAX_COUNT (10000) /* max meta count */
