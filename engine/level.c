@@ -33,10 +33,10 @@ void level_set_head(struct level *level, struct level_node *n)
 
 void level_remove_link(struct level *level, struct level_node *n)
 {
-	level->count--;
-
 	if (n == NULL)
 		return;
+
+	level->count--;
 
 	if (n->pre == NULL) {
 		if (n->nxt != NULL) {
