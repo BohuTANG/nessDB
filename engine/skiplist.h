@@ -22,7 +22,6 @@ struct skipnode{
 
 	char key[NESSDB_MAX_KEY_SIZE];
 	struct skipnode *forward[1]; 
-	struct skipnode *next;
 };
 
 struct skiplist{
