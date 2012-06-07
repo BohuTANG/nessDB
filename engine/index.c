@@ -47,6 +47,7 @@ void *_merge_job(void *arg)
 
 	pthread_mutex_lock(&idx->merge_mutex);
 	sst_merge(sst, list, 0);
+	idx->park->list = NULL;
 	pthread_mutex_unlock(&idx->merge_mutex);
 	
 	end = get_ustime_sec();
