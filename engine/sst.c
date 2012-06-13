@@ -46,18 +46,12 @@
 #define BLK_MAGIC (20111225)
 #define F_CRC (2011)
 
-struct subindex {
-	char k[NESSDB_MAX_KEY_SIZE];
-	int off;
-};
-
 struct footer{
 	char key[NESSDB_MAX_KEY_SIZE];
 	__be32 count;
 	__be32 crc;
 	__be32 size;
 	__be32 max_len;
-	struct subindex subindexs[NESSDB_MAX_SUBINDEX];
 };
 
 struct stats {
@@ -222,8 +216,6 @@ struct sst *sst_new(const char *basedir)
 void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_new)
 {
 	int i, j, c_clone;
-	int sub_count = (count / NESSDB_MAX_SUBINDEX);
-	int k;
 	int fd;
 	int sizes;
 	int result;
@@ -265,20 +257,10 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 	last = x;
 	c_clone = count;
-	k = 0;
-	int subi = 0;
 	for (i = 0, j = 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
 			buffer_putstr(sst->buf, x->key);
 			buffer_putlong(sst->buf, x->val);
-			if ( j == k) {
-				memcpy(footer.subindexs[subi].k, x->key, NESSDB_MAX_KEY_SIZE);
-				footer.subindexs[subi].off = k * (sizeof(struct inner_block));
-				subi++;
-
-				k += sub_count;
-			}
-
 			j++;
 		} else
 			count--;
