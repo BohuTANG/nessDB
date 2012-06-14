@@ -420,7 +420,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	blk_sizes = from_be32(footer.size);
 
 	/* Blocks read */
-	blks= mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
+	blks= mmap(0, blk_sizes, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (blks == MAP_FAILED) {
 		__ERROR("Map_failed when read");
 		close(fd);
