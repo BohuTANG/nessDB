@@ -330,11 +330,10 @@ int server_cron(struct aeEventLoop *eventLoop, long long id, void *clientData)
 	return 3000;
 }
 
-#define BUFFERPOOL	(700*1024*1024)
 #define IS_LOG_RECOVERY		(1)
 struct nessdb *nessdb_open()
 {
-	return db_open(BUFFERPOOL, getcwd(NULL, 0), IS_LOG_RECOVERY);
+	return db_open(getcwd(NULL, 0), IS_LOG_RECOVERY);
 }
 
 void nessdb_close(struct nessdb *db)

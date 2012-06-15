@@ -23,12 +23,11 @@
 #include "../engine/db.h"
 
 #define TOLOG (0)
-#define KSIZE 	16
-#define VSIZE 	80
-#define BUFFERPOOL	(1024*1024*1024)
-#define V			"1.8"
-#define LINE 		"+-----------------------------+----------------+------------------------------+-------------------+\n"
-#define LINE1		"---------------------------------------------------------------------------------------------------\n"
+#define KSIZE (16)
+#define VSIZE (80)
+#define V "1.8"
+#define LINE "+-----------------------------+----------------+------------------------------+-------------------+\n"
+#define LINE1 "---------------------------------------------------------------------------------------------------\n"
 
 void _random_key(char *key,int length) {
 	int i;
@@ -102,7 +101,7 @@ void _write_test(long int count)
 	memset(key, 0, KSIZE + 1);
 	memset(val, 0, VSIZE + 1);
 
-	db = db_open(BUFFERPOOL, path, TOLOG);
+	db = db_open(path, TOLOG);
 	free(path);
 
 	start = get_ustime_sec();
@@ -145,7 +144,7 @@ void _read_test(long int count)
 	struct nessdb *db;
 	char *dir = getcwd(NULL, 0);
 
-	db = db_open(BUFFERPOOL, dir, TOLOG);
+	db = db_open(dir, TOLOG);
 
 	char key[KSIZE + 1];
 
@@ -192,7 +191,7 @@ void _readone_test(char *key)
 	memset(k, 0, KSIZE + 1);
 	memcpy(k, key, len);
 
-	db = db_open(BUFFERPOOL, dir, TOLOG);
+	db = db_open(dir, TOLOG);
 	sk.len = (KSIZE + 1);
 	sk.data = k;
 

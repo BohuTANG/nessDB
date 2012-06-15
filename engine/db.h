@@ -12,15 +12,12 @@
 #include <time.h>
 
 struct nessdb {
-	struct llru *lru;
 	struct index *idx;
 	struct buffer *buf;
 	time_t start_time;
-	uint64_t lru_cached;
-	uint64_t lru_missing;
 };
 
-struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_recovery);
+struct nessdb *db_open(const char *basedir, int is_log_recovery);
 int db_get(struct nessdb *db, struct slice *sk, struct slice *sv);
 int db_exists(struct nessdb *db, struct slice *sk);
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv);

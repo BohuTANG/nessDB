@@ -9,7 +9,7 @@ struct slice{
    char *data;
    int len;
 };
-struct nessdb *db_open(size_t bufferpool_size, const char *basedir, int is_log_recovery);
+struct nessdb *db_open(const char *basedir, int is_log_recovery);
 int db_get(struct nessdb *db, struct slice *sk, struct slice *sv);
 int db_exists(struct nessdb *db, struct slice *sk);
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv);
@@ -29,11 +29,10 @@ function N.openlib(lib_path)
 	nessdb_n = ffi.load(lib_path)
 end
 
--- buffer_pool_size = (max_key_size + max_value_size) * number of LRU slots wanted
 -- base_dir = name of db directory
 -- is_log_recovery = allow log recovery or not
-function N.open(buffer_pool_size, base_dir, is_log_recovery)
-	return nessdb_n.db_open(buffer_pool_size, base_dir, is_log_recovery)
+function N.open(base_dir, is_log_recovery)
+	return nessdb_n.db_open(base_dir, is_log_recovery)
 end
 
 function N.get(db, sk, sv)

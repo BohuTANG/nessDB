@@ -45,7 +45,7 @@ local function db_remove(db, key)
 end
 
 ---- test code start here ----
-local db = nessdb.open(MAX_KEY_SIZE * MAX_VALUE_SIZE * 1024, ".", IS_LOG_RECOVERY)
+local db = nessdb.open(".", IS_LOG_RECOVERY)
 
 -- testing add
 for n = 1,10 do

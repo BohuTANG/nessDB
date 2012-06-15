@@ -3,15 +3,12 @@ DEBUG =	-g -ggdb -DDEBUG
 CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG)
 
 LIB_OBJS = \
-	./engine/ht.o\
 	./engine/db.o\
 	./engine/sst.o\
 	./engine/log.o\
 	./engine/util.o\
 	./engine/meta.o\
-	./engine/llru.o\
 	./engine/debug.o\
-	./engine/level.o\
 	./engine/index.o\
 	./engine/bloom.o\
 	./engine/buffer.o\
