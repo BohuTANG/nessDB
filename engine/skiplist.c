@@ -97,12 +97,14 @@ int skiplist_notfull(struct skiplist *list)
 int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt) 
 {
 	int i, new_level;
+	int klen;
 	struct skipnode *update[MAXLEVEL+1];
 	struct skipnode *x;
 
 	if (!skiplist_notfull(list))
 		return 0;
 
+	klen = strlen(key);
 	x = list->hdr;
 	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NIL 
@@ -130,7 +132,7 @@ int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt)
 	if ((x =_pool_alloc(list,sizeof(struct skipnode) + new_level*sizeof(struct skipnode *))) == 0)
 		__PANIC("Pool alloc error, maybe less memory");
 
-	memcpy(x->key, key, NESSDB_MAX_KEY_SIZE);
+	memcpy(x->key, key, klen);
 	x->val = val;
 	x->opt = opt;
 

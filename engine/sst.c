@@ -57,26 +57,7 @@ struct footer{
 struct stats {
 	int mmap_size;
 	int max_len;
-	uint64_t base;
-	short aligned;
 };
-
-static inline int _aligned_bytes(uint64_t delta)
-{
-	int i;
-	uint64_t _ua[] = {
-		0xffffUL,
-		0xffffffffUL,
-		0xffffffffffffffff
-	};
-
-	for (i = 0; i < 3; i++) {
-		if (delta <= _ua[i])
-			break;
-	}
-
-	return 1<<i;
-}
 
 void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 {
