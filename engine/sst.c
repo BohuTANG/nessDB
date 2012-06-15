@@ -84,8 +84,8 @@ void _prepare_stats(struct skipnode *x, size_t count, struct stats *stats)
 		node = node->forward[0];
 	}
 
-	stats->max_len = max_len;
-	stats->mmap_size = (max_len + sizeof(uint64_t)) * real_count ;
+	stats->max_len = max_len + 1;
+	stats->mmap_size = (stats->max_len + sizeof(uint64_t)) * real_count ;
 }
 
 void _add_bloom(struct sst *sst, int fd, int count, int max_len)
@@ -241,6 +241,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	for (i = 0, j = 0; i < c_clone; i++) {
 		if (x->opt == ADD) {
 			buffer_putstr(sst->buf, x->key);
+			buffer_putc(sst->buf, 0);
 			buffer_putlong(sst->buf, x->val);
 			j++;
 		} else
