@@ -212,9 +212,9 @@ READ PROCESS
 |            |                               |
 |            v                               v
 | +------------------------+     +-----------------------+
-| | read data from db file |     |  get data from LLRU   |
+| | read data from db file |     |  get data from BF     |
 | +------------------------+     +-----------------------+
-|                                     exists | not exists
+|                                 not exists | exists
 |<-------------------------------------------+------------------+
 |                                                               |
 |                                               +---------------v--------------------+
