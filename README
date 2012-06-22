@@ -21,7 +21,6 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   engine	-- The kernel of storage
   server	-- Database server
   interface	-- Others binding of nessDB(python, lua)
-  tools		-- Some tools of nessDB
 
   
   V1.8 FEATURES
