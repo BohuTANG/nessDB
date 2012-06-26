@@ -358,7 +358,6 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 {
 	int fd;
 	int fcount;
-	int blk_sizes;
 	int result;
 	uint64_t off = 0UL;
 	char file[FILE_PATH_SIZE];
@@ -395,26 +394,20 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 		char offset[8];
 	};
 
-	struct inner_block *blks;
-
+	struct inner_block blk;
 
 	fcount = from_be32(footer.count);
-	blk_sizes = from_be32(footer.size);
-
-	/* Blocks read */
-	blks= mmap(0, blk_sizes, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (blks == MAP_FAILED) {
-		__ERROR("Map_failed when read");
-		close(fd);
-		return off;
-	}
 
 	size_t left = 0, right = fcount, i = 0;
 	while (left < right) {
 		i = (right -left) / 2 +left;
-		int cmp = strcmp(sk->data, blks[i].key);
+
+		result = lseek(fd, i * sizeof(blk), SEEK_SET);
+		result = read(fd, &blk, sizeof(blk));
+
+		int cmp = strcmp(sk->data, blk.key);
 		if (cmp == 0) {
-			off = u64_from_big((unsigned char*)blks[i].offset);	
+			off = u64_from_big((unsigned char*)blk.offset);	
 			break ;
 		}
 
@@ -424,9 +417,6 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 			left = i + 1;
 	}
 	
-	if (munmap(blks, blk_sizes) == -1)
-		__ERROR("un-mmapping the file");
-
 	close(fd);
 	return off;
 }
