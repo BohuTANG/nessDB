@@ -10,6 +10,7 @@
 #define _DB_H
 
 #include <time.h>
+#include "util.h"
 
 struct nessdb {
 	struct index *idx;
