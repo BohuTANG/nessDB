@@ -95,7 +95,7 @@ int _log_read(char *logname, struct skiplist *list)
 	
 	size = lseek(fd, 0, SEEK_END);
 	if (size == 0) {
-		__ERROR("seek end error when log read,file:<%s>", logname);
+		__WARN("log is NULL,file:<%s>", logname);
 		return 0;
 	}
 

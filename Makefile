@@ -14,23 +14,15 @@ LIB_OBJS = \
 	./engine/buffer.o\
 	./engine/skiplist.o
 
-SVR_OBJS = \
-	./server/ae.o\
-	./server/anet.o\
-	./server/request.o\
-	./server/response.o\
-	./server/zmalloc.o
-
 LIBRARY = libnessdb.so
 
 all: $(LIBRARY)
 
 clean:
 	-rm -f $(LIBRARY)  
-	-rm -f db-bench db-server
-	-rm -f bench/db-bench.o server/db-server.o 
-	-rm -f $(SVR_OBJS)
 	-rm -f $(LIB_OBJS)
+	-rm -f db-bench
+	-rm -f bench/db-bench.o
 
 cleandb:
 	-rm -rf ndbs
@@ -41,7 +33,3 @@ $(LIBRARY): $(LIB_OBJS)
 
 db-bench: bench/db-bench.o $(LIB_OBJS)
 	$(CC) -pthread  bench/db-bench.o $(LIB_OBJS) -o $@
-
-db-server: server/db-server.o $(SVR_OBJS) $(LIB_OBJS)
-	$(CC) -pthread server/db-server.o $(SVR_OBJS) $(LIB_OBJS) -o $@
-

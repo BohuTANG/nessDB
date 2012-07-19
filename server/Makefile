@@ -8,6 +8,7 @@ clean:
 	sudo rm -rf build
 	rm -f *.pyc
 	rm -f log.txt
+	rm -f ness.event
 
 cleandb:
 	rm -rf ndbs
