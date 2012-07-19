@@ -19,7 +19,7 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   Doc		-- Documentations
   bench		-- Benchmark testing
   engine	-- The kernel of storage
-  server	-- Database server
+  server	-- Database server(python)
   interface	-- Others binding of nessDB(python, lua)
 
   
