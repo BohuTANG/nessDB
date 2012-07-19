@@ -1,15 +1,16 @@
 Python server for nessDB
 ============================================================
 
-How to Install
+Install ENV
 ------------------------------------------------------------
-
 * install package `python-dev` if you use linux
-* install tornado: https://github.com/facebook/tornado/
-* make install
+* install tornado: https://github.com/facebook/tornado/ (or pip)
 
-
-How to use
+Install nessDB library
 ------------------------------------------------------------
-* python server.py
+* $ make install
+
+Run
+------------------------------------------------------------
+* $ python server.py
 
