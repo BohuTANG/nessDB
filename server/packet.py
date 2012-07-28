@@ -1,4 +1,5 @@
 #!/usr/bin/python
+#redis protocols parser using python
 #author: BohuTANG
 
 class cmd:
