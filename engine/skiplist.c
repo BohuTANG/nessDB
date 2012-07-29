@@ -117,7 +117,7 @@ int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt)
 	if (x != NIL && cmp_eq(x->key, key)) {
 		x->val = val;
 		x->opt = opt;
-		return(1);
+		return 1;
 	}
 
 	for (new_level = 0; rand() < RAND_MAX/2 && new_level < MAXLEVEL; new_level++);
@@ -142,7 +142,7 @@ int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt)
 	}
 	list->count++;
 
-	return(1);
+	return 1;
 }
 
 int skiplist_insert_node(struct skiplist *list, struct skipnode *node)
