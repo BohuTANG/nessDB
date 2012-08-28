@@ -20,7 +20,7 @@ void __debug(char *file, int line, DEBUG_LEVEL level, const char *fmt, ...);
 
 #ifdef INFO
 	#define __INFO(format, args...)\
-		do { __debug(__file__, __line__, level_info, format, ##args); } while (0)
+		do { __debug(__FILE__, __LINE__, LEVEL_INFO, format, ##args); } while (0)
 #else
 	#define __INFO(format, args...) do {} while(0)
 #endif
