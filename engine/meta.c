@@ -22,7 +22,12 @@
 
 struct meta *meta_new()
 {
-	return calloc(1, sizeof(struct meta));
+	struct meta *m = calloc(1, sizeof(struct meta));
+
+	if (!m)
+		__PANIC("meta new is NULL....,will be abort");
+
+	return m;
 }
 
 struct meta_node *meta_get(struct meta *meta, char *key)

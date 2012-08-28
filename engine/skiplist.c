@@ -29,6 +29,9 @@ struct pool *_pool_new()
 	unsigned int p_size = 8092 - sizeof(struct pool);
 	struct pool *pool = calloc(1, sizeof(struct pool) + p_size);
 
+	if (!pool) 
+		__PANIC("pool_new is  NULL, maybe memory less, abort()");
+
 	pool->ptr = (char*)(pool + 1);
 	pool->rem = p_size;
 	
@@ -68,7 +71,13 @@ struct skiplist *skiplist_new(size_t size)
 	int i;
 	struct skiplist *list = calloc(1, sizeof(struct skiplist));
 
+	if (!list)
+		__PANIC("skiplist_new NULL, memory less...abort");
+
 	list->hdr = malloc(sizeof(struct skipnode) + MAXLEVEL*sizeof(struct skipnode *));
+
+	if (!list->hdr)
+		__PANIC("list->hdr  NULL in skiplist_new, abort");
 
 	for (i = 0; i <= MAXLEVEL; i++)
 		list->hdr->forward[i] = NIL;

@@ -11,6 +11,8 @@
 #include <string.h>
 #include <stdarg.h>
 #include "buffer.h" 
+#include "debug.h"
+
 unsigned _next_power(unsigned x)
 {
 	--x;
@@ -51,6 +53,9 @@ void _string_vprintf(struct buffer *b, const char *fmt, va_list ap)
 struct buffer *buffer_new(size_t reserve)
 {
 	struct buffer *b = malloc(sizeof(struct buffer));
+
+	if (!b)
+		__ERROR("buffer_new NULL...");
 
 	b->buf = NULL;
 	b->NUL = 0;

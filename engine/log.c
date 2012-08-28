@@ -43,6 +43,9 @@ struct log *log_new(const char *basedir, int lsn, int islog)
 	(void)lsn;
 
 	l = calloc(1, sizeof(struct log));
+	if (!l)
+		__PANIC("log_new NULL, abort...");
+
 	l->islog = islog;
 
 	memset(log_name, 0, FILE_PATH_SIZE);

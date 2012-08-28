@@ -10,6 +10,7 @@
 #define _DEBUG_H
 
 #include <stdio.h>
+#include <assert.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -46,6 +47,6 @@ void __debug(char *file, int line, DEBUG_LEVEL level, const char *fmt, ...);
 #endif
 
 #define __PANIC(format, args...)\
-	do { __debug(__FILE__, __LINE__, LEVEL_ERROR, format, ##args); exit(1); } while (0)
+	do { __debug(__FILE__, __LINE__, LEVEL_ERROR, format, ##args); abort(); exit(1); } while (0)
 
 #endif

@@ -180,6 +180,9 @@ struct sst *sst_new(const char *basedir)
 
 	s = calloc(1, sizeof(struct sst));
 
+	if (!s)
+		__PANIC("sst new NULL, abort()...");
+
 	s->meta = meta_new();
 	memcpy(s->basedir, basedir, FILE_PATH_SIZE);
 

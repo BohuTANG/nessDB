@@ -21,7 +21,10 @@ struct nessdb *db_open(const char *basedir, int is_log_recovery)
 	char buff_dir[FILE_PATH_SIZE];
 	struct nessdb *db;
 
-	db = malloc(sizeof(struct nessdb));
+	db = (struct nessdb*)malloc(sizeof(struct nessdb));
+	if (!db)
+		__PANIC("malloc nessdb NULL when db_open, abort...");
+
 	db->buf = buffer_new(LOG_BUFFER_SIZE);
 	db->start_time = time(NULL);
 
@@ -90,8 +93,6 @@ char *db_info(struct nessdb *db)
 			"total_memtable_count:%d\r\n"
 			"total_count(in sst):%llu\r\n"
 			"total_bg_merge_count:%d\r\n\r\n"
-
-			"# Memory\r\n\r\n"
 		,
 			DB_VERSION,
 			arch_bits,

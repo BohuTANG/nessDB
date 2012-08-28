@@ -71,6 +71,9 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	struct index *idx = calloc(1, sizeof(struct index));
 	struct idx_park *park = calloc(1, sizeof(struct idx_park));
 
+	if (!idx || !park)
+		__PANIC("memory less when index_new, abort...");
+
 	ensure_dir_exists(basedir);
 	
 	idx->max_mtbl = 1;
@@ -279,6 +282,10 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		value_len = from_be32(be32len);
 		if(result == sizeof(int)) {
 			char *data = calloc(1, value_len + 1);
+
+			if (!data)
+				__ERROR("calloc data NULL when index_get");
+
 			result = read(idx->db_rfd, data, value_len);
 			data[value_len] = 0;
 
