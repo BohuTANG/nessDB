@@ -21,43 +21,38 @@
 #include <sys/time.h>
 #include "util.h"
 
-static void _portable_mkdir(const char *path)
-{
-#ifdef _WIN32
-	_mkdir(path);
-#else
-	mkdir(path, S_IRWXU | S_IRGRP | S_IROTH);
-#endif
-}
+int _creatdir(const char *pathname)  
+{  
+	int i, len;
+	char  dirname[256];  
 
-static void _mkdirs(const char *path)
-{
-	char tmp[256] = {0};
-	char *p = NULL;
-	size_t len;
+	strcpy(dirname, pathname);  
+	i = strlen(dirname);  
+	len = i;
 
-	snprintf(tmp, sizeof(tmp), "%s", path);
-	len = strlen(tmp);
-	if(tmp[len - 1] == '/') {
-		tmp[len - 1] = 0;
-	}
-	for(p = tmp +1; *p; p++) {
-		if (*p == '/') {
-			*p = 0;
-			_portable_mkdir(tmp);
-			*p = '/';
-		}
-	}
-	_portable_mkdir(tmp);
-}
+	if (dirname[len-1] != '/')  
+		strcat(dirname,  "/");  
+
+	len = strlen(dirname);  
+	for (i = 1; i < len; i++) {  
+		if (dirname[i] == '/') {  
+			dirname[i] = 0;  
+			if(access(dirname, 0) != 0) {  
+				if(mkdir(dirname,   0755)==-1) {   
+					return -1;  
+				}  
+			}  
+			dirname[i] = '/';  
+		}  
+	}  
+
+	return 0;  
+} 
 
 void ensure_dir_exists(const char *path)
 {
-	struct stat st;
-
-	if(stat(path, &st) != 0) {
-		_mkdirs(path);
-	}
+	if (_creatdir(path) != 0)
+		perror("mkdir floder error");
 }
 
 long long get_ustime_sec(void)

@@ -19,10 +19,10 @@ LIBRARY = libnessdb.so
 all: $(LIBRARY)
 
 clean:
-	-rm -f $(LIBRARY)  
-	-rm -f $(LIB_OBJS)
 	-rm -f db-bench
 	-rm -f bench/db-bench.o
+	-rm -f $(LIBRARY)  
+	-rm -f $(LIB_OBJS)
 
 cleandb:
 	-rm -rf ndbs

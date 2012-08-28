@@ -211,6 +211,7 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	_prepare_stats(x, count, &stats);
 	sizes = stats.mmap_size;
 
+
 	struct inner_block {
 		char key[stats.max_len];
 		char offset[8];
@@ -220,12 +221,18 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 	memset(file, 0, FILE_PATH_SIZE);
 	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
+
+	if (sizes == 0) {
+		remove(file);
+		return x;
+	}
+
 	fd = open(file, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1)
 		__PANIC("create sst file error");
 
 	if (lseek(fd, sizes - 1, SEEK_SET) == -1)
-		__PANIC("lseek sst error");
+		__PANIC("lseek sst error, sizes:%d", sizes);
 
 	result = write(fd, "", 1);
 	if (result == -1)
