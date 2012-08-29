@@ -143,12 +143,14 @@ void _sst_load(struct sst *sst)
 
 			if (fcrc != F_CRC) {
 				__PANIC("Crc wrong, sst file maybe broken, crc:<%d>,index<%s>", fcrc, sst_file);
-				close(fd);
+				if (fd > 0)
+					close(fd);
 				continue;
 			}
 
 			if (fcount == 0) {
-				close(fd);
+				if (fd > 0)
+					close(fd);
 				continue;
 			}
 
@@ -166,7 +168,8 @@ void _sst_load(struct sst *sst)
 			memcpy(mn.index_name, de->d_name, FILE_NAME_SIZE);
 			meta_set(sst->meta, &mn);
 		
-			close(fd);
+			if (fd > 0)
+				close(fd);
 		}
 	}
 

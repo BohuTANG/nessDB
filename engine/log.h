@@ -14,7 +14,7 @@
 #include "util.h"
 
 struct log{
-	int idx_wfd;
+	int log_wfd;
 	int db_wfd;
 	int islog;
 	uint64_t db_alloc;
@@ -26,7 +26,7 @@ struct log{
 	struct buffer *db_buf;
 };
 
-struct log *log_new(const char *basedir, int lsn, int islog);
+struct log *log_new(const char *basedir, int islog);
 int log_recovery(struct log *log, struct skiplist *list);
 uint64_t log_append(struct log *log, struct slice *sk, struct slice *sv);
 void log_remove(struct log *log, int lsn);

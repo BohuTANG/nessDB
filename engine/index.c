@@ -91,7 +91,7 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	idx->park = park;
 
 	/* log */
-	idx->log = log_new(idx->basedir, idx->lsn, tolog);
+	idx->log = log_new(idx->basedir, tolog);
 
 	/*
 	 * Log Recovery Processes:
@@ -208,7 +208,7 @@ void _index_flush(struct index *idx)
 		log_remove(idx->log, idx->lsn);
 	}
 
-	int log_idx_fd = idx->log->idx_wfd;
+	int log_idx_fd = idx->log->log_wfd;
 	int log_db_fd = idx->log->db_wfd;
 
 	if (log_idx_fd > 0) {
@@ -331,7 +331,10 @@ void index_free(struct index *idx)
 
 	pthread_attr_destroy(&idx->attr);
 	log_free(idx->log);
-	close(idx->db_rfd);
+
+	if (idx->db_rfd > 0)
+		close(idx->db_rfd);
+
 	sst_free(idx->sst);
 	free(idx->park);
 	free(idx);

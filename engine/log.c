@@ -26,7 +26,7 @@ int _file_exists(const char *path)
 {
 	int fd = n_open(path, O_RDWR);
 
-	if (fd > -1) {
+	if (fd > 0) {
 		close(fd);
 		return 1;
 	}
@@ -34,13 +34,12 @@ int _file_exists(const char *path)
 	return 0;
 }
 
-struct log *log_new(const char *basedir, int lsn, int islog)
+struct log *log_new(const char *basedir, int islog)
 {
 	int result;
 	struct log *l;
 	char log_name[FILE_PATH_SIZE];
 	char db_name[FILE_PATH_SIZE];
-	(void)lsn;
 
 	l = calloc(1, sizeof(struct log));
 	if (!l)
@@ -122,7 +121,7 @@ int _log_read(char *logname, struct skiplist *list)
 		
 		/* read key length */
 		if (read(fd, &klenstr, sizeof(int)) != sizeof(int)) {
-			__PANIC("error when read key length");
+			__ERROR("error when read key length, log#%s", logname);
 			return -1;
 		}
 
@@ -132,7 +131,7 @@ int _log_read(char *logname, struct skiplist *list)
 		/* read key */
 		memset(key, 0, NESSDB_MAX_KEY_SIZE);
 		if (read(fd, &key, klen) != klen) {
-			__PANIC("error when read key");
+			__ERROR("error when read key, log#%s", logname);
 			return -1;
 		}
 
@@ -140,7 +139,7 @@ int _log_read(char *logname, struct skiplist *list)
 
 		/* read data offset */
 		if (read(fd, &offstr, sizeof(uint64_t)) != sizeof(uint64_t)) {
-			__PANIC("read error when read data offset");
+			__ERROR("read error when read data offset, log#%s", logname);
 			return -1;
 		}
 
@@ -149,7 +148,7 @@ int _log_read(char *logname, struct skiplist *list)
 
 		/* read opteration */
 		if (read(fd, &optstr, 1) != 1) {
-			__PANIC("read error when read opteration");
+			__ERROR("read error when read opteration, log#%s", logname);
 			return -1;
 		}
 
@@ -232,6 +231,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 {
 	int len;
 	int db_len;
+	int write_len;
 	char *line;
 	char *db_line;
 	struct buffer *buf = l->buf;
@@ -245,8 +245,12 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		db_len = db_buf->NUL;
 		db_line = buffer_detach(db_buf);
 
-		if (write(l->db_wfd, db_line, db_len) != db_len) {
-			__PANIC("value aof error when write, length:<%d>", db_len);
+		write_len = write(l->db_wfd, db_line, db_len);
+		if ( write_len != db_len) {
+			__ERROR("value aof error when write, length:<%d>, write_len:<%d>"
+					, db_len
+					, write_len);
+
 			return db_offset;
 		}
 
@@ -267,8 +271,12 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		len = buf->NUL;
 		line = buffer_detach(buf);
 
-		if (write(l->idx_wfd, line, len) != len)
-			__PANIC("log aof error, buffer is:%s,buffer length:<%d>", line, len);
+		write_len = write(l->log_wfd, line, len);
+		if (write_len != len)
+			__ERROR("log aof error, buffer is:%s,buffer length:<%d>, write_len:<%d>"
+					, line
+					, len
+					, write_len);
 	}
 
 	return db_offset;
@@ -280,7 +288,10 @@ void log_remove(struct log *l, int lsn)
 
 	memset(log_name, 0 ,FILE_PATH_SIZE);
 	snprintf(log_name, FILE_PATH_SIZE, "%s/%d.log", l->basedir, lsn);
-	remove(log_name);
+	int ret = remove(log_name);
+	if (ret != 0) {
+		__ERROR("remove log error, log#%s", log_name);
+	}
 }
 
 void log_next(struct log *l, int lsn)
@@ -294,11 +305,13 @@ void log_next(struct log *l, int lsn)
 	buffer_clear(l->buf);
 	buffer_clear(l->db_buf);
 
-	close(l->idx_wfd);
-	l->idx_wfd = open(l->name, LSM_CREAT_FLAGS, 0644);
+	if (l->log_wfd > 0)
+		close(l->log_wfd);
 
-	if (l->idx_wfd == -1)
-		__PANIC("create new log error");
+	l->log_wfd = open(l->name, LSM_CREAT_FLAGS, 0644);
+
+	if (l->log_wfd == -1)
+		__ERROR("create new log error, log#%s", l->name);
 }
 
 void log_free(struct log *l)
@@ -306,7 +319,10 @@ void log_free(struct log *l)
 	if (l) {
 		buffer_free(l->buf);
 		buffer_free(l->db_buf);
-		close(l->idx_wfd);
+
+		if (l->log_wfd > 0)
+			close(l->log_wfd);
+
 		free(l);
 	}
 }
