@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 
 typedef enum {LEVEL_DEBUG = 0, LEVEL_INFO, LEVEL_WARNING, LEVEL_ERROR} DEBUG_LEVEL;
 

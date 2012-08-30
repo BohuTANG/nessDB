@@ -9,8 +9,12 @@
 #ifndef _DB_H
 #define _DB_H
 
+#include "util.h"
 #include <time.h>
-struct slice;
+
+#ifdef __cplusplus
+	extern "C" {
+#endif
 
 struct nessdb {
 	struct index *idx;
@@ -26,4 +30,7 @@ void db_remove(struct nessdb *db, struct slice *sk);
 char *db_info(struct nessdb *db);
 void db_close(struct nessdb *db);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

@@ -22,6 +22,11 @@ struct mutexer{
 	pthread_mutex_t mutex;
 };
 
+struct sst_block{
+	char key[NESSDB_MAX_KEY_SIZE];
+	uint64_t offset;
+}__attribute__((packed));
+
 struct sst{
 	char basedir[FILE_PATH_SIZE];
 	char name[FILE_NAME_SIZE];

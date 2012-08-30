@@ -37,7 +37,8 @@ struct index{
 	struct skiplist *list;
 	struct idx_park *park;
 	pthread_attr_t attr;
-	pthread_mutex_t merge_mutex;
+	pthread_mutex_t *merge_mutex;
+	pthread_mutex_t *listfree_mutex;
 };
 
 struct index *index_new(const char *basedir, int max_mtbl_size, int tolog);

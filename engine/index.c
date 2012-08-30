@@ -31,7 +31,6 @@ void *_merge_job(void *arg)
 	struct sst *sst;
 	struct log *log;
 
-	/* Lock begin */
 	idx = (struct index*)arg;
 	lsn = idx->park->lsn;
 	list = idx->park->list;
@@ -45,11 +44,11 @@ void *_merge_job(void *arg)
 
 	start = get_ustime_sec();
 
-	pthread_mutex_lock(&idx->merge_mutex);
+	pthread_mutex_lock(idx->merge_mutex);
 	sst_merge(sst, list, 0);
 	idx->park->list = NULL;
-	pthread_mutex_unlock(&idx->merge_mutex);
-	
+	pthread_mutex_unlock(idx->merge_mutex);
+
 	end = get_ustime_sec();
 	cost = end - start;
 	if (cost > idx->max_merge_time) {
@@ -57,10 +56,15 @@ void *_merge_job(void *arg)
 		idx->max_merge_time = cost;
 	}
 
-	/* Lock end */
 	log_remove(log, lsn);
 
 merge_out:
+	if (list) {
+		pthread_mutex_lock(idx->listfree_mutex);
+		skiplist_free(list);
+		pthread_mutex_unlock(idx->listfree_mutex);
+	}
+
 	pthread_detach(pthread_self());
 	pthread_exit(NULL);
 }
@@ -81,10 +85,14 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	memset(idx->basedir, 0, FILE_PATH_SIZE);
 	memcpy(idx->basedir, basedir, FILE_PATH_SIZE);
 
-	/* sst */
 	idx->sst = sst_new(idx->basedir);
 	idx->list = skiplist_new(max_mtbl_size);
-	pthread_mutex_init(&idx->merge_mutex, NULL);
+	idx->merge_mutex = malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(idx->merge_mutex, NULL);
+
+
+	idx->listfree_mutex = malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(idx->listfree_mutex, NULL);
 
 	/* container */
 	park->lsn = idx->lsn;
@@ -102,7 +110,6 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	 * 5) create new memtable and log file
 	 */
 	if (log_recovery(idx->log, idx->list)) {
-		__DEBUG("prepare to merge logs, merge count #%d....", idx->list->count);
 		/* Merge log entries */
 		sst_merge(idx->sst, idx->list, 1);
 
@@ -135,6 +142,13 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	uint64_t value_offset;
 	struct skiplist *list, *new_list;
 
+	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
+		__ERROR("key length#%d more than MAX_KEY_SIZE$%d"
+				, sk->len
+				, NESSDB_MAX_KEY_SIZE);
+		return 0;
+	}
+
 	value_offset = log_append(idx->log, sk, sv);
 	list = idx->list;
 
@@ -150,13 +164,12 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		 * Notice: it will block the current process, 
 		 * but it happens only once in a thousand years on production environment.
 		*/
-		pthread_mutex_lock(&idx->merge_mutex);
+		pthread_mutex_lock(idx->merge_mutex);
 
 		/* Start to merge with detached thread */
 		pthread_t tid;
 		idx->park->list = list;
 		idx->park->lsn = idx->lsn;
-		pthread_mutex_unlock(&idx->merge_mutex);
 
 		pthread_create(&tid, &idx->attr, _merge_job, idx);
 
@@ -167,6 +180,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 		idx->lsn++;
 		log_next(idx->log, idx->lsn);
+		pthread_mutex_unlock(idx->merge_mutex);
 	}
 	skiplist_insert(idx->list, sk->data, value_offset, sv == NULL ? DEL : ADD);
 	
@@ -189,15 +203,23 @@ void _index_flush(struct index *idx)
 	long long start, cost;
 
 	/* Waiting  bg merging thread done */
-	pthread_mutex_lock(&idx->merge_mutex);
-	pthread_mutex_unlock(&idx->merge_mutex);
 
 	list = idx->list;
 	list_count = list->count;
 
 	if (list && list->count > 0) {
 		start = get_ustime_sec();
+
+		pthread_mutex_lock(idx->merge_mutex);
 		sst_merge(idx->sst, list, 0);
+		pthread_mutex_unlock(idx->merge_mutex);
+
+		if (list) {
+			pthread_mutex_lock(idx->listfree_mutex);
+			skiplist_free(list);
+			pthread_mutex_unlock(idx->listfree_mutex);
+		}
+
 		cost = get_ustime_sec() - start;
 
 		if (cost > idx->max_merge_time) {
@@ -213,12 +235,16 @@ void _index_flush(struct index *idx)
 
 	if (log_idx_fd > 0) {
 		if (fsync(log_idx_fd) == -1)
-			__ERROR("fsync idx fd error when db close");
+			__ERROR("fsync log error, %d, %s"
+					, errno
+					, strerror(errno));
 	}
 
 	if (log_db_fd > 0) {
 		if (fsync(log_db_fd) == -1)
-			__ERROR("fsync db fd error when db close");
+			__ERROR("fsync db error, %s, %s"
+					, errno
+					, strerror(errno));
 	}
 }
 
@@ -234,6 +260,12 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	struct skiplist *cur_list;
 	struct skiplist *merge_list;
 
+	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
+		__ERROR("key length#%d more than MAX_KEY_SIZE$%d"
+				, sk->len
+				, NESSDB_MAX_KEY_SIZE);
+		return 0;
+	}
 
 	/* 
 	 * 0) Get from bloomfilter,if bloom_get return 1,next
@@ -255,36 +287,40 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		}
 		value_off = node->val;
 	} else {
+		pthread_mutex_lock(idx->listfree_mutex);
 		merge_list = idx->park->list;
 		if (merge_list) {
 			node = skiplist_lookup(merge_list, sk->data);
 			if (node && node->opt == ADD )
 				value_off = node->val;
 		}
+		pthread_mutex_unlock(idx->listfree_mutex);
 	}
 
 	if (value_off == 0UL)
 		value_off = sst_getoff(idx->sst, sk);
 
 	if (value_off != 0UL) {
-		__be32 be32len;
-		if (lseek(idx->db_rfd, value_off, SEEK_SET) == -1) {
-			__ERROR("seek error when index get");
+		if (n_lseek(idx->db_rfd, value_off, SEEK_SET) == -1) {
+			__ERROR("seek value offset error, %s, %s"
+					, errno
+					, strerror(errno));
 			goto out_get;
 		}
 
-		result = read(idx->db_rfd, &be32len, sizeof(int));
+		result = read(idx->db_rfd, &value_len, sizeof(int));
 		if(FILE_ERR(result)) {
 			ret = -1;
 			goto out_get;
 		}
 
-		value_len = from_be32(be32len);
 		if(result == sizeof(int)) {
 			char *data = calloc(1, value_len + 1);
 
 			if (!data)
-				__ERROR("calloc data NULL when index_get");
+				__ERROR("mallc data  error, %s, %s"
+						, errno
+						, strerror(errno));
 
 			result = read(idx->db_rfd, data, value_len);
 			data[value_len] = 0;
@@ -298,9 +334,8 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 			sv->data = data;
 			return 1;
 		}
-	} else {
+	} else
 		return 0;
-	}
 
 out_get:
 	return ret;
@@ -322,14 +357,18 @@ void index_free(struct index *idx)
 	_index_flush(idx);
 
 	if (idx->max_merge_time > 0) {
-		__INFO("max merge time:%lu sec;"
+		__DEBUG("max merge time:%lu sec;"
 				"the slowest merge-count:%d and merge-speed:%.1f/sec"
 				, idx->max_merge_time
 				, idx->slowest_merge_count
 				, (double) (idx->slowest_merge_count / idx->max_merge_time));
 	}
 
-	pthread_attr_destroy(&idx->attr);
+	if (idx->merge_mutex)
+		free(idx->merge_mutex);
+	if (idx->listfree_mutex)
+		free(idx->listfree_mutex);
+
 	log_free(idx->log);
 
 	if (idx->db_rfd > 0)

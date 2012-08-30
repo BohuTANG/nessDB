@@ -120,12 +120,11 @@ int _log_read(char *logname, struct skiplist *list)
 		memset(optstr, 0, 4);
 		
 		/* read key length */
-		if (read(fd, &klenstr, sizeof(int)) != sizeof(int)) {
+		if (read(fd, &klen, sizeof(int)) != sizeof(int)) {
 			__ERROR("error when read key length, log#%s", logname);
 			return -1;
 		}
 
-		klen = u32_from_big((unsigned char*)klenstr);
 		isize += sizeof(int);
 		
 		/* read key */
@@ -138,12 +137,11 @@ int _log_read(char *logname, struct skiplist *list)
 		isize += klen;
 
 		/* read data offset */
-		if (read(fd, &offstr, sizeof(uint64_t)) != sizeof(uint64_t)) {
+		if (read(fd, &off, sizeof(uint64_t)) != sizeof(uint64_t)) {
 			__ERROR("read error when read data offset, log#%s", logname);
 			return -1;
 		}
 
-		off = u64_from_big((unsigned char*)offstr);
 		isize += sizeof(uint64_t);
 
 		/* read opteration */
