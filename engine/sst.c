@@ -52,6 +52,11 @@ struct footer{
 	uint32_t crc;
 };
 
+static inline void _make_sstname(int num, char *ret)
+{
+	snprintf(ret, FILE_NAME_SIZE, "%06d.sst", num);
+}
+
 void _add_bloom(struct sst *sst, int fd, int count)
 {
 	int i;
@@ -489,13 +494,13 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 
 		for (i = 0; i < mul; i++) {
 			memset(sst->name, 0, FILE_NAME_SIZE);
-			snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+			_make_sstname(sst->meta->size, sst->name);
 			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
 		}
 
 		/* The remain part,will be larger than SST_MAX_COUNT */
 		memset(sst->name, 0, FILE_NAME_SIZE);
-		snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+		_make_sstname(sst->meta->size, sst->name);
 
 		x = _write_mmap(sst, x, rem + SST_MAX_COUNT, 1);
 	}	
@@ -509,7 +514,8 @@ void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 
 	if (count <= SST_MAX_COUNT * 2) {
 		memset(sst->name, 0, FILE_NAME_SIZE);
-		snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+		_make_sstname(sst->meta->size, sst->name);
+
 		x = _write_mmap(sst, x, count, 1);
 	} else {
 		mul = count / SST_MAX_COUNT;
@@ -517,12 +523,12 @@ void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 
 		for (i = 0; i < (mul - 1); i++) {
 			memset(sst->name, 0, FILE_NAME_SIZE);
-			snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+			_make_sstname(sst->meta->size, sst->name);
 			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
 		}
 
 		memset(sst->name, 0, FILE_NAME_SIZE);
-		snprintf(sst->name, FILE_NAME_SIZE, "%d.sst", sst->meta->size); 
+		_make_sstname(sst->meta->size, sst->name);
 		x = _write_mmap(sst, x, SST_MAX_COUNT + rem, 1);
 	}
 }

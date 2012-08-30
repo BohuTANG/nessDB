@@ -4,14 +4,8 @@
  *
  */
 
-
 #include "db.h"
 #include "Python.h"
-
-struct slice {
-	char *data;
-	int len;
-};
 
 static PyObject *
 pynessdb_db_open(PyObject *self, PyObject *args)
