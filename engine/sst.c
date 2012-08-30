@@ -151,9 +151,10 @@ struct sst *sst_new(const char *basedir)
 	memcpy(s->basedir, basedir, FILE_PATH_SIZE);
 
 	s->bloom = bloom_new();
+
 	s->mutexer.lsn = -1;
-	pthread_mutex_init(&s->mutexer.mutex, NULL);
-	s->buf= buffer_new(1024*1024*4);
+	s->mutexer.mutex = malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(s->mutexer.mutex, NULL);
 
 	/* SST files load */
 	_sst_load(s);
@@ -451,34 +452,36 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	return off;
 }
 
+struct skipnode *_lock_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int lsn)
+{
+	struct skipnode *ret_x;
+
+	pthread_mutex_lock(sst->mutexer.mutex);
+	sst->mutexer.lsn = lsn;
+	ret_x = _write_mmap(sst, x, count, 0);
+	sst->mutexer.lsn = -1;
+	pthread_mutex_unlock(sst->mutexer.mutex);
+
+	return ret_x;
+}
+
 void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct meta_node *meta)
 {
 	int mul;
 	int rem;
-	int lsn;
 	int i;
 
 	/* Less than 2x SST_MAX_COUNT,compact one index file */
 	if (count <= SST_MAX_COUNT * 2) {
-		if (meta) {
-			lsn = meta->lsn;
-			sst->mutexer.lsn = lsn;
-			pthread_mutex_lock(&sst->mutexer.mutex);
-			x = _write_mmap(sst, x, count, 0);
-			pthread_mutex_unlock(&sst->mutexer.mutex);
-			sst->mutexer.lsn = -1;
-		} else 
-			x = _write_mmap(sst, x, count, 0);
+		if (meta) 
+			x = _lock_write_mmap(sst, x, count, meta->lsn);
+		 else 
+			x = _write_mmap(sst, x, count, 1);
 	} else {
-		if (meta) {
-			lsn = meta->lsn;
-			sst->mutexer.lsn = lsn;
-			pthread_mutex_lock(&sst->mutexer.mutex);
-			x = _write_mmap(sst, x, SST_MAX_COUNT, 0);
-			pthread_mutex_unlock(&sst->mutexer.mutex);
-			sst->mutexer.lsn = -1;
-		} else
-			x = _write_mmap(sst, x, SST_MAX_COUNT, 0);
+		if (meta)
+			x = _lock_write_mmap(sst, x, SST_MAX_COUNT, meta->lsn);
+		else
+			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
 
 		/* first+last */
 		mul = (count - SST_MAX_COUNT * 2) / SST_MAX_COUNT;
@@ -566,9 +569,9 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 			int cmp = strcmp(sst->name, meta_info->index_name);
 			if(cmp == 0) {
 				if (!merge) {
-					pthread_mutex_lock(&sst->mutexer.mutex);
+					pthread_mutex_lock(sst->mutexer.mutex);
 					merge = _read_mmap(sst,count);	
-					pthread_mutex_unlock(&sst->mutexer.mutex);
+					pthread_mutex_unlock(sst->mutexer.mutex);
 				}
 
 				skiplist_insert_node(merge, cur);
@@ -585,9 +588,9 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 				memcpy(sst->name, meta_info->index_name, FILE_NAME_SIZE);
 
 
-				pthread_mutex_lock(&sst->mutexer.mutex);
+				pthread_mutex_lock(sst->mutexer.mutex);
 				merge = _read_mmap(sst, count);
-				pthread_mutex_unlock(&sst->mutexer.mutex);
+				pthread_mutex_unlock(sst->mutexer.mutex);
 
 				/* Add to merge list */
 				skiplist_insert_node(merge, cur);
@@ -647,9 +650,9 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 	 */
 	lsn = meta_info->lsn;
 	if (sst->mutexer.lsn == lsn) {
-		pthread_mutex_lock(&sst->mutexer.mutex);
+		pthread_mutex_lock(sst->mutexer.mutex);
 		off = _read_offset(sst, sk);
-		pthread_mutex_unlock(&sst->mutexer.mutex);
+		pthread_mutex_unlock(sst->mutexer.mutex);
 	} else {
 		off = _read_offset(sst, sk);
 	}
@@ -662,7 +665,7 @@ void sst_free(struct sst *sst)
 	if (sst) {
 		meta_free(sst->meta);
 		bloom_free(sst->bloom);
-		buffer_free(sst->buf);
+		free(sst->mutexer.mutex);
 		free(sst);
 	}
 }

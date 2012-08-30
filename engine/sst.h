@@ -19,7 +19,7 @@
 
 struct mutexer{
 	volatile int lsn;
-	pthread_mutex_t mutex;
+	pthread_mutex_t *mutex;
 };
 
 struct sst_block{
@@ -34,7 +34,6 @@ struct sst{
 	struct meta *meta;
 	struct bloom *bloom;
 	struct mutexer mutexer;
-	struct buffer *buf;
 };
 
 struct sst *sst_new(const char *basedir);
