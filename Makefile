@@ -1,5 +1,5 @@
 CC = gcc
-DEBUG =	-g -ggdb -DDEBUG
+DEBUG =	-g -ggdb -DINFO
 CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG)
 
 LIB_OBJS = \

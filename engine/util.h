@@ -101,6 +101,7 @@ static inline unsigned int djb_hash(const char *key)
 	return h;
 }
 
+uint16_t crc16(const char *buf, int len);
 
 long long get_ustime_sec(void);
 #endif

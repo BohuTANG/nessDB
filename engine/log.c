@@ -239,6 +239,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 	/* DB write */
 	if (sv) {
 		buffer_putint(db_buf, sv->len);
+		buffer_putshort(db_buf, crc16(sv->data, sv->len));
 		buffer_putnstr(db_buf, sv->data, sv->len);
 		db_len = db_buf->NUL;
 		db_line = buffer_detach(db_buf);

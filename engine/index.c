@@ -302,12 +302,11 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 
 	if (value_off != 0UL) {
 		if (n_lseek(idx->db_rfd, value_off, SEEK_SET) == -1) {
-			__ERROR("seek value offset error, %s, %s"
-					, errno
-					, strerror(errno));
+			__ERROR("seek value offset error, %s, %s", errno, strerror(errno));
 			goto out_get;
 		}
 
+		/* read value len */
 		result = read(idx->db_rfd, &value_len, sizeof(int));
 		if(FILE_ERR(result)) {
 			ret = -1;
@@ -315,21 +314,36 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		}
 
 		if(result == sizeof(int)) {
-			char *data = calloc(1, value_len + 1);
+			uint16_t crc, calc_crc;
+			char *data;
 
-			if (!data)
-				__ERROR("mallc data  error, %s, %s"
-						, errno
-						, strerror(errno));
-
-			result = read(idx->db_rfd, data, value_len);
-			data[value_len] = 0;
-
-			if(FILE_ERR(result)) {
-				free(data);
+			/* read value crc */
+			result = read(idx->db_rfd, &crc, sizeof(crc));
+			if (result != sizeof(crc)) {
+				__ERROR("get key#%s value crc error, offset:%lu, %d, %s", sk->data, value_off, errno, strerror(errno));
 				ret = -1;
 				goto out_get;
 			}
+
+			data = calloc(1, value_len + 1);
+			if (!data) {
+				__ERROR("mallc data  error, %s, %s", errno, strerror(errno));
+				ret = -1;
+				goto out_get;
+			}
+
+			/* read value */
+			result = read(idx->db_rfd, data, value_len);
+			data[value_len] = 0;
+			calc_crc = crc16(data, value_len);
+			if (FILE_ERR(result) ||  calc_crc != crc) {
+				__ERROR("crc error, key#%s,value_len:%d crc:%u, calc_crc:%u, %d, %s", sk->data, value_len, crc, calc_crc, errno, strerror(errno));
+
+				free(data);
+				ret = -1;
+				goto out_get;
+			} 
+
 			sv->len = value_len;
 			sv->data = data;
 			return 1;

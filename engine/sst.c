@@ -477,16 +477,10 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 	int i;
 
 	/* Less than 2x SST_MAX_COUNT,compact one index file */
-	if (count <= SST_MAX_COUNT * 2) {
-		if (meta) 
-			x = _lock_write_mmap(sst, x, count, meta->lsn);
-		 else 
-			x = _write_mmap(sst, x, count, 1);
-	} else {
-		if (meta)
-			x = _lock_write_mmap(sst, x, SST_MAX_COUNT, meta->lsn);
-		else
-			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
+	if (count <= SST_MAX_COUNT * 2)
+		x = _lock_write_mmap(sst, x, count, meta->lsn);
+	else {
+		x = _lock_write_mmap(sst, x, SST_MAX_COUNT, meta->lsn);
 
 		/* first+last */
 		mul = (count - SST_MAX_COUNT * 2) / SST_MAX_COUNT;
@@ -498,7 +492,7 @@ void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct
 			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
 		}
 
-		/* The remain part,will be larger than SST_MAX_COUNT */
+		/* The remain part(new sst),will be larger than SST_MAX_COUNT */
 		memset(sst->name, 0, FILE_NAME_SIZE);
 		_make_sstname(sst->meta->size, sst->name);
 
@@ -550,7 +544,7 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 		 */
 		if(!meta_info){
 
-			/* If merge is NULL,it has no merge*/
+			/* If merge is NULL, flush the pre list to sst*/
 			if(merge) {
 				struct skipnode *h = merge->hdr->forward[0];
 				_flush_merge_list(sst, h, merge->count, NULL);
@@ -558,7 +552,7 @@ void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int fl
 				merge = NULL;
 			}
 
-			/* Flush the last nodes to disk */
+			/* Flush the last nodes(new sst) to disk */
 			_flush_new_list(sst, x, count - pos);
 
 			return;
