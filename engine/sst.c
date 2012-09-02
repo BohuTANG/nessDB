@@ -52,12 +52,12 @@ struct footer{
 	uint32_t crc;
 };
 
-static inline void _make_sstname(int num, char *ret)
+static  void _make_sstname(int num, char *ret)
 {
-	snprintf(ret, FILE_NAME_SIZE, "%06d.sst", num);
+	snprintf(ret, FILE_NAME_SIZE, "%d.sst", num);
 }
 
-void _add_bloom(struct sst *sst, int fd, int count)
+void _add_bloom(struct sst *sst, char *sst_file, int fd, int count)
 {
 	int i;
 	int blk_sizes;
@@ -75,7 +75,7 @@ void _add_bloom(struct sst *sst, int fd, int count)
 	
 	if (munmap(blks, blk_sizes) == -1)
 		__ERROR("munmap file#%s error, %d, %s"
-				, sst->name
+				, sst_file
 				, errno
 				, strerror(errno));
 }
@@ -121,7 +121,7 @@ void _sst_load(struct sst *sst)
 			}
 
 			/* Add to bloom */
-			_add_bloom(sst, fd, fcount);
+			_add_bloom(sst, sst_file, fd, fcount);
 
 			all_count += fcount;
 						
@@ -167,13 +167,14 @@ struct sst *sst_new(const char *basedir)
 	return s;
 }
 
-void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_new)
+void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, struct meta_node *mnode)
 {
 	int i, j, c_clone;
 	int fd = -1;
 	int sizes;
 	int result;
 	char file[FILE_PATH_SIZE];
+	char sst_file[FILE_NAME_SIZE];
 	struct skipnode *last;
 	struct footer footer;
 	struct sst_block *blks;
@@ -183,45 +184,36 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	sizes = count * sizeof(struct sst_block);
 
 	memset(file, 0, FILE_PATH_SIZE);
-	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
+	memset(sst_file, 0, FILE_NAME_SIZE);
+
+	if (mnode) {
+		memcpy(sst_file, mnode->index_name, strlen(mnode->index_name));
+	} else{
+		_make_sstname(sst->meta->size, sst_file);
+	}
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst_file);
+
 	fd = open(file, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1) {
-		__ERROR("create sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-
-		goto writeout;
+		__ERROR("creat sst file#%s", file);
+		goto RET;
 	}
 
 	if (lseek(fd, sizes - 1, SEEK_SET) == -1) {
-		__ERROR("lseek sst file#%s, sizes#%d error, %d, %s"
-				, file
-				, sizes
-				, errno
-				, strerror(errno));
-
-		goto writeout;
+		__ERROR("lseek sst file#%s, sizes#%d", file, sizes);
+		goto RET;
 	}
 
 	result = write(fd, "", 1);
 	if (result == -1) {
-		__ERROR("write empty to sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-
-		goto writeout;
+		__ERROR("write empty to sst file#%s", file);
+		goto RET;
 	}
 
 	blks = mmap(0, sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
-		__ERROR("map sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-
-		goto writeout;
+		__ERROR("map sst file#%s", file);
+		goto RET;
 	}
 
 	last = x;
@@ -241,18 +233,12 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 #ifdef MSYNC
 	if (msync(blks, sizes, MS_SYNC) == -1) {
-		__ERROR("msync sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
+		__ERROR("msync sst file#%s", file);
 	}
 #endif
 
 	if (munmap(blks, sizes) == -1) {
-		__ERROR("munmap sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
+		__ERROR("munmap sst file#%s", file);
 	}
 	
 	footer.count = (count);
@@ -261,12 +247,8 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 
 	result = write(fd, &footer, fsize);
 	if (result == -1) {
-		__ERROR("write footer file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-
-		goto writeout;
+		__ERROR("write footer file#%s", file);
+		goto RET;
 	}
 
 	/* Set meta */
@@ -277,21 +259,21 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int need_ne
 	memcpy(mn.end, last->key, NESSDB_MAX_KEY_SIZE);
 
 	memset(mn.index_name, 0, FILE_NAME_SIZE);
-	memcpy(mn.index_name, sst->name, FILE_NAME_SIZE);
+	memcpy(mn.index_name, sst_file, FILE_NAME_SIZE);
 	
-	if (need_new) 
+	if (!mnode)
 		meta_set(sst->meta, &mn);
-	else 
+	else
 		meta_set_byname(sst->meta, &mn);
 
-writeout:
+RET:
 	if (fd > 0)
 		close(fd);
 
 	return x;
 }
 
-struct skiplist *_read_mmap(struct sst *sst, size_t count)
+struct skiplist *_read_mmap(struct sst *sst, struct meta_node *mnode, size_t size)
 {
 	int i;
 	int fd = -1;
@@ -305,41 +287,30 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	int fsize = sizeof(struct footer);
 
 	memset(file, 0, FILE_PATH_SIZE);
-	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, mnode->index_name);
 
 	fd = open(file, O_RDWR, 0644);
 	if (fd == -1) {
-		__ERROR("open sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
+		__ERROR("open sst file#%s", file);
 		return merge;
 	}
 
 	result = lseek(fd, -fsize, SEEK_END);
 	if (result == -1) {
-		__ERROR("lseek footer sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-		goto readout;
+		__ERROR("lseek footer sst file#%s", file);
+		goto RET;
 	}
 
 	result = read(fd, &footer, fsize);
 	if (result != fsize) {
-		__ERROR("read footer sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-		goto readout;
+		__ERROR("read footer sst file#%s", file);
+		goto RET;
 	}
 
 	int fcrc = footer.crc;
 	if (fcrc != F_CRC) {
-		__ERROR("sst crc error when read mmap:fcrc#%d, sst#%s"
-				, fcrc
-				, file);
-		goto readout;
+		__ERROR("sst crc error when read mmap:fcrc#%d, sst#%s", fcrc, file);
+		goto RET;
 	}
 
 	fcount = footer.count;
@@ -348,33 +319,28 @@ struct skiplist *_read_mmap(struct sst *sst, size_t count)
 	/* Blocks read */
 	blks = mmap(0, blk_sizes, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (blks == MAP_FAILED) {
-		__ERROR("mmap sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-		goto readout;
+		__ERROR("mmap sst file#%s", file);
+		goto RET;
 	}
 
 	/* Merge */
-	merge = skiplist_new(fcount + count + 1);
+	merge = skiplist_new(size);
 	for (i = 0; i < fcount; i++) {
 		skiplist_insert(merge, blks[i].key, blks[i].offset, ADD);
 	}
 	
 	if (munmap(blks, blk_sizes) == -1) {
-		__ERROR("munmap sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
+		__ERROR("munmap sst file#%s", file);
 	}
 
-readout:
+RET:
 	if (fd > 0)
 		close(fd);
+
 	return merge;
 }
 
-uint64_t _read_offset(struct sst *sst, struct slice *sk)
+uint64_t _read_offset(struct sst *sst, struct slice *sk, struct meta_node *mnode)
 {
 	int fd = -1;
 	int fcount;
@@ -386,48 +352,30 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 	struct sst_block blk;
 
 	memset(file, 0, FILE_PATH_SIZE);
-	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, sst->name);
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, mnode->index_name);
 
 	fd = open(file, O_RDWR, 0644);
 	if (fd == -1) {
-		__ERROR("open sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
+		__ERROR("open sst file#%s", file);
 		return 0UL;
 	}
 	
 	result = lseek(fd, -fsize, SEEK_END);
 	if (result == -1) {
-		__ERROR("lseek sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-		if (fd > 0)
-			close(fd);
-		return off;
+		__ERROR("lseek sst file#%s", file);
+		goto RET;
 	}
 
 	result = read(fd, &footer, fsize);
 	if (result == -1) {
-		__ERROR("read footer sst file#%s error, %d, %s"
-				, file
-				, errno
-				, strerror(errno));
-
-		if (fd > 0)
-			close(fd);
-		return off;
+		__ERROR("read footer sst file#%s", file);
+		goto RET;
 	}
 
 	int fcrc = (footer.crc);
 	if (fcrc != F_CRC) {
-		__ERROR("sst crc error when read offset:fcrc#%d, sst#%s"
-				, fcrc
-				, file);
-		if (fd > 0)
-			close(fd);
-		return off;
+		__ERROR("sst crc error when read offset:fcrc#%d, sst#%s", fcrc, file);
+		goto RET;
 	}
 
 
@@ -452,161 +400,133 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk)
 			left = i + 1;
 	}
 	
+RET:
 	if (fd > 0)
 		close(fd);
 	return off;
 }
 
-struct skipnode *_lock_write_mmap(struct sst *sst, struct skipnode *x, size_t count, int lsn)
+void _merge_list(struct skiplist *merge, struct skiplist *bemerge)
 {
-	struct skipnode *ret_x;
+	struct skipnode *first = bemerge->hdr;
+	struct skipnode *cur = bemerge->hdr->forward[0];
 
-	pthread_mutex_lock(sst->mutexer.mutex);
-	sst->mutexer.lsn = lsn;
-	ret_x = _write_mmap(sst, x, count, 0);
-	sst->mutexer.lsn = -1;
-	pthread_mutex_unlock(sst->mutexer.mutex);
-
-	return ret_x;
+	while (cur != first) {
+		skiplist_insert_node(merge, cur);
+		cur = cur->forward[0];
+	}
 }
 
-void _flush_merge_list(struct sst *sst, struct skipnode *x, size_t count, struct meta_node *meta)
+void _flush_merge_list(struct sst *sst, struct skiplist *block, struct meta_node *mnode)
 {
-	int mul;
-	int rem;
-	int i;
+	struct skipnode *x;
+	int merge_size = (block->count + 2 * SST_MAX_COUNT);
+	struct skiplist * merge = _read_mmap(sst, mnode, merge_size);
 
-	/* Less than 2x SST_MAX_COUNT,compact one index file */
-	if (count <= SST_MAX_COUNT * 2)
-		x = _lock_write_mmap(sst, x, count, meta->lsn);
-	else {
-		x = _lock_write_mmap(sst, x, SST_MAX_COUNT, meta->lsn);
+	/* do merge:mem+sst */
+	_merge_list(merge, block);
 
-		/* first+last */
-		mul = (count - SST_MAX_COUNT * 2) / SST_MAX_COUNT;
-		rem = count % SST_MAX_COUNT;
+	x = merge->hdr->forward[0];
 
-		for (i = 0; i < mul; i++) {
-			memset(sst->name, 0, FILE_NAME_SIZE);
-			_make_sstname(sst->meta->size, sst->name);
-			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
-		}
+	if (merge->count < (SST_MAX_COUNT * 2)) {
+		_write_mmap(sst, x, merge->count, mnode);
+	} else {
+		x = _write_mmap(sst, x, SST_MAX_COUNT, mnode);
 
-		/* The remain part(new sst),will be larger than SST_MAX_COUNT */
-		memset(sst->name, 0, FILE_NAME_SIZE);
-		_make_sstname(sst->meta->size, sst->name);
+		int mul = (merge->count - SST_MAX_COUNT) / SST_MAX_COUNT;
+		int rem = merge->count - mul * SST_MAX_COUNT;
 
-		x = _write_mmap(sst, x, rem + SST_MAX_COUNT, 1);
+		int i;
+		for (i = 0; i < mul; i++)
+			x = _write_mmap(sst, x, SST_MAX_COUNT, NULL);
+
+		if (rem > 0)
+			_write_mmap(sst, x, rem, NULL);
 	}	
 }
 
 void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 {
-	int mul ;
-	int rem;
-	int i;
-
-	if (count <= SST_MAX_COUNT * 2) {
-		memset(sst->name, 0, FILE_NAME_SIZE);
-		_make_sstname(sst->meta->size, sst->name);
-
-		x = _write_mmap(sst, x, count, 1);
+	if (count < (SST_MAX_COUNT * 2)) {
+		x = _write_mmap(sst, x, count, NULL);
 	} else {
-		mul = count / SST_MAX_COUNT;
-		rem = count % SST_MAX_COUNT;
+		int mul = (count - SST_MAX_COUNT) / SST_MAX_COUNT;
+		int rem = count - mul * SST_MAX_COUNT;
 
-		for (i = 0; i < (mul - 1); i++) {
-			memset(sst->name, 0, FILE_NAME_SIZE);
-			_make_sstname(sst->meta->size, sst->name);
-			x = _write_mmap(sst, x, SST_MAX_COUNT, 1);
+		int i;
+		for (i = 0; i < mul; i++) {
+			x = _write_mmap(sst, x, SST_MAX_COUNT, NULL);
 		}
 
-		memset(sst->name, 0, FILE_NAME_SIZE);
-		_make_sstname(sst->meta->size, sst->name);
-		x = _write_mmap(sst, x, SST_MAX_COUNT + rem, 1);
+		if (rem > 0)
+			_write_mmap(sst, x, rem, NULL);
 	}
 }
 
-void _flush_list(struct sst *sst, struct skipnode *x,struct skipnode *hdr,int flush_count)
+#define _BLOCK_SIZE (3 * SST_MAX_COUNT)
+void _flush_list(struct sst *sst, struct skipnode *x, struct skipnode *hdr, int flush_count)
 {
 	int pos = 0;
 	int count = flush_count;
 	struct skipnode *cur = x;
-	struct skipnode *first = hdr;
-	struct skiplist *merge = NULL;
-	struct meta_node *meta_info = NULL;
+	struct meta_node *meta_cur = NULL;
+	struct meta_node *meta_nxt = NULL;
+	struct skiplist *block = skiplist_new(_BLOCK_SIZE);
 
-	while(cur != first) {
-		meta_info = meta_get(sst->meta, cur->key);
+	/*
+	 * STEPS:
+	 * 1) if meta_cur is NULL
+	 *		a) flush the other nodes to disk as new sst
+	 * 2) if meta_cur == meta_nxt, add current node to the blcok list(same sst)
+	 *		a) if block size more than _BLOCK_SIZE, flush too
+	 * 3) if meta_cur != meta_nxt, should flush the block to disk
+	 * 4) flush the last block to disk if has node in it!
+	 */
+	while(cur != hdr) {
+		meta_cur = meta_get(sst->meta, cur->key);
+		if (cur->forward[0] != hdr)
+			meta_nxt = meta_get(sst->meta, cur->forward[0]->key);
 
-		/* If m is NULL, cur->key more larger than meta's largest area
-		 * need to create new index-file
-		 */
-		if(!meta_info){
-
-			/* If merge is NULL, flush the pre list to sst*/
-			if(merge) {
-				struct skipnode *h = merge->hdr->forward[0];
-				_flush_merge_list(sst, h, merge->count, NULL);
-				skiplist_free(merge);
-				merge = NULL;
+		if(!meta_cur){
+			if (block->count > 0) {
+				_flush_merge_list(sst, block, meta_cur);
+				skiplist_free(block);
+				block = skiplist_new(_BLOCK_SIZE);
 			}
-
-			/* Flush the last nodes(new sst) to disk */
-			_flush_new_list(sst, x, count - pos);
-
-			return;
+			_flush_new_list(sst, cur, count - pos);
+			goto ret;
 		} else {
+			skiplist_insert_node(block, cur);
 
-			/* If m is not NULL,means found the index of the cur
-			 * We need:
-			 * 1) compare the sst->name with meta index name
-			 *		a)If 0: add the cur to merge,and continue
-			 *		b)others:
-			 *			b1)Flush the merge list to disk
-			 *			b2)Open the meta's mmap,and load all blocks to new merge,add cur to merge
-			 */
-			int cmp = strcmp(sst->name, meta_info->index_name);
+			int cmp = -1;
+			if (meta_nxt)
+				cmp = strcmp(meta_nxt->index_name, meta_cur->index_name);
+
 			if(cmp == 0) {
-				if (!merge) {
-					pthread_mutex_lock(sst->mutexer.mutex);
-					merge = _read_mmap(sst,count);	
-					pthread_mutex_unlock(sst->mutexer.mutex);
+				if ( block->count == _BLOCK_SIZE) {
+					_flush_merge_list(sst, block, meta_cur);
+					skiplist_free(block);
+					block = skiplist_new(_BLOCK_SIZE);
 				}
-
-				skiplist_insert_node(merge, cur);
 			} else {
-				if (merge) {
-					struct skipnode *h = merge->hdr->forward[0];
-
-					_flush_merge_list(sst, h, merge->count, meta_info);
-					skiplist_free(merge);
-					merge = NULL;
+				if (block->count > 0) {
+					_flush_merge_list(sst, block, meta_cur);
+					skiplist_free(block);
+					block = skiplist_new(_BLOCK_SIZE);
 				}
-
-				memset(sst->name, 0, FILE_NAME_SIZE);
-				memcpy(sst->name, meta_info->index_name, FILE_NAME_SIZE);
-
-
-				pthread_mutex_lock(sst->mutexer.mutex);
-				merge = _read_mmap(sst, count);
-				pthread_mutex_unlock(sst->mutexer.mutex);
-
-				/* Add to merge list */
-				skiplist_insert_node(merge, cur);
 			}
-
 		}
 
 		pos++;
 		cur = cur->forward[0];
 	}
 
-	if (merge) {
-		struct skipnode *h = merge->hdr->forward[0];
-		_flush_merge_list(sst, h, merge->count, meta_info);
-		skiplist_free(merge);
+	if (block->count > 0) {
+		_flush_merge_list(sst, block, meta_cur);
 	}
+
+ret:
+	skiplist_free(block);
 }
 
 void sst_merge(struct sst *sst, struct skiplist *list, int fromlog)
@@ -630,31 +550,28 @@ void sst_merge(struct sst *sst, struct skiplist *list, int fromlog)
 		 _flush_new_list(sst, x, list->count);
 	else
 		_flush_list(sst, x, list->hdr, list->count);
-	//skiplist_free(list);
 }
 
 uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 {
 	int lsn;
 	uint64_t off = 0UL;
-	struct meta_node *meta_info;
+	struct meta_node *meta_cur;
 
-	meta_info = meta_get(sst->meta, sk->data);
-	if(!meta_info)
+	meta_cur = meta_get(sst->meta, sk->data);
+	if(!meta_cur)
 		return 0UL;
-
-	memcpy(sst->name, meta_info->index_name, FILE_NAME_SIZE);
 
 	/* If get one record from on-disk sst file, 
 	 * this file must not be operated by bg-merge thread
 	 */
-	lsn = meta_info->lsn;
+	lsn = meta_cur->lsn;
 	if (sst->mutexer.lsn == lsn) {
 		pthread_mutex_lock(sst->mutexer.mutex);
-		off = _read_offset(sst, sk);
+		off = _read_offset(sst, sk, meta_cur);
 		pthread_mutex_unlock(sst->mutexer.mutex);
 	} else {
-		off = _read_offset(sst, sk);
+		off = _read_offset(sst, sk, meta_cur);
 	}
 
 	return off;

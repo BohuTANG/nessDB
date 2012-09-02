@@ -32,22 +32,17 @@ struct meta *meta_new()
 
 struct meta_node *meta_get(struct meta *meta, char *key)
 {
-	uint32_t  left = 0, right = meta->size, i;
+	size_t i;
 
-	while (left < right) {
-		i = (right -left) / 2 +left;
+	for ( i = 0 ; i < meta->size; i++) {
 		int cmp = strcmp(key, meta->nodes[i].end);
 
 		if (cmp == 0) 
 			return &meta->nodes[i];
 
 		if (cmp < 0)
-			right = i;
-		else
-			left = i + 1;
+			break;
 	}
-
-	i = left;
 
 	if (i == meta->size)
 		return NULL;
@@ -57,34 +52,33 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 
 void meta_set(struct meta *meta, struct meta_node *node)
 {
-	size_t left = 0, right = meta->size;
+	size_t i;
 
-	while (left < right) {
-		size_t i = (right -left) / 2 +left;
-		int cmp = strcmp(node->end, meta->nodes[i].end);
-
-		if (cmp == 0)
-			return ;
-
-		if (cmp < 0)
-			right = i;
-		else
-			left = i + 1;
+	if (meta->size == 0) {
+		memcpy(&meta->nodes[0], node, META_NODE_SIZE);
+		goto RET;
 	}
 
-	size_t i = left;
+	for ( i = 0 ; i < meta->size; i++) {
+		int cmp = strcmp(node->end, meta->nodes[i].end);
 
-	meta->size++;
-	node->lsn = meta->size;
+		if (cmp < 0) {
+			break;
+		}
+	}
 	memmove(&meta->nodes[i + 1], &meta->nodes[i], (meta->size - i) * META_NODE_SIZE);
 	memcpy(&meta->nodes[i], node, META_NODE_SIZE);
+
+RET:
+	meta->size++;
+	node->lsn = meta->size;
 }
 
 void meta_set_byname(struct meta *meta, struct meta_node *node)
 {
-	int i;
+	size_t i;
 
-	for (i = 0; i < (int)meta->size; i++) {
+	for (i = 0; i < meta->size; i++) {
 		int cmp = strcmp(node->index_name, meta->nodes[i].index_name);
 
 		if (cmp == 0) {
@@ -92,6 +86,21 @@ void meta_set_byname(struct meta *meta, struct meta_node *node)
 			return ;
 		}
 
+	}
+}
+
+void meta_dump(struct meta *meta)
+{
+	size_t i;
+	printf("--Meta dump:count<%d>\n", meta->size);
+	for (i = 0; i< meta->size; i++) {
+		struct meta_node n = meta->nodes[i];
+		printf("\t(%d) end:<%s>,indexname:<%s>,hascount:<%d>,lsn:<%d>\n",
+				i,
+				n.end,
+				n.index_name,
+				n.count,
+				n.lsn);
 	}
 }
 

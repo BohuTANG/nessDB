@@ -29,7 +29,6 @@ struct sst_block{
 
 struct sst{
 	char basedir[FILE_PATH_SIZE];
-	char name[FILE_NAME_SIZE];
 	uint32_t lsn;
 	struct meta *meta;
 	struct bloom *bloom;
