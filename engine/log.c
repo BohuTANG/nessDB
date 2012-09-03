@@ -110,22 +110,16 @@ int _log_read(char *logname, struct skiplist *list)
 
 	while(rem > 0) {
 		int isize = 0;
-		int klen;
-		uint64_t off;
+		int klen = 0;
+		uint64_t off = 0UL;
+		short opt = 0;
 		char key[NESSDB_MAX_KEY_SIZE];
-		char klenstr[4], offstr[8], optstr[4];
 
-		memset(klenstr, 0, 4);
-		memset(offstr, 0, 8);
-		memset(optstr, 0, 4);
-		
-		/* read key length */
-		if (read(fd, &klen, sizeof(int)) != sizeof(int)) {
-			__ERROR("error when read key length, log#%s", logname);
+		if (read(fd, &klen, sizeof klen) != sizeof klen) {
+			__ERROR("read klen error, log#%s", logname);
 			return -1;
 		}
-
-		isize += sizeof(int);
+		isize += sizeof klen;
 		
 		/* read key */
 		memset(key, 0, NESSDB_MAX_KEY_SIZE);
@@ -137,21 +131,21 @@ int _log_read(char *logname, struct skiplist *list)
 		isize += klen;
 
 		/* read data offset */
-		if (read(fd, &off, sizeof(uint64_t)) != sizeof(uint64_t)) {
+		if (read(fd, &off, sizeof off) != sizeof off) {
 			__ERROR("read error when read data offset, log#%s", logname);
 			return -1;
 		}
 
-		isize += sizeof(uint64_t);
+		isize += sizeof off;
 
 		/* read opteration */
-		if (read(fd, &optstr, 1) != 1) {
+		if (read(fd, &opt, sizeof opt) != sizeof opt) {
 			__ERROR("read error when read opteration, log#%s", logname);
 			return -1;
 		}
 
-		isize += 1;
-		if (memcmp(optstr, "A", 1) == 0) {
+		isize += sizeof opt;
+		if (opt == 1) {
 			count++;
 			skiplist_insert(list, key, off, ADD);
 		} else {
@@ -263,9 +257,9 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		buffer_putlong(buf, db_offset);
 
 		if(sv)
-			buffer_putnstr(buf, "A", 1);
+			buffer_putshort(buf, 1);
 		else
-			buffer_putnstr(buf, "D", 1);
+			buffer_putshort(buf, 0);
 
 		len = buf->NUL;
 		line = buffer_detach(buf);

@@ -60,6 +60,11 @@ void meta_set(struct meta *meta, struct meta_node *node)
 {
 	int left = 0, right = meta->size, i;
 
+	if (meta->size == META_MAX_COUNT) {
+		__DEBUG("too many metas, all size:%d", meta->size);
+		return;
+	}
+
 	while (left < right) {
 		i = (right + left) / 2;
 		int cmp = strcmp(node->end, meta->nodes[i].end);

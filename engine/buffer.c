@@ -128,8 +128,8 @@ void buffer_putlong(struct buffer *b, uint64_t val)
 	_buffer_extendby(b, sizeof(uint64_t));
 	b->buf[b->NUL++] = val & 0xff;
 	b->buf[b->NUL++] = (val >> 8) & 0xff;
-	b->buf[b->NUL++] = (val >> 24) & 0xff;
 	b->buf[b->NUL++] = (val >> 16) & 0xff;
+	b->buf[b->NUL++] = (val >> 24) & 0xff;
 	b->buf[b->NUL++] = (val >> 32) & 0xff;
 	b->buf[b->NUL++] = (val >> 40) & 0xff;
 	b->buf[b->NUL++] = (val >> 48) & 0xff;

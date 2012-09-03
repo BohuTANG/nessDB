@@ -47,6 +47,17 @@ void _print_header(int count)
 	printf("Entries:	%d\n", count);
 	printf("IndexSize:	%.1f MB (estimated)\n", index_size);
 	printf("DataSize:	%.1f MB (estimated)\n", data_size);
+#ifdef BGMERGE
+	printf("Async Merge:	YES\n");
+#else
+	printf("Async Merge:	NO\n");
+#endif
+
+	if (TOLOG == 1)
+		printf("Recovery:	OPEN\n");
+	else 
+		printf("Recovery:	CLOSE\n");
+
 	printf(LINE1);
 }
 
