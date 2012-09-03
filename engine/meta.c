@@ -54,7 +54,7 @@ void meta_set(struct meta *meta, struct meta_node *node)
 {
 	int i = 0;
 
-	if (meta->size == (META_NODE_SIZE -1)) {
+	if (meta->size == (META_MAX_COUNT - 1)) {
 		__ERROR("too many metas, %d", meta->size);
 		return;
 	}

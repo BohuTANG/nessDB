@@ -453,12 +453,7 @@ void _flush_merge_list(struct sst *sst, struct skiplist *block, struct meta_node
 	int merge_size = (block->count + GAP_SIZE + 1);
 	struct skiplist * merge = _read_mmap(sst, mnode, merge_size);
 
-	if (merge) {
-	__DEBUG("..merge list count:%d", merge->count);
 	_merge_list(merge, block);
-	} else {
-		merge = block;
-	}
 
 	x = merge->hdr->forward[0];
 	if (merge->count <= GAP_SIZE) {
@@ -475,6 +470,8 @@ void _flush_merge_list(struct sst *sst, struct skiplist *block, struct meta_node
 
 		x = _write_mmap(sst, x, rem + SST_MAX_COUNT, NULL);
 	}	
+	if (merge)
+		skiplist_free(merge);
 }
 
 void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
