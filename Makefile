@@ -1,6 +1,7 @@
 CC = gcc
+BGMERGE = -DBGMERGE
 DEBUG =	-g -ggdb -DINFO
-CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG)
+CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) $(BGMERGE)
 
 LIB_OBJS = \
 	./engine/db.o\

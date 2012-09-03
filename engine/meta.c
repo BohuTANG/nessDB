@@ -32,50 +32,53 @@ struct meta *meta_new()
 
 struct meta_node *meta_get(struct meta *meta, char *key)
 {
-	int i = 0;
+	int  left = 0, right = meta->size, i;
 
-	for ( ; i < meta->size; i++) {
+	while (left < right) {
+		i = (right + left) / 2 ;
 		int cmp = strcmp(key, meta->nodes[i].end);
 
 		if (cmp == 0) 
 			return &meta->nodes[i];
 
 		if (cmp < 0)
-			break;
+			right = i;
+		else
+			left = i + 1;
 	}
+
+	i = left;
 
 	if (i == meta->size)
 		return NULL;
 
 	return &meta->nodes[i];
+
 }
 
 void meta_set(struct meta *meta, struct meta_node *node)
 {
-	int i = 0;
+	int left = 0, right = meta->size, i;
 
-	if (meta->size == (META_MAX_COUNT - 1)) {
-		__ERROR("too many metas, %d", meta->size);
-		return;
-	}
-
-	if (meta->size == 0) {
-		memcpy(&meta->nodes[0], node, META_NODE_SIZE);
-		goto RET;
-	}
-
-	for ( ; i < meta->size; i++) {
+	while (left < right) {
+		i = (right + left) / 2;
 		int cmp = strcmp(node->end, meta->nodes[i].end);
 
-		if (cmp < 0) {
+		if (cmp == 0) {
 			break;
 		}
+
+		if (cmp < 0)
+			right = i;
+		else
+			left = i + 1;
 	}
+
+	i = left;
 
 	memmove(&meta->nodes[i + 1], &meta->nodes[i], (meta->size - i) * META_NODE_SIZE);
 	memcpy(&meta->nodes[i], node, META_NODE_SIZE);
 
-RET:
 	meta->size++;
 	meta->nodes[i].lsn = meta->size;
 }
