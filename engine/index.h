@@ -28,6 +28,7 @@ struct index{
 	int max_mtbl;
 	int max_mtbl_size;
 	int slowest_merge_count; /* the max merge time's count */
+	volatile int swaped;
 	long long max_merge_time; /* the slowest merge time cost */
 	uint64_t bloom_hits;
 
@@ -39,6 +40,7 @@ struct index{
 	pthread_attr_t attr;
 	pthread_mutex_t *merge_mutex;
 	pthread_mutex_t *listfree_mutex;
+	pthread_mutex_t *swap_mutex;
 };
 
 struct index *index_new(const char *basedir, int max_mtbl_size, int tolog);

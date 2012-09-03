@@ -105,8 +105,8 @@ int skiplist_notfull(struct skiplist *list)
 
 int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt) 
 {
-	int i, new_level;
-	int klen;
+	int i = 0, new_level = 0;
+	int klen = 0;
 	struct skipnode *update[MAXLEVEL+1];
 	struct skipnode *x;
 

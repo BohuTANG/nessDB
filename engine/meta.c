@@ -32,9 +32,9 @@ struct meta *meta_new()
 
 struct meta_node *meta_get(struct meta *meta, char *key)
 {
-	size_t i;
+	int i = 0;
 
-	for ( i = 0 ; i < meta->size; i++) {
+	for ( ; i < meta->size; i++) {
 		int cmp = strcmp(key, meta->nodes[i].end);
 
 		if (cmp == 0) 
@@ -52,36 +52,43 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 
 void meta_set(struct meta *meta, struct meta_node *node)
 {
-	size_t i;
+	int i = 0;
+
+	if (meta->size == (META_NODE_SIZE -1)) {
+		__ERROR("too many metas, %d", meta->size);
+		return;
+	}
 
 	if (meta->size == 0) {
 		memcpy(&meta->nodes[0], node, META_NODE_SIZE);
 		goto RET;
 	}
 
-	for ( i = 0 ; i < meta->size; i++) {
+	for ( ; i < meta->size; i++) {
 		int cmp = strcmp(node->end, meta->nodes[i].end);
 
 		if (cmp < 0) {
 			break;
 		}
 	}
+
 	memmove(&meta->nodes[i + 1], &meta->nodes[i], (meta->size - i) * META_NODE_SIZE);
 	memcpy(&meta->nodes[i], node, META_NODE_SIZE);
 
 RET:
 	meta->size++;
-	node->lsn = meta->size;
+	meta->nodes[i].lsn = meta->size;
 }
 
 void meta_set_byname(struct meta *meta, struct meta_node *node)
 {
-	size_t i;
+	int i = 0;
 
-	for (i = 0; i < meta->size; i++) {
-		int cmp = strcmp(node->index_name, meta->nodes[i].index_name);
+	for ( ; i < meta->size; i++) {
+		int cmp = strcmp(node->name, meta->nodes[i].name);
 
 		if (cmp == 0) {
+			meta->nodes[i].count = node->count;
 			memcpy(meta->nodes[i].end, node->end, NESSDB_MAX_KEY_SIZE);
 			return ;
 		}
@@ -91,14 +98,14 @@ void meta_set_byname(struct meta *meta, struct meta_node *node)
 
 void meta_dump(struct meta *meta)
 {
-	size_t i;
+	int i;
 	printf("--Meta dump:count<%d>\n", meta->size);
 	for (i = 0; i< meta->size; i++) {
 		struct meta_node n = meta->nodes[i];
 		printf("\t(%d) end:<%s>,indexname:<%s>,hascount:<%d>,lsn:<%d>\n",
 				i,
 				n.end,
-				n.index_name,
+				n.name,
 				n.count,
 				n.lsn);
 	}

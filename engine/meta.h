@@ -20,13 +20,13 @@
 
 struct meta_node{
 	char end[NESSDB_MAX_KEY_SIZE];
-	char index_name[FILE_NAME_SIZE];
-	uint32_t count;
-	uint32_t lsn;
+	char name[FILE_NAME_SIZE];
+	int count;
+	int lsn;
 };
 
 struct meta{
-	uint32_t size;
+	int size;
 	struct meta_node nodes[META_MAX_COUNT];
 };
 

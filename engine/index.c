@@ -32,22 +32,29 @@ void *_merge_job(void *arg)
 	struct log *log;
 
 	idx = (struct index*)arg;
+
+#ifdef BGMERGE
+	pthread_mutex_lock(idx->merge_mutex);
+#endif
 	lsn = idx->park->lsn;
 	list = idx->park->list;
+
 	list_count = list->count;
 	sst = idx->sst;
 	log = idx->log;
-
 
 	if(list == NULL)
 		goto merge_out;
 
 	start = get_ustime_sec();
 
-	pthread_mutex_lock(idx->merge_mutex);
+
 	sst_merge(sst, list, 0);
 	idx->park->list = NULL;
+
+#ifdef BGMERGE
 	pthread_mutex_unlock(idx->merge_mutex);
+#endif
 
 	end = get_ustime_sec();
 	cost = end - start;
@@ -60,13 +67,21 @@ void *_merge_job(void *arg)
 
 merge_out:
 	if (list) {
+#ifdef BGMERGE
 		pthread_mutex_lock(idx->listfree_mutex);
 		skiplist_free(list);
 		pthread_mutex_unlock(idx->listfree_mutex);
+#else
+		skiplist_free(list);
+#endif
 	}
 
+#ifdef BGMERGE
 	pthread_detach(pthread_self());
 	pthread_exit(NULL);
+#else
+	return NULL;
+#endif
 }
 
 struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
@@ -93,6 +108,9 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 
 	idx->listfree_mutex = malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->listfree_mutex, NULL);
+
+	idx->swap_mutex = malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(idx->swap_mutex, NULL);
 
 	/* container */
 	park->lsn = idx->lsn;
@@ -140,7 +158,6 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	uint64_t value_offset;
-	struct skiplist *list, *new_list;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length#%d more than MAX_KEY_SIZE$%d"
@@ -150,41 +167,43 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	value_offset = log_append(idx->log, sk, sv);
-	list = idx->list;
 
-	if (!list) {
+	if (!idx->list) {
 		__PANIC("List<%d> is NULL", idx->lsn);
 		return 0;
 	}
 
-	if (!skiplist_notfull(list)) {
+	if (!skiplist_notfull(idx->list)) {
 		idx->bg_merge_count++;
 
 		/* If the detached-merge thread isnot finished,hold on it 
 		 * Notice: it will block the current process, 
 		 * but it happens only once in a thousand years on production environment.
 		*/
-		pthread_mutex_lock(idx->merge_mutex);
-
-		/* Start to merge with detached thread */
+#ifdef BGMERGE
 		pthread_t tid;
-		idx->park->list = list;
+		pthread_mutex_lock(idx->merge_mutex);
+#endif
+
+		idx->park->list = idx->list;
 		idx->park->lsn = idx->lsn;
 
+#ifdef BGMERGE
+		pthread_mutex_unlock(idx->merge_mutex);
 		pthread_create(&tid, &idx->attr, _merge_job, idx);
+#else
+		_merge_job(idx);
+#endif
 
 		idx->mtbl_rem_count = 0;
-		/* New mtable is born */
-		new_list = skiplist_new(idx->max_mtbl_size);
-		idx->list = new_list;
+		idx->list = skiplist_new(idx->max_mtbl_size);
 
 		idx->lsn++;
 		log_next(idx->log, idx->lsn);
-		pthread_mutex_unlock(idx->merge_mutex);
 	}
+
 	skiplist_insert(idx->list, sk->data, value_offset, sv == NULL ? DEL : ADD);
-	
-	/* Add to Bloomfilter */
+
 	if (sv) {
 		bloom_add(idx->sst->bloom, sk->data);
 	} else
@@ -193,16 +212,11 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	return 1;
 }
 
-/*
- * When db is normally closed, flush current active memtable to disk sst
- */
 void _index_flush(struct index *idx)
 {
 	int list_count;
 	struct skiplist *list;
 	long long start, cost;
-
-	/* Waiting  bg merging thread done */
 
 	list = idx->list;
 	list_count = list->count;
@@ -210,14 +224,26 @@ void _index_flush(struct index *idx)
 	if (list && list->count > 0) {
 		start = get_ustime_sec();
 
+#ifdef BGMERGE
 		pthread_mutex_lock(idx->merge_mutex);
+#endif
+
 		sst_merge(idx->sst, list, 0);
+
+#ifdef BGMERGE
 		pthread_mutex_unlock(idx->merge_mutex);
+#endif
 
 		if (list) {
+#ifdef BGMERGE
 			pthread_mutex_lock(idx->listfree_mutex);
+#endif
+
 			skiplist_free(list);
+
+#ifdef BGMERGE
 			pthread_mutex_unlock(idx->listfree_mutex);
+#endif
 		}
 
 		cost = get_ustime_sec() - start;
@@ -248,9 +274,6 @@ void _index_flush(struct index *idx)
 	}
 }
 
-/*
- * Return status: -1:error 0:NULL 1:exists
- */
 int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int ret = 0, value_len, result;
@@ -287,14 +310,18 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		}
 		value_off = node->val;
 	} else {
+#ifdef BGMERGE
 		pthread_mutex_lock(idx->listfree_mutex);
+#endif
 		merge_list = idx->park->list;
 		if (merge_list) {
 			node = skiplist_lookup(merge_list, sk->data);
 			if (node && node->opt == ADD )
 				value_off = node->val;
 		}
+#ifdef BGMERGE
 		pthread_mutex_unlock(idx->listfree_mutex);
+#endif
 	}
 
 	if (value_off == 0UL)
@@ -366,6 +393,7 @@ uint64_t index_allcount(struct index *idx)
 
 	return c;
 }
+
 void index_free(struct index *idx)
 {
 	_index_flush(idx);
@@ -378,10 +406,9 @@ void index_free(struct index *idx)
 				, (double) (idx->slowest_merge_count / idx->max_merge_time));
 	}
 
-	if (idx->merge_mutex)
-		free(idx->merge_mutex);
-	if (idx->listfree_mutex)
-		free(idx->listfree_mutex);
+	free(idx->merge_mutex);
+	free(idx->listfree_mutex);
+	free(idx->swap_mutex);
 
 	log_free(idx->log);
 

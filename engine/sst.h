@@ -29,7 +29,7 @@ struct sst_block{
 
 struct sst{
 	char basedir[FILE_PATH_SIZE];
-	uint32_t lsn;
+	volatile int lsn;
 	struct meta *meta;
 	struct bloom *bloom;
 	struct mutexer mutexer;

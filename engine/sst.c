@@ -45,6 +45,7 @@
 
 #define BLK_MAGIC (20111225)
 #define F_CRC (2011)
+#define GAP_SIZE (SST_MAX_COUNT * 2)
 
 struct footer{
 	char key[NESSDB_MAX_KEY_SIZE];
@@ -130,8 +131,8 @@ void _sst_load(struct sst *sst)
 			memset(mn.end, 0, NESSDB_MAX_KEY_SIZE);
 			memcpy(mn.end, footer.key, NESSDB_MAX_KEY_SIZE);
 
-			memset(mn.index_name, 0, FILE_NAME_SIZE);
-			memcpy(mn.index_name, de->d_name, FILE_NAME_SIZE);
+			memset(mn.name, 0, FILE_NAME_SIZE);
+			memcpy(mn.name, de->d_name, FILE_NAME_SIZE);
 			meta_set(sst->meta, &mn);
 		
 			if (fd > 0)
@@ -179,15 +180,24 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, struct meta
 	struct footer footer;
 	struct sst_block *blks;
 
+
+	if (mnode) {
+#ifdef BGMERGE
+		pthread_mutex_lock(sst->mutexer.mutex);
+		sst->mutexer.lsn = mnode->lsn;
+#endif
+	}
+
 	int fsize = sizeof(struct footer);
 	memset(&footer, 0, fsize);
 	sizes = count * sizeof(struct sst_block);
+
 
 	memset(file, 0, FILE_PATH_SIZE);
 	memset(sst_file, 0, FILE_NAME_SIZE);
 
 	if (mnode) {
-		memcpy(sst_file, mnode->index_name, strlen(mnode->index_name));
+		memcpy(sst_file, mnode->name, strlen(mnode->name));
 	} else{
 		_make_sstname(sst->meta->size, sst_file);
 	}
@@ -258,17 +268,24 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, struct meta
 	memset(mn.end, 0, NESSDB_MAX_KEY_SIZE);
 	memcpy(mn.end, last->key, NESSDB_MAX_KEY_SIZE);
 
-	memset(mn.index_name, 0, FILE_NAME_SIZE);
-	memcpy(mn.index_name, sst_file, FILE_NAME_SIZE);
+	memset(mn.name, 0, FILE_NAME_SIZE);
+	memcpy(mn.name, sst_file, FILE_NAME_SIZE);
 	
-	if (!mnode)
+	if (!mnode)  {
 		meta_set(sst->meta, &mn);
-	else
+	} else {
 		meta_set_byname(sst->meta, &mn);
+	}
 
 RET:
 	if (fd > 0)
 		close(fd);
+
+	if (mnode) {
+#ifdef BGMERGE
+		pthread_mutex_unlock(sst->mutexer.mutex);
+#endif
+	}
 
 	return x;
 }
@@ -286,8 +303,15 @@ struct skiplist *_read_mmap(struct sst *sst, struct meta_node *mnode, size_t siz
 	struct sst_block *blks;
 	int fsize = sizeof(struct footer);
 
+	if (mnode) {
+#ifdef BGMERGE
+		pthread_mutex_lock(sst->mutexer.mutex);
+		sst->mutexer.lsn = mnode->lsn;
+#endif
+	}
+
 	memset(file, 0, FILE_PATH_SIZE);
-	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, mnode->index_name);
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, mnode->name);
 
 	fd = open(file, O_RDWR, 0644);
 	if (fd == -1) {
@@ -316,14 +340,12 @@ struct skiplist *_read_mmap(struct sst *sst, struct meta_node *mnode, size_t siz
 	fcount = footer.count;
 	blk_sizes = fcount * sizeof(struct sst_block);
 
-	/* Blocks read */
-	blks = mmap(0, blk_sizes, PROT_READ, MAP_PRIVATE, fd, 0);
+	blks = mmap(0, blk_sizes, PROT_READ, MAP_SHARED, fd, 0);
 	if (blks == MAP_FAILED) {
 		__ERROR("mmap sst file#%s", file);
 		goto RET;
 	}
 
-	/* Merge */
 	merge = skiplist_new(size);
 	for (i = 0; i < fcount; i++) {
 		skiplist_insert(merge, blks[i].key, blks[i].offset, ADD);
@@ -336,6 +358,12 @@ struct skiplist *_read_mmap(struct sst *sst, struct meta_node *mnode, size_t siz
 RET:
 	if (fd > 0)
 		close(fd);
+
+	if (mnode) {
+#ifdef BGMERGE
+		pthread_mutex_unlock(sst->mutexer.mutex);
+#endif
+	}
 
 	return merge;
 }
@@ -352,7 +380,7 @@ uint64_t _read_offset(struct sst *sst, struct slice *sk, struct meta_node *mnode
 	struct sst_block blk;
 
 	memset(file, 0, FILE_PATH_SIZE);
-	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, mnode->index_name);
+	snprintf(file, FILE_PATH_SIZE, "%s/%s", sst->basedir, mnode->name);
 
 	fd = open(file, O_RDWR, 0644);
 	if (fd == -1) {
@@ -420,46 +448,49 @@ void _merge_list(struct skiplist *merge, struct skiplist *bemerge)
 void _flush_merge_list(struct sst *sst, struct skiplist *block, struct meta_node *mnode)
 {
 	struct skipnode *x;
-	int merge_size = (block->count + 2 * SST_MAX_COUNT);
+
+	/* NOTICE: merge_size must more than: GAP_SIZE + block_count */
+	int merge_size = (block->count + GAP_SIZE + 1);
 	struct skiplist * merge = _read_mmap(sst, mnode, merge_size);
 
-	/* do merge:mem+sst */
+	if (merge) {
+	__DEBUG("..merge list count:%d", merge->count);
 	_merge_list(merge, block);
+	} else {
+		merge = block;
+	}
 
 	x = merge->hdr->forward[0];
-
-	if (merge->count < (SST_MAX_COUNT * 2)) {
-		_write_mmap(sst, x, merge->count, mnode);
+	if (merge->count <= GAP_SIZE) {
+		x = _write_mmap(sst, x, merge->count, mnode);
 	} else {
-		x = _write_mmap(sst, x, SST_MAX_COUNT, mnode);
-
-		int mul = (merge->count - SST_MAX_COUNT) / SST_MAX_COUNT;
-		int rem = merge->count - mul * SST_MAX_COUNT;
+		int rem = merge->count % SST_MAX_COUNT;
+		int mul = (merge->count - rem) / SST_MAX_COUNT;
 
 		int i;
-		for (i = 0; i < mul; i++)
-			x = _write_mmap(sst, x, SST_MAX_COUNT, NULL);
+		for (i = 0; i < (mul - 1); i++) {
+			x = _write_mmap(sst, x, SST_MAX_COUNT, mnode);
+			mnode = NULL;
+		}
 
-		if (rem > 0)
-			_write_mmap(sst, x, rem, NULL);
+		x = _write_mmap(sst, x, rem + SST_MAX_COUNT, NULL);
 	}	
 }
 
 void _flush_new_list(struct sst *sst, struct skipnode *x, size_t count)
 {
-	if (count < (SST_MAX_COUNT * 2)) {
+	if (count <= GAP_SIZE) {
 		x = _write_mmap(sst, x, count, NULL);
 	} else {
-		int mul = (count - SST_MAX_COUNT) / SST_MAX_COUNT;
-		int rem = count - mul * SST_MAX_COUNT;
+		int rem = count % SST_MAX_COUNT;
+		int mul = (count - rem) / SST_MAX_COUNT;
 
 		int i;
-		for (i = 0; i < mul; i++) {
+		for (i = 0; i < (mul -1); i++) {
 			x = _write_mmap(sst, x, SST_MAX_COUNT, NULL);
 		}
 
-		if (rem > 0)
-			_write_mmap(sst, x, rem, NULL);
+		_write_mmap(sst, x, rem + SST_MAX_COUNT, NULL);
 	}
 }
 
@@ -500,7 +531,7 @@ void _flush_list(struct sst *sst, struct skipnode *x, struct skipnode *hdr, int 
 
 			int cmp = -1;
 			if (meta_nxt)
-				cmp = strcmp(meta_nxt->index_name, meta_cur->index_name);
+				cmp = strcmp(meta_nxt->name, meta_cur->name);
 
 			if(cmp == 0) {
 				if ( block->count == _BLOCK_SIZE) {
@@ -522,6 +553,7 @@ void _flush_list(struct sst *sst, struct skipnode *x, struct skipnode *hdr, int 
 	}
 
 	if (block->count > 0) {
+		meta_cur = meta_get(sst->meta, block->hdr->forward[0]->key);
 		_flush_merge_list(sst, block, meta_cur);
 	}
 
@@ -567,9 +599,15 @@ uint64_t sst_getoff(struct sst *sst, struct slice *sk)
 	 */
 	lsn = meta_cur->lsn;
 	if (sst->mutexer.lsn == lsn) {
+#ifdef BGMERGE
 		pthread_mutex_lock(sst->mutexer.mutex);
+#endif
+
 		off = _read_offset(sst, sk, meta_cur);
+
+#ifdef BGMERGE
 		pthread_mutex_unlock(sst->mutexer.mutex);
+#endif
 	} else {
 		off = _read_offset(sst, sk, meta_cur);
 	}
