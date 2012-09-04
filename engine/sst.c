@@ -511,6 +511,7 @@ void _flush_list(struct sst *sst, struct skipnode *x, struct skipnode *hdr, int 
 	 * 4) flush the last block to disk if has node in it!
 	 */
 	while(cur != hdr) {
+		meta_nxt = NULL;
 		meta_cur = meta_get(sst->meta, cur->key);
 		if (cur->forward[0] != hdr)
 			meta_nxt = meta_get(sst->meta, cur->forward[0]->key);
