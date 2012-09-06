@@ -51,8 +51,13 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	ret = lru_get(db->lru, sk, sv);
 	if (ret)
 		return 1;
-	else 
-		return index_get(db->idx, sk, sv);
+	else {
+		ret = index_get(db->idx, sk, sv);
+		if (ret)
+			lru_set(db->lru, sk, sv);
+	}
+
+	return ret;
 }
 
 int db_exists(struct nessdb *db, struct slice *sk)
