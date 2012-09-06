@@ -13,6 +13,7 @@ LIB_OBJS = \
 	./engine/index.o\
 	./engine/bloom.o\
 	./engine/buffer.o\
+	./engine/lru.o\
 	./engine/skiplist.o
 
 LIBRARY = libnessdb.so
@@ -20,7 +21,7 @@ LIBRARY = libnessdb.so
 all: $(LIBRARY)
 
 clean:
-	-rm -f db-bench
+	-rm -f db-bench lru-test
 	-rm -f bench/db-bench.o
 	-rm -f $(LIBRARY)  
 	-rm -f $(LIB_OBJS)
@@ -34,3 +35,6 @@ $(LIBRARY): $(LIB_OBJS)
 
 db-bench: bench/db-bench.o $(LIB_OBJS)
 	$(CC) -pthread  bench/db-bench.o $(LIB_OBJS) -o $@
+
+lru-test: test/lru-test.o $(LIB_OBJS)
+	$(CC) -pthread  test/lru-test.o $(LIB_OBJS) -o $@

@@ -6,7 +6,6 @@
  *
  */
 
-
 /*NOTE:
 	How to do
 	=========
@@ -112,7 +111,7 @@ void _write_test(long int count)
 	memset(key, 0, KSIZE + 1);
 	memset(val, 0, VSIZE + 1);
 
-	db = db_open(path, TOLOG);
+	db = db_open(path, 0UL, TOLOG);
 	free(path);
 
 	start = get_ustime_sec();
@@ -155,7 +154,7 @@ void _read_test(long int count)
 	struct nessdb *db;
 	char *dir = getcwd(NULL, 0);
 
-	db = db_open(dir, TOLOG);
+	db = db_open(dir, 0UL,  TOLOG);
 
 	char key[KSIZE + 1];
 
@@ -202,7 +201,7 @@ void _readone_test(char *key)
 	memset(k, 0, KSIZE + 1);
 	memcpy(k, key, len);
 
-	db = db_open(dir, TOLOG);
+	db = db_open(dir, 0UL, TOLOG);
 	sk.len = (KSIZE + 1);
 	sk.data = k;
 

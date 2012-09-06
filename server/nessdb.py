@@ -3,15 +3,11 @@
 # author : KDr2
 #
 
-
 import _nessdb
-
-
 class NessDB(object):
 
-
-    def __init__(self,path,is_log_recovery=1):
-        self.db=_nessdb.db_open(path,is_log_recovery)
+    def __init__(self,path, lru_buffer = 0, is_log_recovery=1):
+        self.db=_nessdb.db_open(path, lru_buffer, is_log_recovery)
 
     def db_add(self,key,value):
         return _nessdb.db_add(self.db,
@@ -32,6 +28,3 @@ class NessDB(object):
    
     def db_close(self):
         return _nessdb.db_close(self.db)
-    
-
-

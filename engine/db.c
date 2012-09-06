@@ -11,12 +11,13 @@
 
 #include "index.h"
 #include "buffer.h"
+#include "lru.h"
 #include "util.h"
 #include "config.h"
 #include "db.h"
 #include "debug.h"
 
-struct nessdb *db_open(const char *basedir, int is_log_recovery)
+struct nessdb *db_open(const char *basedir, uint64_t buffer, int is_log_recovery)
 {
 	char buff_dir[FILE_PATH_SIZE];
 	struct nessdb *db;
@@ -32,11 +33,14 @@ struct nessdb *db_open(const char *basedir, int is_log_recovery)
 	snprintf(buff_dir, FILE_PATH_SIZE, "%s/ndbs", basedir);
 	db->idx = index_new(buff_dir, MTBL_MAX_COUNT, is_log_recovery); 
 
+	db->lru = lru_new(buffer);
+
 	return db;
 }
 
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
+	lru_remove(db->lru, sk);
 	return index_add(db->idx, sk, sv);
 }
 
@@ -44,16 +48,24 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	int ret = 0;
 
-	ret = index_get(db->idx, sk, sv);
-
-	return ret;
+	ret = lru_get(db->lru, sk, sv);
+	if (ret)
+		return 1;
+	else 
+		return index_get(db->idx, sk, sv);
 }
 
 int db_exists(struct nessdb *db, struct slice *sk)
 {
 	struct slice sv;
-	int ret = index_get(db->idx, sk, &sv);
+	
+	int ret = lru_get(db->lru, sk, &sv);
+	if (ret) {
+		free(sv.data);
+		return 1;
+	}
 
+	ret = index_get(db->idx, sk, &sv);
 	if (ret == 1) {
 		free(sv.data);
 		return 1;
@@ -64,6 +76,7 @@ int db_exists(struct nessdb *db, struct slice *sk)
 
 void db_remove(struct nessdb *db, struct slice *sk)
 {
+	lru_remove(db->lru, sk);
 	index_add(db->idx, sk, NULL);
 }
 
@@ -117,5 +130,6 @@ void db_close(struct nessdb *db)
 {
 	index_free(db->idx);
 	buffer_free(db->buf);
+	lru_free(db->lru);
 	free(db);
 }
