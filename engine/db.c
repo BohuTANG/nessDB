@@ -48,13 +48,16 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	int ret = 0;
 
-	ret = lru_get(db->lru, sk, sv);
-	if (ret)
-		return 1;
-	else {
-		ret = index_get(db->idx, sk, sv);
+	ret = index_bloom_get(db->idx, sk);
+	if (ret) {
+		ret = lru_get(db->lru, sk, sv);
 		if (ret)
-			lru_set(db->lru, sk, sv);
+			return 1;
+		else {
+			ret = index_get(db->idx, sk, sv);
+			if (ret)
+				lru_set(db->lru, sk, sv);
+		}
 	}
 
 	return ret;
@@ -62,18 +65,23 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 
 int db_exists(struct nessdb *db, struct slice *sk)
 {
+	int ret = 0;
 	struct slice sv;
-	
-	int ret = lru_get(db->lru, sk, &sv);
-	if (ret) {
-		free(sv.data);
-		return 1;
-	}
 
-	ret = index_get(db->idx, sk, &sv);
-	if (ret == 1) {
-		free(sv.data);
-		return 1;
+	ret = index_bloom_get(db->idx, sk);
+	if (ret) {
+
+		int ret = lru_get(db->lru, sk, &sv);
+		if (ret) {
+			free(sv.data);
+			return 1;
+		}
+
+		ret = index_get(db->idx, sk, &sv);
+		if (ret == 1) {
+			free(sv.data);
+			return 1;
+		}
 	}
 
 	return 0;
