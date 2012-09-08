@@ -46,7 +46,6 @@ struct index{
 struct index *index_new(const char *basedir, int max_mtbl_size, int tolog);
 int index_add(struct index *idx, struct slice *sk, struct slice *sv);
 int index_get(struct index *idx, struct slice *sk, struct slice *sv);
-int index_bloom_get(struct index *idx, struct slice *sk);
 uint64_t index_allcount(struct index *idx);
 void index_free(struct index *idx);
 

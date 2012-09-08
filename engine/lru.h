@@ -13,13 +13,18 @@
 struct hashtable {
 	uint32_t size;
 	uint64_t cap;
-	struct list **buckets;
+	struct hashtable_node **buckets;
+};
+
+struct hashtable_node {
+	void *key;
+	void *value;
+	struct hashtable_node *nxt;
 };
 
 struct list{
 	uint64_t count;
-	uint64_t used_size;
-
+	uint64_t used;
 	struct list_node *head;
 	struct list_node *tail;
 };
@@ -34,7 +39,6 @@ struct list_node {
 
 struct lru {
 	uint64_t allow;
-	uint64_t count;
 	struct list *list;
 	struct hashtable *ht;
 };

@@ -274,11 +274,6 @@ void _index_flush(struct index *idx)
 	}
 }
 
-int index_bloom_get(struct index *idx, struct slice *sk)
-{
-	return bloom_get(idx->sst->bloom, sk->data);
-}
-
 int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int ret = 0, value_len, result;
@@ -301,12 +296,11 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
  	 * 2) Then from merge memtable 
  	 * 3) Last from sst on-disk indexes
  	 */
-/*	ret = bloom_get(idx->sst->bloom, sk->data);
+	ret = bloom_get(idx->sst->bloom, sk->data);
 	if (ret == 0)
 		return 0;
 	
 	idx->bloom_hits++;
-	*/
 
 	cur_list = idx->list;
 	node = skiplist_lookup(cur_list, sk->data);

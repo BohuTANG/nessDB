@@ -33,34 +33,17 @@ void list_push(struct list *list, struct list_node *node)
 	if (!node)
 		return;
 
-	if (!list->head) {
-		list->head = node;
-	} else {
+	if (list->head != NULL) {
 		node->nxt = list->head;
 		list->head->pre = node;
 		list->head = node;
-		if (list->tail == NULL)
-				list->tail = list->head->nxt;
+	} else {
+		list->head = node;
+		list->tail = node;
 	}
 
-	list->used_size += node->size;
+	list->used += node->size;
 	list->count++;
-}
-
-struct list_node * list_find(struct list *list, void *key)
-{
-	struct list_node *cur;
-
-	if (list) {
-		for (cur = list->head; cur; cur = cur->nxt) {
-			int cmp = strcmp((char*)key, cur->sk.data);
-
-			if (cmp == 0)
-				return cur;
-		}
-	}
-
-	return NULL;
 }
 
 void list_remove(struct list *list, struct list_node *node)
@@ -76,8 +59,8 @@ void list_remove(struct list *list, struct list_node *node)
 			pre->nxt = nxt;
 			nxt->pre = pre;
 		} else {
-			pre->nxt = NULL;
 			list->tail = pre;
+			pre->nxt = NULL;
 		}
 	} else {
 		if (nxt) {
@@ -89,23 +72,14 @@ void list_remove(struct list *list, struct list_node *node)
 		}
 	}
 
-	list->used_size -= node->size;
+	list->used -= node->size;
 	list->count--;
-}
 
-void list_free_node(struct list *list, struct list_node *node)
-{
-	if (node) {
-		list_remove(list, node);
-
-		if (node->sk.data)
-			free(node->sk.data);
-
-		if (node->sv.data)
-			free(node->sv.data);
-
-		free(node);
-	}
+	if (node->sk.data)
+		free(node->sk.data);
+	if (node->sv.data)
+		free(node->sv.data);
+	free(node);
 }
 
 void list_reverse(struct list *list, void (*callback) (void *))
@@ -115,7 +89,7 @@ void list_reverse(struct list *list, void (*callback) (void *))
 	for (node = list->head; node; node = node->nxt)
 		callback((void*)node);
 }
-
+	
 void list_free(struct list *list)
 {
 	if (list) {
@@ -123,14 +97,8 @@ void list_free(struct list *list)
 		struct list_node *nxt = cur;
 
 		while (cur) {
-			nxt = cur;
-			if (cur->sk.data)
-				free(cur->sk.data);
-			if (cur->sv.data)
-				free(cur->sv.data);
-
 			nxt = cur->nxt;
-			free(cur);
+			list_remove(list, cur);
 			cur = nxt;
 		}
 
@@ -165,7 +133,7 @@ struct hashtable *hashtable_new(uint64_t cap)
 		return NULL;
 
 	ht->cap = cap;
-	ht->buckets = calloc(cap, sizeof(struct list*));
+	ht->buckets = calloc(cap, sizeof(struct hashtable_node*));
 
 	return ht;
 }
@@ -175,12 +143,17 @@ void hashtable_set(struct hashtable *ht, void *key, void *value)
 	if (!key || !value)
 		return;
 
+	struct hashtable_node *node;
 	uint64_t slot = _find_slot(ht, key);
 
-	if (ht->buckets[slot] == NULL)
-		ht->buckets[slot] = list_new();
+	node = calloc(1, sizeof(struct hashtable_node));
+	node->key = key;
+	node->value = value;
 
-	list_push(ht->buckets[slot], (struct list_node*)value);
+	node->nxt = ht->buckets[slot];
+	ht->buckets[slot] = node;
+
+
 	ht->size++;
 }
 
@@ -190,12 +163,16 @@ void *hashtable_get(struct hashtable *ht, void *key)
 		return NULL;
 
 	uint64_t slot = _find_slot(ht, key);
-	struct list *list = ht->buckets[slot];
+	struct hashtable_node *node;
 
-	if (list) {
-		return (void*) list_find(list, key);
+	node = ht->buckets[slot];
+	while (node) {
+		if (strcmp((char*)key, (char*)node->key) == 0)
+			return node->value;
+
+		node = node->nxt;
 	}
-
+	
 	return NULL;
 }
 
@@ -205,22 +182,40 @@ void hashtable_remove(struct hashtable *ht, void *key)
 		return;
 
 	uint64_t slot = _find_slot(ht, key);
-	struct list *list = ht->buckets[slot];
+	struct hashtable_node *cur, *prev = NULL;
 
-	if (list) {
-		struct list_node *node = list_find(list, key);
+	cur = ht->buckets[slot];
+	while (cur) {
+		if (strcmp((char*)key, (char*)cur->key) == 0) {
+			if (prev != NULL)
+				prev->nxt = cur->nxt;
+			else
+				ht->buckets[slot] = cur->nxt;
+			if (cur)
+				free(cur);
+			ht->size--;
+			return;
+		}
 
-		if (node)
-			list_remove(list, node);
+		prev = cur;
+		cur = cur->nxt;	
 	}
 }
 
 void hashtable_free(struct hashtable *ht)
 {
 	uint64_t i;
+
 	for (i = 0; i < ht->cap; i++) {
 		if (ht->buckets[i]) {
-			free(ht->buckets[i]);
+			struct hashtable_node *cur = ht->buckets[i], *nxt;
+
+			while (cur) {
+				nxt = cur->nxt;
+
+				free(cur);
+				cur = nxt;
+			}
 		}
 	}
 
@@ -270,16 +265,14 @@ RET:
 
 void _lru_check(struct lru *lru)
 {
-	if (lru->list->used_size > lru->allow) {
-		struct list *list = lru->list;
-		struct list_node *tail = list->tail;
+	while (lru->list->used >= lru->allow) {
+		struct list_node *tail = lru->list->tail;
 		struct hashtable *ht = lru->ht;
 
 		/* free list tail */
 		if (tail) {
 			hashtable_remove(ht, tail->sk.data);
-			list_free_node(list, tail);
-			lru->count--;
+			list_remove(lru->list, tail);
 		}
 	}
 }
@@ -297,9 +290,8 @@ void lru_set(struct lru *lru, struct slice *sk, struct slice *sv)
 	if (node) {
 		hashtable_remove(lru->ht, sk->data);
 		list_remove(lru->list, node);
-		list_free_node(lru->list, node);
 	}
-	
+
 	node = calloc(1, sizeof(struct list_node));
 	char *kdata= malloc(sk->len + 1);
 	memset(kdata, 0, sk->len + 1);
@@ -314,9 +306,8 @@ void lru_set(struct lru *lru, struct slice *sk, struct slice *sv)
 	node->sv.data = vdata;
 	node->size = (sk->len + sv->len);
 
-	hashtable_set(lru->ht, sk->data, node);
+	hashtable_set(lru->ht, node->sk.data, node);
 	list_push(lru->list, node);
-	lru->count++;
 }
 
 int lru_get(struct lru *lru, struct slice *sk, struct slice *ret)
@@ -329,7 +320,6 @@ int lru_get(struct lru *lru, struct slice *sk, struct slice *ret)
 		char *data = malloc(ret->len + 1);
 		memset(data, 0, ret->len + 1);
 		memcpy(data, node->sv.data, ret->len);
-
 		ret->data = data;
 
 		return 1;
@@ -348,7 +338,7 @@ void lru_remove(struct lru *lru, struct slice *sk)
 	node = hashtable_get(lru->ht, sk->data);
 	if (node) {
 		hashtable_remove(lru->ht, sk->data);
-		list_free_node(lru->list, node);
+		list_remove(lru->list, node);
 	}
 }
 
