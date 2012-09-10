@@ -55,7 +55,7 @@ struct footer{
 
 static  void _make_sstname(int num, char *ret)
 {
-	snprintf(ret, FILE_NAME_SIZE, "%d.sst", num);
+	snprintf(ret, FILE_NAME_SIZE, "%06d.sst", num);
 }
 
 void _add_bloom(struct sst *sst, char *sst_file, int fd, int count)
