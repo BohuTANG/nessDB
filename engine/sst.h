@@ -15,6 +15,7 @@
 #include "skiplist.h"
 #include "meta.h"
 #include "bloom.h"
+#include "compact.h"
 #include "util.h"
 
 struct mutexer{
@@ -28,11 +29,13 @@ struct sst_block{
 }__attribute__((packed));
 
 struct sst{
+	int db_fd;
 	char basedir[FILE_PATH_SIZE];
 	volatile int lsn;
 	struct meta *meta;
 	struct bloom *bloom;
 	struct mutexer mutexer;
+	struct compact *cpt;
 };
 
 struct sst *sst_new(const char *basedir);

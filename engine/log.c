@@ -219,7 +219,7 @@ int log_recovery(struct log *l, struct skiplist *list)
 	return ret;
 }
 
-uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
+uint64_t log_append(struct log *l, struct compact *cpt, struct slice *sk, struct slice *sv)
 {
 	int len;
 	int db_len;
@@ -229,6 +229,7 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 	struct buffer *buf = l->buf;
 	struct buffer *db_buf = l->db_buf;
 	uint64_t db_offset = l->db_alloc;
+	uint64_t hole_offset = 0UL;
 
 	/* DB write */
 	if (sv) {
@@ -238,17 +239,27 @@ uint64_t log_append(struct log *l, struct slice *sk, struct slice *sv)
 		db_len = db_buf->NUL;
 		db_line = buffer_detach(db_buf);
 
-		write_len = write(l->db_wfd, db_line, db_len);
-		if ( write_len != db_len) {
-			__ERROR("value aof error when write, length:<%d>, write_len:<%d>"
-					, db_len
-					, write_len);
+		hole_offset = cpt_get(cpt, sv->len);
+		if (hole_offset > 0) {
+			db_offset = hole_offset;
+			if (lseek(l->db_wfd, db_offset, SEEK_SET) == -1)
+				hole_offset = 0;
+		} else 
+			l->db_alloc += db_len;
 
+		write_len = write(l->db_wfd, db_line, db_len);
+		if (write_len != db_len) {
+			__ERROR("value aof error when write, length:<%d>, write_len:<%d>", db_len, write_len);
 			return db_offset;
 		}
 
-		l->db_alloc += db_len;
-	}
+		/* reset seek postion to end */
+		if (hole_offset > 0) {
+			lseek(l->db_wfd, l->db_alloc, SEEK_SET);
+		}
+
+	} else
+		db_offset = 0UL;
 
 	/* LOG write */
 	if (l->islog) {

@@ -1,7 +1,14 @@
 CC = gcc
+
+#shrinks the size of db size
+SHRINK = -DSHRINK 
+
+#use background merge
 BGMERGE = -DBGMERGE
-DEBUG =	-g -ggdb -DINFO
-CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) $(BGMERGE)
+
+#debug levle
+DEBUG =	-g -O2 -ggdb -DINFO
+CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) $(BGMERGE) $(SHRINK)
 
 LIB_OBJS = \
 	./engine/db.o\

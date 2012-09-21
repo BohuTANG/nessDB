@@ -124,7 +124,8 @@ int skiplist_insert(struct skiplist *list, char *key, uint64_t val, OPT opt)
 
 	x = x->forward[0];
 	if (x != NIL && cmp_eq(x->key, key)) {
-		x->val = val;
+		if (val != 0)
+			x->val = val;
 		x->opt = opt;
 		return 1;
 	}

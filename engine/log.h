@@ -10,6 +10,7 @@
 #define _LOG_H
 
 #include <stdint.h>
+#include "compact.h"
 #include "skiplist.h"
 #include "util.h"
 
@@ -28,7 +29,7 @@ struct log{
 
 struct log *log_new(const char *basedir, int islog);
 int log_recovery(struct log *log, struct skiplist *list);
-uint64_t log_append(struct log *log, struct slice *sk, struct slice *sv);
+uint64_t log_append(struct log *log, struct compact *cpt, struct slice *sk, struct slice *sv);
 void log_remove(struct log *log, int lsn);
 void log_next(struct log *log, int lsn);
 void log_free(struct log *log);

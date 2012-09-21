@@ -162,6 +162,16 @@ struct sst *sst_new(const char *basedir)
 	s->mutexer.mutex = malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(s->mutexer.mutex, NULL);
 
+	/* for remove hole */
+	s->cpt = cpt_new();
+	char db_name[FILE_PATH_SIZE];
+	memset(db_name, 0, FILE_PATH_SIZE);
+	snprintf(db_name, FILE_PATH_SIZE, "%s/%s", basedir, DB_NAME);
+	s->db_fd = n_open(db_name, LSM_OPEN_FLAGS, 0644);
+	if (s->db_fd == -1)
+		__ERROR("fd is -1 when sst new");
+
+
 	/* SST files load */
 	_sst_load(s);
 	
@@ -234,8 +244,24 @@ void *_write_mmap(struct sst *sst, struct skipnode *x, size_t count, struct meta
 			memcpy(blks[j].key, x->key, strlen(x->key));
 			blks[j].offset = x->val;
 			j++;
-		} else
+		} else {
+#ifdef SHRINK
+			/* add remove offsets to compact table */
+			if (x->val > 0) {
+				int val_len = 0;
+				int result = lseek(sst->db_fd, x->val,  SEEK_SET);
+
+				if (result > -1) {
+					result = read(sst->db_fd, &val_len, sizeof(int));
+					if (result > -1 && val_len > 0) {
+						cpt_add(sst->cpt, val_len, x->val);
+					}
+				}
+			}
+#endif
+
 			count--;
+		}
 
 		last = x;
 		x = x->forward[0];
@@ -618,6 +644,7 @@ void sst_free(struct sst *sst)
 	if (sst) {
 		meta_free(sst->meta);
 		bloom_free(sst->bloom);
+		cpt_free(sst->cpt);
 		free(sst->mutexer.mutex);
 		free(sst);
 	}

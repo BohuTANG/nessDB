@@ -100,8 +100,6 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	memset(idx->basedir, 0, FILE_PATH_SIZE);
 	memcpy(idx->basedir, basedir, FILE_PATH_SIZE);
 
-	idx->sst = sst_new(idx->basedir);
-	idx->list = skiplist_new(max_mtbl_size);
 	idx->merge_mutex = malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_mutex, NULL);
 
@@ -119,6 +117,9 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	/* log */
 	idx->log = log_new(idx->basedir, tolog);
 
+	/* sst */
+	idx->sst = sst_new(idx->basedir);
+	idx->list = skiplist_new(max_mtbl_size);
 	/*
 	 * Log Recovery Processes:
 	 * 1) read old log file and add entries to memtable
@@ -157,7 +158,7 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 
 int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 {
-	uint64_t value_offset;
+	uint64_t value_offset = 0UL;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length#%d more than MAX_KEY_SIZE$%d"
@@ -166,7 +167,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		return 0;
 	}
 
-	value_offset = log_append(idx->log, sk, sv);
+	value_offset = log_append(idx->log, idx->sst->cpt, sk, sv);
 
 	if (!idx->list) {
 		__PANIC("List<%d> is NULL", idx->lsn);
