@@ -1,3 +1,13 @@
+/*
+ * nessDB storage engine
+ * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
+ * All rights reserved.
+ * Code is licensed with BSD. See COPYING.BSD file.
+ *
+ * Compact is for data file shrinking.
+ * Reuse same hole  when new value-length is less than deleteds.
+ */
+
 #include <stdlib.h>
 
 #include "compact.h"
