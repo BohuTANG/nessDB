@@ -14,17 +14,28 @@ LIB_OBJS = \
 	./engine/bloom.o\
 	./engine/buffer.o\
 	./engine/lru.o\
+	./engine/compact.o\
 	./engine/skiplist.o
+
+TEST = \
+	./bench/db-bench.o\
+	./test/lru-test.o\
+	./test/compact-test.o
+
+EXE = \
+	./db-bench\
+	./lru-test\
+	./compact-test
 
 LIBRARY = libnessdb.so
 
 all: $(LIBRARY)
 
 clean:
-	-rm -f db-bench lru-test
-	-rm -f bench/db-bench.o
 	-rm -f $(LIBRARY)  
 	-rm -f $(LIB_OBJS)
+	-rm -f $(EXE)
+	-rm -f $(TEST)
 
 cleandb:
 	-rm -rf ndbs
@@ -33,8 +44,11 @@ cleandb:
 $(LIBRARY): $(LIB_OBJS)
 	$(CC) -pthread  -fPIC -shared $(LIB_OBJS) -o libnessdb.so
 
-db-bench: bench/db-bench.o $(LIB_OBJS)
-	$(CC) -pthread  bench/db-bench.o $(LIB_OBJS) -o $@
+db-bench:  $(LIB_OBJS) $(TEST)
+	$(CC) -pthread  $(LIB_OBJS) bench/db-bench.o -o $@
 
-lru-test: test/lru-test.o $(LIB_OBJS)
-	$(CC) -pthread  test/lru-test.o $(LIB_OBJS) -o $@
+lru-test:  $(LIB_OBJS) $(TEST)
+	$(CC) -pthread  $(LIB_OBJS) test/lru-test.o -o $@
+
+compact-test:  $(LIB_OBJS) $(TEST)
+	$(CC) -pthread  $(LIB_OBJS) test/compact-test.o -o $@

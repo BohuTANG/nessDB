@@ -37,7 +37,7 @@
 #endif
 
 #define NESSDB_MAX_KEY_SIZE (64) /* max key size */
-#define NESSDB_MAX_SUBINDEX (32) /* max subindex size */
+#define NESSDB_MAX_VAL_SIZE (4 * 1024 * 1024) /* max value size,4Mb */
 #define LOG_BUFFER_SIZE (1024*200) /* log buffer size*/
 #define MTBL_MAX_COUNT (2000000) /* max count in memtable */
 #define SST_MAX_COUNT (65536) /* one sst's max count entries */
