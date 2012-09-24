@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include "util.h"
 #include "config.h"
+#include "xmalloc.h"
 #include "bloom.h"
 #include "debug.h"
 
@@ -17,19 +18,11 @@
 
 struct bloom *bloom_new()
 {
-	struct bloom *bl = calloc(1, sizeof(struct bloom));
-
-	if (!bl) 
-		__PANIC("bl is NULL when bloom_new, will abort...");
+	struct bloom *bl =xcalloc(1, sizeof(struct bloom));
 
 	bl->size = BLOOM_BITS;
-	bl->bitset = calloc((bl->size + 1) / sizeof(char), sizeof(char));
-	if (!bl->bitset)
-		__PANIC("bl->bitset is NULL , will abort...bl->size is %lu", bl->size);
-
-	bl->hashfuncs = calloc(HFUNCNUM, sizeof(hashfuncs));
-	if (!bl->hashfuncs)
-		__PANIC("bl->hashfunc is NULL , will abort...");
+	bl->bitset = xcalloc((bl->size + 1) / sizeof(char), sizeof(char));
+	bl->hashfuncs = xcalloc(HFUNCNUM, sizeof(hashfuncs));
 
 	bl->hashfuncs[0] = sax_hash;
 	bl->hashfuncs[1] = djb_hash;

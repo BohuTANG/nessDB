@@ -19,13 +19,11 @@
 
 #include "meta.h"
 #include "debug.h"
+#include "xmalloc.h"
 
 struct meta *meta_new()
 {
-	struct meta *m = calloc(1, sizeof(struct meta));
-
-	if (!m)
-		__PANIC("meta new is NULL....,will be abort");
+	struct meta *m = xcalloc(1, sizeof(struct meta));
 
 	return m;
 }

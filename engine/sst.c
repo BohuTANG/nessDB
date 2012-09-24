@@ -41,6 +41,7 @@
 #include <sys/mman.h>
 
 #include "sst.h"
+#include "xmalloc.h"
 #include "debug.h"
 
 #define BLK_MAGIC (20111225)
@@ -148,10 +149,7 @@ struct sst *sst_new(const char *basedir)
 {
 	struct sst *s;
 
-	s = calloc(1, sizeof(struct sst));
-
-	if (!s)
-		__PANIC("sst new NULL, abort()...");
+	s = xcalloc(1, sizeof(struct sst));
 
 	s->meta = meta_new();
 	memcpy(s->basedir, basedir, FILE_PATH_SIZE);
@@ -159,7 +157,7 @@ struct sst *sst_new(const char *basedir)
 	s->bloom = bloom_new();
 
 	s->mutexer.lsn = -1;
-	s->mutexer.mutex = malloc(sizeof(pthread_mutex_t));
+	s->mutexer.mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(s->mutexer.mutex, NULL);
 
 	/* for remove hole */

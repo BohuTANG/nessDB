@@ -11,6 +11,7 @@
 #include <string.h>
 #include "lru.h"
 #include "debug.h"
+#include "xmalloc.h"
 
 #define PRIME (1301081)
 
@@ -18,12 +19,7 @@
 
 struct list *list_new()
 {
-	struct list *l = calloc(1, sizeof(struct list));
-
-	if (!l) {
-		__ERROR("list new error");
-		return NULL;
-	}
+	struct list *l = xcalloc(1, sizeof(struct list));
 
 	return l;
 }
@@ -127,13 +123,10 @@ static uint64_t _find_slot(struct hashtable *ht, void *key)
 
 struct hashtable *hashtable_new(uint64_t cap)
 {
-	struct hashtable *ht = calloc(1, sizeof(struct hashtable));
-
-	if (!ht)
-		return NULL;
+	struct hashtable *ht = xcalloc(1, sizeof(struct hashtable));
 
 	ht->cap = cap;
-	ht->buckets = calloc(cap, sizeof(struct hashtable_node*));
+	ht->buckets = xcalloc(cap, sizeof(struct hashtable_node*));
 
 	return ht;
 }
@@ -146,7 +139,7 @@ void hashtable_set(struct hashtable *ht, void *key, void *value)
 	struct hashtable_node *node;
 	uint64_t slot = _find_slot(ht, key);
 
-	node = calloc(1, sizeof(struct hashtable_node));
+	node = xcalloc(1, sizeof(struct hashtable_node));
 	node->key = key;
 	node->value = value;
 
@@ -227,12 +220,8 @@ void hashtable_free(struct hashtable *ht)
 
 struct lru *lru_new(uint64_t size)
 {
-	struct lru *lru = malloc(sizeof(struct lru));
+	struct lru *lru = xmalloc(sizeof(struct lru));
 	
-	if (!lru) {
-		__ERROR("lru new error");
-		goto RET;
-	}
 	memset(lru, 0, sizeof(struct lru));
 
 	lru->list = list_new();
@@ -292,14 +281,16 @@ void lru_set(struct lru *lru, struct slice *sk, struct slice *sv)
 		list_remove(lru->list, node);
 	}
 
-	node = calloc(1, sizeof(struct list_node));
-	char *kdata= malloc(sk->len + 1);
+	node = xcalloc(1, sizeof(struct list_node));
+
+	char *kdata= xmalloc(sk->len + 1);
+
 	memset(kdata, 0, sk->len + 1);
 	memcpy(kdata, sk->data, sk->len);
 	node->sk.len = sk->len;
 	node->sk.data = kdata;
 
-	char *vdata= malloc(sv->len + 1);
+	char *vdata= xmalloc(sv->len + 1);
 	memset(vdata, 0, sv->len + 1);
 	memcpy(vdata, sv->data, sv->len);
 	node->sv.len = sv->len;
@@ -317,7 +308,7 @@ int lru_get(struct lru *lru, struct slice *sk, struct slice *ret)
 	node = hashtable_get(lru->ht, sk->data);
 	if (node) {
 		ret->len = node->sv.len;
-		char *data = malloc(ret->len + 1);
+		char *data = xmalloc(ret->len + 1);
 		memset(data, 0, ret->len + 1);
 		memcpy(data, node->sv.data, ret->len);
 		ret->data = data;

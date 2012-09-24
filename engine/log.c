@@ -19,6 +19,7 @@
 #include "buffer.h"
 #include "log.h"
 #include "debug.h"
+#include "xmalloc.h"
 
 #define DB_MAGIC (2011)
 
@@ -41,10 +42,7 @@ struct log *log_new(const char *basedir, int islog)
 	char log_name[FILE_PATH_SIZE];
 	char db_name[FILE_PATH_SIZE];
 
-	l = calloc(1, sizeof(struct log));
-	if (!l)
-		__PANIC("log_new NULL, abort...");
-
+	l = xcalloc(1, sizeof(struct log));
 	l->islog = islog;
 
 	memset(log_name, 0, FILE_PATH_SIZE);

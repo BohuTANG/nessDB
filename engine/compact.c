@@ -9,18 +9,16 @@
  */
 
 #include <stdlib.h>
-
 #include "compact.h"
 #include "config.h"
 #include "debug.h"
+#include "xmalloc.h"
 
 struct compact *cpt_new()
 {
-	struct compact *cpt = calloc(1, sizeof(struct compact));
-	if (!cpt)
-		return NULL;
+	struct compact *cpt = xcalloc(1, sizeof(struct compact));
 
-	cpt->nodes = calloc(NESSDB_MAX_VAL_SIZE, sizeof(struct compact*));
+	cpt->nodes = xcalloc(NESSDB_MAX_VAL_SIZE, sizeof(struct compact*));
 
 	return cpt;
 }
@@ -58,7 +56,7 @@ int cpt_add(struct compact *cpt, int v_len, uint64_t offset)
 	if (_find(cpt, v_len, offset))
 		return 1;
 
-	n = calloc(1, sizeof(struct cpt_node));
+	n = xcalloc(1, sizeof(struct cpt_node));
 	n->offset = offset;
 	n->nxt = cpt->nodes[v_len];
 	cpt->nodes[v_len] = n;

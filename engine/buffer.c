@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include "xmalloc.h"
 #include "buffer.h" 
 #include "debug.h"
 
@@ -36,7 +37,7 @@ void _buffer_extendby(struct buffer *b, int len)
 		b->buflen = 32;
 
 	b->buflen = _next_power(len);
-	buffer = realloc(b->buf, b->buflen);
+	buffer = xrealloc(b->buf, b->buflen);
 	b->buf = buffer;
 }
 
@@ -52,10 +53,7 @@ void _string_vprintf(struct buffer *b, const char *fmt, va_list ap)
 
 struct buffer *buffer_new(size_t reserve)
 {
-	struct buffer *b = malloc(sizeof(struct buffer));
-
-	if (!b)
-		__ERROR("buffer_new NULL...");
+	struct buffer *b = xmalloc(sizeof(struct buffer));
 
 	b->buf = NULL;
 	b->NUL = 0;

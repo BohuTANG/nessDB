@@ -21,6 +21,7 @@
 #include "debug.h"
 #include "bloom.h"
 #include "index.h"
+#include "xmalloc.h"
 
 void *_merge_job(void *arg)
 {
@@ -87,11 +88,8 @@ merge_out:
 struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 {
 	char dbfile[FILE_PATH_SIZE];
-	struct index *idx = calloc(1, sizeof(struct index));
-	struct idx_park *park = calloc(1, sizeof(struct idx_park));
-
-	if (!idx || !park)
-		__PANIC("memory less when index_new, abort...");
+	struct index *idx = xcalloc(1, sizeof(struct index));
+	struct idx_park *park = xcalloc(1, sizeof(struct idx_park));
 
 	ensure_dir_exists(basedir);
 	
@@ -100,14 +98,14 @@ struct index *index_new(const char *basedir, int max_mtbl_size, int tolog)
 	memset(idx->basedir, 0, FILE_PATH_SIZE);
 	memcpy(idx->basedir, basedir, FILE_PATH_SIZE);
 
-	idx->merge_mutex = malloc(sizeof(pthread_mutex_t));
+	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_mutex, NULL);
 
 
-	idx->listfree_mutex = malloc(sizeof(pthread_mutex_t));
+	idx->listfree_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->listfree_mutex, NULL);
 
-	idx->swap_mutex = malloc(sizeof(pthread_mutex_t));
+	idx->swap_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->swap_mutex, NULL);
 
 	/* container */
@@ -354,12 +352,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 				goto out_get;
 			}
 
-			data = calloc(1, value_len + 1);
-			if (!data) {
-				__ERROR("mallc data  error, %s, %s", errno, strerror(errno));
-				ret = -1;
-				goto out_get;
-			}
+			data = xcalloc(1, value_len + 1);
 
 			/* read value */
 			result = read(idx->db_rfd, data, value_len);

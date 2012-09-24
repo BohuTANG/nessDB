@@ -22,6 +22,7 @@ LIB_OBJS = \
 	./engine/buffer.o\
 	./engine/lru.o\
 	./engine/compact.o\
+	./engine/xmalloc.o\
 	./engine/skiplist.o
 
 TEST = \

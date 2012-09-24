@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "xmalloc.h"
 #include "index.h"
 #include "buffer.h"
 #include "lru.h"
@@ -22,9 +23,7 @@ struct nessdb *db_open(const char *basedir, uint64_t buffer, int is_log_recovery
 	char buff_dir[FILE_PATH_SIZE];
 	struct nessdb *db;
 
-	db = (struct nessdb*)malloc(sizeof(struct nessdb));
-	if (!db)
-		__PANIC("malloc nessdb NULL when db_open, abort...");
+	db = (struct nessdb*)xmalloc(sizeof(struct nessdb));
 
 	db->buf = buffer_new(LOG_BUFFER_SIZE);
 	db->start_time = time(NULL);
