@@ -18,7 +18,7 @@ struct compact *cpt_new()
 {
 	struct compact *cpt = xcalloc(1, sizeof(struct compact));
 
-	cpt->nodes = xcalloc(NESSDB_MAX_VAL_SIZE, sizeof(struct compact*));
+	cpt->nodes = xcalloc(NESSDB_MAX_VAL_SIZE, sizeof(struct cpt_node*));
 
 	return cpt;
 }
