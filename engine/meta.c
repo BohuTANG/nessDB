@@ -91,7 +91,6 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	int c = 0;
 	int nxt_idx;
 
-	struct slice sk;
 	struct cola_item *L;
 	struct cola *cola;
 
@@ -103,14 +102,9 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	_make_sstname(meta, meta->size);
 	cola = cola_new(meta->sst_file);
 
-	for (; i < c; i++) {
-		if (L[i].opt == 1) {
-			sk.data = L[i].data;
-			sk.len = strlen(L[i].data);
-
-			cola_add(cola, &sk,L[i].offset, L[i].opt);
-		}
-	}
+	for (; i < c; i++)
+		if (L[i].opt == 1) 
+			cola_add(cola, &L[i]);
 
 	/* update new meta node */
 	nxt_idx = _get_idx(meta, L[mid].data) + 1;
@@ -129,14 +123,11 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	cola_truncate(cola);
 
 	/* update max key to mid */
-	memcpy(node->cola->header.max_key, L[mid].data, NESSDB_MAX_KEY_SIZE);
+	memcpy(node->cola->header.max_key, L[mid].data, strlen(L[mid].data));
 
-	for (i = 0; i <= mid; i++) {
-		sk.data = L[i].data;
-		sk.len = strlen(L[i].data);
-
-		cola_add(cola, &sk, L[i].offset, L[i].opt);
-	}
+	for (i = 0; i <= mid; i++)
+		if (L[i].opt == 1)
+			cola_add(cola, &L[i]);
 
 	__DEBUG("----------sst file splitted,count#%d", c);
 	free(L);

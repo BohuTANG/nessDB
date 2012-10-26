@@ -11,6 +11,7 @@
 struct cola_item {
 	char data[NESSDB_MAX_KEY_SIZE];
 	uint64_t offset;
+	uint32_t vlen;
 	char opt;
 } __attribute__((packed));
 
@@ -28,7 +29,7 @@ struct cola {
 };
 
 struct cola *cola_new(const char *file);
-int cola_add(struct cola *cola, struct slice *sk, uint64_t offset, char opt);
+int cola_add(struct cola *cola, struct cola_item *item);
 void cola_truncate(struct cola *cola);
 int cola_isfull(struct cola *cola);
 struct cola_item *cola_in_one(struct cola *cola, int *c);

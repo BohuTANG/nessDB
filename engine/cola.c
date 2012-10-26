@@ -11,8 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/stat.h>
-
+#include <sys/stat.h> 
 #include "xmalloc.h"
 #include "cola.h"
 #include "sorts.h"
@@ -169,32 +168,26 @@ ERR:
 	return NULL;
 }
 
-int cola_add(struct cola *cola, struct slice *sk, uint64_t offset, char opt)
+int cola_add(struct cola *cola, struct cola_item *item)
 {
 	int cmp;
 	int res;
 	int pos;
-	struct cola_item item;
-
-	memset(&item, 0, ITEM_SIZE);
-	memcpy(item.data, sk->data, sk->len);
-	item.offset = offset;
-	item.opt = opt;
 
 	/* bloom filter */
-	if (opt == 1)
-		bloom_add(cola->bf, sk->data);
+	if (item->opt == 1)
+		bloom_add(cola->bf, item->data);
 
 	/* swap max key */
-	cmp = strcmp(sk->data, cola->header.max_key);
+	cmp = strcmp(item->data, cola->header.max_key);
 	if (cmp > 0) { 
 		memset(cola->header.max_key, 0, NESSDB_MAX_KEY_SIZE);
-		memcpy(cola->header.max_key, sk->data, sk->len);
+		memcpy(cola->header.max_key, item->data, strlen(item->data));
 	}
 
 	/* write record */
 	pos = HEADER_SIZE + cola->header.used[0];
-	res = pwrite(cola->fd, &item, ITEM_SIZE, pos);
+	res = pwrite(cola->fd, item, ITEM_SIZE, pos);
 	if (res == -1)
 		goto ERR;
 
