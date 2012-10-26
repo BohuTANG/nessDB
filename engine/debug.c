@@ -1,3 +1,10 @@
+/*
+ * copyright (c) 2012, bohutang <overred.shuttler at gmail dot com>
+ * All rights reserved.
+ * Code is licensed with GPL. See COPYING.GPL file.
+ *
+ */
+
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>

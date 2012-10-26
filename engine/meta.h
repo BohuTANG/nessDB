@@ -1,36 +1,27 @@
-/*
- * nessDB storage engine
- * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
- * All rights reserved.
- * Code is licensed with BSD. See COPYING.BSD file.
- *
- */
-
 #ifndef _META_H
 #define _META_H
 
+#include "config.h"
 #include <stdint.h>
 #include <pthread.h>
-
-#include "skiplist.h"
-#include "util.h"
-#include "config.h"
+#include "cola.h"
 
 #define META_NODE_SIZE sizeof(struct meta_node)
 
 struct meta_node{
-	char end[NESSDB_MAX_KEY_SIZE];
-	char name[FILE_NAME_SIZE];
-	int count;
 	int lsn;
+	struct cola *cola;
 };
 
 struct meta{
+	int seq;
 	int size;
-	struct meta_node nodes[META_MAX_COUNT];
+	char path[NESSDB_PATH_SIZE];
+	char sst_file[NESSDB_PATH_SIZE];
+	struct meta_node nodes[NESSDB_MAX_META];
 };
 
-struct meta *meta_new();
+struct meta *meta_new(const char *path);
 struct meta_node *meta_get(struct meta *meta, char *key);
 void meta_set(struct meta *meta, struct meta_node *node);
 void meta_set_byname(struct meta *meta, struct meta_node *node);

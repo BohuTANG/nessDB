@@ -1,5 +1,5 @@
 ================================================================
-nessDB v1.8 with LSM-Tree
+nessDB v2.0 with Small-Splittable Tree (Another LSM-Tree)
 Copyright (C) 2012 BohuTANG________________ 
 _____________________________  __ \__  __ )
 __  __ \  _ \_  ___/_  ___/_  / / /_  __  |
@@ -7,30 +7,18 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 /_/ /_/\___//____/ /____/ /_____/ /_____/  
 ================================================================
 
-  nessDB is a fast Key-Value database(embedded), supports Redis-Protocol(PING,SET,MSET,GET,MGET,DEL,EXISTS,INFO,SHUTDOWN).
-  Which is written in ANSI C with BSD LICENSE and works in most POSIX systems without external dependencies.
+  nessDB is a fast Key-Value database(embedded), which is written in ANSI C with BSD LICENSE and works in most POSIX systems without external dependencies.
 
-  nessDB is very efficient on disk-based random access, since it's using log-structured-merge (LSM) trees.
+  nessDB is very efficient on disk-based random access, since it's using LSM-Tree-like data structure.
 
-  The 1.8 version is still under construction.
-
-  LAYOUT
-  ======
-  Doc		-- Documentations
-  bench		-- Benchmark testing
-  engine	-- The kernel of storage
-  server	-- Database server(python)
-  interface	-- Others binding of nessDB(python, lua)
+  The Version 2.0, it uses Small-Splittable Tree (SST), for more details, please refer to documentations which in 'spec' folder.
 
   
-  V1.8 FEATURES
+  V2.0 FEATURES
   =============
   a. Better performances on Random-Read/Random-Write
-  b. Log recovery
-  c. Using LSM-Tree as storage engine
-  d. Background detached-thread merging
-  e. Support billion data
-  For more details, please refer to documentations which in 'Doc' folder.
+  b. Using Small-Splittable Tree as storage engine
+  c. Cache-Obvilious && IO Efficient
 
   HOW TODO BENCHMARK
   ==================
@@ -39,13 +27,13 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 	or 
   $./db-bench readone <key>
 
-  If you want delete all idnexes/db/logs, you should do:
+  If you want delete all indexes/db/logs, you should do:
   $make cleandb
 
   HOW TO USE AS DB ENGINE
   =======================
   a. OPEN
-		struct nessdb *db = db_open(db-path, is_log_recovery); 
+		struct nessdb *db = db_open(db-path); 
 
   b. ADD
   		struct slice sk, sv;
@@ -75,10 +63,9 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   e. CLOSE
   		db_close(db);
 
-  how to use as db server
-  =======================
-  See server/README
-  Now, you can connect it with anyone redis-client, even can use the redis-benchmark for performance testing(Note the db-server only support a few redis command).
-
+  NOTICE:
+  From version 2.0, the copyright from BSD change to GPL!
 
   Thanks for your attention!
+
+  				--BohuTANG--

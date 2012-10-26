@@ -1,39 +1,24 @@
 CC = gcc
 
-#shrinks the size of db size
-SHRINK = -DSHRINK 
-
-#use background merge
-BGMERGE = -DBGMERGE
-
 #debug levle
 DEBUG =	-g -O2 -ggdb -DINFO
-CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) $(BGMERGE) $(SHRINK)
+CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) 
 
 LIB_OBJS = \
-	./engine/db.o\
-	./engine/sst.o\
-	./engine/log.o\
-	./engine/util.o\
-	./engine/meta.o\
-	./engine/debug.o\
-	./engine/index.o\
-	./engine/bloom.o\
-	./engine/buffer.o\
-	./engine/lru.o\
-	./engine/compact.o\
 	./engine/xmalloc.o\
-	./engine/skiplist.o
+	./engine/debug.o\
+	./engine/sorts.o\
+	./engine/cola.o\
+	./engine/meta.o\
+	./engine/buffer.o\
+	./engine/index.o\
+	./engine/db.o
 
 TEST = \
-	./bench/db-bench.o\
-	./test/lru-test.o\
-	./test/compact-test.o
+	./bench/db-bench.o
 
 EXE = \
-	./db-bench\
-	./lru-test\
-	./compact-test
+	./db-bench
 
 LIBRARY = libnessdb.so
 
@@ -54,9 +39,3 @@ $(LIBRARY): $(LIB_OBJS)
 
 db-bench:  $(LIB_OBJS) $(TEST)
 	$(CC) -pthread  $(LIB_OBJS) bench/db-bench.o -o $@
-
-lru-test:  $(LIB_OBJS) $(TEST)
-	$(CC) -pthread  $(LIB_OBJS) test/lru-test.o -o $@
-
-compact-test:  $(LIB_OBJS) $(TEST)
-	$(CC) -pthread  $(LIB_OBJS) test/compact-test.o -o $@

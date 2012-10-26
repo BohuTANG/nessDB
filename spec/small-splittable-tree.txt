@@ -1,0 +1,67 @@
+Small-Splittable Tree (SST) Algorithm
+-----------------------------------------
+				Drafted by BohuTANG
+
+  This is a simple COLAs(Cache Oblivious Lookahead Arrays) implementation with small-height(level), BUT HERE, I prefer to call it Small-Splittable Tree(SST). It's very fast for random-data insertion and cache oblivious.
+
+  The paper which COLAs is described at here(also tokutek Prof.s):
+  http://www.cs.sunysb.edu/~bender/newpub/BenderFaFi07.pdf
+
+  a) Small-Splittable Tree
+  =========================
+	0) small height (As a general, the height(H) is no more than 10)
+	1) if height of SST is more than H, it can elegant split.
+
+  b) small N-height:N is small, such as 8
+  =======================================
+	L0:1 * 1024KB
+	L1:2 * 1024KB
+	L2:4 * 1024KB
+	... ...
+
+	level structured
+	================
+	+------------+
+	| L0(random) |
+	+------------+----------+
+	| L1(sorted)            |
+	+------------+----------+----------+----------+
+	| L2(sorted)                                  |
+	+------------+----------+----------+----------+
+	... ...
+
+
+	file structured
+	================
+	+---------------+----------+-------------+------------+
+	|                       header                        |
+	+---------------+----------+-------------+------------+
+	|  key 1 length |   key 1  | data offset | operation  |
+	+---------------+----------+-------------+------------+
+	|                      ... ...                        |
+	+---------------+----------+-------------+------------+
+	|  key N length |   key N  | data offset | operation  |
+	+---------------+----------+-------------+------------+
+
+
+	header structured
+	==================
+	+------------+-----------+-------------+
+	|  L0 count  | L1 count  |   L2 count  | ... ...
+	+------------+-----------+-------------+
+
+  c) insert
+  =========
+     0) if all levels count is 0, insert to L0(L0 is AOF, others are sorted)
+     1) if one level is full, merge it to next level
+
+  d) lookup
+  =========
+     0) from L0 to Ln , each level is binary search.
+
+  e) when to split
+  ================
+     if ALL levels are full, scan all levels and split into two SST
+
+Code is licensed with GPL. See COPYING.GPL file.
+Copyright (c) 2012, BohuTANG <overred.shuttler at gmail dot com>

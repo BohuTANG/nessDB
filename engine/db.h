@@ -1,15 +1,7 @@
-/*
- * nessDB storage engine
- * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
- * All rights reserved.
- * Code is licensed with BSD. See COPYING.BSD file.
- *
- */
-
 #ifndef _DB_H
 #define _DB_H
 
-#include "util.h"
+#include "config.h"
 #include <time.h>
 
 #ifdef __cplusplus
@@ -18,12 +10,9 @@
 
 struct nessdb {
 	struct index *idx;
-	struct buffer *buf;
-	struct lru *lru;
-	time_t start_time;
 };
 
-struct nessdb *db_open(const char *basedir, uint64_t buffer, int is_log_recovery);
+struct nessdb *db_open(const char *basedir);
 int db_get(struct nessdb *db, struct slice *sk, struct slice *sv);
 int db_exists(struct nessdb *db, struct slice *sk);
 int db_add(struct nessdb *db, struct slice *sk, struct slice *sv);

@@ -2,7 +2,6 @@
  * nessDB storage engine
  * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
- * Code is licensed with BSD. See COPYING.BSD file.
  *
  */
 
@@ -12,21 +11,34 @@
 		$make db-bench
 	 	$./db-bench <op: write | read> <count>
 */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <string.h>
-#include "../engine/util.h"
+#include <sys/time.h>
+#include "../engine/config.h"
 #include "../engine/debug.h"
 #include "../engine/db.h"
 
-#define TOLOG (0)
+#define DATAS ("ndbs")
 #define KSIZE (16)
 #define VSIZE (80)
-#define V "1.8.2"
+#define V "2.0"
 #define LINE "+-----------------------------+----------------+------------------------------+-------------------+\n"
 #define LINE1 "---------------------------------------------------------------------------------------------------\n"
+
+long long get_ustime_sec(void)
+{
+	struct timeval tv;
+	long long ust;
+
+	gettimeofday(&tv, NULL);
+	ust = ((long long)tv.tv_sec)*1000000;
+	ust += tv.tv_usec;
+	return ust / 1000000;
+}
 
 void _random_key(char *key,int length) {
 	int i;
@@ -52,10 +64,6 @@ void _print_header(int count)
 	printf("Async Merge:	NO\n");
 #endif
 
-	if (TOLOG == 1)
-		printf("Recovery:	OPEN\n");
-	else 
-		printf("Recovery:	CLOSE\n");
 
 	printf(LINE1);
 }
@@ -103,7 +111,6 @@ void _write_test(long int count)
 	long long start,end;
 	struct slice sk, sv;
 	struct nessdb *db;
-	char *path = getcwd(NULL, 0);
 
 	char key[KSIZE + 1];
 	char val[VSIZE + 1];
@@ -111,8 +118,7 @@ void _write_test(long int count)
 	memset(key, 0, KSIZE + 1);
 	memset(val, 0, VSIZE + 1);
 
-	db = db_open(path, 0UL, TOLOG);
-	free(path);
+	db = db_open(DATAS);
 
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
@@ -152,12 +158,9 @@ void _read_test(long int count)
 	struct slice sk;
 	struct slice sv;
 	struct nessdb *db;
-	char *dir = getcwd(NULL, 0);
-
-	db = db_open(dir, 0UL,  TOLOG);
-
 	char key[KSIZE + 1];
 
+	db = db_open(DATAS);
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
 		memset(key, 0, KSIZE + 1);
@@ -175,7 +178,6 @@ void _read_test(long int count)
 	}
 
 	db_close(db);
-	free(dir);
 
 	end = get_ustime_sec();
 
@@ -194,14 +196,13 @@ void _readone_test(char *key)
 	struct slice sk;
 	struct slice sv;
 	struct nessdb *db;
-	char *dir = getcwd(NULL, 0);
 	char k[KSIZE + 1];
 	int len = strlen(key);
 
 	memset(k, 0, KSIZE + 1);
 	memcpy(k, key, len);
 
-	db = db_open(dir, 0UL, TOLOG);
+	db = db_open(DATAS);
 	sk.len = (KSIZE + 1);
 	sk.data = k;
 
@@ -213,7 +214,6 @@ void _readone_test(char *key)
 		__INFO("Get Key:<%s>,but value is NULL", key);
 
 	db_close(db);
-	free(dir);
 }
 
 int main(int argc,char** argv)
