@@ -76,8 +76,12 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	uint64_t off = 0UL;
 	struct meta_node *node = meta_get(idx->meta, sk->data);
 
-	if (node) 
+	if (node) {
+		if (!bloom_get(node->cola->bf, sk->data))
+			goto RET;
+
 		off = cola_get(node->cola, sk);
+	}
 
 	if (off > 0) {
 		int vlen = 0;

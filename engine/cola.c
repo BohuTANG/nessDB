@@ -158,6 +158,8 @@ struct cola *cola_new(const char *file)
 	} else
 		cola->fd = n_open(file, N_CREAT_FLAGS, 0644);
 
+	cola->bf = bloom_new(cola->header.bitset);
+
 	return cola;
 
 ERR:
@@ -178,6 +180,10 @@ int cola_add(struct cola *cola, struct slice *sk, uint64_t offset, char opt)
 	memcpy(item.data, sk->data, sk->len);
 	item.offset = offset;
 	item.opt = opt;
+
+	/* bloom filter */
+	if (opt == 1)
+		bloom_add(cola->bf, sk->data);
 
 	/* swap max key */
 	cmp = strcmp(sk->data, cola->header.max_key);
@@ -211,7 +217,8 @@ void cola_truncate(struct cola *cola)
 {
 	memset(&cola->header, 0, HEADER_SIZE);
 	cola->willfull = 0;
-	//todo truncate files
+
+	//todo truncate file?
 }
 
 struct cola_item *cola_in_one(struct cola *cola, int *c) 
@@ -320,5 +327,6 @@ RET:
 void cola_free(struct cola *cola)
 {
 	close(cola->fd);
+	bloom_free(cola->bf);
 	free(cola);
 }

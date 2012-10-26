@@ -12,6 +12,7 @@ LIB_OBJS = \
 	./engine/meta.o\
 	./engine/buffer.o\
 	./engine/index.o\
+	./engine/bloom.o\
 	./engine/db.o
 
 TEST = \
