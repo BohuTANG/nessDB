@@ -40,9 +40,6 @@
 #define NESSDB_PATH_SIZE (1024) 
 #define NESSDB_BLOOM_BITS (1024 * 64) 
 
-#define MAX_LEVEL (8)
-#define L0_SIZE (1024*128)
-
 struct slice {
 	char *data;
 	int len;

@@ -9,6 +9,9 @@
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
 
+#define MAX_LEVEL (5)
+#define L0_SIZE (1024*256)
+
 struct cola_item {
 	char data[NESSDB_MAX_KEY_SIZE];
 	uint64_t offset;

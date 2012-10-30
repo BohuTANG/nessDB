@@ -17,7 +17,6 @@
 #include "sorts.h"
 #include "debug.h"
 
-#define DENSITY (0.9)
 
 /* calc level's offset of file */
 int _pos_calc(int level)
@@ -303,23 +302,45 @@ uint64_t cola_get(struct cola *cola, struct slice *sk)
 	int i, j;
 	uint64_t off = 0UL;
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < MAX_LEVEL; i++) {
 		int c = cola->header.count[i];
 
 		if (c > 0) {
 			struct cola_item *L = read_one_level(cola, i);
 
-			for (j = 0; j < c; j++) {
-				int cmp = strcmp(sk->data, L[j].data);
+			if (i == 0) {
+				for (j = 0; j < c; j++) {
+					int cmp = strcmp(sk->data, L[j].data);
 
-				if (cmp == 0) {
-					if (L[j].opt == 1)
-						off = L[j].offset;
+					if (cmp == 0) {
+						if (L[j].opt == 1)
+							off = L[j].offset;
 
-					free(L);
-					return off;
+						free(L);
+						return off;
+					}
 				}
+			} else {
+				int left = 0, right = c, mid = 0;	
+
+				while (left < right) {
+					mid = (left + right) / 2;
+					int cmp = strcmp(sk->data, L[mid].data);
+					if (cmp == 0) {
+						if (L[mid].opt == 1)
+							off = L[mid].offset;
+						free(L);
+						return off;
+					}
+
+					if (cmp < 0)
+						right = mid;
+					else 
+						left = mid + 1;
+				}
+
 			}
+
 			free(L);
 		}
 	}
