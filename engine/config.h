@@ -42,8 +42,6 @@
 
 #define MAX_LEVEL (8)
 #define L0_SIZE (1024*128)
-//#define MAX_LEVEL (4)
-//#define L0_SIZE (1024)
 
 struct slice {
 	char *data;

@@ -300,59 +300,29 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 
 uint64_t cola_get(struct cola *cola, struct slice *sk)
 {
-	int i;
-	int res;
+	int i, j;
 	uint64_t off = 0UL;
-	struct cola_item *L = NULL;
 
-	int c = cola->header.used[0] / ITEM_SIZE;
-	
-	if(c > 0) {
-		L = xcalloc(c, ITEM_SIZE);
-		res = pread(cola->fd, L, cola->header.used[0], _pos_calc(0));
-		for (i = 0; i < c; i++) {
-			int cmp = strcmp(sk->data, L[i].data);
-			if (cmp == 0) {
-				if (L[i].opt == 1)
-					off = L[i].offset;
-
-				goto RET;
-			}
-		}
-	}
-
-	for (i = 1; i < MAX_LEVEL; i++) {
-		int cmp;
-		struct cola_item item;
-		int c = cola->header.used[i] / ITEM_SIZE;
-		int left = 0, right = c, mid = 0;
+	for (i = 0; i < 4; i++) {
+		int c = cola->header.count[i];
 
 		if (c > 0) {
-			while (left < right) {
-				mid = (left + right) / 2;
-				res = pread(cola->fd, &item, ITEM_SIZE, _pos_calc(i) + mid * ITEM_SIZE);
-				if (res == -1)
-					goto RET;
+			struct cola_item *L = read_one_level(cola, i);
 
-				cmp = strcmp(sk->data, item.data);
+			for (j = 0; j < c; j++) {
+				int cmp = strcmp(sk->data, L[j].data);
+
 				if (cmp == 0) {
-					if (item.opt == 1)
-						off = item.offset;
+					if (L[j].opt == 1)
+						off = L[j].offset;
 
-					goto RET;
+					free(L);
+					return off;
 				}
-
-				if (cmp < 0)
-					right = mid;
-				else 
-					left = mid + 1;
 			}
+			free(L);
 		}
 	}
-
-RET:
-	if (L)
-		free(L);
 
 	return off;
 }
