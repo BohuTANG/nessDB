@@ -54,10 +54,7 @@ struct buffer *buffer_new(size_t reserve)
 {
 	struct buffer *b = xmalloc(sizeof(struct buffer));
 
-	b->buf = NULL;
-	b->NUL = 0;
-	b->buflen = 0;
-
+	memset(b, 0, sizeof(struct buffer));
 	if (reserve)
 		_buffer_extendby(b, reserve + 1);
 
@@ -97,11 +94,22 @@ void buffer_putnstr(struct buffer *b, const char *str,size_t n)
 	b->buf[b->NUL] = '\0';
 }
 
+void buffer_getnstr(struct buffer *b, char *str, size_t n)
+{
+	memcpy(str, &b->buf[b->POS], n);
+	b->POS += n;
+}
+
 void buffer_putc(struct buffer *b, const char c)
 {
 	_buffer_extendby(b, 2);
 	b->buf[b->NUL++] = c;
 	b->buf[b->NUL] = '\0';
+}
+
+char buffer_getc(struct buffer *b)
+{
+	return b->buf[b->POS++];
 }
 
 void buffer_putint(struct buffer *b, int val)
@@ -111,6 +119,18 @@ void buffer_putint(struct buffer *b, int val)
 	b->buf[b->NUL++] = (val >> 8) & 0xff;
 	b->buf[b->NUL++] = (val >> 16) & 0xff;
 	b->buf[b->NUL++] = (val >> 24) & 0xff;
+}
+
+uint32_t buffer_getuint(struct buffer *b)
+{
+	uint32_t val = 0;
+
+	val |= b->buf[b->POS++];
+	val |= b->buf[b->POS++] << 8;
+	val |= b->buf[b->POS++] << 16;
+	val |= b->buf[b->POS++] << 24;
+
+	return val;
 }
 
 void buffer_putshort(struct buffer *b, short val)
@@ -131,6 +151,22 @@ void buffer_putlong(struct buffer *b, uint64_t val)
 	b->buf[b->NUL++] = (val >> 40) & 0xff;
 	b->buf[b->NUL++] = (val >> 48) & 0xff;
 	b->buf[b->NUL++] = (val >> 56) & 0xff;
+}
+
+uint64_t buffer_getulong(struct buffer *b)
+{
+	uint64_t val = 0UL;
+
+	val |= b->buf[b->POS++];
+	val |= b->buf[b->POS++] << 8;
+	val |= b->buf[b->POS++] << 16;
+	val |= b->buf[b->POS++] << 24;
+	val |= (uint64_t)b->buf[b->POS++] << 32;
+	val |= (uint64_t)b->buf[b->POS++] << 40;
+	val |= (uint64_t)b->buf[b->POS++] << 48;
+	val |= (uint64_t)b->buf[b->POS++] << 56;
+
+	return val;
 }
 
 void buffer_scatf(struct buffer *b, const char *fmt, ...)
