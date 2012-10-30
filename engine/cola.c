@@ -79,7 +79,6 @@ struct cola_item * read_one_level(struct cola *cola, int level)
 		L[i].offset = buffer_getulong(buffer);
 		L[i].vlen = buffer_getuint(buffer);
 		L[i].opt= buffer_getc(buffer);
-		__DEBUG("klen#%d, key#%s, offset:%lu, vlen:%d", klen, L[i].data, L[i].offset, L[i].vlen);
 	}
 
 	buffer_free(buffer);

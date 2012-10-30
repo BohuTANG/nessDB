@@ -16,10 +16,13 @@ LIB_OBJS = \
 	./engine/db.o
 
 TEST = \
+	./test/buffer-test.o\
 	./bench/db-bench.o
 
+
 EXE = \
-	./db-bench
+	./db-bench\
+	./buffer-test
 
 LIBRARY = libnessdb.so
 
@@ -40,3 +43,6 @@ $(LIBRARY): $(LIB_OBJS)
 
 db-bench:  $(LIB_OBJS) $(TEST)
 	$(CC) -pthread  $(LIB_OBJS) bench/db-bench.o -o $@
+
+buffer-test:  $(LIB_OBJS) $(TEST)
+	$(CC) -pthread  $(LIB_OBJS) test/buffer-test.o -o $@

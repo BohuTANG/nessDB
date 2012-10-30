@@ -123,14 +123,15 @@ void buffer_putint(struct buffer *b, int val)
 
 uint32_t buffer_getuint(struct buffer *b)
 {
-	uint32_t val = 0;
+	unsigned char buf[4];
 
-	val |= b->buf[b->POS++];
-	val |= b->buf[b->POS++] << 8;
-	val |= b->buf[b->POS++] << 16;
-	val |= b->buf[b->POS++] << 24;
+	memcpy(buf, b->buf + b->POS, 4);
+	b->POS += 4;
 
-	return val;
+	return (((unsigned int) buf[3] << 24)
+			| ((unsigned int) buf[2] << 16)
+			| ((unsigned int) buf[1] << 8)
+			| (unsigned int) buf[0]);
 }
 
 void buffer_putshort(struct buffer *b, short val)
@@ -155,18 +156,19 @@ void buffer_putlong(struct buffer *b, uint64_t val)
 
 uint64_t buffer_getulong(struct buffer *b)
 {
-	uint64_t val = 0UL;
+	unsigned char buf[8];
 
-	val |= b->buf[b->POS++];
-	val |= b->buf[b->POS++] << 8;
-	val |= b->buf[b->POS++] << 16;
-	val |= b->buf[b->POS++] << 24;
-	val |= (uint64_t)b->buf[b->POS++] << 32;
-	val |= (uint64_t)b->buf[b->POS++] << 40;
-	val |= (uint64_t)b->buf[b->POS++] << 48;
-	val |= (uint64_t)b->buf[b->POS++] << 56;
+	memcpy(buf, b->buf + b->POS, 8);
+	b->POS += 8;
 
-	return val;
+	return (((uint64_t) buf[7] << 56)
+			| ((uint64_t) buf[6] << 48)
+			| ((uint64_t) buf[5] << 40)
+			| ((uint64_t) buf[4] << 32)
+			| ((uint64_t) buf[3] << 24)
+			| ((uint64_t) buf[2] << 16)
+			| ((uint64_t) buf[1] << 8)
+			| (uint64_t) buf[0]);
 }
 
 void buffer_scatf(struct buffer *b, const char *fmt, ...)
