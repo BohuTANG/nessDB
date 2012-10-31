@@ -103,8 +103,9 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	cola = cola_new(meta->sst_file);
 
 	for (; i < c; i++)
-		if (L[i].opt == 1) 
+		if (L[i].opt == 1) {
 			cola_add(cola, &L[i]);
+		}
 
 	/* update new meta node */
 	nxt_idx = _get_idx(meta, L[mid].data) + 1;
@@ -126,8 +127,9 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	memcpy(node->cola->header.max_key, L[mid].data, strlen(L[mid].data));
 
 	for (i = 0; i <= mid; i++)
-		if (L[i].opt == 1)
+		if (L[i].opt == 1) {
 			cola_add(cola, &L[i]);
+		}
 
 	__DEBUG("----------sst file splitted,count#%d", c);
 	free(L);

@@ -35,11 +35,6 @@
 	# define N_OPEN_FLAGS   (O_RDWR | O_BINARY)
 #endif
 
-#define NESSDB_MAX_KEY_SIZE (64) 
-#define NESSDB_MAX_META (500) 
-#define NESSDB_PATH_SIZE (1024) 
-#define NESSDB_BLOOM_BITS (1024 * 64) 
-
 struct slice {
 	char *data;
 	int len;

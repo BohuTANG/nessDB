@@ -3,6 +3,8 @@
 
 #include "config.h"
 
+#define NESSDB_BLOOM_BITS (1024 * 64) 
+
 typedef unsigned int(*hashfuncs)(const char *key);
 
 struct bloom {

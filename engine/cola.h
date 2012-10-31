@@ -4,13 +4,14 @@
 #include <stdint.h>
 #include "config.h"
 #include "bloom.h"
-#include "buffer.h"
 
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
 
-#define MAX_LEVEL (5)
-#define L0_SIZE (1024*256)
+#define MAX_LEVEL (6)
+#define L0_SIZE (1024*128)
+#define NESSDB_MAX_KEY_SIZE (128) 
+#define NESSDB_PATH_SIZE (1024) 
 
 struct cola_item {
 	char data[NESSDB_MAX_KEY_SIZE];
@@ -22,6 +23,7 @@ struct cola_item {
 struct cola_header {
 	int used[MAX_LEVEL];
 	int count[MAX_LEVEL];
+	int max[MAX_LEVEL];
 	char max_key[NESSDB_MAX_KEY_SIZE];
 	unsigned char bitset[NESSDB_BLOOM_BITS / 8];
 } __attribute__((packed));
@@ -31,7 +33,6 @@ struct cola {
 	int willfull;
 	struct cola_header header;
 	struct bloom *bf;
-	struct buffer *buf;
 };
 
 struct cola *cola_new(const char *file);

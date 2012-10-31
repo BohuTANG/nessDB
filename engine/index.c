@@ -96,6 +96,11 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	struct meta_node *node;
 	struct cola_item item;
 
+	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
+		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
+		return 0;
+	}
+
 	node = meta_get(idx->meta, sk->data);
 	memset(&item, 0, ITEM_SIZE);
 	memcpy(item.data, sk->data, sk->len);
@@ -128,6 +133,11 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	int res;
 	uint64_t off = 0UL;
 	struct meta_node *node = meta_get(idx->meta, sk->data);
+
+	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
+		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
+		return 0;
+	}
 
 	if (node) {
 		if (!bloom_get(node->cola->bf, sk->data))
@@ -170,6 +180,10 @@ int index_remove(struct index *idx, struct slice *sk)
 	struct cola_item item;
 	struct meta_node *node ;
 
+	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
+		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
+		return 0;
+	}
 	/* write key index */
 	memset(&item, 0, ITEM_SIZE);
 	memcpy(item.data, sk->data, sk->len);
@@ -182,5 +196,6 @@ int index_remove(struct index *idx, struct slice *sk)
 void index_free(struct index *idx)
 {
 	meta_free(idx->meta);
+	buffer_free(idx->buf);
 	free(idx);
 }
