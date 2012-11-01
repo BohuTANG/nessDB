@@ -131,7 +131,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 int index_get(struct index *idx, struct slice *sk, struct slice *sv) 
 {
 	int res;
-	uint64_t off = 0UL;
+	struct ol_pair pair;
 	struct meta_node *node = meta_get(idx->meta, sk->data);
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
@@ -139,34 +139,42 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		return 0;
 	}
 
+	memset(&pair, 0, sizeof pair);
 	if (node) {
 		if (!bloom_get(node->cola->bf, sk->data))
 			goto RET;
 
-		off = cola_get(node->cola, sk);
+		if (!cola_get(node->cola, sk, &pair))
+			goto RET;
 	}
 
-	if (off > 0) {
-		int vlen = 0;
+	if (pair.offset > 0UL && pair.vlen > 0) {
+		short crc = 0;
+		short db_crc = 0;
 		char *data;
 
-		n_lseek(idx->read_fd, off, SEEK_SET);
-		res = pread(idx->read_fd, &vlen, sizeof(int), off);
+		n_lseek(idx->read_fd, pair.offset, SEEK_SET);
+		res = read(idx->read_fd, &crc, sizeof(crc));
 		if (res == -1) {
-			__ERROR("get vlen error, key#%d", sk->data);
+			__ERROR("read crc error #%d, key#%s", crc, sk->data);
 			goto RET;
 		}
 
-		data = xcalloc(1, vlen + 1);
-
-		res = pread(idx->read_fd, data, vlen, off + sizeof(int));
+		data = xcalloc(1, pair.vlen + 1);
+		res = read(idx->read_fd, data, pair.vlen);
 		if (res == -1) {
-			__ERROR("get data error, key#%d", sk->data);
+			__ERROR("read data error, key#%d", sk->data);
+			goto RET;
+		}
+
+		db_crc = _crc16(data, pair.vlen);
+		if (crc != db_crc) {
+			__ERROR("read key#%s, crc#%d, db_crc#%d", sk->data, crc, db_crc);
 			goto RET;
 		}
 
 		sv->data = data;
-		sv->len = vlen;
+		sv->len = pair.vlen;
 
 		return 1;
 	}

@@ -9,9 +9,14 @@
 #define ITEM_SIZE (sizeof(struct cola_item))
 
 #define MAX_LEVEL (6)
-#define L0_SIZE (1024*128)
-#define NESSDB_MAX_KEY_SIZE (128) 
+#define L0_SIZE (1024*64)
+#define NESSDB_MAX_KEY_SIZE (32) 
 #define NESSDB_PATH_SIZE (1024) 
+
+struct ol_pair {
+	uint64_t offset;
+	uint32_t vlen;
+};
 
 struct cola_item {
 	char data[NESSDB_MAX_KEY_SIZE];
@@ -40,7 +45,7 @@ int cola_add(struct cola *cola, struct cola_item *item);
 void cola_truncate(struct cola *cola);
 int cola_isfull(struct cola *cola);
 struct cola_item *cola_in_one(struct cola *cola, int *c);
-uint64_t cola_get(struct cola *cola, struct slice *sk);
+int cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair);
 void cola_dump(struct cola *cola);
 void cola_free(struct cola *cola);
 

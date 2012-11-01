@@ -49,13 +49,15 @@ int _level_max_size(int level)
 void cola_dump(struct cola *cola)
 {
 	int i;
-	int all = 0;
 
+	__DEBUG(" %d--SST DUMP:", cola->fd);
 	for(i = 0; i< (int)MAX_LEVEL; i++) {
-		printf("\tL#%d---used#%d, max#%d\n", i, cola->header.used[i], _level_max_size(i));
-		all += cola->header.used[i];
+		printf("\t-L#%d---used#%d, count#%d\n"
+				, i
+				, cola->header.used[i]
+				, cola->header.count[i]);
 	}
-	printf("\tAll used#%d\n", all);
+	printf("\n");
 }
 
 struct cola_item * read_one_level(struct cola *cola, int level)
@@ -97,6 +99,7 @@ struct cola_item * read_one_level(struct cola *cola, int level)
 			cola_insertion_sort(L, c);
 	}
 
+	//__DEBUG("--read  level#%d, c#%d", level, c);
 	return L;
 }
 
@@ -129,6 +132,7 @@ int write_one_level(struct cola *cola, struct cola_item *L, int count, int level
 
 	free(items);
 
+	//__DEBUG("--write to level#%d, c#%d", level, count);
 	return used;
 }
 
@@ -263,7 +267,7 @@ int cola_add(struct cola *cola, struct cola_item *item)
 	/* if L0 is full, to check */
 	if (cola->header.used[0] >= _level_max_size(0) * 0.75)
 		_check_merge(cola);
-
+	
 	return 1;
 
 ERR:
@@ -282,7 +286,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 {
 	int i;
 	int cur_lc;
-	int pre_lc = 0;
+	int pre_lc = cola->header.count[0];
 	struct cola_item *L = NULL; 
 
 	for (i = 0; i < MAX_LEVEL; i++) {
@@ -290,7 +294,6 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 		if (cur_lc > 0) {
 			if (i == 0) {
 				L = read_one_level(cola, i);
-				
 			} else {
 				struct cola_item *pre = L;
 				struct cola_item *cur = read_one_level(cola, i);
@@ -309,11 +312,10 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 	return L;
 }
 
-uint64_t cola_get(struct cola *cola, struct slice *sk)
+int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
 	int i = 0;
-	uint64_t off = 0UL;
 	int c = cola->header.count[i];
 	struct cola_item *L = read_one_level(cola, 0);
 
@@ -321,11 +323,13 @@ uint64_t cola_get(struct cola *cola, struct slice *sk)
 	for (i = 0; i < c; i++) {
 		cmp = strcmp(sk->data, L[i].data);
 		if (cmp == 0) {
-			if (L[i].opt == 1)
-				off = L[i].offset;
+			if (L[i].opt == 1) {
+				pair->offset = L[i].offset;
+				pair->vlen = L[i].vlen;
+			}
 
 			free(L);
-			return off;
+			return 1;
 		}
 	}
 	free(L);
@@ -358,10 +362,12 @@ uint64_t cola_get(struct cola *cola, struct slice *sk)
 
 			cmp = strcmp(sk->data, k);
 			if (cmp == 0) {
-				if (itm.opt == 1)
-					off = itm.offset;
+				if (itm.opt == 1) {
+					pair->offset = itm.offset;
+					pair->vlen = itm.vlen;
+				}
 
-				goto RET;
+				return 1;
 			}
 
 			if (cmp < 0)
@@ -372,7 +378,7 @@ uint64_t cola_get(struct cola *cola, struct slice *sk)
 	}
 
 RET:
-	return off;
+	return 0;
 }
 
 void cola_free(struct cola *cola)
