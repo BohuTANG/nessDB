@@ -3,7 +3,6 @@
  * All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
- * The main algorithm described is here: spec/cola-algorithms.txt
  */
 
 #include <stdlib.h>
@@ -100,10 +99,36 @@ void meta_dump(struct meta *meta)
 	__DEBUG("\t----allcount:%d", allc);
 }
 
+void _scryed(struct meta *meta,struct cola *cola, struct cola_item *L, int start, int c, int idx)
+{
+	int i;
+	int k = c + start;
+
+	for (i = start; i < k; i++) {
+		if (L[i].opt == 1) {
+			cola_add(cola, &L[i]);
+		}
+	}
+
+	/* update new meta node */
+	memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
+	memset(&meta->nodes[idx], 0, sizeof(struct meta_node));
+	meta->nodes[idx].cola = cola;
+	meta->nodes[idx].lsn = meta->size;
+
+	meta->size++;
+
+	if (meta->size >= (int)(NESSDB_MAX_META - 1))
+		__PANIC("OVER max metas, MAX#%d", NESSDB_MAX_META);
+}
+
+
 void _split_sst(struct meta *meta, struct meta_node *node)
 {
 	int i;
-	int mid;
+	int k;
+	int split;
+	int mod;
 	int c = 0;
 	int nxt_idx;
 
@@ -112,43 +137,29 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 
 	L = cola_in_one(node->cola, &c);
 
-	mid = c / 2;
+	split = c / NESSDB_SST_SEGMENT;
+	mod = c % NESSDB_SST_SEGMENT;
+	k = split + mod;
 
-	_make_sstname(meta, meta->size);
-	cola = cola_new(meta->sst_file);
-
-	for (i = mid + 1; i < c; i++) {
+	/* rewrite SST */
+	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
+	cola = node->cola;
+	/* truncate all SST */
+	cola_truncate(cola);
+	memcpy(node->cola->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
+	for (i = 0; i < k; i++) {
 		if (L[i].opt == 1) {
 			cola_add(cola, &L[i]);
 		}
 	}
 
-	/* update new meta node */
-	nxt_idx = _get_idx(meta, L[mid].data) + 1;
+	/* others SST */
+	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
+		_make_sstname(meta, meta->size);
+		cola = cola_new(meta->sst_file);
+		_scryed(meta, cola, L, mod + i*split, split, nxt_idx++);
+	}
 
-	memmove(&meta->nodes[nxt_idx + 1], &meta->nodes[nxt_idx], (meta->size - nxt_idx) * META_NODE_SIZE);
-	memset(&meta->nodes[nxt_idx], 0, sizeof(struct meta_node));
-	meta->nodes[nxt_idx].cola = cola;
-	meta->nodes[nxt_idx].lsn = meta->size;
-
-	meta->size++;
-
-	if (meta->size >= (int)(NESSDB_MAX_META - 1))
-		__PANIC("OVER max metas, MAX#%d", NESSDB_MAX_META);
-
-	cola = node->cola;
-	/* truncate all SST */
-	cola_truncate(cola);
-
-	/* update max key to mid */
-	memcpy(node->cola->header.max_key, L[mid].data, strlen(L[mid].data));
-
-	for (i = 0; i <= mid; i++)
-		if (L[i].opt == 1) {
-			cola_add(cola, &L[i]);
-		}
-
-	__DEBUG("---all#%d, merge from %d-sst[%d] to %d-sst[%d]", c, node->lsn, (c - mid), meta->nodes[nxt_idx].lsn, mid);
 	free(L);
 }
 

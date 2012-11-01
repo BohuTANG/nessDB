@@ -35,6 +35,8 @@
 	# define N_OPEN_FLAGS   (O_RDWR | O_BINARY)
 #endif
 
+#define NESSDB_SST_SEGMENT (4)
+
 struct slice {
 	char *data;
 	int len;
