@@ -7,6 +7,7 @@
 #include "cola.h"
 
 #define META_NODE_SIZE sizeof(struct meta_node)
+#define NESSDB_MAX_META (1000) 
 
 struct meta_node{
 	int lsn;
@@ -14,7 +15,6 @@ struct meta_node{
 };
 
 struct meta{
-	int seq;
 	int size;
 	char path[NESSDB_PATH_SIZE];
 	char sst_file[NESSDB_PATH_SIZE];

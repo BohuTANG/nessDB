@@ -6,6 +6,7 @@
 struct buffer {
     char *buf;
 	int NUL;
+	int POS;
     int buflen;
 };
 
@@ -16,6 +17,7 @@ void buffer_clear(struct buffer *b);
 char *buffer_detach(struct buffer *b);
 
 void buffer_putc(struct buffer *b, const char c);
+char buffer_getc(struct buffer *b);
 void buffer_putstr(struct buffer *b, const char *str);
 void buffer_putnstr(struct buffer *b, const char *str, size_t n);
 void buffer_putint(struct buffer *b, int val);

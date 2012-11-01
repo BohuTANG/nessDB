@@ -3,7 +3,6 @@
  * All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
- * The main algorithm described is here: spec/cola-algorithms.txt
  */
 
 #include <stdlib.h>
@@ -77,68 +76,90 @@ int _get_idx(struct meta *meta, char *key)
 
 void meta_dump(struct meta *meta)
 {
-	int i;
+	int i, j;
+	int allc = 0;
 	
 	__DEBUG("---meta(%d):", meta->size);
-	for (i = 0; i < meta->size; i++)
-		__DEBUG("\t-----#%06d.sst, key#%s", meta->nodes[i].lsn, meta->nodes[i].cola->header.max_key);
+	for (i = 0; i < meta->size; i++) {
+		int used = 0;
+		int count = 0;
+
+		for (j = 0; j < MAX_LEVEL; j++) {
+			used += meta->nodes[i].cola->header.used[j];
+			count += meta->nodes[i].cola->header.count[j];
+		}
+
+		allc += count;
+		__DEBUG("\t-----#%06d.sst, max-key#%s, used#%d, count#%d"
+				, meta->nodes[i].lsn
+				, meta->nodes[i].cola->header.max_key
+				, used
+				, count);
+	}
+	__DEBUG("\t----allcount:%d", allc);
 }
 
-void _split_sst(struct meta *meta, struct meta_node *node)
+void _scryed(struct meta *meta,struct cola *cola, struct cola_item *L, int start, int c, int idx)
 {
 	int i;
-	int mid;
-	int c = 0;
-	int nxt_idx;
+	int k = c + start;
 
-	struct slice sk;
-	struct cola_item *L;
-	struct cola *cola;
-
-	L = cola_in_one(node->cola, &c);
-
-	mid = c / 2;
-	i = mid + 1;
-
-	_make_sstname(meta, meta->size);
-	cola = cola_new(meta->sst_file);
-
-	for (; i < c; i++) {
+	for (i = start; i < k; i++) {
 		if (L[i].opt == 1) {
-			sk.data = L[i].data;
-			sk.len = strlen(L[i].data);
-
-			cola_add(cola, &sk,L[i].offset, L[i].opt);
+			cola_add(cola, &L[i]);
 		}
 	}
 
 	/* update new meta node */
-	nxt_idx = _get_idx(meta, L[mid].data) + 1;
-
-	memmove(&meta->nodes[nxt_idx + 1], &meta->nodes[nxt_idx], (meta->size - nxt_idx) * META_NODE_SIZE);
-	memset(&meta->nodes[nxt_idx], 0, sizeof(struct meta_node));
-	meta->nodes[nxt_idx].cola = cola;
-	meta->nodes[nxt_idx].lsn = meta->size;
+	memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
+	memset(&meta->nodes[idx], 0, sizeof(struct meta_node));
+	meta->nodes[idx].cola = cola;
+	meta->nodes[idx].lsn = meta->size;
 
 	meta->size++;
 
 	if (meta->size >= (int)(NESSDB_MAX_META - 1))
 		__PANIC("OVER max metas, MAX#%d", NESSDB_MAX_META);
+}
 
+
+void _split_sst(struct meta *meta, struct meta_node *node)
+{
+	int i;
+	int k;
+	int split;
+	int mod;
+	int c = 0;
+	int nxt_idx;
+
+	struct cola_item *L;
+	struct cola *cola;
+
+	L = cola_in_one(node->cola, &c);
+
+	split = c / NESSDB_SST_SEGMENT;
+	mod = c % NESSDB_SST_SEGMENT;
+	k = split + mod;
+
+	/* rewrite SST */
+	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
 	cola = node->cola;
+	/* truncate all SST */
 	cola_truncate(cola);
-
-	/* update max key to mid */
-	memcpy(node->cola->header.max_key, L[mid].data, NESSDB_MAX_KEY_SIZE);
-
-	for (i = 0; i <= mid; i++) {
-		sk.data = L[i].data;
-		sk.len = strlen(L[i].data);
-
-		cola_add(cola, &sk, L[i].offset, L[i].opt);
+	memcpy(node->cola->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
+	for (i = 0; i < k; i++) {
+		if (L[i].opt == 1) {
+			cola_add(cola, &L[i]);
+		}
 	}
 
-	__DEBUG("----------sst file splitted,count#%d", c);
+	/* others SST */
+	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
+		_make_sstname(meta, meta->size);
+		cola = cola_new(meta->sst_file);
+		_scryed(meta, cola, L, mod + i*split, split, nxt_idx++);
+	}
+
 	free(L);
 }
 

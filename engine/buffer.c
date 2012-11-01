@@ -54,10 +54,7 @@ struct buffer *buffer_new(size_t reserve)
 {
 	struct buffer *b = xmalloc(sizeof(struct buffer));
 
-	b->buf = NULL;
-	b->NUL = 0;
-	b->buflen = 0;
-
+	memset(b, 0, sizeof(struct buffer));
 	if (reserve)
 		_buffer_extendby(b, reserve + 1);
 
@@ -102,6 +99,11 @@ void buffer_putc(struct buffer *b, const char c)
 	_buffer_extendby(b, 2);
 	b->buf[b->NUL++] = c;
 	b->buf[b->NUL] = '\0';
+}
+
+char buffer_getc(struct buffer *b)
+{
+	return b->buf[b->POS++];
 }
 
 void buffer_putint(struct buffer *b, int val)

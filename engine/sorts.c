@@ -33,8 +33,9 @@ int cola_merge_sort(struct cola_item *c, struct cola_item *a, int alen, struct c
 	int i, m = 0, n = 0, k;
 
 	for (i = 0; (m < alen) && (n < blen);) {
-		int cmp = strcmp(a[m].data, b[n].data);
+		int cmp;
 
+		cmp = strcmp(a[m].data, b[n].data);
 		if (cmp == 0) {
 			if (b[n].opt == 1) 
 				memcpy(&c[i++], &b[n], ITEM_SIZE);
