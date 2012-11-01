@@ -10,6 +10,6 @@
 *.pyc
 ndbs/*
 db-bench
-db-server
+merge-test
 core
 *.event
