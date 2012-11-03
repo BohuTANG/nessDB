@@ -13,6 +13,7 @@ LIB_OBJS = \
 	./engine/buffer.o\
 	./engine/index.o\
 	./engine/bloom.o\
+	./engine/skiplist.o\
 	./engine/db.o
 
 TEST = \

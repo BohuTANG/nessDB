@@ -63,7 +63,41 @@ uint16_t _crc16(const char *buf, int len) {
     return crc;
 }
 
-struct index *index_new(const char *path)
+void *_merge_job(void *arg)
+{
+	struct index *idx;
+	struct skiplist *list;
+	struct skipnode *first, *cur;
+
+	__DEBUG("---begin to merge.....");
+	idx = (struct index*)arg;
+	pthread_mutex_lock(idx->merge_mutex);
+
+	list = idx->merging_list;
+	first = list->hdr;
+	cur = list->hdr->forward[0];
+	while (cur != first) {
+		struct meta_node *node = meta_get(idx->meta, cur->itm.data);
+
+		cola_add(node->cola, &cur->itm);
+		cur = cur->forward[0];
+	}
+	__DEBUG("---merged end %d.....", list->count);
+	idx->merging_list = NULL;
+
+	pthread_mutex_unlock(idx->merge_mutex);
+
+	if (list) {
+		skiplist_free(list);
+	}
+
+	pthread_detach(pthread_self());
+	pthread_exit(NULL);
+}
+
+
+
+struct index *index_new(const char *path, int mtb_size)
 {
 	char db_name[NESSDB_PATH_SIZE];
 	struct index *idx = xcalloc(1, sizeof(struct index));
@@ -82,8 +116,17 @@ struct index *index_new(const char *path)
 	}
 
 	idx->read_fd = n_open(db_name, N_OPEN_FLAGS);
-
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
+	idx->list = skiplist_new(mtb_size);
+	idx->max_mtb_size = mtb_size;
+
+
+	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(idx->merge_mutex, NULL);
+
+	/* Detached thread attr */
+	pthread_attr_init(&idx->attr);
+	pthread_attr_setdetachstate(&idx->attr, PTHREAD_CREATE_DETACHED);
 
 	return idx;
 }
@@ -93,7 +136,6 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	int ret;
 	int len;
 	char *line;
-	struct meta_node *node;
 	struct cola_item item;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
@@ -101,10 +143,8 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		return 0;
 	}
 
-	node = meta_get(idx->meta, sk->data);
 	memset(&item, 0, ITEM_SIZE);
 	memcpy(item.data, sk->data, sk->len);
-
 	if (sv) {
 		/* write value */
 		buffer_putshort(idx->buf, _crc16(sv->data, sv->len));
@@ -113,17 +153,24 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		line = buffer_detach(idx->buf);
 		ret = write(idx->fd, line, len);
 		if (ret == -1) 
-			__PANIC("write key error");
+			__PANIC("write db error");
 
 		item.offset = idx->db_alloc;
 		item.vlen = sv->len;
 		item.opt = 1;
 
-		cola_add(node->cola, &item);
 		idx->db_alloc += len;
-	} else {
-		cola_add(node->cola, &item);
 	}
+
+	if (!skiplist_notfull(idx->list)) {
+		pthread_t tid;
+		pthread_mutex_lock(idx->merge_mutex);
+		idx->merging_list = idx->list;
+		pthread_mutex_unlock(idx->merge_mutex);
+		pthread_create(&tid, &idx->attr, _merge_job, idx);
+		idx->list = skiplist_new(idx->max_mtb_size);
+	}
+	skiplist_insert(idx->list, &item);
 
 	return 1;
 }

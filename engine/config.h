@@ -36,6 +36,7 @@
 #endif
 
 #define NESSDB_SST_SEGMENT (4)
+#define NESSDB_MAX_MTB_SIZE (1000000)
 
 struct slice {
 	char *data;

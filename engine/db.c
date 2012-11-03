@@ -19,8 +19,7 @@ struct nessdb *db_open(const char *basedir)
 	struct nessdb *db;
 
 	db = xcalloc(1, sizeof(struct nessdb));
-
-	db->idx = index_new(basedir);
+	db->idx = index_new(basedir, NESSDB_MAX_MTB_SIZE);
 
 	return db;
 }
