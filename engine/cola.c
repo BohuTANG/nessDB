@@ -41,128 +41,75 @@ void _update_header(struct cola *cola)
 		return;
 }
 
-int _level_max_size(int level)
+/*
+int _level_max_size(int level, int gap)
 {
-	return (int)((1<<level) * L0_SIZE - 3 * ITEM_SIZE);
+	return (int)((1<<level) * L0_SIZE - gap * ITEM_SIZE);
+}
+*/
+
+
+int _level_max(int level, int gap)
+{
+	return (int)((1<<level) * L0_SIZE / ITEM_SIZE - gap);
 }
 
 void cola_dump(struct cola *cola)
 {
 	int i;
 
-	__DEBUG(" %d--SST DUMP:", cola->fd);
+	__DEBUG("**%06d.sst DUMP:", cola->fd);
 	for(i = 0; i< (int)MAX_LEVEL; i++) {
-		printf("\t-L#%d---used#%d, count#%d\n"
+		printf("\t\t-L#%d---count#%d, max-count:%d\n"
 				, i
-				, cola->header.used[i]
-				, cola->header.count[i]);
+				, cola->header.count[i]
+				, (int)_level_max(i, 0));
 	}
 	printf("\n");
 }
 
-struct cola_item * read_one_level(struct cola *cola, int level)
+struct cola_item * read_one_level(struct cola *cola, int level, int readc)
 {
-	int i;
 	int res;
 	int c = cola->header.count[level];
-	int max = cola->header.max[level];
-	int used = cola->header.used[level];
-	struct cola_item *L = xcalloc(c + 1, ITEM_SIZE);
-
-	if (level == 0)
-		max = NESSDB_MAX_KEY_SIZE;
+	struct cola_item *L = xcalloc(readc + 1, ITEM_SIZE);
 
 	if (c > 0) {
-		struct item {
-			char data[max];
-			uint64_t offset;
-			uint32_t vlen;
-			char opt;
-		}__attribute__((packed));
-
-		struct item *items = xcalloc(c + 1, sizeof(struct item));
-
-		res = pread(cola->fd, items, used, _pos_calc(level));
+		res = pread(cola->fd, L, readc * ITEM_SIZE, _pos_calc(level) + (c - readc) * ITEM_SIZE);
 		if (res == -1)
 			__PANIC("read klen error");
 
-		for (i = 0; i < c; i++) {
-			memcpy(L[i].data, items[i].data, max);
-			L[i].offset = items[i].offset;
-			L[i].vlen = items[i].vlen;
-			L[i].opt= items[i].opt;
-		}
-
-		free(items);
-
 		if (level == 0)
-			cola_insertion_sort(L, c);
+			cola_insertion_sort(L, readc);
 	}
 
-	//__DEBUG("--read  level#%d, c#%d", level, c);
 	return L;
 }
 
-int write_one_level(struct cola *cola, struct cola_item *L, int count, int level, int max)
+void write_one_level(struct cola *cola, struct cola_item *L, int count, int level)
 {
-	int i;
 	int res;
 
-	struct item {
-		char data[max];
-		uint64_t offset;
-		uint32_t vlen;
-		char opt;
-	}__attribute__((packed));
-
-	int used = count * sizeof(struct item);
-
-	struct item *items = xcalloc(count, sizeof(struct item));
-
-	for (i = 0; i < count; i++) {
-		memcpy(items[i].data, L[i].data, max);
-		items[i].offset = L[i].offset;
-		items[i].vlen = L[i].vlen;
-		items[i].opt = L[i].opt;
-	}
-
-	res = pwrite(cola->fd, items, used, _pos_calc(level));
+	res = pwrite(cola->fd, L, count * ITEM_SIZE, _pos_calc(level));
 	if (res == -1)
 		__PANIC("write to one level....");
-
-	free(items);
-
-	//__DEBUG("--write to level#%d, c#%d", level, count);
-	return used;
 }
 
-void  _merge_to_next(struct cola *cola, int level) 
+void  _merge_to_next(struct cola *cola, int level, int mergec) 
 {
-	int used = 0;
-
-	int max1 = cola->header.max[level];
-	int max2 = cola->header.max[level + 1];
-	int max = max1>max2 ? max1:max2;
-
-	int c1 = cola->header.count[level];
 	int c2 = cola->header.count[level + 1];
 
-	struct cola_item *L = read_one_level(cola, level);
-	struct cola_item *L_nxt = read_one_level(cola, level + 1);
+	struct cola_item *L = read_one_level(cola, level, mergec);
+	struct cola_item *L_nxt = read_one_level(cola, level + 1, c2);
 
-	int lmerge_c = c1 + c2;
+	int lmerge_c = mergec + c2;
 	struct cola_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
-	lmerge_c = cola_merge_sort(L_merge, L, c1, L_nxt, c2);
-	used = write_one_level(cola, L_merge, lmerge_c, level + 1, max);
+	lmerge_c = cola_merge_sort(L_merge, L, mergec, L_nxt, c2);
+	write_one_level(cola, L_merge, lmerge_c, level + 1);
 
 	/* update count */
-	cola->header.used[level] = 0;
-	cola->header.max[level] = 0;
-	cola->header.count[level] = 0;
-
-	cola->header.used[level + 1] = used;
-	cola->header.max[level + 1] = max;
+	cola->header.count[level] -= mergec;
 	cola->header.count[level + 1] = lmerge_c;
 
 	_update_header(cola);
@@ -177,37 +124,48 @@ void _check_merge(struct cola *cola)
 	int i;
 	int full = 0;
 
-	int l_used;
+	int l_c;
 	int l_max;
-	int l_nxt_used;
+
+	int l_nxt_c;
 	int l_nxt_max;
 
-	/* max level check */
-	i = MAX_LEVEL -1;
-	l_used = cola->header.used[i];
-	l_max = _level_max_size(i);
-
-	if (l_used >= l_max)
+	i = MAX_LEVEL - 1;
+	l_c = cola->header.count[i];
+	l_max = _level_max(i, 3);
+	if (l_c >= l_max)
 		full++;
 
 	for (i = MAX_LEVEL - 2; i >= 0; i--) {
-		l_used = cola->header.used[i];
-		l_max = _level_max_size(i);
-		l_nxt_used = cola->header.used[i + 1];
-		l_nxt_max = _level_max_size(i + 1);
+		l_c = cola->header.count[i];
+		l_max = _level_max(i, 3);
 
-		if (l_used >= l_max * 0.5) {
-			if ((l_used + l_nxt_used) >= l_nxt_max) {
-				full++;
+		l_nxt_c = cola->header.count[i + 1];
+		l_nxt_max = _level_max(i + 1, 3);
+
+		if (l_nxt_c >= l_nxt_max) {
+			full++;
+			continue;
+		}
+
+		if (l_c >= l_max) {
+			int diff = l_nxt_max - (l_c + l_nxt_c);
+
+			/* merge full level to next level */
+			if (diff >= 0) {
+				_merge_to_next(cola, i, l_c);
 			} else {
-				_merge_to_next(cola, i);
-				//full--;
+				diff = l_nxt_max - l_nxt_c;
+				_merge_to_next(cola, i, diff);
 			}
 		}
 	} 
 
-	if (full >= (MAX_LEVEL - 1))
+	if (full >= (MAX_LEVEL - 1)) {
 		cola->willfull = 1;
+		__DEBUG("**********all level is full, begin to split");
+		cola_dump(cola);
+	}
 }
 
 struct cola *cola_new(const char *file)
@@ -245,7 +203,7 @@ int cola_add(struct cola *cola, struct cola_item *item)
 		bloom_add(cola->bf, item->data);
 
 	int klen = strlen(item->data);
-	pos = HEADER_SIZE + cola->header.used[0];
+	pos = HEADER_SIZE + cola->header.count[0] * ITEM_SIZE;
 	/* swap max key */
 	cmp = strcmp(item->data, cola->header.max_key);
 	if (cmp > 0) { 
@@ -258,14 +216,12 @@ int cola_add(struct cola *cola, struct cola_item *item)
 		goto ERR;
 
 	/* update header */
-	cola->header.used[0] += ITEM_SIZE;
 	cola->header.count[0]++;
-	cola->header.max[0] = klen>cola->header.max[0] ? klen:cola->header.max[0];
 
 	_update_header(cola);
 
 	/* if L0 is full, to check */
-	if (cola->header.used[0] >= _level_max_size(0) * 0.75)
+	if (cola->header.count[0] >= _level_max(0, 1))
 		_check_merge(cola);
 	
 	return 1;
@@ -293,10 +249,10 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 		cur_lc = cola->header.count[i];
 		if (cur_lc > 0) {
 			if (i == 0) {
-				L = read_one_level(cola, i);
+				L = read_one_level(cola, i, cur_lc);
 			} else {
 				struct cola_item *pre = L;
-				struct cola_item *cur = read_one_level(cola, i);
+				struct cola_item *cur = read_one_level(cola, i, cur_lc);
 
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
 				pre_lc = cola_merge_sort(L, cur, cur_lc, pre, pre_lc);
@@ -317,7 +273,7 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 	int cmp;
 	int i = 0;
 	int c = cola->header.count[i];
-	struct cola_item *L = read_one_level(cola, 0);
+	struct cola_item *L = read_one_level(cola, 0, c);
 
 	/* level 0 */
 	for (i = 0; i < c; i++) {
@@ -336,20 +292,10 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 
 	for (i = 1; i < MAX_LEVEL; i++) {
 		int res;
-		int max = cola->header.max[i];
-		char k[max + 1];
-
-		struct item {
-			char data[max];
-			uint64_t offset;
-			uint32_t vlen;
-			char opt;
-		}__attribute__((packed));
-
-		struct item itm;
+		struct cola_item itm;
 		int left = 0;
 		int mid;
-		int right = cola->header.used[i] / sizeof(itm);
+		int right = cola->header.count[i];
 
 		while (left < right) {
 			mid = (left + right) / 2;
@@ -357,10 +303,7 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 			if (res == -1)
 				goto RET;
 
-			memset(k, 0, max + 1);
-			memcpy(k, itm.data, max);
-
-			cmp = strcmp(sk->data, k);
+			cmp = strcmp(sk->data, itm.data);
 			if (cmp == 0) {
 				if (itm.opt == 1) {
 					pair->offset = itm.offset;
