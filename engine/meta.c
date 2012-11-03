@@ -85,12 +85,13 @@ void meta_dump(struct meta *meta)
 		int count = 0;
 
 		for (j = 0; j < MAX_LEVEL; j++) {
-			used += meta->nodes[i].cola->header.used[j];
+			used += meta->nodes[i].cola->header.count[j] * ITEM_SIZE;
 			count += meta->nodes[i].cola->header.count[j];
 		}
 
 		allc += count;
-		__DEBUG("\t-----#%06d.sst, max-key#%s, used#%d, count#%d"
+		__DEBUG("\t-----[%d] #%06d.sst, max-key#%s, used#%d, count#%d"
+				, i
 				, meta->nodes[i].lsn
 				, meta->nodes[i].cola->header.max_key
 				, used

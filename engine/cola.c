@@ -58,9 +58,9 @@ void cola_dump(struct cola *cola)
 {
 	int i;
 
-	__DEBUG(" %d--SST DUMP:", cola->fd);
+	__DEBUG("**%06d.sst DUMP:", cola->fd);
 	for(i = 0; i< (int)MAX_LEVEL; i++) {
-		printf("\t-L#%d---count#%d, max-count:%d\n"
+		printf("\t\t-L#%d---count#%d, max-count:%d\n"
 				, i
 				, cola->header.count[i]
 				, (int)_level_max(i, 0));
@@ -72,12 +72,10 @@ struct cola_item * read_one_level(struct cola *cola, int level, int readc)
 {
 	int res;
 	int c = cola->header.count[level];
-	int used = c * ITEM_SIZE;
-	int rused = readc * ITEM_SIZE;
 	struct cola_item *L = xcalloc(readc + 1, ITEM_SIZE);
 
 	if (c > 0) {
-		res = pread(cola->fd, L, rused, _pos_calc(level) + used - rused);
+		res = pread(cola->fd, L, readc * ITEM_SIZE, _pos_calc(level) + (c - readc) * ITEM_SIZE);
 		if (res == -1)
 			__PANIC("read klen error");
 
@@ -99,16 +97,15 @@ void write_one_level(struct cola *cola, struct cola_item *L, int count, int leve
 
 void  _merge_to_next(struct cola *cola, int level, int mergec) 
 {
-	int c1 = cola->header.count[level];
 	int c2 = cola->header.count[level + 1];
 
 	struct cola_item *L = read_one_level(cola, level, mergec);
 	struct cola_item *L_nxt = read_one_level(cola, level + 1, c2);
 
-	int lmerge_c = c1 + c2;
+	int lmerge_c = mergec + c2;
 	struct cola_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
-	lmerge_c = cola_merge_sort(L_merge, L, c1, L_nxt, c2);
+	lmerge_c = cola_merge_sort(L_merge, L, mergec, L_nxt, c2);
 	write_one_level(cola, L_merge, lmerge_c, level + 1);
 
 	/* update count */
@@ -133,6 +130,11 @@ void _check_merge(struct cola *cola)
 	int l_nxt_c;
 	int l_nxt_max;
 
+	i = MAX_LEVEL - 1;
+	l_c = cola->header.count[i];
+	l_max = _level_max(i, 3);
+	if (l_c >= l_max)
+		full++;
 
 	for (i = MAX_LEVEL - 2; i >= 0; i--) {
 		l_c = cola->header.count[i];
@@ -142,7 +144,6 @@ void _check_merge(struct cola *cola)
 		l_nxt_max = _level_max(i + 1, 3);
 
 		if (l_nxt_c >= l_nxt_max) {
-			__DEBUG("next level is full");
 			full++;
 			continue;
 		}
@@ -152,20 +153,19 @@ void _check_merge(struct cola *cola)
 
 			/* merge full level to next level */
 			if (diff >= 0) {
-				__DEBUG("----begint to merge to next, level#%d, c#%d", i, l_c);
-				_merge_to_next(cola, i, l_c + 1);
+				_merge_to_next(cola, i, l_c);
 			} else {
-				int d = (diff^0xffffffff) + 1;
-				__DEBUG("----begint to merge part, level#%d, diff#%d, c#%d", i, d, d/ ITEM_SIZE);
-				_merge_to_next(cola, i, d / ITEM_SIZE + 1);
+				diff = l_nxt_max - l_nxt_c;
+				_merge_to_next(cola, i, diff);
 			}
 		}
 	} 
 
-	if (full >= (MAX_LEVEL - 1))
+	if (full >= (MAX_LEVEL - 1)) {
 		cola->willfull = 1;
-
-	cola_dump(cola);
+		__DEBUG("**********all level is full, begin to split");
+		cola_dump(cola);
+	}
 }
 
 struct cola *cola_new(const char *file)
@@ -203,7 +203,7 @@ int cola_add(struct cola *cola, struct cola_item *item)
 		bloom_add(cola->bf, item->data);
 
 	int klen = strlen(item->data);
-	pos = HEADER_SIZE + cola->header.used[0];
+	pos = HEADER_SIZE + cola->header.count[0] * ITEM_SIZE;
 	/* swap max key */
 	cmp = strcmp(item->data, cola->header.max_key);
 	if (cmp > 0) { 
@@ -221,7 +221,7 @@ int cola_add(struct cola *cola, struct cola_item *item)
 	_update_header(cola);
 
 	/* if L0 is full, to check */
-	if ((int)(cola->header.count[0] * ITEM_SIZE) >= _level_max(0, 0))
+	if (cola->header.count[0] >= _level_max(0, 1))
 		_check_merge(cola);
 	
 	return 1;

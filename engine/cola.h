@@ -8,10 +8,8 @@
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
 
-//#define MAX_LEVEL (6)
-//#define L0_SIZE (1024*128)
-#define MAX_LEVEL (4)
-#define L0_SIZE (1024)
+#define MAX_LEVEL (6)
+#define L0_SIZE (1024*128)
 #define NESSDB_MAX_KEY_SIZE (32) 
 #define NESSDB_PATH_SIZE (1024) 
 
@@ -29,7 +27,6 @@ struct cola_item {
 
 struct cola_header {
 	int count[MAX_LEVEL];
-	int used[MAX_LEVEL];
 	char max_key[NESSDB_MAX_KEY_SIZE];
 	unsigned char bitset[NESSDB_BLOOM_BITS / 8];
 } __attribute__((packed));
