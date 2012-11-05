@@ -48,6 +48,7 @@
 #define NESSDB_SST_SEGMENT (4)
 #define NESSDB_MAX_MTB_SIZE (500000)
 #define NESSDB_PATH_SIZE (1024) 
+#define NESSDB_IS_LOG_RECOVERY (1)
 
 #define NESSDB_LOG_EXT (".LOG")
 #define NESSDB_SST_EXT (".SST")

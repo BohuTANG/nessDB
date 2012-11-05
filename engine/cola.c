@@ -305,7 +305,9 @@ RET:
 
 void cola_free(struct cola *cola)
 {
-	close(cola->fd);
+	if (cola->fd > 0)
+		close(cola->fd);
+
 	bloom_free(cola->bf);
 	free(cola);
 }

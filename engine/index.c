@@ -50,6 +50,7 @@ void *_merge_job(void *arg)
 	if (list->count > 0)
 		_merging(idx->meta, list);
 	skiplist_free(list);
+	log_remove(idx->log);
 
 	__DEBUG("--->merging end....");
 #ifdef BGMERGE
@@ -103,8 +104,7 @@ struct index *index_new(const char *path, int mtb_size)
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
 	idx->list = skiplist_new(mtb_size);
 	idx->max_mtb_size = mtb_size;
-	idx->log = log_new(path);
-
+	idx->log = log_new(path, NESSDB_IS_LOG_RECOVERY);
 
 	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_mutex, NULL);
@@ -147,6 +147,9 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		idx->db_alloc += len;
 	}
 
+	/* log append */
+	log_append(idx->log, sk, sv);
+
 	if (!skiplist_notfull(idx->list)) {
 #ifdef BGMERGE
 		pthread_t tid;
@@ -163,6 +166,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 #endif
 
 		idx->list = skiplist_new(idx->max_mtb_size);
+		log_create(idx->log);
 	}
 	skiplist_insert(idx->list, &item);
 
