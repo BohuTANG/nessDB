@@ -7,7 +7,7 @@
 #include "cola.h"
 
 #define META_NODE_SIZE sizeof(struct meta_node)
-#define NESSDB_MAX_META (1000) 
+#define NESSDB_MAX_META (3000) 
 
 struct meta_node{
 	int lsn;

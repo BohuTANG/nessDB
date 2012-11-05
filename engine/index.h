@@ -4,6 +4,7 @@
 #include "meta.h"
 #include "buffer.h"
 #include "skiplist.h"
+#include "log.h"
 
 struct index{
 	int fd;
@@ -14,6 +15,7 @@ struct index{
 	struct buffer *buf;
 	struct skiplist *list;
 	struct skiplist *merging_list;
+	struct log *log;
 
 	pthread_attr_t attr;
 	pthread_mutex_t *merge_mutex;

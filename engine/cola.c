@@ -7,16 +7,10 @@
  */
 
 #include "config.h"
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/stat.h> 
 #include "xmalloc.h"
 #include "cola.h"
 #include "sorts.h"
 #include "debug.h"
-
 
 /* calc level's offset of file */
 int _pos_calc(int level)
@@ -41,13 +35,6 @@ void _update_header(struct cola *cola)
 		return;
 }
 
-/*
-int _level_max_size(int level, int gap)
-{
-	return (int)((1<<level) * L0_SIZE - gap * ITEM_SIZE);
-}
-*/
-
 int _level_max(int level, int gap)
 {
 	return (int)((1<<level) * L0_SIZE / ITEM_SIZE - gap);
@@ -57,7 +44,7 @@ void cola_dump(struct cola *cola)
 {
 	int i;
 
-	__DEBUG("**%06d.sst DUMP:", cola->fd);
+	__DEBUG("**%06d.SST dump:", cola->fd);
 	for(i = 0; i< (int)MAX_LEVEL; i++) {
 		printf("\t\t-L#%d---count#%d, max-count:%d\n"
 				, i
@@ -97,11 +84,9 @@ void write_one_level(struct cola *cola, struct cola_item *L, int count, int leve
 void  _merge_to_next(struct cola *cola, int level, int mergec) 
 {
 	int c2 = cola->header.count[level + 1];
-
+	int lmerge_c = mergec + c2;
 	struct cola_item *L = read_one_level(cola, level, mergec);
 	struct cola_item *L_nxt = read_one_level(cola, level + 1, c2);
-
-	int lmerge_c = mergec + c2;
 	struct cola_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
 	lmerge_c = cola_merge_sort(L_merge, L, mergec, L_nxt, c2);
@@ -121,13 +106,11 @@ void  _merge_to_next(struct cola *cola, int level, int mergec)
 void _check_merge(struct cola *cola)
 {
 	int i;
-	int full = 0;
-
 	int l_c;
 	int l_max;
-
 	int l_nxt_c;
 	int l_nxt_max;
+	int full = 0;
 
 	i = MAX_LEVEL - 1;
 	l_c = cola->header.count[i];

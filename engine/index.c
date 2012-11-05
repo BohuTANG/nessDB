@@ -45,11 +45,13 @@ void *_merge_job(void *arg)
 	pthread_mutex_lock(idx->merge_mutex);
 #endif
 
+	__DEBUG("--->merging start....");
 	list = idx->merging_list;
 	if (list->count > 0)
 		_merging(idx->meta, list);
 	skiplist_free(list);
 
+	__DEBUG("--->merging end....");
 #ifdef BGMERGE
 	pthread_mutex_unlock(idx->merge_mutex);
 	pthread_detach(pthread_self());
@@ -101,6 +103,7 @@ struct index *index_new(const char *path, int mtb_size)
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
 	idx->list = skiplist_new(mtb_size);
 	idx->max_mtb_size = mtb_size;
+	idx->log = log_new(path);
 
 
 	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));

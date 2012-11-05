@@ -21,6 +21,16 @@
 	#define O_BINARY (0) 
 #endif
 
+#include <dirent.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #if defined(__linux__)
 	# define n_open (open64)
 	# define n_lseek (lseek64)
@@ -36,7 +46,11 @@
 #endif
 
 #define NESSDB_SST_SEGMENT (4)
-#define NESSDB_MAX_MTB_SIZE (1000000)
+#define NESSDB_MAX_MTB_SIZE (500000)
+#define NESSDB_PATH_SIZE (1024) 
+
+#define NESSDB_LOG_EXT (".LOG")
+#define NESSDB_SST_EXT (".SST")
 
 struct slice {
 	char *data;
