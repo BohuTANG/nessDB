@@ -123,7 +123,6 @@ void _scryed(struct meta *meta,struct cola *cola, struct cola_item *L, int start
 		__PANIC("OVER max metas, MAX#%d", NESSDB_MAX_META);
 }
 
-
 void _split_sst(struct meta *meta, struct meta_node *node)
 {
 	int i;

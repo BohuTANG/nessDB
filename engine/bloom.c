@@ -10,6 +10,7 @@
 #include "xmalloc.h"
 #include "bloom.h"
 #include "debug.h"
+#include "hashs.h"
 
 #if CHAR_BIT != 8
 	#define CHAR_BIT (8)
@@ -19,30 +20,6 @@
 #define SETBIT_0(bitset,i) (bitset[i / CHAR_BIT] &=  (~(1<<(i % CHAR_BIT))))
 #define GETBIT(bitset,i) (bitset[i / CHAR_BIT] &   (1<<(i % CHAR_BIT)))
 #define HFUNCNUM (2)
-
-static inline unsigned int sax_hash(const char *key)
-{
-	unsigned int h = 0;
-
-	while (*key) {
-		h ^= (h << 5) + (h >> 2) + (unsigned char) *key;
-		++key;
-	}
-
-	return h;
-}
-
-static inline unsigned int djb_hash(const char *key)
-{
-	unsigned int h = 5381;
-
-	while (*key) {
-		h = ((h<< 5) + h) + (unsigned char) *key;  /* hash * 33 + c */
-		++key;
-	}
-
-	return h;
-}
 
 struct bloom *bloom_new(unsigned char *bitset)
 {

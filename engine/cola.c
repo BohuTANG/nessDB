@@ -48,7 +48,6 @@ int _level_max_size(int level, int gap)
 }
 */
 
-
 int _level_max(int level, int gap)
 {
 	return (int)((1<<level) * L0_SIZE / ITEM_SIZE - gap);
@@ -161,11 +160,8 @@ void _check_merge(struct cola *cola)
 		}
 	} 
 
-	if (full >= (MAX_LEVEL - 1)) {
+	if (full >= (MAX_LEVEL - 1))
 		cola->willfull = 1;
-		__DEBUG("**********all level is full, begin to split");
-		cola_dump(cola);
-	}
 }
 
 struct cola *cola_new(const char *file)
