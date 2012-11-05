@@ -20,6 +20,32 @@
 #include "xmalloc.h"
 #include "hashs.h"
 
+void _log_recovery(struct index *idx)
+{
+	struct kv_pair *cur = idx->log->redo;
+	struct kv_pair *pre = cur;
+
+	if (cur) {
+		cur = cur->nxt;
+		while (cur) {
+			if (cur->sv.data)
+				__DEBUG("k#%s, v#%s", cur->sk.data, cur->sv.data);
+
+			if (cur->sk.data)
+				free(cur->sk.data);
+
+			if (cur->sv.data)
+				free(cur->sv.data);
+
+			pre = cur->nxt;
+			free(cur);
+			cur = pre;
+		}
+
+		free(idx->log->redo);
+	}
+}
+
 void _merging(struct meta *meta, struct skiplist *list)
 {
 	struct meta_node *node;
@@ -80,6 +106,10 @@ void _flush_index(struct index *idx)
 
 	}
 	skiplist_free(list);
+
+	/* remove current log */
+	idx->log->no++;
+	log_remove(idx->log);
 }
 
 struct index *index_new(const char *path, int mtb_size)
@@ -105,6 +135,7 @@ struct index *index_new(const char *path, int mtb_size)
 	idx->list = skiplist_new(mtb_size);
 	idx->max_mtb_size = mtb_size;
 	idx->log = log_new(path, NESSDB_IS_LOG_RECOVERY);
+	_log_recovery(idx);
 
 	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_mutex, NULL);
@@ -249,7 +280,9 @@ int index_remove(struct index *idx, struct slice *sk)
 void index_free(struct index *idx)
 {
 	_flush_index(idx);
+	free(idx->merge_mutex);
 	meta_free(idx->meta);
 	buffer_free(idx->buf);
+	log_free(idx->log);
 	free(idx);
 }
