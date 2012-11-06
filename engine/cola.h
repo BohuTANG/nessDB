@@ -1,7 +1,6 @@
 #ifndef _COLA_H
 #define _COLA_H
 
-#include <stdint.h>
 #include "config.h"
 #include "bloom.h"
 
@@ -38,11 +37,11 @@ struct cola {
 };
 
 struct cola *cola_new(const char *file);
-int cola_add(struct cola *cola, struct cola_item *item);
+STATUS cola_add(struct cola *cola, struct cola_item *item);
+STATUS cola_isfull(struct cola *cola);
+STATUS cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair);
 void cola_truncate(struct cola *cola);
-int cola_isfull(struct cola *cola);
 struct cola_item *cola_in_one(struct cola *cola, int *c);
-int cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair);
 void cola_dump(struct cola *cola);
 void cola_free(struct cola *cola);
 

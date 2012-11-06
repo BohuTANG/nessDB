@@ -27,9 +27,9 @@ struct index{
 };
 
 struct index *index_new(const char *path, int mtb_size);
-int index_add(struct index *idx, struct slice *sk, struct slice *sv);
-int index_get(struct index *idx, struct slice *sk, struct slice *sv);
-int index_remove(struct index *idx, struct slice *sk);
+STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv);
+STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv);
+STATUS index_remove(struct index *idx, struct slice *sk);
 void index_free(struct index *idx);
 
 #endif

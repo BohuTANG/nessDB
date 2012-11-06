@@ -2,8 +2,6 @@
 #define _META_H
 
 #include "config.h"
-#include <stdint.h>
-#include <pthread.h>
 #include "cola.h"
 
 #define META_NODE_SIZE sizeof(struct meta_node)

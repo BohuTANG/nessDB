@@ -7,14 +7,6 @@
  */
 
 #include "config.h"
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
 #include "index.h"
 #include "debug.h"
 #include "xmalloc.h"
@@ -94,7 +86,7 @@ struct index *index_new(const char *path, int mtb_size)
 	idx->buf = buffer_new(5 * 1024 * 1024);
 
 	memset(db_name, 0, NESSDB_PATH_SIZE);
-	snprintf(db_name, NESSDB_PATH_SIZE, "%s/ness.db", path);
+	snprintf(db_name, NESSDB_PATH_SIZE, "%s/%s", path, NESSDB_DB);
 
 	idx->fd = n_open(db_name, N_OPEN_FLAGS, 0644);
 	if (idx->fd == -1) {
@@ -119,7 +111,7 @@ struct index *index_new(const char *path, int mtb_size)
 	return idx;
 }
 
-int index_add(struct index *idx, struct slice *sk, struct slice *sv)
+STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int ret;
 	int len;
@@ -128,7 +120,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
-		return 0;
+		return nERR;
 	}
 
 	memset(&item, 0, ITEM_SIZE);
@@ -174,10 +166,10 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 	skiplist_insert(idx->list, &item);
 
-	return 1;
+	return nOK;
 }
 
-int index_get(struct index *idx, struct slice *sk, struct slice *sv) 
+STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv) 
 {
 	int res;
 	struct ol_pair pair;
@@ -185,7 +177,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
-		return 0;
+		return nERR;
 	}
 
 	memset(&pair, 0, sizeof pair);
@@ -225,21 +217,21 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		sv->data = data;
 		sv->len = pair.vlen;
 
-		return 1;
+		return nOK;
 	}
 
 RET:
-	return 0;
+	return nERR;
 }
 
-int index_remove(struct index *idx, struct slice *sk)
+STATUS index_remove(struct index *idx, struct slice *sk)
 {
 	struct cola_item item;
 	struct meta_node *node ;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
-		return 0;
+		return nERR;
 	}
 	/* write key index */
 	memset(&item, 0, ITEM_SIZE);
@@ -247,7 +239,7 @@ int index_remove(struct index *idx, struct slice *sk)
 	node = meta_get(idx->meta, sk->data);
 	cola_add(node->cola, &item);
 
-	return 1;
+	return nOK;
 }
 
 void index_free(struct index *idx)

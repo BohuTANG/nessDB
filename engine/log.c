@@ -67,75 +67,67 @@ void log_remove(struct log *log, int logno)
 		__ERROR("remove log %s error", log->file);
 }
 
-void _log_read(struct log *log, struct meta *meta, int no)
+void _log_recovery(struct log *log, struct meta *meta)
 {
+	int i;
 	int fd;
 	int sizes;
 	int rem;;
 	struct meta_node *node;
 	struct cola_item itm;
 
-	_make_log_name(log, no);
-	fd = n_open(log->file, N_OPEN_FLAGS, 0644);
+	for (i = log->no - 1; i <= log->no; i++) {
+		_make_log_name(log, i);
+		fd = n_open(log->file, N_OPEN_FLAGS, 0644);
 
-	if (fd == -1) {
-		__ERROR("read log error, %s", log->file);
-		return;
+		if (fd == -1) {
+			__ERROR("read log error, %s", log->file);
+			return;
+		}
+
+		rem = sizes = lseek(fd, 0, SEEK_END);
+
+		__DEBUG("--->begin to recover log#%s, log-sizes#%d", log->file, sizes);
+		lseek(fd, 0, SEEK_SET);
+		while (rem) {
+			int klen = 0;
+			int vlen = 0;
+			short opt = 0;
+			uint64_t v = 0;
+
+			memset(&itm, 0, ITEM_SIZE);
+
+			if (read(fd, &klen, sizeof klen) != sizeof klen)
+				__PANIC("read klen error");
+			rem -= sizeof klen;
+
+			if (read(fd, itm.data, klen) != klen)
+				__PANIC("error when read key");
+			rem -= klen;
+
+			if (read(fd, &vlen, sizeof vlen) != sizeof vlen)
+				__PANIC("error when read vlen");
+			rem -= sizeof vlen;
+			itm.vlen = vlen;
+
+			if (read(fd, &v, sizeof v) != sizeof v)
+				__PANIC("read v error");
+			rem -= sizeof v;
+			itm.offset = v;
+
+			if (read(fd, &opt, sizeof opt) != sizeof opt)
+				__PANIC("error when read opt");
+			rem -= sizeof opt;
+			itm.opt = opt;
+
+			node = meta_get(meta, itm.data);
+			cola_add(node->cola, &itm);
+		}
+
+		log_remove(log, i);
+		if (fd > 0)
+			close(fd);
 	}
-
-	rem = sizes = lseek(fd, 0, SEEK_END);
-
-	__DEBUG("--->begin to recover log#%s, log-sizes#%d", log->file, sizes);
-	lseek(fd, 0, SEEK_SET);
-	while (rem) {
-		int klen = 0;
-		int vlen = 0;
-		short opt = 0;
-		uint64_t v = 0;
-
-		memset(&itm, 0, ITEM_SIZE);
-
-		if (read(fd, &klen, sizeof klen) != sizeof klen)
-			__PANIC("read klen error");
-		rem -= sizeof klen;
-
-		if (read(fd, itm.data, klen) != klen)
-			__PANIC("error when read key");
-		rem -= klen;
-
-		if (read(fd, &vlen, sizeof vlen) != sizeof vlen)
-			__PANIC("error when read vlen");
-		rem -= sizeof vlen;
-		itm.vlen = vlen;
-
-		if (read(fd, &v, sizeof v) != sizeof v)
-			__PANIC("read v error");
-		rem -= sizeof v;
-		itm.offset = v;
-
-		if (read(fd, &opt, sizeof opt) != sizeof opt)
-			__PANIC("error when read opt");
-		rem -= sizeof opt;
-		itm.opt = opt;
-
-		node = meta_get(meta, itm.data);
-		cola_add(node->cola, &itm);
-	}
-
-	log_remove(log, no);
-	if (fd > 0)
-		close(fd);
-}
-
-void _log_recovery(struct log *log, struct meta *meta)
-{
-	int i;
-
-	if (log->no < 1 || !log->islog)
-		return;
-
-	for (i = log->no - 1; i <= log->no; i++)
-		_log_read(log, meta, i);
 }
 
 struct log *log_new(const char *path, struct meta *meta, int islog)
@@ -151,7 +143,11 @@ struct log *log_new(const char *path, struct meta *meta, int islog)
 	log->no = max;
 	log->islog = islog;
 
-	_log_recovery(log, meta);
+	/* log recovery */
+	if (log->no > 0 && log->islog)
+		_log_recovery(log, meta);
+
+	/* create new log file */
 	log_create(log);
 
 	return log;

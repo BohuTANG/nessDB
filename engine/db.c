@@ -5,14 +5,11 @@
  *
  */
 
-#include <stdlib.h>
-#include <string.h>
-
-#include "xmalloc.h"
+#include "db.h"
 #include "index.h"
 #include "buffer.h"
-#include "db.h"
 #include "debug.h"
+#include "xmalloc.h"
 
 struct nessdb *db_open(const char *basedir)
 {
@@ -24,12 +21,12 @@ struct nessdb *db_open(const char *basedir)
 	return db;
 }
 
-int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
+STATUS db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	return index_add(db->idx, sk, sv);
 }
 
-int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
+STATUS db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	int ret;
 

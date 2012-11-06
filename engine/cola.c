@@ -171,7 +171,7 @@ ERR:
 	return NULL;
 }
 
-int cola_add(struct cola *cola, struct cola_item *item)
+STATUS cola_add(struct cola *cola, struct cola_item *item)
 {
 	int cmp;
 	int res;
@@ -203,10 +203,10 @@ int cola_add(struct cola *cola, struct cola_item *item)
 	if (cola->header.count[0] >= _level_max(0, 1))
 		_check_merge(cola);
 	
-	return 1;
+	return nOK;
 
 ERR:
-	return 0;
+	return nERR;
 }
 
 void cola_truncate(struct cola *cola)
@@ -247,7 +247,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 	return L;
 }
 
-int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
+STATUS cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
 	int i = 0;
@@ -262,25 +262,23 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 				pair->offset = L[i].offset;
 				pair->vlen = L[i].vlen;
 			}
-
 			free(L);
-			return 1;
+
+			goto RET;
 		}
 	}
 	free(L);
 
 	for (i = 1; i < MAX_LEVEL; i++) {
-		int res;
 		struct cola_item itm;
-		int left = 0;
-		int mid;
+		int res, left = 0, mid;
 		int right = cola->header.count[i];
 
 		while (left < right) {
 			mid = (left + right) / 2;
 			res = pread(cola->fd, &itm, sizeof(itm), _pos_calc(i) + mid * sizeof(itm));
 			if (res == -1)
-				goto RET;
+				goto ERR;
 
 			cmp = strcmp(sk->data, itm.data);
 			if (cmp == 0) {
@@ -288,8 +286,7 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 					pair->offset = itm.offset;
 					pair->vlen = itm.vlen;
 				}
-
-				return 1;
+				goto RET;
 			}
 
 			if (cmp < 0)
@@ -300,7 +297,9 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 	}
 
 RET:
-	return 0;
+	return nOK;
+ERR:
+	return nERR;
 }
 
 void cola_free(struct cola *cola)

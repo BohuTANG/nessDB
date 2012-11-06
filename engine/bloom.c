@@ -5,12 +5,11 @@
  *
  */
 
-#include <stdlib.h>
 #include <stdarg.h>
-#include "xmalloc.h"
 #include "bloom.h"
 #include "debug.h"
 #include "hashs.h"
+#include "xmalloc.h"
 
 #if CHAR_BIT != 8
 	#define CHAR_BIT (8)
@@ -23,7 +22,7 @@
 
 struct bloom *bloom_new(unsigned char *bitset)
 {
-	struct bloom *bl =xcalloc(1, sizeof(struct bloom));
+	struct bloom *bl = xcalloc(1, sizeof(struct bloom));
 
 	bl->bitset = bitset;
 	bl->hashfuncs = xcalloc(HFUNCNUM, sizeof(hashfuncs));

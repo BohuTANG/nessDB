@@ -28,6 +28,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -52,10 +56,13 @@
 
 #define NESSDB_LOG_EXT (".LOG")
 #define NESSDB_SST_EXT (".SST")
+#define NESSDB_DB ("ness.DB")
 
 struct slice {
 	char *data;
 	int len;
 };
+
+typedef enum {nERR = 0, nOK = 1} STATUS;
 
 #endif
