@@ -5,13 +5,6 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-
 #include "meta.h"
 #include "debug.h"
 #include "xmalloc.h"
@@ -45,7 +38,7 @@ void  _check_dir(const char *pathname)
 void _make_sstname(struct meta *meta, int lsn)
 {
 	memset(meta->sst_file, 0, NESSDB_PATH_SIZE);
-	snprintf(meta->sst_file, NESSDB_PATH_SIZE, "%s/%06d.sst", meta->path, lsn);
+	snprintf(meta->sst_file, NESSDB_PATH_SIZE, "%s/%06d%s", meta->path, lsn, NESSDB_SST_EXT);
 }
 
 int _get_idx(struct meta *meta, char *key)
@@ -90,7 +83,7 @@ void meta_dump(struct meta *meta)
 		}
 
 		allc += count;
-		__DEBUG("\t-----[%d] #%06d.sst, max-key#%s, used#%d, count#%d"
+		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s, used#%d, count#%d"
 				, i
 				, meta->nodes[i].lsn
 				, meta->nodes[i].cola->header.max_key
@@ -123,7 +116,6 @@ void _scryed(struct meta *meta,struct cola *cola, struct cola_item *L, int start
 		__PANIC("OVER max metas, MAX#%d", NESSDB_MAX_META);
 }
 
-
 void _split_sst(struct meta *meta, struct meta_node *node)
 {
 	int i;
@@ -154,12 +146,14 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 		}
 	}
 
+	__DEBUG("---will scryed SST to %d....", NESSDB_SST_SEGMENT);
 	/* others SST */
 	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
 		_make_sstname(meta, meta->size);
 		cola = cola_new(meta->sst_file);
 		_scryed(meta, cola, L, mod + i*split, split, nxt_idx++);
 	}
+	__DEBUG("---SST scryed end....");
 
 	free(L);
 }
@@ -175,7 +169,7 @@ void _build_meta(struct meta *meta)
 
 	dd = opendir(meta->path);
 	while ((de = readdir(dd))) {
-		if (strstr(de->d_name, ".sst")) {
+		if (strstr(de->d_name, NESSDB_SST_EXT)) {
 			memset(sst_name, 0, NESSDB_PATH_SIZE);
 			memcpy(sst_name, de->d_name, strlen(de->d_name) - 4);
 			lsn = atoi(sst_name);

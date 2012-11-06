@@ -1,8 +1,11 @@
 CC = gcc
 
+#background-threading merge
+BGMERGE = -DBGMERGE
+
 #debug levle
 DEBUG =	-g -O2 -ggdb -DINFO
-CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) 
+CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) $(BGMERGE)
 
 LIB_OBJS = \
 	./engine/xmalloc.o\
@@ -13,6 +16,8 @@ LIB_OBJS = \
 	./engine/buffer.o\
 	./engine/index.o\
 	./engine/bloom.o\
+	./engine/skiplist.o\
+	./engine/log.o\
 	./engine/db.o
 
 TEST = \

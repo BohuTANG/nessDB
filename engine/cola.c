@@ -7,16 +7,10 @@
  */
 
 #include "config.h"
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/stat.h> 
 #include "xmalloc.h"
 #include "cola.h"
 #include "sorts.h"
 #include "debug.h"
-
 
 /* calc level's offset of file */
 int _pos_calc(int level)
@@ -41,14 +35,6 @@ void _update_header(struct cola *cola)
 		return;
 }
 
-/*
-int _level_max_size(int level, int gap)
-{
-	return (int)((1<<level) * L0_SIZE - gap * ITEM_SIZE);
-}
-*/
-
-
 int _level_max(int level, int gap)
 {
 	return (int)((1<<level) * L0_SIZE / ITEM_SIZE - gap);
@@ -58,7 +44,7 @@ void cola_dump(struct cola *cola)
 {
 	int i;
 
-	__DEBUG("**%06d.sst DUMP:", cola->fd);
+	__DEBUG("**%06d.SST dump:", cola->fd);
 	for(i = 0; i< (int)MAX_LEVEL; i++) {
 		printf("\t\t-L#%d---count#%d, max-count:%d\n"
 				, i
@@ -98,11 +84,9 @@ void write_one_level(struct cola *cola, struct cola_item *L, int count, int leve
 void  _merge_to_next(struct cola *cola, int level, int mergec) 
 {
 	int c2 = cola->header.count[level + 1];
-
+	int lmerge_c = mergec + c2;
 	struct cola_item *L = read_one_level(cola, level, mergec);
 	struct cola_item *L_nxt = read_one_level(cola, level + 1, c2);
-
-	int lmerge_c = mergec + c2;
 	struct cola_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
 	lmerge_c = cola_merge_sort(L_merge, L, mergec, L_nxt, c2);
@@ -122,13 +106,11 @@ void  _merge_to_next(struct cola *cola, int level, int mergec)
 void _check_merge(struct cola *cola)
 {
 	int i;
-	int full = 0;
-
 	int l_c;
 	int l_max;
-
 	int l_nxt_c;
 	int l_nxt_max;
+	int full = 0;
 
 	i = MAX_LEVEL - 1;
 	l_c = cola->header.count[i];
@@ -161,11 +143,8 @@ void _check_merge(struct cola *cola)
 		}
 	} 
 
-	if (full >= (MAX_LEVEL - 1)) {
+	if (full >= (MAX_LEVEL - 1))
 		cola->willfull = 1;
-		__DEBUG("**********all level is full, begin to split");
-		cola_dump(cola);
-	}
 }
 
 struct cola *cola_new(const char *file)
@@ -192,7 +171,7 @@ ERR:
 	return NULL;
 }
 
-int cola_add(struct cola *cola, struct cola_item *item)
+STATUS cola_add(struct cola *cola, struct cola_item *item)
 {
 	int cmp;
 	int res;
@@ -224,10 +203,10 @@ int cola_add(struct cola *cola, struct cola_item *item)
 	if (cola->header.count[0] >= _level_max(0, 1))
 		_check_merge(cola);
 	
-	return 1;
+	return nOK;
 
 ERR:
-	return 0;
+	return nERR;
 }
 
 void cola_truncate(struct cola *cola)
@@ -268,7 +247,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 	return L;
 }
 
-int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
+STATUS cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
 	int i = 0;
@@ -283,25 +262,23 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 				pair->offset = L[i].offset;
 				pair->vlen = L[i].vlen;
 			}
-
 			free(L);
-			return 1;
+
+			goto RET;
 		}
 	}
 	free(L);
 
 	for (i = 1; i < MAX_LEVEL; i++) {
-		int res;
 		struct cola_item itm;
-		int left = 0;
-		int mid;
+		int res, left = 0, mid;
 		int right = cola->header.count[i];
 
 		while (left < right) {
 			mid = (left + right) / 2;
 			res = pread(cola->fd, &itm, sizeof(itm), _pos_calc(i) + mid * sizeof(itm));
 			if (res == -1)
-				goto RET;
+				goto ERR;
 
 			cmp = strcmp(sk->data, itm.data);
 			if (cmp == 0) {
@@ -309,8 +286,7 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 					pair->offset = itm.offset;
 					pair->vlen = itm.vlen;
 				}
-
-				return 1;
+				goto RET;
 			}
 
 			if (cmp < 0)
@@ -321,12 +297,16 @@ int  cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 	}
 
 RET:
-	return 0;
+	return nOK;
+ERR:
+	return nERR;
 }
 
 void cola_free(struct cola *cola)
 {
-	close(cola->fd);
+	if (cola->fd > 0)
+		close(cola->fd);
+
 	bloom_free(cola->bf);
 	free(cola);
 }
