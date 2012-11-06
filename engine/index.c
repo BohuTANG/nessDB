@@ -20,32 +20,6 @@
 #include "xmalloc.h"
 #include "hashs.h"
 
-void _log_recovery(struct index *idx)
-{
-	struct kv_pair *cur = idx->log->redo;
-	struct kv_pair *pre = cur;
-
-	if (cur) {
-		cur = cur->nxt;
-		while (cur) {
-			if (cur->sv.data)
-				__DEBUG("k#%s, v#%s", cur->sk.data, cur->sv.data);
-
-			if (cur->sk.data)
-				free(cur->sk.data);
-
-			if (cur->sv.data)
-				free(cur->sv.data);
-
-			pre = cur->nxt;
-			free(cur);
-			cur = pre;
-		}
-
-		free(idx->log->redo);
-	}
-}
-
 void _merging(struct meta *meta, struct skiplist *list)
 {
 	struct meta_node *node;
@@ -72,11 +46,11 @@ void *_merge_job(void *arg)
 #endif
 
 	__DEBUG("--->merging start....");
-	list = idx->merging_list;
+	list = idx->park.merging;
 	if (list->count > 0)
 		_merging(idx->meta, list);
 	skiplist_free(list);
-	log_remove(idx->log);
+	log_remove(idx->log, idx->park.logno);
 
 	__DEBUG("--->merging end....");
 #ifdef BGMERGE
@@ -108,8 +82,7 @@ void _flush_index(struct index *idx)
 	skiplist_free(list);
 
 	/* remove current log */
-	idx->log->no++;
-	log_remove(idx->log);
+	log_remove(idx->log, idx->log->no);
 }
 
 struct index *index_new(const char *path, int mtb_size)
@@ -134,8 +107,7 @@ struct index *index_new(const char *path, int mtb_size)
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
 	idx->list = skiplist_new(mtb_size);
 	idx->max_mtb_size = mtb_size;
-	idx->log = log_new(path, NESSDB_IS_LOG_RECOVERY);
-	_log_recovery(idx);
+	idx->log = log_new(path, idx->meta, NESSDB_IS_LOG_RECOVERY);
 
 	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_mutex, NULL);
@@ -179,7 +151,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	/* log append */
-	log_append(idx->log, sk, sv);
+	log_append(idx->log, &item);
 
 	if (!skiplist_notfull(idx->list)) {
 #ifdef BGMERGE
@@ -187,7 +159,8 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		pthread_mutex_lock(idx->merge_mutex);
 #endif
 
-		idx->merging_list = idx->list;
+		idx->park.merging = idx->list;
+		idx->park.logno = idx->log->no;
 
 #ifdef BGMERGE
 		pthread_mutex_unlock(idx->merge_mutex);

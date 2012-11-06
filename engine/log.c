@@ -1,5 +1,14 @@
+/*
+ * Copyright (c) 2012, BohuTANG <overred.shuttler at gmail dot com>
+ * All rights reserved.
+ * Code is licensed with GPL. See COPYING.GPL file.
+ *
+ */
+
 #include "config.h"
 
+#include "meta.h"
+#include "cola.h"
 #include "log.h"
 #include "debug.h"
 #include "xmalloc.h"
@@ -46,11 +55,11 @@ void log_create(struct log *log)
 		__PANIC("create log file %s....", log->file);
 }
 
-void log_remove(struct log *log)
+void log_remove(struct log *log, int logno)
 {
 	int res;
 
-	_make_log_name(log, log->no - 1);
+	_make_log_name(log, logno);
 	__DEBUG("remove log#%s", log->file);
 
 	res = remove(log->file);
@@ -58,78 +67,83 @@ void log_remove(struct log *log)
 		__ERROR("remove log %s error", log->file);
 }
 
-struct kv_pair *_log_read(struct log *log)
+void _log_read(struct log *log, struct meta *meta, int no)
 {
-	int l = 2;
 	int fd;
-	struct kv_pair *first = xcalloc(1, sizeof(struct kv_pair));
-	struct kv_pair *pre = first;
+	int sizes;
+	int rem;;
+	struct meta_node *node;
+	struct cola_item itm;
 
-	_make_log_name(log, log->no - 1);
+	_make_log_name(log, no);
 	fd = n_open(log->file, N_OPEN_FLAGS, 0644);
-	while (fd > -1 && (l--) > 0) {
-		int sizes = lseek(fd, 0, SEEK_END);
-		int rem = sizes;
 
-		lseek(fd, 0, SEEK_SET);
-
-		while (rem) {
-			char *k;
-			char *v;
-			int klen = 0;
-			short opt = 0;
-			struct kv_pair *cur  = xcalloc(1, sizeof(struct kv_pair));
-
-			if (read(fd, &klen, sizeof klen) != sizeof klen)
-				__PANIC("read klen error");
-			rem -= sizeof klen;
-
-			k = xcalloc(1, klen + 1);
-			if (read(fd, k, klen) != klen)
-				__PANIC("error when read key");
-
-			rem -= klen;
-
-			if (read(fd, &opt, sizeof opt) != sizeof opt)
-				__PANIC("error when read opt");
-			rem -= sizeof opt;
-
-			cur->sk.data = k;
-			cur->sk.len = klen;
-
-			if (opt == 1) {
-				int vlen = 0;
-
-				if (read(fd, &vlen, sizeof vlen) != sizeof vlen)
-					__PANIC("read vlen error");
-
-				rem -= sizeof vlen;
-				v = xcalloc(1, vlen + 1);
-				if (read(fd, v, vlen) != vlen)
-					__PANIC("error when read value");
-
-				rem -= vlen;
-
-				cur->sv.data = v;
-				cur->sv.len = vlen;
-			}
-
-			pre->nxt = cur;
-			pre = cur;
-		}
-
-		_make_log_name(log, log->no);
-		fd = n_open(log->file, N_OPEN_FLAGS, 0644);
+	if (fd == -1) {
+		__ERROR("read log error, %s", log->file);
+		return;
 	}
 
-	return first;
+	rem = sizes = lseek(fd, 0, SEEK_END);
+
+	__DEBUG("--->begin to recover log#%s, log-sizes#%d", log->file, sizes);
+	lseek(fd, 0, SEEK_SET);
+	while (rem) {
+		int klen = 0;
+		int vlen = 0;
+		short opt = 0;
+		uint64_t v = 0;
+
+		memset(&itm, 0, ITEM_SIZE);
+
+		if (read(fd, &klen, sizeof klen) != sizeof klen)
+			__PANIC("read klen error");
+		rem -= sizeof klen;
+
+		if (read(fd, itm.data, klen) != klen)
+			__PANIC("error when read key");
+		rem -= klen;
+
+		if (read(fd, &vlen, sizeof vlen) != sizeof vlen)
+			__PANIC("error when read vlen");
+		rem -= sizeof vlen;
+		itm.vlen = vlen;
+
+		if (read(fd, &v, sizeof v) != sizeof v)
+			__PANIC("read v error");
+		rem -= sizeof v;
+		itm.offset = v;
+
+		if (read(fd, &opt, sizeof opt) != sizeof opt)
+			__PANIC("error when read opt");
+		rem -= sizeof opt;
+		itm.opt = opt;
+
+		node = meta_get(meta, itm.data);
+		cola_add(node->cola, &itm);
+	}
+
+	log_remove(log, no);
+	if (fd > 0)
+		close(fd);
 }
 
-struct log *log_new(const char *path, int islog)
+void _log_recovery(struct log *log, struct meta *meta)
+{
+	int i;
+
+	if (log->no < 1 || !log->islog)
+		return;
+
+	for (i = log->no - 1; i <= log->no; i++)
+		_log_read(log, meta, i);
+}
+
+struct log *log_new(const char *path, struct meta *meta, int islog)
 {
 	int max;
-	struct log *log = xcalloc(1, sizeof(struct log));
-
+	struct log *log;
+	
+	log = xcalloc(1, sizeof(struct log));
 	memcpy(log->path, path, strlen(path));
 	log->buf = buffer_new(1024 * 1024 *16); /* 10MB buffer*/
 
@@ -137,31 +151,28 @@ struct log *log_new(const char *path, int islog)
 	log->no = max;
 	log->islog = islog;
 
-	if (max > 0)
-		log->redo = _log_read(log);
-
+	_log_recovery(log, meta);
 	log_create(log);
+
 	return log;
 }
 
-void log_append(struct log *log, struct slice *sk, struct slice *sv)
+void log_append(struct log *log, struct cola_item *itm)
 {
 	int res;
 	int len;
+	int klen;
 	char *block;
 
 	if (!log->islog)
 		return;
 
-	buffer_putint(log->buf, sk->len);
-	buffer_putnstr(log->buf, sk->data, sk->len);
-
-	if (sv) {
-		buffer_putshort(log->buf, 1);
-		buffer_putint(log->buf, sv->len);
-		buffer_putnstr(log->buf, sv->data, sv->len);
-	} else 
-		buffer_putshort(log->buf, 0);
+	klen = strlen(itm->data);
+	buffer_putint(log->buf, klen);
+	buffer_putnstr(log->buf, itm->data, klen);
+	buffer_putint(log->buf, itm->vlen);
+	buffer_putlong(log->buf, itm->offset);
+	buffer_putshort(log->buf, itm->opt);
 
 	len = log->buf->NUL;
 	block = buffer_detach(log->buf);

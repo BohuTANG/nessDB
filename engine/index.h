@@ -6,6 +6,11 @@
 #include "skiplist.h"
 #include "log.h"
 
+struct idx_park {
+	int logno;
+	struct skiplist *merging;
+};
+
 struct index{
 	int fd;
 	int read_fd;
@@ -14,8 +19,8 @@ struct index{
 	struct meta *meta;
 	struct buffer *buf;
 	struct skiplist *list;
-	struct skiplist *merging_list;
 	struct log *log;
+	struct idx_park park;
 
 	pthread_attr_t attr;
 	pthread_mutex_t *merge_mutex;
