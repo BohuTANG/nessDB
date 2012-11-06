@@ -9,7 +9,7 @@
 
 #define MAX_LEVEL (9)
 #define L0_SIZE (1024*64)
-#define NESSDB_MAX_KEY_SIZE (29) 
+#define NESSDB_MAX_KEY_SIZE (35) 
 
 struct ol_pair {
 	uint64_t offset;
