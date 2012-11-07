@@ -114,6 +114,8 @@ void  _merge_to_next(struct cola *cola, int level, int mergec)
 	free(L_merge);
 } 
 
+#define LEVEL_DENSITY (0.9)
+#define FULL_DENSITY (0.99)
 void _check_merge(struct cola *cola)
 {
 	int i;
@@ -136,7 +138,7 @@ void _check_merge(struct cola *cola)
 		if (nxt_c >= nxt_max) 
 			continue;
 
-		if (c >= max * 0.9) {
+		if (c >= max * LEVEL_DENSITY) {
 			int diff = nxt_max - (c + nxt_c);
 
 			/* merge full level to next level */
@@ -150,9 +152,9 @@ void _check_merge(struct cola *cola)
 	} 
 
 	density = (double)usedc / (double)cola->allcount;
-	if (density > 0.95) {
+	if (density > FULL_DENSITY) {
 		cola->willfull = 1;
-		__DEBUG("...density is %.2f, %d:%d", density, usedc, cola->allcount);
+		__DEBUG("...density is %.2f=%d/%d", density, usedc, cola->allcount);
 		cola_dump(cola);
 	}
 }

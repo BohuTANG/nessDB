@@ -45,7 +45,6 @@ void log_create(struct log *log)
 {
 	log->no++;
 	_make_log_name(log, log->no);
-	__DEBUG("create new log#%s", log->file);
 
 	if (log->fd > 0)
 		close(log->fd);
@@ -60,7 +59,6 @@ void log_remove(struct log *log, int logno)
 	int res;
 
 	_make_log_name(log, logno);
-	__DEBUG("remove log#%s", log->file);
 
 	res = remove(log->file);
 	if (res == -1)
