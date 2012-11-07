@@ -31,6 +31,7 @@ struct cola_header {
 
 struct cola {
 	int fd;
+	int allcount;
 	int willfull;
 	struct cola_header header;
 	struct bloom *bf;

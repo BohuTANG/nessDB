@@ -37,14 +37,12 @@ void *_merge_job(void *arg)
 	pthread_mutex_lock(idx->merge_mutex);
 #endif
 
-	__DEBUG("--->merging start....");
 	list = idx->park.merging;
 	if (list->count > 0)
 		_merging(idx->meta, list);
 	skiplist_free(list);
 	log_remove(idx->log, idx->park.logno);
 
-	__DEBUG("--->merging end....");
 #ifdef BGMERGE
 	pthread_mutex_unlock(idx->merge_mutex);
 	pthread_detach(pthread_self());

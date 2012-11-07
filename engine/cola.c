@@ -40,6 +40,17 @@ int _level_max(int level, int gap)
 	return (int)((1<<level) * L0_SIZE / ITEM_SIZE - gap);
 }
 
+int _level_counts()
+{
+	int i;
+	int c = 0;
+
+	for (i = 0; i < MAX_LEVEL; i++)
+		c += _level_max(i, 0);
+
+	return c;
+}
+
 void cola_dump(struct cola *cola)
 {
 	int i;
@@ -103,48 +114,49 @@ void  _merge_to_next(struct cola *cola, int level, int mergec)
 	free(L_merge);
 } 
 
+#define LEVEL_DENSITY (0.9)
+#define FULL_DENSITY (0.99)
 void _check_merge(struct cola *cola)
 {
 	int i;
-	int l_c;
-	int l_max;
-	int l_nxt_c;
-	int l_nxt_max;
-	int full = 0;
+	int c;
+	int max;
+	int nxt_c;
+	int nxt_max;
+	int usedc = 0;
+	double density;
 
-	i = MAX_LEVEL - 1;
-	l_c = cola->header.count[i];
-	l_max = _level_max(i, 3);
-	if (l_c >= l_max)
-		full++;
-
+	usedc += cola->header.count[MAX_LEVEL - 1];
 	for (i = MAX_LEVEL - 2; i >= 0; i--) {
-		l_c = cola->header.count[i];
-		l_max = _level_max(i, 3);
+		c = cola->header.count[i];
+		max = _level_max(i, 3);
+		usedc += c;
 
-		l_nxt_c = cola->header.count[i + 1];
-		l_nxt_max = _level_max(i + 1, 3);
+		nxt_c = cola->header.count[i + 1];
+		nxt_max = _level_max(i + 1, 3);
 
-		if (l_nxt_c >= l_nxt_max) {
-			full++;
+		if (nxt_c >= nxt_max) 
 			continue;
-		}
 
-		if (l_c >= l_max) {
-			int diff = l_nxt_max - (l_c + l_nxt_c);
+		if (c >= max * LEVEL_DENSITY) {
+			int diff = nxt_max - (c + nxt_c);
 
 			/* merge full level to next level */
 			if (diff >= 0) {
-				_merge_to_next(cola, i, l_c);
+				_merge_to_next(cola, i, c);
 			} else {
-				diff = l_nxt_max - l_nxt_c;
+				diff = nxt_max - nxt_c;
 				_merge_to_next(cola, i, diff);
 			}
 		}
 	} 
 
-	if (full >= (MAX_LEVEL - 1))
+	density = (double)usedc / (double)cola->allcount;
+	if (density > FULL_DENSITY) {
 		cola->willfull = 1;
+		__DEBUG("...density is %.2f=%d/%d", density, usedc, cola->allcount);
+		cola_dump(cola);
+	}
 }
 
 struct cola *cola_new(const char *file)
@@ -161,6 +173,7 @@ struct cola *cola_new(const char *file)
 		cola->fd = n_open(file, N_CREAT_FLAGS, 0644);
 
 	cola->bf = bloom_new(cola->header.bitset);
+	cola->allcount = _level_counts();
 
 	return cola;
 
