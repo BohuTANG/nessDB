@@ -171,7 +171,8 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int res;
 	struct ol_pair pair;
-	struct meta_node *node = meta_get(idx->meta, sk->data);
+	struct skipnode *sknode;
+	struct meta_node *node;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
@@ -179,12 +180,19 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	memset(&pair, 0, sizeof pair);
-	if (node) {
-		if (!bloom_get(node->cola->bf, sk->data))
-			goto RET;
+	sknode = skiplist_lookup(idx->list, sk->data);
+	if (sknode) {
+		pair.offset = sknode->itm.offset;
+		pair.vlen = sknode->itm.vlen;
+	} else {
+		node =  meta_get(idx->meta, sk->data);
+		if (node) {
+			if (!bloom_get(node->cola->bf, sk->data))
+				goto RET;
 
-		if (!cola_get(node->cola, sk, &pair))
-			goto RET;
+			if (!cola_get(node->cola, sk, &pair))
+				goto RET;
+		}
 	}
 
 	if (pair.offset > 0UL && pair.vlen > 0) {
