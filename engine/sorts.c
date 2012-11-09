@@ -16,11 +16,18 @@ void cola_insertion_sort(struct cola_item *item, int len)
 	int i, j;
 
 	for (i = 0; i < len; i++) {
+		int cmp;
 		struct cola_item v = item[i];
 
 		for (j = i - 1; j >= 0; j--) {
-			if (strcmp(item[j].data, v.data) <= 0) 
+			cmp = strcmp(item[j].data, v.data);
+			if (cmp <= 0) {
+				/* covert the old version */
+				if (cmp == 0)
+					memcpy(&item[j], &v, ITEM_SIZE);
+
 				break;
+			}
 
 			memcpy(&item[j + 1], &item[j], ITEM_SIZE);
 		}

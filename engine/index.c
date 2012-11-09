@@ -232,20 +232,12 @@ RET:
 
 STATUS index_remove(struct index *idx, struct slice *sk)
 {
-	struct cola_item item;
-	struct meta_node *node ;
-
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
 		return nERR;
 	}
-	/* write key index */
-	memset(&item, 0, ITEM_SIZE);
-	memcpy(item.data, sk->data, sk->len);
-	node = meta_get(idx->meta, sk->data);
-	cola_add(node->cola, &item);
 
-	return nOK;
+	return index_add(idx, sk, NULL);
 }
 
 void index_free(struct index *idx)
