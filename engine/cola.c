@@ -114,31 +114,34 @@ void  _merge_to_next(struct cola *cola, int level, int mergec)
 	free(L_merge);
 } 
 
-#define LEVEL_DENSITY (0.9)
-#define FULL_DENSITY (0.99)
 void _check_merge(struct cola *cola)
 {
 	int i;
 	int c;
 	int max;
-	int nxt_c;
-	int nxt_max;
-	int usedc = 0;
-	double density;
+	int nxt_c = 0;
+	int nxt_max = 0;
+	int full = 0;
 
-	usedc += cola->header.count[MAX_LEVEL - 1];
-	for (i = MAX_LEVEL - 2; i >= 0; i--) {
+	for (i = MAX_LEVEL - 1; i >= 0; i--) {
 		c = cola->header.count[i];
 		max = _level_max(i, 3);
-		usedc += c;
 
-		nxt_c = cola->header.count[i + 1];
-		nxt_max = _level_max(i + 1, 3);
-
-		if (nxt_c >= nxt_max) 
+		/* bottom level */
+		if (i == (MAX_LEVEL - 1)) {
+			if (c >= max)
+				full++;
 			continue;
+		} else {
+			nxt_c = cola->header.count[i + 1];
+			nxt_max = _level_max(i + 1, 3);
+			if (nxt_c >= nxt_max) {
+				full++;
+				continue;
+			}
+		}
 
-		if (c >= max * LEVEL_DENSITY) {
+		if (c >= max) {
 			int diff = nxt_max - (c + nxt_c);
 
 			/* merge full level to next level */
@@ -146,15 +149,15 @@ void _check_merge(struct cola *cola)
 				_merge_to_next(cola, i, c);
 			} else {
 				diff = nxt_max - nxt_c;
-				_merge_to_next(cola, i, diff);
+				if (diff > 0)
+					_merge_to_next(cola, i, diff);
 			}
 		}
 	} 
 
-	density = (double)usedc / (double)cola->allcount;
-	if (density > FULL_DENSITY) {
+	if (full >= (MAX_LEVEL - 1)) {
+		__DEBUG("--all levels[%d] is full#%d, need to be scryed...", MAX_LEVEL - 1,  full);
 		cola->willfull = 1;
-		__DEBUG("...density is %.2f=%d/%d", density, usedc, cola->allcount);
 		cola_dump(cola);
 	}
 }
@@ -234,7 +237,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 {
 	int i;
 	int cur_lc;
-	int pre_lc = cola->header.count[0];
+	int pre_lc = 0;
 	struct cola_item *L = NULL; 
 
 	for (i = 0; i < MAX_LEVEL; i++) {
@@ -242,6 +245,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 		if (cur_lc > 0) {
 			if (i == 0) {
 				L = read_one_level(cola, i, cur_lc);
+				pre_lc += cur_lc;
 			} else {
 				struct cola_item *pre = L;
 				struct cola_item *cur = read_one_level(cola, i, cur_lc);
@@ -254,8 +258,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 			}
 		}
 	}
-
-	*c  = pre_lc;
+	*c = pre_lc;
 
 	return L;
 }

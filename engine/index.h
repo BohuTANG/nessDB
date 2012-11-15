@@ -5,6 +5,9 @@
 #include "buffer.h"
 #include "skiplist.h"
 #include "log.h"
+#include "quicklz.h"
+
+typedef enum {UNCOMPRESS = 0, COMPRESS = 1} QLZ_FLAG;
 
 struct idx_park {
 	int logno;
@@ -21,6 +24,8 @@ struct index{
 	struct skiplist *list;
 	struct log *log;
 	struct idx_park park;
+	qlz_state_compress enstate;
+	qlz_state_decompress destate;
 
 	pthread_attr_t attr;
 	pthread_mutex_t *merge_mutex;

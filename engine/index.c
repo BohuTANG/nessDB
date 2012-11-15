@@ -12,6 +12,8 @@
 #include "xmalloc.h"
 #include "hashs.h"
 
+#define DB_MAGIC (20121212)
+
 void _merging(struct meta *meta, struct skiplist *list)
 {
 	struct meta_node *node;
@@ -77,6 +79,7 @@ void _flush_index(struct index *idx)
 
 struct index *index_new(const char *path, int mtb_size)
 {
+	int magic;
 	char db_name[NESSDB_PATH_SIZE];
 	struct index *idx = xcalloc(1, sizeof(struct index));
 
@@ -91,6 +94,10 @@ struct index *index_new(const char *path, int mtb_size)
 		idx->fd = n_open(db_name, N_CREAT_FLAGS, 0644);
 		if (idx->fd == -1) 
 			__PANIC("db error, name#%s", db_name);
+		magic = DB_MAGIC;
+		if (write(idx->fd, &magic, sizeof(magic)) < 0)
+			__PANIC("write db magic error");
+		idx->db_alloc += sizeof(magic);
 	}
 
 	idx->read_fd = n_open(db_name, N_OPEN_FLAGS);
@@ -98,6 +105,8 @@ struct index *index_new(const char *path, int mtb_size)
 	idx->list = skiplist_new(mtb_size);
 	idx->max_mtb_size = mtb_size;
 	idx->log = log_new(path, idx->meta, NESSDB_IS_LOG_RECOVERY);
+	memset(&idx->enstate, 0, sizeof(qlz_state_compress));
+	memset(&idx->destate, 0, sizeof(qlz_state_decompress));
 
 	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_mutex, NULL);
@@ -113,6 +122,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int ret;
 	int len;
+	int vlen;
 	char *line;
 	struct cola_item item;
 
@@ -124,9 +134,23 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	memset(&item, 0, ITEM_SIZE);
 	memcpy(item.data, sk->data, sk->len);
 	if (sv) {
-		/* write value */
-		buffer_putshort(idx->buf, _crc16(sv->data, sv->len));
-		buffer_putnstr(idx->buf, sv->data, sv->len);
+		vlen = sv->len;
+		/* compressed */
+		if (vlen >= NESSDB_COMPRESS_LIMIT) {
+			char *dest = xcalloc(1, sv->len + 400);
+			int qsize = qlz_compress((const void*)sv->data, dest, sv->len, &idx->enstate);
+
+			buffer_putc(idx->buf, COMPRESS);
+			buffer_putshort(idx->buf, _crc16(dest, qsize));
+			buffer_putnstr(idx->buf, dest, qsize);
+			vlen = qsize;
+			free(dest);
+		} else {
+			buffer_putc(idx->buf, UNCOMPRESS);
+			buffer_putshort(idx->buf, _crc16(sv->data, sv->len));
+			buffer_putnstr(idx->buf, sv->data, sv->len);
+		}
+
 		len = idx->buf->NUL;
 		line = buffer_detach(idx->buf);
 		ret = write(idx->fd, line, len);
@@ -134,7 +158,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 			__PANIC("write db error");
 
 		item.offset = idx->db_alloc;
-		item.vlen = sv->len;
+		item.vlen = vlen;
 		item.opt = 1;
 
 		idx->db_alloc += len;
@@ -196,17 +220,29 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	if (pair.offset > 0UL && pair.vlen > 0) {
+		char iscompress = 0;
 		short crc = 0;
 		short db_crc = 0;
 		char *data;
+		char *dest = NULL;
 
 		n_lseek(idx->read_fd, pair.offset, SEEK_SET);
+
+		/* read compress flag */
+		res = read(idx->read_fd, &iscompress, sizeof(char));
+		if (res == -1) {
+			__ERROR("read iscompress flag error");
+			goto RET;
+		}
+
+		/* read crc flag */
 		res = read(idx->read_fd, &crc, sizeof(crc));
 		if (res == -1) {
 			__ERROR("read crc error #%d, key#%s", crc, sk->data);
 			goto RET;
 		}
 
+		/* read data */
 		data = xcalloc(1, pair.vlen + 1);
 		res = read(idx->read_fd, data, pair.vlen);
 		if (res == -1) {
@@ -219,6 +255,18 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 			__ERROR("read key#%s, crc#%d, db_crc#%d", sk->data, crc, db_crc);
 			goto RET;
 		}
+
+		/* decompressed */
+		if (iscompress) {
+			int vsize = qlz_size_decompressed(data);
+
+			dest = xcalloc(1, vsize);
+			pair.vlen = qlz_decompress(data, dest, &idx->destate);
+			free(data);
+
+			data = dest;
+			__DEBUG("--vsize:%d, len:%d, %s", vsize, pair.vlen, data);
+		} 
 
 		sv->data = data;
 		sv->len = pair.vlen;

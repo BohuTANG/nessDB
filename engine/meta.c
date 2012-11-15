@@ -134,6 +134,8 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	mod = c % NESSDB_SST_SEGMENT;
 	k = split + mod;
 
+	__DEBUG("---will scryed SST to %d, all count#%d....", NESSDB_SST_SEGMENT, c);
+
 	/* rewrite SST */
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
 	cola = node->cola;
@@ -146,7 +148,6 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 		}
 	}
 
-	__DEBUG("---will scryed SST to %d....", NESSDB_SST_SEGMENT);
 	/* others SST */
 	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
 		_make_sstname(meta, meta->size);

@@ -35,32 +35,30 @@ void cola_insertion_sort(struct cola_item *item, int len)
 	}
 }
 
-int cola_merge_sort(struct cola_item *c, struct cola_item *a, int alen, struct cola_item *b, int blen)
+int cola_merge_sort(struct cola_item *c, struct cola_item *a_new, int alen, struct cola_item *b_old, int blen)
 {
 	int i, m = 0, n = 0, k;
 
 	for (i = 0; (m < alen) && (n < blen);) {
 		int cmp;
 
-		cmp = strcmp(a[m].data, b[n].data);
+		cmp = strcmp(a_new[m].data, b_old[n].data);
 		if (cmp == 0) {
-			if (b[n].opt == 1) 
-				memcpy(&c[i++], &b[n], ITEM_SIZE);
-
+			memcpy(&c[i++], &a_new[n], ITEM_SIZE);
 			n++;
 			m++;
 		} else if (cmp < 0) 
-			memcpy(&c[i++], &a[m++], ITEM_SIZE);
+			memcpy(&c[i++], &a_new[m++], ITEM_SIZE);
 		else 
-			memcpy(&c[i++], &b[n++], ITEM_SIZE);
+			memcpy(&c[i++], &b_old[n++], ITEM_SIZE);
 	}
 
 	if (m == alen) {
 		for (k = n; k < blen; k++)
-			memcpy(&c[i++], &b[k], ITEM_SIZE);
+			memcpy(&c[i++], &b_old[k], ITEM_SIZE);
 	} else if (n == blen) { 
 		for (k = m; k < alen; k++)
-			memcpy(&c[i++], &a[k], ITEM_SIZE);
+			memcpy(&c[i++], &a_new[k], ITEM_SIZE);
 	}
 
 	return i;

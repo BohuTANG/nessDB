@@ -4,7 +4,7 @@
 #include "cola.h"
 
 void cola_insertion_sort(struct cola_item *item, int len);
-int cola_merge_sort(struct cola_item *c, struct cola_item *a, int alen, struct cola_item *b, int blen);
+int cola_merge_sort(struct cola_item *c, struct cola_item *a_new, int alen, struct cola_item *b_old, int blen);
 void dump_items(struct cola_item *a, int len);
 
 #endif

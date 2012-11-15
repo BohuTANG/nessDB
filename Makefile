@@ -18,6 +18,7 @@ LIB_OBJS = \
 	./engine/bloom.o\
 	./engine/skiplist.o\
 	./engine/log.o\
+	./engine/quicklz.o\
 	./engine/db.o
 
 TEST = \

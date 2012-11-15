@@ -122,8 +122,9 @@ void _write_test(long int count)
 
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
-		_random_key(key, KSIZE);
-		snprintf(val, VSIZE, "val:%d", i);
+		//_random_key(key, KSIZE);
+		snprintf(key, KSIZE, "key-%d", i);
+		snprintf(val, VSIZE, "val-%d", i);
 
 		sk.len = KSIZE;
 		sk.data = key;
@@ -149,10 +150,30 @@ void _write_test(long int count)
 		,cost);	
 }
 
+void _writeone_test(char *k, char *v) { struct slice sk, sv; struct nessdb *db;
+
+	char key[KSIZE + 1];
+	char val[VSIZE + 1];
+
+	memset(key, 0, KSIZE + 1);
+	memset(val, 0, VSIZE + 1);
+
+	sk.len = strlen(k);
+	sk.data = k;
+	sv.len = strlen(v);
+	sv.data = v;
+
+	db = db_open(DATAS);
+	db_add(db, &sk, &sv);
+
+	db_close(db);
+}
+
 void _read_test(long int count)
 {
 	int i;
 	int ret;
+	int found = 0;
 	double cost;
 	long long start,end;
 	struct slice sk;
@@ -164,12 +185,16 @@ void _read_test(long int count)
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
 		memset(key, 0, KSIZE + 1);
-		_random_key(key, KSIZE);
+		//_random_key(key, KSIZE);
+		snprintf(key, KSIZE, "key-%d", i);
 		sk.len = KSIZE;
 		sk.data = key;
 		ret = db_get(db, &sk, &sv);
-		if (ret) 
+		if (ret) {
 			free(sv.data);
+			found++;
+		} else
+			__INFO("not found key#%s", sk.data);
 
 		if ((i % 10000) == 0) {
 			fprintf(stderr,"random read finished %d ops%30s\r", i, "");
@@ -183,8 +208,8 @@ void _read_test(long int count)
 
 	cost = end - start;
 	printf(LINE);
-	printf("|Random-Read	(done:%ld): %.6f sec/op; %.1f reads /sec(estimated); cost:%.3f(sec)\n"
-		,count
+	printf("|Random-Read	(done:%ld, found:%d): %.6f sec/op; %.1f reads /sec(estimated); cost:%.3f(sec)\n"
+		,count, found
 		,(double)(cost / count)
 		,(double)(count / cost)
 		,cost);
@@ -216,12 +241,30 @@ void _readone_test(char *key)
 	db_close(db);
 }
 
+void _deleteone_test(char *key)
+{
+	struct slice sk;
+	struct nessdb *db;
+	char k[KSIZE + 1];
+	int len = strlen(key);
+
+	memset(k, 0, KSIZE + 1);
+	memcpy(k, key, len);
+
+	db = db_open(DATAS);
+	sk.len = (KSIZE + 1);
+	sk.data = k;
+
+	db_remove(db, &sk);
+	db_close(db);
+}
+
 int main(int argc,char** argv)
 {
 	long int count;
 
 	srand(time(NULL));
-	if (argc != 3) {
+	if (argc < 3) {
 		fprintf(stderr,"Usage: db-bench <op: write | read> <count>\n");
 		exit(1);
 	}
@@ -239,6 +282,10 @@ int main(int argc,char** argv)
 		_read_test(count);
 	} else if (strcmp(argv[1], "readone") == 0) {
 		_readone_test(argv[2]);
+	} else if (strcmp(argv[1], "writeone") == 0) {
+		_writeone_test(argv[2], argv[3]);
+	} else if (strcmp(argv[1], "delete") == 0) {
+		_deleteone_test(argv[2]);
 	} else {
 		fprintf(stderr,"Usage: db-bench <op: write | read> <count>\n");
 		exit(1);
