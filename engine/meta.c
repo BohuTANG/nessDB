@@ -151,7 +151,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	/* others SST */
 	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
 		_make_sstname(meta, meta->size);
-		cola = cola_new(meta->sst_file);
+		cola = cola_new(meta->sst_file, meta->cpt);
 		_scryed(meta, cola, L, mod + i*split, split, nxt_idx++);
 	}
 	__DEBUG("---SST scryed end....");
@@ -175,7 +175,7 @@ void _build_meta(struct meta *meta)
 			memcpy(sst_name, de->d_name, strlen(de->d_name) - 4);
 			lsn = atoi(sst_name);
 			_make_sstname(meta, lsn);
-			cola = cola_new(meta->sst_file);
+			cola = cola_new(meta->sst_file, meta->cpt);
 
 			idx = _get_idx(meta, cola->header.max_key);
 			memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
@@ -188,7 +188,7 @@ void _build_meta(struct meta *meta)
 
 	if (meta->size == 0) {
 		_make_sstname(meta, 0);
-		cola = cola_new(meta->sst_file);
+		cola = cola_new(meta->sst_file, meta->cpt);
 		meta->nodes[0].cola = cola;
 		meta->nodes[0].lsn = 0;
 		meta->size++;
@@ -202,6 +202,7 @@ struct meta *meta_new(const char *path)
 {
 	struct meta *m = xcalloc(1, sizeof(struct meta));
 
+	m->cpt = cpt_new();
 	memcpy(m->path, path, NESSDB_PATH_SIZE);
 	_check_dir(path);
 	_build_meta(m);
@@ -238,6 +239,9 @@ void meta_free(struct meta *meta)
 		if (cola) 
 			cola_free(cola);
 	}
+
+	if (meta->cpt)
+		cpt_free(meta->cpt);
 
 	if (meta)
 		free(meta);

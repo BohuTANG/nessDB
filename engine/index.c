@@ -84,7 +84,7 @@ struct index *index_new(const char *path, int mtb_size)
 	struct index *idx = xcalloc(1, sizeof(struct index));
 
 	idx->meta = meta_new(path);
-	idx->buf = buffer_new(5 * 1024 * 1024);
+	idx->buf = buffer_new(NESSDB_MAX_VAL_SIZE);
 
 	memset(db_name, 0, NESSDB_PATH_SIZE);
 	snprintf(db_name, NESSDB_PATH_SIZE, "%s/%s", path, NESSDB_DB);
@@ -121,47 +121,63 @@ struct index *index_new(const char *path, int mtb_size)
 STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int ret;
-	int len;
-	int vlen;
+	int buff_len;
+	int val_len;
+	uint64_t offset;
+	uint64_t cpt_offset = 0;
+
 	char *line;
 	struct cola_item item;
 
-	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
-		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
+	if (sk->len >= NESSDB_MAX_KEY_SIZE || (sv && sv->len > NESSDB_MAX_VAL_SIZE)) {
+		__ERROR("key or value is too long...#%d:%d", NESSDB_MAX_KEY_SIZE, NESSDB_MAX_VAL_SIZE);
 		return nERR;
 	}
 
+	offset = idx->db_alloc;
 	memset(&item, 0, ITEM_SIZE);
 	memcpy(item.data, sk->data, sk->len);
 	if (sv) {
-		vlen = sv->len;
+		val_len = sv->len;
 		/* compressed */
-		if (vlen >= NESSDB_COMPRESS_LIMIT) {
+		if (sv->len >= NESSDB_COMPRESS_LIMIT) {
 			char *dest = xcalloc(1, sv->len + 400);
-			int qsize = qlz_compress((const void*)sv->data, dest, sv->len, &idx->enstate);
+			int qsize = qlz_compress(sv->data, dest, sv->len, &idx->enstate);
 
 			buffer_putc(idx->buf, COMPRESS);
 			buffer_putshort(idx->buf, _crc16(dest, qsize));
 			buffer_putnstr(idx->buf, dest, qsize);
-			vlen = qsize;
+			val_len = qsize;
 			free(dest);
 		} else {
 			buffer_putc(idx->buf, UNCOMPRESS);
 			buffer_putshort(idx->buf, _crc16(sv->data, sv->len));
 			buffer_putnstr(idx->buf, sv->data, sv->len);
+			val_len = sv->len;
 		}
 
-		len = idx->buf->NUL;
+		buff_len = idx->buf->NUL;
 		line = buffer_detach(idx->buf);
-		ret = write(idx->fd, line, len);
-		if (ret == -1) 
-			__PANIC("write db error");
 
-		item.offset = idx->db_alloc;
-		item.vlen = vlen;
-		item.opt = 1;
+		/* too many delete holes, we need to use them */
+		if (idx->meta->cpt->count > NESSDB_COMPACT_LIMIT) {
+			cpt_offset = cpt_get(idx->meta->cpt, val_len);
+			offset = cpt_offset;
+		}
 
-		idx->db_alloc += len;
+		if (cpt_offset > 0) {
+			ret = pwrite(idx->fd, line, buff_len, cpt_offset);
+		} else {
+			ret = write(idx->fd, line, buff_len);
+			if (ret == -1) 
+				__PANIC("write db error");
+
+			idx->db_alloc += buff_len;
+		}
+
+		item.offset = offset;
+		item.vlen = val_len;
+		item.opt = (sv==NULL?0:1);
 	}
 
 	/* log append */
@@ -250,12 +266,6 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 			goto RET;
 		}
 
-		db_crc = _crc16(data, pair.vlen);
-		if (crc != db_crc) {
-			__ERROR("read key#%s, crc#%d, db_crc#%d", sk->data, crc, db_crc);
-			goto RET;
-		}
-
 		/* decompressed */
 		if (iscompress) {
 			int vsize = qlz_size_decompressed(data);
@@ -267,6 +277,12 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 			data = dest;
 			__DEBUG("--vsize:%d, len:%d, %s", vsize, pair.vlen, data);
 		} 
+
+		db_crc = _crc16(data, pair.vlen);
+		if (crc != db_crc) {
+			__ERROR("read key#%s, crc#%d, db_crc#%d, data [%s]", sk->data, crc, db_crc, data);
+			goto RET;
+		}
 
 		sv->data = data;
 		sv->len = pair.vlen;

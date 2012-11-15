@@ -10,6 +10,7 @@
 
 #include "sorts.h"
 #include "debug.h"
+#include "compact.h"
 
 void cola_insertion_sort(struct cola_item *item, int len)
 {
@@ -35,7 +36,7 @@ void cola_insertion_sort(struct cola_item *item, int len)
 	}
 }
 
-int cola_merge_sort(struct cola_item *c, struct cola_item *a_new, int alen, struct cola_item *b_old, int blen)
+int cola_merge_sort(struct compact *cpt, struct cola_item *c, struct cola_item *a_new, int alen, struct cola_item *b_old, int blen)
 {
 	int i, m = 0, n = 0, k;
 
@@ -44,7 +45,11 @@ int cola_merge_sort(struct cola_item *c, struct cola_item *a_new, int alen, stru
 
 		cmp = strcmp(a_new[m].data, b_old[n].data);
 		if (cmp == 0) {
-			memcpy(&c[i++], &a_new[n], ITEM_SIZE);
+			memcpy(&c[i++], &a_new[m], ITEM_SIZE);
+			/* add delete slot to cpt */
+			if (a_new[m].opt == 0 && a_new[m].vlen > 0) 
+				if (cpt)
+					cpt_add(cpt, a_new[m].vlen, a_new[m].offset); 
 			n++;
 			m++;
 		} else if (cmp < 0) 

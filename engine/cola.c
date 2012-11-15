@@ -100,7 +100,7 @@ void  _merge_to_next(struct cola *cola, int level, int mergec)
 	struct cola_item *L_nxt = read_one_level(cola, level + 1, c2);
 	struct cola_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
-	lmerge_c = cola_merge_sort(L_merge, L, mergec, L_nxt, c2);
+	lmerge_c = cola_merge_sort(cola->cpt, L_merge, L, mergec, L_nxt, c2);
 	write_one_level(cola, L_merge, lmerge_c, level + 1);
 
 	/* update count */
@@ -162,7 +162,7 @@ void _check_merge(struct cola *cola)
 	}
 }
 
-struct cola *cola_new(const char *file)
+struct cola *cola_new(const char *file, struct compact *cpt)
 {
 	int res;
 	struct cola *cola = xcalloc(1, sizeof(struct cola));
@@ -177,6 +177,9 @@ struct cola *cola_new(const char *file)
 
 	cola->bf = bloom_new(cola->header.bitset);
 	cola->allcount = _level_counts();
+
+	if (cpt != NULL)
+		cola->cpt = cpt;
 
 	return cola;
 
@@ -251,7 +254,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 				struct cola_item *cur = read_one_level(cola, i, cur_lc);
 
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
-				pre_lc = cola_merge_sort(L, cur, cur_lc, pre, pre_lc);
+				pre_lc = cola_merge_sort(cola->cpt, L, cur, cur_lc, pre, pre_lc);
 
 				free(pre);
 				free(cur);

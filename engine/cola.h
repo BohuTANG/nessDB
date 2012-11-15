@@ -3,12 +3,13 @@
 
 #include "config.h"
 #include "bloom.h"
+#include "compact.h"
 
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
 
-#define MAX_LEVEL (9)
-#define L0_SIZE (1024*64)
+#define MAX_LEVEL (4)
+#define L0_SIZE (1024)
 #define NESSDB_MAX_KEY_SIZE (35) 
 
 struct ol_pair {
@@ -35,9 +36,10 @@ struct cola {
 	int willfull;
 	struct cola_header header;
 	struct bloom *bf;
+	struct compact *cpt;
 };
 
-struct cola *cola_new(const char *file);
+struct cola *cola_new(const char *file, struct compact *cpt);
 STATUS cola_add(struct cola *cola, struct cola_item *item);
 STATUS cola_isfull(struct cola *cola);
 STATUS cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair);
