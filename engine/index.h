@@ -8,6 +8,7 @@
 #include "quicklz.h"
 
 typedef enum {UNCOMPRESS = 0, COMPRESS = 1} QLZ_FLAG;
+typedef enum {DEL = 0, ADD = 1} OPT_FLAG;
 
 struct idx_park {
 	int logno;
@@ -29,6 +30,7 @@ struct index{
 
 	pthread_attr_t attr;
 	pthread_mutex_t *merge_mutex;
+	pthread_mutex_t *listfree_mutex;
 };
 
 struct index *index_new(const char *path, int mtb_size);

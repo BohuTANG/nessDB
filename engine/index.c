@@ -42,7 +42,17 @@ void *_merge_job(void *arg)
 	list = idx->park.merging;
 	if (list->count > 0)
 		_merging(idx->meta, list);
+
+#ifdef BGMERGE
+	pthread_mutex_lock(idx->listfree_mutex);
+#endif
+
 	skiplist_free(list);
+
+#ifdef BGMERGE
+	pthread_mutex_unlock(idx->listfree_mutex);
+#endif
+
 	log_remove(idx->log, idx->park.logno);
 
 #ifdef BGMERGE
@@ -110,6 +120,8 @@ struct index *index_new(const char *path, int mtb_size)
 
 	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_mutex, NULL);
+	idx->listfree_mutex = xmalloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(idx->listfree_mutex, NULL);
 
 	/* Detached thread attr */
 	pthread_attr_init(&idx->attr);
@@ -177,7 +189,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 		item.offset = offset;
 		item.vlen = val_len;
-		item.opt = (sv==NULL?0:1);
+		item.opt = (sv==NULL?DEL:ADD);
 	}
 
 	/* log append */
@@ -211,8 +223,10 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int res;
 	struct ol_pair pair;
-	struct skipnode *sknode;
 	struct meta_node *node;
+	struct skipnode *sknode;
+	struct skiplist *cur_list;
+	struct skiplist *merging_list;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
@@ -220,11 +234,31 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	memset(&pair, 0, sizeof pair);
-	sknode = skiplist_lookup(idx->list, sk->data);
+
+	/* active memtable */
+	cur_list = idx->list;
+	sknode = skiplist_lookup(cur_list, sk->data);
 	if (sknode) {
-		pair.offset = sknode->itm.offset;
-		pair.vlen = sknode->itm.vlen;
+		if (sknode->itm.opt == ADD) {
+			pair.offset = sknode->itm.offset;
+			pair.vlen = sknode->itm.vlen;
+		}
 	} else {
+#ifdef BGMERGE
+		pthread_mutex_lock(idx->listfree_mutex);
+		merging_list = idx->park.merging;
+		if (merging_list) {
+			sknode = skiplist_lookup(merging_list, sk->data);
+			if (sknode && sknode->itm.opt == ADD ) {
+				pair.offset = sknode->itm.offset;
+				pair.vlen = sknode->itm.vlen;
+			}
+		}
+		pthread_mutex_unlock(idx->listfree_mutex);
+#endif
+	} 
+
+	if (!sknode) {
 		node =  meta_get(idx->meta, sk->data);
 		if (node) {
 			if (!bloom_get(node->cola->bf, sk->data))
@@ -308,6 +342,7 @@ void index_free(struct index *idx)
 {
 	_flush_index(idx);
 	free(idx->merge_mutex);
+	free(idx->listfree_mutex);
 	meta_free(idx->meta);
 	buffer_free(idx->buf);
 	log_free(idx->log);
