@@ -40,17 +40,6 @@ int _level_max(int level, int gap)
 	return (int)((1<<level) * L0_SIZE / ITEM_SIZE - gap);
 }
 
-int _level_counts()
-{
-	int i;
-	int c = 0;
-
-	for (i = 0; i < MAX_LEVEL; i++)
-		c += _level_max(i, 0);
-
-	return c;
-}
-
 void cola_dump(struct cola *cola)
 {
 	int i;
@@ -112,6 +101,8 @@ void  _merge_to_next(struct cola *cola, int level, int mergec)
 	free(L);
 	free(L_nxt);
 	free(L_merge);
+
+	cola->stats->STATS_LEVEL_MERGES++;
 } 
 
 void _check_merge(struct cola *cola)
@@ -162,7 +153,7 @@ void _check_merge(struct cola *cola)
 	}
 }
 
-struct cola *cola_new(const char *file, struct compact *cpt)
+struct cola *cola_new(const char *file, struct compact *cpt, struct stats *stats)
 {
 	int res;
 	struct cola *cola = xcalloc(1, sizeof(struct cola));
@@ -175,8 +166,8 @@ struct cola *cola_new(const char *file, struct compact *cpt)
 	} else
 		cola->fd = n_open(file, N_CREAT_FLAGS, 0644);
 
+	cola->stats = stats;
 	cola->bf = bloom_new(cola->header.bitset);
-	cola->allcount = _level_counts();
 
 	if (cpt != NULL)
 		cola->cpt = cpt;
@@ -262,6 +253,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 		}
 	}
 	*c = pre_lc;
+	cola->stats->STATS_SST_MERGEONE++;
 
 	return L;
 }

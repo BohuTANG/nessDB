@@ -40,6 +40,7 @@ void *_merge_job(void *arg)
 #endif
 
 	list = idx->park.merging;
+	idx->stats->STATS_MTBL_MERGING_COUNTS = list->count;
 	if (list->count > 0)
 		_merging(idx->meta, list);
 
@@ -48,6 +49,7 @@ void *_merge_job(void *arg)
 #endif
 
 	skiplist_free(list);
+	idx->stats->STATS_MTBL_MERGING_COUNTS = 0UL;
 
 #ifdef BGMERGE
 	pthread_mutex_unlock(idx->listfree_mutex);
@@ -87,13 +89,14 @@ void _flush_index(struct index *idx)
 	log_remove(idx->log, idx->log->no);
 }
 
-struct index *index_new(const char *path, int mtb_size)
+struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 {
 	int magic;
 	char db_name[NESSDB_PATH_SIZE];
 	struct index *idx = xcalloc(1, sizeof(struct index));
 
-	idx->meta = meta_new(path);
+	idx->stats = stats;
+	idx->meta = meta_new(path, stats);
 	idx->buf = buffer_new(NESSDB_MAX_VAL_SIZE);
 
 	memset(db_name, 0, NESSDB_PATH_SIZE);
@@ -150,6 +153,8 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	memset(&item, 0, ITEM_SIZE);
 	memcpy(item.data, sk->data, sk->len);
 	if (sv) {
+		idx->stats->STATS_WRITES++;
+
 		val_len = sv->len;
 		/* compressed */
 		if (sv->len >= NESSDB_COMPRESS_LIMIT) {
@@ -161,6 +166,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 			buffer_putnstr(idx->buf, dest, qsize);
 			val_len = qsize;
 			free(dest);
+			idx->stats->STATS_COMPRESSES++;
 		} else {
 			buffer_putc(idx->buf, UNCOMPRESS);
 			buffer_putshort(idx->buf, _crc16(sv->data, sv->len));
@@ -175,6 +181,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		if (idx->meta->cpt->count > NESSDB_COMPACT_LIMIT) {
 			cpt_offset = cpt_get(idx->meta->cpt, val_len);
 			offset = cpt_offset;
+			idx->stats->STATS_HOLE_REUSES++;
 		}
 
 		if (cpt_offset > 0) {
@@ -195,12 +202,14 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	/* log append */
 	log_append(idx->log, &item);
 
+	idx->stats->STATS_MTBL_COUNTS = idx->list->count;
 	if (!skiplist_notfull(idx->list)) {
 #ifdef BGMERGE
 		pthread_t tid;
 		pthread_mutex_lock(idx->merge_mutex);
 #endif
 
+		idx->stats->STATS_MERGES++;
 		idx->park.merging = idx->list;
 		idx->park.logno = idx->log->no;
 
@@ -233,6 +242,7 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		return nERR;
 	}
 
+	idx->stats->STATS_READS++;
 	memset(&pair, 0, sizeof pair);
 
 	/* active memtable */
@@ -240,6 +250,7 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	sknode = skiplist_lookup(cur_list, sk->data);
 	if (sknode) {
 		if (sknode->itm.opt == ADD) {
+			idx->stats->STATS_R_FROM_MTBL++;
 			pair.offset = sknode->itm.offset;
 			pair.vlen = sknode->itm.vlen;
 		}
@@ -250,6 +261,7 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		if (merging_list) {
 			sknode = skiplist_lookup(merging_list, sk->data);
 			if (sknode && sknode->itm.opt == ADD ) {
+				idx->stats->STATS_R_FROM_MTBL++;
 				pair.offset = sknode->itm.offset;
 				pair.vlen = sknode->itm.vlen;
 			}
@@ -261,11 +273,19 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	if (!sknode) {
 		node =  meta_get(idx->meta, sk->data);
 		if (node) {
-			if (!bloom_get(node->cola->bf, sk->data))
+			if (bloom_get(node->cola->bf, sk->data)) {
+				idx->stats->STATS_R_BF++;
+			} else {
+				idx->stats->STATS_R_NOTIN_BF++;
 				goto RET;
+			}
 
-			if (!cola_get(node->cola, sk, &pair))
+			if (cola_get(node->cola, sk, &pair)) {
+				idx->stats->STATS_R_COLA++;
+			} else {
+				idx->stats->STATS_R_NOTIN_COLA++;
 				goto RET;
+			}
 		}
 	}
 
@@ -309,11 +329,11 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 			free(data);
 
 			data = dest;
-			__DEBUG("--vsize:%d, len:%d, %s", vsize, pair.vlen, data);
 		} 
 
 		db_crc = _crc16(data, pair.vlen);
 		if (crc != db_crc) {
+			idx->stats->STATS_CRC_ERRS++;
 			__ERROR("read key#%s, crc#%d, db_crc#%d, data [%s]", sk->data, crc, db_crc, data);
 			goto RET;
 		}
@@ -335,6 +355,7 @@ STATUS index_remove(struct index *idx, struct slice *sk)
 		return nERR;
 	}
 
+	idx->stats->STATS_REMOVES++;
 	return index_add(idx, sk, NULL);
 }
 

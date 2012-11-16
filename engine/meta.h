@@ -19,9 +19,10 @@ struct meta{
 	char sst_file[NESSDB_PATH_SIZE];
 	struct meta_node nodes[NESSDB_MAX_META];
 	struct compact *cpt;
+	struct stats *stats;
 };
 
-struct meta *meta_new(const char *path);
+struct meta *meta_new(const char *path, struct stats *stats);
 struct meta_node *meta_get(struct meta *meta, char *key);
 void meta_set(struct meta *meta, struct meta_node *node);
 void meta_set_byname(struct meta *meta, struct meta_node *node);

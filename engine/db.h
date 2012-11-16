@@ -2,7 +2,6 @@
 #define _DB_H
 
 #include "config.h"
-#include <time.h>
 
 #ifdef __cplusplus
 	extern "C" {
@@ -10,14 +9,15 @@
 
 struct nessdb {
 	struct index *idx;
+	struct stats *stats;
 };
 
 struct nessdb *db_open(const char *basedir);
 STATUS db_get(struct nessdb *db, struct slice *sk, struct slice *sv);
 STATUS db_exists(struct nessdb *db, struct slice *sk);
 STATUS db_add(struct nessdb *db, struct slice *sk, struct slice *sv);
+void db_stats(struct nessdb *db, struct slice *infos);
 void db_remove(struct nessdb *db, struct slice *sk);
-char *db_info(struct nessdb *db);
 void db_close(struct nessdb *db);
 
 #ifdef __cplusplus

@@ -109,14 +109,16 @@ void _write_test(long int count)
 	int i;
 	double cost;
 	long long start,end;
-	struct slice sk, sv;
+	struct slice sk, sv, stats;
 	struct nessdb *db;
 
 	char key[KSIZE + 1];
 	char val[VSIZE + 1];
+	char sbuf[1024];
 
 	memset(key, 0, KSIZE + 1);
 	memset(val, 0, VSIZE + 1);
+	memset(sbuf, 0, 1024);
 
 	db = db_open(DATAS);
 
@@ -138,6 +140,11 @@ void _write_test(long int count)
 		}
 	}
 
+	stats.len = 1024;
+	stats.data = sbuf;
+	db_stats(db, &stats);
+	printf("\r\n%s", stats.data);
+
 	db_close(db);
 
 	end = get_ustime_sec();
@@ -150,7 +157,10 @@ void _write_test(long int count)
 		,cost);	
 }
 
-void _writeone_test(char *k, char *v) { struct slice sk, sv; struct nessdb *db;
+void _writeone_test(char *k, char *v)
+{
+	struct slice sk, sv;
+	struct nessdb *db;
 
 	char key[KSIZE + 1];
 	char val[VSIZE + 1];

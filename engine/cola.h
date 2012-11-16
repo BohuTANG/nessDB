@@ -32,14 +32,14 @@ struct cola_header {
 
 struct cola {
 	int fd;
-	int allcount;
 	int willfull;
 	struct cola_header header;
 	struct bloom *bf;
 	struct compact *cpt;
+	struct stats *stats;
 };
 
-struct cola *cola_new(const char *file, struct compact *cpt);
+struct cola *cola_new(const char *file, struct compact *cpt, struct stats *stats);
 STATUS cola_add(struct cola *cola, struct cola_item *item);
 STATUS cola_isfull(struct cola *cola);
 STATUS cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair);
