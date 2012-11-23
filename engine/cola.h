@@ -9,10 +9,8 @@
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
 
-//#define MAX_LEVEL (9)
-//#define L0_SIZE (1024*64)
-#define MAX_LEVEL (4)
-#define L0_SIZE (1024)
+#define MAX_LEVEL (9)
+#define L0_SIZE (1024*64)
 #define NESSDB_MAX_KEY_SIZE (35) 
 
 struct ol_pair {
