@@ -1,10 +1,10 @@
 CC = gcc
 
 #background-threading merge
-BGMERGE = -DBGMERGE
+#BGMERGE = -DBGMERGE
 
 #debug levle
-DEBUG =	-g -O2 -ggdb -DINFO
+DEBUG =	-g  -ggdb -DINFO
 CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) $(BGMERGE)
 
 LIB_OBJS = \
@@ -20,6 +20,7 @@ LIB_OBJS = \
 	./engine/log.o\
 	./engine/quicklz.o\
 	./engine/compact.o\
+	./engine/fc.o\
 	./engine/db.o
 
 TEST = \

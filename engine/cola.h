@@ -4,12 +4,15 @@
 #include "config.h"
 #include "bloom.h"
 #include "compact.h"
+#include "fc.h"
 
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
 
-#define MAX_LEVEL (9)
-#define L0_SIZE (1024*64)
+//#define MAX_LEVEL (9)
+//#define L0_SIZE (1024*64)
+#define MAX_LEVEL (4)
+#define L0_SIZE (1024)
 #define NESSDB_MAX_KEY_SIZE (35) 
 
 struct ol_pair {
@@ -33,10 +36,13 @@ struct cola_header {
 struct cola {
 	int fd;
 	int willfull;
+	int sst_count;
 	struct cola_header header;
 	struct bloom *bf;
 	struct compact *cpt;
 	struct stats *stats;
+	struct fc *fc;
+	struct cola_item *block;
 };
 
 struct cola *cola_new(const char *file, struct compact *cpt, struct stats *stats);

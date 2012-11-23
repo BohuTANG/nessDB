@@ -235,7 +235,6 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	struct meta_node *node;
 	struct skipnode *sknode;
 	struct skiplist *cur_list;
-	struct skiplist *merging_list;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
@@ -257,7 +256,8 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	} else {
 #ifdef BGMERGE
 		pthread_mutex_lock(idx->listfree_mutex);
-		merging_list = idx->park.merging;
+
+		struct skiplist *merging_list = idx->park.merging;
 		if (merging_list) {
 			sknode = skiplist_lookup(merging_list, sk->data);
 			if (sknode && sknode->itm.opt == ADD ) {
