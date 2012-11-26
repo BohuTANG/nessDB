@@ -22,19 +22,6 @@ int _calc_flr(struct block *block, int level)
 	return flr;
 }
 
-void _block_dump(struct block *block, int level)
-{
-	int i;
-	int flr = _calc_flr(block, level);
-	int used = block->level_blk_used[level];
-
-	printf("---->block dump[used#%d, level#%d, count:%d]:\r\n\t", used, level, block->level_blks[level]);
-	for (i = 0; i < used; i++) {
-		printf(" %s ", block->blocks[flr + i].data);
-	}
-	printf("\r\n");
-}
-
 struct block *block_new(int l0_blk_count)
 {
 	int i;
