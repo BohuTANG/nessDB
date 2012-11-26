@@ -1,7 +1,7 @@
 CC = gcc
 
 #background-threading merge
-#BGMERGE = -DBGMERGE
+BGMERGE = -DBGMERGE
 
 #debug levle
 DEBUG =	-g  -ggdb -DINFO
@@ -20,7 +20,7 @@ LIB_OBJS = \
 	./engine/log.o\
 	./engine/quicklz.o\
 	./engine/compact.o\
-	./engine/fc.o\
+	./engine/block.o\
 	./engine/db.o
 
 TEST = \

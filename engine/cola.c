@@ -12,7 +12,9 @@
 #include "sorts.h"
 #include "debug.h"
 
-/* calc level's offset of file */
+/* 
+ * calc level's offset of file 
+ */
 int _pos_calc(int level)
 {
 	int i = 0;
@@ -40,8 +42,7 @@ int _level_max(int level, int gap)
 	return (int)((1<<level) * L0_SIZE / ITEM_SIZE - gap);
 }
 
-void cola_dump(struct cola *cola)
-{
+void cola_dump(struct cola *cola) {
 	int i;
 
 	__DEBUG("**%06d.SST dump:", cola->fd);
@@ -147,28 +148,48 @@ void _check_merge(struct cola *cola)
 	} 
 
 	if (full >= (MAX_LEVEL - 1)) {
-		__DEBUG("--all levels[%d] is full#%d, need to be scryed...", MAX_LEVEL - 1,  full);
+		__DEBUG("--all levels[%d] is full#%d, need to be scryed...", 
+				MAX_LEVEL - 1,  
+				full);
+
 		cola->willfull = 1;
 		cola_dump(cola);
 	}
 }
 
+void _build_block(struct cola *cola)
+{
+	int i;
+
+	for (i = 0; i < MAX_LEVEL; i++) {
+		int c = cola->header.count[i];
+		struct cola_item *L = read_one_level(cola, i, c);
+
+		block_build(cola->blk, L, c, i); 
+		free(L);
+	}
+}
+
+#define L0_COUNT (L0_SIZE/ITEM_SIZE)
 struct cola *cola_new(const char *file, struct compact *cpt, struct stats *stats)
 {
 	int res;
 	struct cola *cola = xcalloc(1, sizeof(struct cola));
+
+	cola->oneblk = xcalloc(BLOCK_GAP + 2, ITEM_SIZE);
+	cola->blk= block_new(L0_COUNT/BLOCK_GAP);
 
 	cola->fd = n_open(file, N_OPEN_FLAGS, 0644);
 	if (cola->fd > 0) {
 		res = pread(cola->fd, &cola->header, HEADER_SIZE, 0);
 		if (res == -1)
 			goto ERR;
+		_build_block(cola);
 	} else
 		cola->fd = n_open(file, N_CREAT_FLAGS, 0644);
 
 	cola->stats = stats;
 	cola->bf = bloom_new(cola->header.bitset);
-
 	if (cpt != NULL)
 		cola->cpt = cpt;
 
@@ -258,6 +279,7 @@ struct cola_item *cola_in_one(struct cola *cola, int *c)
 	return L;
 }
 
+#define BLOCK_SIZE (BLOCK_GAP * ITEM_SIZE)
 STATUS cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
@@ -281,29 +303,30 @@ STATUS cola_get(struct cola *cola, struct slice *sk, struct ol_pair *pair)
 	free(L);
 
 	for (i = 1; i < MAX_LEVEL; i++) {
-		struct cola_item itm;
-		int res, left = 0, mid;
-		int right = cola->header.count[i];
+		int k;
+		int res;
+		int blk_idx;
 
-		while (left < right) {
-			mid = (left + right) / 2;
-			res = pread(cola->fd, &itm, sizeof(itm), _pos_calc(i) + mid * sizeof(itm));
-			if (res == -1)
-				goto ERR;
+		if (cola->header.count[i] == 0)
+			continue;
 
-			cmp = strcmp(sk->data, itm.data);
+		blk_idx = block_search(cola->blk, sk->data, i);
+		if (blk_idx < 0)
+			continue;
+
+		res = pread(cola->fd, cola->oneblk, BLOCK_SIZE, _pos_calc(i) + blk_idx * BLOCK_SIZE);
+		if (res == -1)
+			goto ERR;
+
+		for (k = 0; k < BLOCK_GAP; k++) {
+			cmp = strcmp(sk->data, cola->oneblk[k].data);
 			if (cmp == 0) {
-				if (itm.opt == 1) {
-					pair->offset = itm.offset;
-					pair->vlen = itm.vlen;
+				if (cola->oneblk[k].opt == 1) {
+					pair->offset = cola->oneblk[k].offset;
+					pair->vlen = cola->oneblk[k].vlen;
 				}
 				goto RET;
 			}
-
-			if (cmp < 0)
-				right = mid;
-			else 
-				left = mid + 1;
 		}
 	}
 
@@ -319,5 +342,7 @@ void cola_free(struct cola *cola)
 		close(cola->fd);
 
 	bloom_free(cola->bf);
+	block_free(cola->blk);
+	free(cola->oneblk);
 	free(cola);
 }

@@ -1,5 +1,5 @@
-#ifndef _SORTS_H
-#define _SORTS_H
+#ifndef __nessDB_SORTS_H
+#define __nessDB_SORTS_H
 
 #include "cola.h"
 #include "compact.h"

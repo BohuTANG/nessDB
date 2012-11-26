@@ -1,19 +1,15 @@
-#ifndef _COLA_H
-#define _COLA_H
+#ifndef __nessDB_COLA_H
+#define __nessDB_COLA_H
 
 #include "config.h"
 #include "bloom.h"
 #include "compact.h"
-#include "fc.h"
+#include "block.h"
+
+#define NESSDB_MAX_KEY_SIZE (35) 
 
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
-
-//#define MAX_LEVEL (9)
-//#define L0_SIZE (1024*64)
-#define MAX_LEVEL (4)
-#define L0_SIZE (1024)
-#define NESSDB_MAX_KEY_SIZE (35) 
 
 struct ol_pair {
 	uint64_t offset;
@@ -41,8 +37,8 @@ struct cola {
 	struct bloom *bf;
 	struct compact *cpt;
 	struct stats *stats;
-	struct fc *fc;
-	struct cola_item *block;
+	struct block *blk;
+	struct cola_item *oneblk;
 };
 
 struct cola *cola_new(const char *file, struct compact *cpt, struct stats *stats);

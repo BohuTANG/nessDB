@@ -72,7 +72,9 @@ void meta_dump(struct meta *meta)
 	int i, j;
 	int allc = 0;
 	
-	__DEBUG("---meta(%d):", meta->size);
+	__DEBUG("---meta(%d):", 
+			meta->size);
+
 	for (i = 0; i < meta->size; i++) {
 		int used = 0;
 		int count = 0;
@@ -83,14 +85,15 @@ void meta_dump(struct meta *meta)
 		}
 
 		allc += count;
-		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s, used#%d, count#%d"
-				, i
-				, meta->nodes[i].lsn
-				, meta->nodes[i].cola->header.max_key
-				, used
-				, count);
+		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s, used#%d, count#%d",
+				i,
+				meta->nodes[i].lsn,
+				meta->nodes[i].cola->header.max_key,
+				used,
+				count);
 	}
-	__DEBUG("\t----allcount:%d", allc);
+	__DEBUG("\t----allcount:%d", 
+			allc);
 }
 
 void _scryed(struct meta *meta,struct cola *cola, struct cola_item *L, int start, int c, int idx)
@@ -113,7 +116,8 @@ void _scryed(struct meta *meta,struct cola *cola, struct cola_item *L, int start
 	meta->size++;
 
 	if (meta->size >= (int)(NESSDB_MAX_META - 1))
-		__PANIC("OVER max metas, MAX#%d", NESSDB_MAX_META);
+		__PANIC("OVER max metas, MAX#%d", 
+				NESSDB_MAX_META);
 }
 
 void _split_sst(struct meta *meta, struct meta_node *node)
@@ -134,7 +138,9 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	mod = c % NESSDB_SST_SEGMENT;
 	k = split + mod;
 
-	__DEBUG("---will scryed SST to %d, all count#%d....", NESSDB_SST_SEGMENT, c);
+	__DEBUG("---will scryed SST to %d, all count#%d....", 
+			NESSDB_SST_SEGMENT, 
+			c);
 
 	/* rewrite SST */
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;

@@ -204,10 +204,14 @@ void _read_test(long int count)
 			free(sv.data);
 			found++;
 		} else
-			__INFO("not found key#%s", sk.data);
+			__INFO("not found key#%s", 
+					sk.data);
 
 		if ((i % 10000) == 0) {
-			fprintf(stderr,"random read finished %d ops%30s\r", i, "");
+			fprintf(stderr,"random read finished %d ops%30s\r", 
+					i, 
+					"");
+
 			fflush(stderr);
 		}
 	}
@@ -218,11 +222,11 @@ void _read_test(long int count)
 
 	cost = end - start;
 	printf(LINE);
-	printf("|Random-Read	(done:%ld, found:%d): %.6f sec/op; %.1f reads /sec(estimated); cost:%.3f(sec)\n"
-		,count, found
-		,(double)(cost / count)
-		,(double)(count / cost)
-		,cost);
+	printf("|Random-Read	(done:%ld, found:%d): %.6f sec/op; %.1f reads /sec(estimated); cost:%.3f(sec)\n",
+		count, found,
+		(double)(cost / count),
+		(double)(count / cost),
+		cost);
 }
 
 void _readone_test(char *key)
@@ -243,10 +247,13 @@ void _readone_test(char *key)
 
 	ret = db_get(db, &sk, &sv);
 	if (ret){ 
-		__INFO("Get Key:<%s>--->value is :<%s>", key, sv.data);
+		__INFO("Get Key:<%s>--->value is :<%s>", 
+				key, 
+				sv.data);
 		free(sv.data);
 	} else
-		__INFO("Get Key:<%s>,but value is NULL", key);
+		__INFO("Get Key:<%s>,but value is NULL", 
+				key);
 
 	db_close(db);
 }

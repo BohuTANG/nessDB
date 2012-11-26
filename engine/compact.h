@@ -1,5 +1,5 @@
-#ifndef _COMPACT_H
-#define _COMPACT_H
+#ifndef __nessDB_COMPACT_H
+#define __nessDB_COMPACT_H
 
 #include <stdint.h>
 

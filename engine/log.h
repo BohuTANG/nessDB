@@ -1,5 +1,5 @@
-#ifndef _LOG_H
-#define _LOG_H
+#ifndef __nessDB_LOG_H
+#define __nessDB_LOG_H
 
 #include "config.h"
 #include "buffer.h"

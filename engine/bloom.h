@@ -1,5 +1,5 @@
-#ifndef _BLOOM_H
-#define _BLOOM_H
+#ifndef __NESS_BLOOM_H
+#define __NESS_BLOOM_H
 
 #include "config.h"
 

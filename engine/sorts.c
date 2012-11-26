@@ -75,7 +75,9 @@ void dump_items(struct cola_item *item, int len)
 
 	__DEBUG("---------dumps:");
 	for (i = 0; i < len; i++) {
-		__DEBUG("\t--[%d]key:%s", i, item[i].data);
+		__DEBUG("\t--[%d]key:%s", 
+				i, 
+				item[i].data);
 	}
 	__DEBUG("----------------");
 }

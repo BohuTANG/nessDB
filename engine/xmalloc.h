@@ -1,5 +1,5 @@
-#ifndef _XMALLOC_H
-#define _XMALLOC_H
+#ifndef __nessDB_XMALLOC_H
+#define __nessDB_XMALLOC_H
 
 void *xmalloc(size_t n);
 void *xcalloc(size_t n, size_t s);

@@ -6,10 +6,9 @@
  *
  */
 
-#ifndef _SKIPLIST_H
-#define _SKIPLIST_H
+#ifndef __nessDB_SKIPLIST_H
+#define __nessDB_SKIPLIST_H
 
-#include <stdint.h>
 #include "cola.h"
 #include "config.h"
 

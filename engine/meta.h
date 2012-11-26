@@ -1,5 +1,5 @@
-#ifndef _META_H
-#define _META_H
+#ifndef __nessDB_META_H
+#define __nessDB_META_H
 
 #include "config.h"
 #include "cola.h"

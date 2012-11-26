@@ -1,5 +1,5 @@
-#ifndef _HASHS_H
-#define _HASHS_H
+#ifndef __nessDB_HASHS_H
+#define __nessDB_HASHS_H
 
 #include <stdint.h>
 

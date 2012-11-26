@@ -1,5 +1,5 @@
-#ifndef _BUF_H
-#define _BUF_H
+#ifndef __nessDB_BUF_H
+#define __nessDB_BUF_H
 
 #include <stdint.h>
 

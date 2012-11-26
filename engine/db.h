@@ -1,5 +1,5 @@
-#ifndef _DB_H
-#define _DB_H
+#ifndef __nessDB_H
+#define __nessDB_H
 
 #include "config.h"
 

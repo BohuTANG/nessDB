@@ -1,5 +1,5 @@
-#ifndef _DEBUG_H
-#define _DEBUG_H
+#ifndef __nessDB_DEBUG_H
+#define __nessDB_DEBUG_H
 
 #include <stdio.h>
 #include <assert.h>

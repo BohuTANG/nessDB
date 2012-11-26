@@ -1,5 +1,5 @@
-#ifndef _INDEX_H
-#define _INDEX_H
+#ifndef __nessDB_INDEX_H
+#define __nessDB_INDEX_H
 
 #include "meta.h"
 #include "buffer.h"
