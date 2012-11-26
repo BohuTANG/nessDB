@@ -28,8 +28,8 @@ struct block *block_new(int l0_blk_count)
 	struct block *block = xcalloc(1, sizeof(struct block));
 
 	for (i = 0; i < (int)MAX_LEVEL; i++) {
-		/* aligned five gaps */
-		block->level_blks[i] = ((1<<i) * l0_blk_count + 100);
+		/* aligned 64 gaps */
+		block->level_blks[i] = ((1<<i) * l0_blk_count + 64);
 		block->blks += block->level_blks[i];
 	}
 	block->blocks = xcalloc(1 + block->blks, ITEM_SIZE);
