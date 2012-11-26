@@ -8,11 +8,10 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 ================================================================
 
   nessDB is a fast Key-Value database(embedded), which is written in ANSI C with BSD LICENSE and works in most POSIX systems without external dependencies.
-
   nessDB is very efficient on disk-based random access, since it's using LSM-Tree-like data structure.
 
-  The Version 2.0, it uses Small-Splittable Tree (SST), for more details, please refer to documentations which in 'spec' folder.
-  It's LSM-Tree-alike, but it's insert cost is O((log N)/B), query cost is O(log N).
+  From Version 2.0, nessDB uses Small-Splittable Tree (SST), for more details, please refer to documentations which in 'spec' folder.
+  Insert cost is O((log N)/B), and query cost is O(log N).
 
   
   V2.0 FEATURES
