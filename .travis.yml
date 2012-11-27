@@ -1,4 +1,2 @@
 language: c
-compiler:
-  - gcc
- script: make && make db-bench
+script: make && make db-bench
