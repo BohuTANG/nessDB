@@ -1,4 +1,5 @@
 language: c
 script: make && make db-bench
 notifications:
-  email: true
+  email:
+    - overred.shuttler@gmail.com
