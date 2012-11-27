@@ -53,16 +53,16 @@ void db_stats(struct nessdb *db, struct slice *stats)
 			"\tuptime_in_days:%d\r\n"
 
 			"# Stats\r\n"
-			"\ttotal_read_count:%ld\r\n"
-			"\ttotal_write_count:%ld\r\n"
-			"\ttotal_remove_count:%ld\r\n"
-			"\ttotal_r_from_mtbl:%ld\r\n"
-			"\ttotal_r_from_disk:%ld\r\n"
-			"\ttotal_crc_errors:%ld\r\n"
-			"\ttotal_compress_count:%ld\r\n"
-			"\ttotal_hole_reuse_count:%ld\r\n"
-			"\ttotal_mtbl_count:%ld\r\n"
-			"\ttotal_merging_mtbl_count:%ld\r\n"
+			"\ttotal_read_count:%llu\r\n"
+			"\ttotal_write_count:%llu\r\n"
+			"\ttotal_remove_count:%llu\r\n"
+			"\ttotal_r_from_mtbl:%llu\r\n"
+			"\ttotal_r_from_disk:%llu\r\n"
+			"\ttotal_crc_errors:%llu\r\n"
+			"\ttotal_compress_count:%llu\r\n"
+			"\ttotal_hole_reuse_count:%llu\r\n"
+			"\ttotal_mtbl_count:%llu\r\n"
+			"\ttotal_merging_mtbl_count:%llu\r\n"
 			,
 		NESSDB_VERSION,
 		arch_bits,

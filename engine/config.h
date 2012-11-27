@@ -74,27 +74,28 @@ struct slice {
 	int len;
 };
 
+
 struct stats {
-	volatile uint64_t STATS_WRITES;              /* all counts #write            */
-	volatile uint64_t STATS_READS;               /* all counts #read             */
-	volatile uint64_t STATS_REMOVES;             /* all counts #remove           */
-	volatile uint64_t STATS_MERGES;              /* all counts #background merge */
+	volatile unsigned long long  STATS_WRITES;              /* all counts #write            */
+	volatile unsigned long long STATS_READS;               /* all counts #read             */
+	volatile unsigned long long STATS_REMOVES;             /* all counts #remove           */
+	volatile unsigned long long STATS_MERGES;              /* all counts #background merge */
 
-	volatile uint64_t STATS_R_FROM_MTBL;         /* all counts #mtbl */
-	volatile uint64_t STATS_R_COLA;              /* all counts #read filesystem  */
-	volatile uint64_t STATS_R_NOTIN_COLA;        /* all counts #read filesystem  */
-	volatile uint64_t STATS_R_BF;                /* all counts #not bloomfilter  */
-	volatile uint64_t STATS_R_NOTIN_BF;          /* all counts #not bloomfilter  */
-	volatile uint64_t STATS_CRC_ERRS;            /* all crc errors               */
-	volatile uint64_t STATS_COMPRESSES;          /* all counts #compress         */
-	volatile uint64_t STATS_HOLE_REUSES;         /* all counts #holes reuse      */
+	volatile unsigned long long STATS_R_FROM_MTBL;         /* all counts #mtbl */
+	volatile unsigned long long STATS_R_COLA;              /* all counts #read filesystem  */
+	volatile unsigned long long STATS_R_NOTIN_COLA;        /* all counts #read filesystem  */
+	volatile unsigned long long STATS_R_BF;                /* all counts #not bloomfilter  */
+	volatile unsigned long long STATS_R_NOTIN_BF;          /* all counts #not bloomfilter  */
+	volatile unsigned long long STATS_CRC_ERRS;            /* all crc errors               */
+	volatile unsigned long long STATS_COMPRESSES;          /* all counts #compress         */
+	volatile unsigned long long STATS_HOLE_REUSES;         /* all counts #holes reuse      */
 
-	volatile uint64_t STATS_MTBL_COUNTS;         /* all counts #MTBL             */
-	volatile uint64_t STATS_MTBL_MERGING_COUNTS; /* all counts #merging MTBL     */
+	volatile unsigned long long STATS_MTBL_COUNTS;         /* all counts #MTBL             */
+	volatile unsigned long long STATS_MTBL_MERGING_COUNTS; /* all counts #merging MTBL     */
 
-	volatile uint64_t STATS_LEVEL_MERGES;        /* all counts #levels merge     */
-	volatile uint64_t STATS_SST_SPLITS;          /* all counts #SST split        */
-	volatile uint64_t STATS_SST_MERGEONE;        /* all counts #SST merge to one */
+	volatile unsigned long long STATS_LEVEL_MERGES;        /* all counts #levels merge     */
+	volatile unsigned long long STATS_SST_SPLITS;          /* all counts #SST split        */
+	volatile unsigned long long STATS_SST_MERGEONE;        /* all counts #SST merge to one */
 	volatile time_t   STATS_START_TIME;			
 };
 
