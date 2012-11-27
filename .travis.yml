@@ -2,6 +2,6 @@ language: c
 script: make && make db-bench
 notifications:
   email:
-    - overred.shuttler@gmail.com
-    on_success: [always]
-    on_failure: [always]
+    overred.shuttler@gmail.com
+    on_success: always
+    on_failure: always
