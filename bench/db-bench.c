@@ -18,7 +18,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
-#include "../engine/config.h"
 #include "../engine/debug.h"
 #include "../engine/db.h"
 
