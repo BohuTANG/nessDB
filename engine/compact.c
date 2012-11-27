@@ -5,7 +5,6 @@
  *
  */
 
-#include "config.h"
 #include "compact.h"
 #include "debug.h"
 #include "xmalloc.h"

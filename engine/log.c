@@ -5,10 +5,6 @@
  *
  */
 
-#include "config.h"
-
-#include "meta.h"
-#include "cola.h"
 #include "log.h"
 #include "debug.h"
 #include "xmalloc.h"

@@ -5,13 +5,9 @@
  *
  */
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "sorts.h"
-#include "debug.h"
-#include "compact.h"
 
+#define COLA_ITEM_SIZE (sizeof(struct cola_item))
 void cola_insertion_sort(struct cola_item *item, int len)
 {
 	int i, j;
@@ -25,14 +21,14 @@ void cola_insertion_sort(struct cola_item *item, int len)
 			if (cmp <= 0) {
 				/* covert the old version */
 				if (cmp == 0)
-					memcpy(&item[j], &v, ITEM_SIZE);
+					memcpy(&item[j], &v, COLA_ITEM_SIZE); 
 
 				break;
 			}
 
-			memcpy(&item[j + 1], &item[j], ITEM_SIZE);
+			memcpy(&item[j + 1], &item[j], COLA_ITEM_SIZE);
 		}
-		memcpy(&item[j + 1], &v, ITEM_SIZE);
+		memcpy(&item[j + 1], &v, COLA_ITEM_SIZE);
 	}
 }
 
@@ -45,7 +41,7 @@ int cola_merge_sort(struct compact *cpt, struct cola_item *c, struct cola_item *
 
 		cmp = strcmp(a_new[m].data, b_old[n].data);
 		if (cmp == 0) {
-			memcpy(&c[i++], &a_new[m], ITEM_SIZE);
+			memcpy(&c[i++], &a_new[m], COLA_ITEM_SIZE);
 			/* add delete slot to cpt */
 			if (a_new[m].opt == 0 && a_new[m].vlen > 0) 
 				if (cpt)
@@ -53,31 +49,18 @@ int cola_merge_sort(struct compact *cpt, struct cola_item *c, struct cola_item *
 			n++;
 			m++;
 		} else if (cmp < 0) 
-			memcpy(&c[i++], &a_new[m++], ITEM_SIZE);
+			memcpy(&c[i++], &a_new[m++], COLA_ITEM_SIZE);
 		else 
-			memcpy(&c[i++], &b_old[n++], ITEM_SIZE);
+			memcpy(&c[i++], &b_old[n++], COLA_ITEM_SIZE);
 	}
 
 	if (m == alen) {
 		for (k = n; k < blen; k++)
-			memcpy(&c[i++], &b_old[k], ITEM_SIZE);
+			memcpy(&c[i++], &b_old[k], COLA_ITEM_SIZE);
 	} else if (n == blen) { 
 		for (k = m; k < alen; k++)
-			memcpy(&c[i++], &a_new[k], ITEM_SIZE);
+			memcpy(&c[i++], &a_new[k], COLA_ITEM_SIZE);
 	}
 
 	return i;
-}
-
-void dump_items(struct cola_item *item, int len)
-{
-	int i;
-
-	__DEBUG("---------dumps:");
-	for (i = 0; i < len; i++) {
-		__DEBUG("\t--[%d]key:%s", 
-				i, 
-				item[i].data);
-	}
-	__DEBUG("----------------");
 }

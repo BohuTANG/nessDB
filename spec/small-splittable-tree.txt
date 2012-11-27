@@ -9,10 +9,11 @@ Small-Splittable Tree (SST) Algorithm
 
   a) Small-Splittable Tree
   =========================
-	0) small height (As a general, the height(H) is no more than 10)
-	1) if height of SST is more than H, it can elegant split.
-	2) using fractional cascading to speed up search, cost is O(log N).
-	3) insert costs is O((log N)/B).
+	0) Small height (As a general, the height(H) is no more than 10)
+	1) If height of SST is more than H, it can elegant split.
+	2) Insert costs is O((log N)/B).
+	3) Using fractional cascading to speed up search, query cost is O(log N).
+	4) Cache-oblivious write-optimized structure.
 
   b) small N-height:N is small, such as 8
   =======================================
@@ -59,11 +60,12 @@ Small-Splittable Tree (SST) Algorithm
 
   d) lookup
   =========
-     0) from L0 to Ln , each level is binary search.
+     Using fractional cascading to speed up search, query cost is O(log N).
+
 
   e) when to split
   ================
-     if ALL levels are full, scan all levels and split into two SST
+     if ALL levels are full, scan all levels and split into  SSTs
 
 Code is licensed with GPL. See COPYING.GPL file.
 Copyright (c) 2012, BohuTANG <overred.shuttler at gmail dot com>

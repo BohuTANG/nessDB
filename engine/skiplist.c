@@ -6,11 +6,7 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "skiplist.h"
-#include "config.h"
 #include "debug.h"
 #include "xmalloc.h"
 
@@ -114,7 +110,7 @@ int skiplist_insert(struct skiplist *list, struct cola_item *itm)
 
 	x = x->forward[0];
 	if (x != NIL && cmp_eq(x->itm.data, itm->data)) {
-		memcpy(&x->itm, itm, ITEM_SIZE);
+		memcpy(&x->itm, itm, sizeof(struct cola_item));
 		return 1;
 	}
 
@@ -130,7 +126,7 @@ int skiplist_insert(struct skiplist *list, struct cola_item *itm)
 	if ((x =_pool_alloc(list,sizeof(struct skipnode) + new_level*sizeof(struct skipnode *))) == 0)
 		__PANIC("Pool alloc error, maybe less memory");
 
-	memcpy(&x->itm, itm, ITEM_SIZE);
+	memcpy(&x->itm, itm, sizeof(struct cola_item));
 
 	for (i = 0; i <= new_level; i++) {
 		x->forward[i] = update[i]->forward[i];

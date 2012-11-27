@@ -1,6 +1,7 @@
 #ifndef __nessDB_INDEX_H
 #define __nessDB_INDEX_H
 
+#include "db.h"
 #include "meta.h"
 #include "buffer.h"
 #include "skiplist.h"

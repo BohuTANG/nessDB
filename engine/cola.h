@@ -1,12 +1,10 @@
 #ifndef __nessDB_COLA_H
 #define __nessDB_COLA_H
 
-#include "config.h"
+#include "db.h"
 #include "bloom.h"
 #include "compact.h"
 #include "block.h"
-
-#define NESSDB_MAX_KEY_SIZE (35) 
 
 #define HEADER_SIZE (sizeof(struct cola_header))
 #define ITEM_SIZE (sizeof(struct cola_item))
@@ -15,13 +13,6 @@ struct ol_pair {
 	uint64_t offset;
 	uint32_t vlen;
 };
-
-struct cola_item {
-	char data[NESSDB_MAX_KEY_SIZE];
-	uint64_t offset;
-	uint32_t vlen;
-	char opt;
-} __attribute__((packed));
 
 struct cola_header {
 	int count[MAX_LEVEL];

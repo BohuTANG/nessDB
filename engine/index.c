@@ -6,11 +6,11 @@
  * The main algorithm described is here: spec/cola-algorithms.txt
  */
 
-#include "config.h"
 #include "index.h"
+#include "cola.h"
+#include "hashs.h"
 #include "debug.h"
 #include "xmalloc.h"
-#include "hashs.h"
 
 #define DB_MAGIC (20121212)
 

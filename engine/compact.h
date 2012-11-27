@@ -1,7 +1,7 @@
 #ifndef __nessDB_COMPACT_H
 #define __nessDB_COMPACT_H
 
-#include <stdint.h>
+#include "db.h"
 
 struct cpt_node {
 	uint64_t offset;

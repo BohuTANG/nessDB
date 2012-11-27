@@ -8,7 +8,6 @@
 #include "meta.h"
 #include "debug.h"
 #include "xmalloc.h"
-#include "sorts.h"
 
 void  _check_dir(const char *pathname)  
 {  

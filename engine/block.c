@@ -8,6 +8,7 @@
  */
 
 #include "block.h"
+#include "cola.h"
 #include "xmalloc.h"
 #include "debug.h"
 

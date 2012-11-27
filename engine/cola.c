@@ -6,11 +6,10 @@
  * The main algorithm described is here: spec/small-splittable-tree.txt
  */
 
-#include "config.h"
-#include "xmalloc.h"
 #include "cola.h"
 #include "sorts.h"
 #include "debug.h"
+#include "xmalloc.h"
 
 /* 
  * calc level's offset of file 

@@ -9,8 +9,7 @@
 #ifndef __nessDB_SKIPLIST_H
 #define __nessDB_SKIPLIST_H
 
-#include "cola.h"
-#include "config.h"
+#include "db.h"
 
 #define MAXLEVEL (15)
 

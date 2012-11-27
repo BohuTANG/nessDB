@@ -5,7 +5,7 @@
  *
  */
 
-#include <stdarg.h>
+#include "db.h"
 #include "bloom.h"
 #include "debug.h"
 #include "hashs.h"

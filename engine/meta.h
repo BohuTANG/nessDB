@@ -1,12 +1,11 @@
 #ifndef __nessDB_META_H
 #define __nessDB_META_H
 
-#include "config.h"
+#include "db.h"
 #include "cola.h"
-#include "compact.h"
 
-#define META_NODE_SIZE sizeof(struct meta_node)
 #define NESSDB_MAX_META (3000) 
+#define META_NODE_SIZE sizeof(struct meta_node)
 
 struct meta_node{
 	int lsn;
