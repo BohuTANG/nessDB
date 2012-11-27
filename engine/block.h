@@ -8,7 +8,7 @@ struct block {
 	int level_blks[MAX_LEVEL];
 	int level_blk_used[MAX_LEVEL];
 	int level_blk_aligned[MAX_LEVEL];
-	struct cola_item *blocks;
+	struct cola_item *blocks[MAX_LEVEL];
 };
 
 struct block *block_new(int l0_count);

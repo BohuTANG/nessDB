@@ -161,22 +161,25 @@ void _build_block(struct cola *cola)
 	int i;
 
 	for (i = 0; i < MAX_LEVEL; i++) {
-		int c = cola->header.count[i];
-		struct cola_item *L = read_one_level(cola, i, c);
+		int c;
+		struct cola_item *L;
 
-		block_build(cola->blk, L, c, i); 
+		c = cola->header.count[i];
+		L = read_one_level(cola, i, c);
+		if (c > 0)
+			block_build(cola->blk, L, c, i); 
 		free(L);
 	}
 }
 
-#define L0_COUNT (L0_SIZE/ITEM_SIZE)
+#define BLOCK0_COUNT ((L0_SIZE/ITEM_SIZE)/BLOCK_GAP + 1)
 struct cola *cola_new(const char *file, struct compact *cpt, struct stats *stats)
 {
 	int res;
 	struct cola *cola = xcalloc(1, sizeof(struct cola));
 
-	cola->oneblk = xcalloc(BLOCK_GAP + 2, ITEM_SIZE);
-	cola->blk= block_new(L0_COUNT/BLOCK_GAP);
+	cola->oneblk = xcalloc(BLOCK_GAP, ITEM_SIZE);
+	cola->blk= block_new(BLOCK0_COUNT);
 
 	cola->fd = n_open(file, N_OPEN_FLAGS, 0644);
 	if (cola->fd > 0) {
