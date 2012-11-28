@@ -46,10 +46,10 @@ void cola_dump(struct cola *cola) {
 
 	__DEBUG("**%06d.SST dump:", cola->fd);
 	for(i = 0; i< (int)MAX_LEVEL; i++) {
-		printf("\t\t-L#%d---count#%d, max-count:%d\n"
-				, i
-				, cola->header.count[i]
-				, (int)_level_max(i, 0));
+		printf("\t\t-L#%d---count#%d, max-count:%d\n",
+				i,
+				cola->header.count[i],
+				(int)_level_max(i, 0));
 	}
 	printf("\n");
 }
@@ -246,8 +246,6 @@ void cola_truncate(struct cola *cola)
 {
 	memset(&cola->header, 0, HEADER_SIZE);
 	cola->willfull = 0;
-
-	//todo truncate file?
 }
 
 struct cola_item *cola_in_one(struct cola *cola, int *c) 

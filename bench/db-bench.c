@@ -194,6 +194,7 @@ void _read_test(long int count)
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
 		memset(key, 0, KSIZE + 1);
+		/* if you want test random write, using flollowing */
 		//_random_key(key, KSIZE);
 		snprintf(key, KSIZE, "key-%d", i);
 		sk.len = KSIZE;
