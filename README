@@ -21,7 +21,6 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
   b. Using Small-Splittable Tree as storage engine
   c. Using fractional cascading to speed up search
   d. Cache-oblivious write-optimized structure
-  e. Using fractional cascading to speed up search
 
   HOW TODO BENCHMARK
   ==================
