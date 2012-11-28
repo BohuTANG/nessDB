@@ -2,7 +2,8 @@ Small-Splittable Tree (SST) Algorithm
 -----------------------------------------
 				Drafted by BohuTANG
 
-  This is a simple COLAs(Cache Oblivious Lookahead Arrays) implementation with small-height(level), BUT HERE, I prefer to call it Small-Splittable Tree(SST). It's very fast for random-data insertion and cache oblivious.
+  This is a simple COLAs(Cache Oblivious Lookahead Arrays) implementation with small-height(level), BUT HERE, I prefer to call it Small-Splittable Tree(SST). 
+  It's very fast for random-data insertion and cache oblivious.
 
   The paper which COLAs is described at here(also tokutek Prof.s):
   http://www.cs.sunysb.edu/~bender/newpub/BenderFaFi07.pdf
@@ -13,6 +14,8 @@ Small-Splittable Tree (SST) Algorithm
 	1) If height of SST is more than H, it can elegant split.
 	2) Insert costs is O((log N)/B).
 	3) Using fractional cascading to speed up search, query cost is O(log N).
+	   Although query with O(log N), BUT SST-height is small, so query is very high performance.
+	   The maximum number of disk access operations are MAX-LEVEL.
 	4) Cache-oblivious write-optimized structure.
 
   b) small N-height:N is small, such as 8
