@@ -7,14 +7,14 @@
 
 #include "sorts.h"
 
-#define COLA_ITEM_SIZE (sizeof(struct cola_item))
-void cola_insertion_sort(struct cola_item *item, int len)
+#define COLA_ITEM_SIZE (sizeof(struct sst_item))
+void sst_insertion_sort(struct sst_item *item, int len)
 {
 	int i, j;
 
 	for (i = 0; i < len; i++) {
 		int cmp;
-		struct cola_item v = item[i];
+		struct sst_item v = item[i];
 
 		for (j = i - 1; j >= 0; j--) {
 			cmp = strcmp(item[j].data, v.data);
@@ -32,7 +32,7 @@ void cola_insertion_sort(struct cola_item *item, int len)
 	}
 }
 
-int cola_merge_sort(struct compact *cpt, struct cola_item *c, struct cola_item *a_new, int alen, struct cola_item *b_old, int blen)
+int sst_merge_sort(struct compact *cpt, struct sst_item *c, struct sst_item *a_new, int alen, struct sst_item *b_old, int blen)
 {
 	int i, m = 0, n = 0, k;
 

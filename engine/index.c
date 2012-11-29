@@ -3,11 +3,11 @@
  * All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
- * The main algorithm described is here: spec/cola-algorithms.txt
+ * The main algorithm described is here: spec/sst-algorithms.txt
  */
 
 #include "index.h"
-#include "cola.h"
+#include "sst.h"
 #include "hashs.h"
 #include "debug.h"
 #include "xmalloc.h"
@@ -23,7 +23,7 @@ void _merging(struct meta *meta, struct skiplist *list)
 	cur = list->hdr->forward[0];
 	while (cur != first) {
 		node = meta_get(meta, cur->itm.data);
-		cola_add(node->cola, &cur->itm);
+		sst_add(node->sst, &cur->itm);
 		cur = cur->forward[0];
 	}
 }
@@ -142,7 +142,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	uint64_t cpt_offset = 0;
 
 	char *line;
-	struct cola_item item;
+	struct sst_item item;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE || (sv && sv->len > NESSDB_MAX_VAL_SIZE)) {
 		__ERROR("key or value is too long...#%d:%d", NESSDB_MAX_KEY_SIZE, NESSDB_MAX_VAL_SIZE);
@@ -273,14 +273,14 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	if (!sknode) {
 		node =  meta_get(idx->meta, sk->data);
 		if (node) {
-			if (bloom_get(node->cola->bf, sk->data)) {
+			if (bloom_get(node->sst->bf, sk->data)) {
 				idx->stats->STATS_R_BF++;
 			} else {
 				idx->stats->STATS_R_NOTIN_BF++;
 				goto RET;
 			}
 
-			if (cola_get(node->cola, sk, &pair)) {
+			if (sst_get(node->sst, sk, &pair)) {
 				idx->stats->STATS_R_COLA++;
 			} else {
 				idx->stats->STATS_R_NOTIN_COLA++;

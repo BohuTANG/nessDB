@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -58,10 +59,11 @@
 #define NESSDB_COMPACT_LIMIT (1000)           /* Flag of compact       */
 #define NESSDB_IS_LOG_RECOVERY (1)
 
-/* NOTICE: These macros can NOT be modified */
-#define MAX_LEVEL (9)
-#define BLOCK_GAP (256)
+/* NOTICE: These macros can NOT be modified, or you will be lost */
+#define MAX_LEVEL (4)
+#define LEVEL_BASE (8)
 #define L0_SIZE (64*1024)
+#define BLOCK_GAP (256)
 #define NESSDB_MAX_KEY_SIZE (35) 
 
 #define NESSDB_LOG_EXT (".LOG")
@@ -75,7 +77,7 @@ struct slice {
 	int len;
 };
 
-struct cola_item {
+struct sst_item {
 	char data[NESSDB_MAX_KEY_SIZE];
 	uint64_t offset;
 	uint32_t vlen;

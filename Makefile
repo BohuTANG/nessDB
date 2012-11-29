@@ -5,13 +5,13 @@ BGMERGE = -DBGMERGE
 
 #debug levle
 DEBUG =	-g  -ggdb -DINFO
-CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC  $(DEBUG) $(BGMERGE)
+CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
 
 LIB_OBJS = \
 	./engine/xmalloc.o\
 	./engine/debug.o\
 	./engine/sorts.o\
-	./engine/cola.o\
+	./engine/sst.o\
 	./engine/meta.o\
 	./engine/buffer.o\
 	./engine/index.o\
@@ -47,10 +47,10 @@ cleandb:
 	-rm -rf *.event
 
 $(LIBRARY): $(LIB_OBJS)
-	$(CC) -pthread  -fPIC -shared $(LIB_OBJS) -o libnessdb.so
+	$(CC) -pthread -fPIC -shared $(LIB_OBJS) -o libnessdb.so -lm
 
 db-bench:  $(LIB_OBJS) $(TEST)
-	$(CC) -pthread  $(LIB_OBJS) bench/db-bench.o -o $@
+	$(CC) -pthread $(LIB_OBJS) bench/db-bench.o -o $@ -lm
 
 buffer-test:  $(LIB_OBJS) $(TEST)
-	$(CC) -pthread  $(LIB_OBJS) test/buffer-test.o -o $@
+	$(CC) -pthread  $(LIB_OBJS) test/buffer-test.o -o $@ -lm

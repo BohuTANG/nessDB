@@ -16,7 +16,7 @@ struct log {
 };
 
 struct log *log_new(const char *path, struct meta *meta, int islog);
-void log_append(struct log *log, struct cola_item *item);
+void log_append(struct log *log, struct sst_item *item);
 void log_remove(struct log *log, int logno);
 void log_create(struct log *log);
 void log_free(struct log *log);

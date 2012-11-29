@@ -8,7 +8,7 @@
  */
 
 #include "block.h"
-#include "cola.h"
+#include "sst.h"
 #include "xmalloc.h"
 #include "debug.h"
 
@@ -18,7 +18,7 @@ struct block *block_new(int l0_blk_count)
 	struct block *block = xcalloc(1, sizeof(struct block));
 
 	for (i = 0; i < (int)MAX_LEVEL; i++) {
-		block->level_blks[i] = ((1<<i) * l0_blk_count);
+		block->level_blks[i] = (pow(LEVEL_BASE, i) * l0_blk_count);
 		block->blocks[i] = xcalloc(block->level_blks[i], ITEM_SIZE);
 		block->blks += block->level_blks[i];
 	}
@@ -26,7 +26,7 @@ struct block *block_new(int l0_blk_count)
 	return block;
 }
 
-void block_build(struct block *block, struct cola_item *items, int count, int level)
+void block_build(struct block *block, struct sst_item *items, int count, int level)
 {
 	int i;
 	int x = count / BLOCK_GAP;

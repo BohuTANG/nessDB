@@ -68,7 +68,7 @@ void _log_recovery(struct log *log, struct meta *meta)
 	int sizes;
 	int rem;;
 	struct meta_node *node;
-	struct cola_item itm;
+	struct sst_item itm;
 
 	for (i = log->no - 1; i <= log->no; i++) {
 		_make_log_name(log, i);
@@ -115,7 +115,7 @@ void _log_recovery(struct log *log, struct meta *meta)
 			itm.opt = opt;
 
 			node = meta_get(meta, itm.data);
-			cola_add(node->cola, &itm);
+			sst_add(node->sst, &itm);
 		}
 
 		log_remove(log, i);
@@ -147,7 +147,7 @@ struct log *log_new(const char *path, struct meta *meta, int islog)
 	return log;
 }
 
-void log_append(struct log *log, struct cola_item *itm)
+void log_append(struct log *log, struct sst_item *itm)
 {
 	int res;
 	int len;

@@ -2,27 +2,32 @@ Small-Splittable Tree (SST) Algorithm
 -----------------------------------------
 				Drafted by BohuTANG
 
-  This is a simple COLAs(Cache Oblivious Lookahead Arrays) implementation with small-height(level), BUT HERE, I prefer to call it Small-Splittable Tree(SST). 
-  It's very fast for random-data insertion and cache oblivious.
+  This is a Bε-tree implementation with small-height(level), BUT HERE, I prefer to call it Small-Splittable Tree(SST). 
+  SST also using array as LEVELs, seems like COLAS(Cache Oblivious Lookahead Arrays).
+  The kth LEVEL-size is BASE^k and the LEVELs are stored, COLAS's BASE is 2, SST's BASE is 8.
+  The 0th LEVEL-size approximately √B(ε=1/2).
 
-  The paper which COLAs is described at here(also tokutek Prof.s):
-  http://www.cs.sunysb.edu/~bender/newpub/BenderFaFi07.pdf
+  It's very fast for random-data insertion/read, I'm sure.
+  
+  REFERENCES
+  ==========
+  [0] Michael A. Bender, Martin Farach-Colton [...]. Cache-Oblivious Streaming B-trees.
+  [1] G. S. Brodal and R. Fagerberg. Lower bounds for external memory dictionaries. 
 
   a) Small-Splittable Tree
   =========================
-	0) Small height (As a general, the height(H) is no more than 10)
+	0) Small height, very performance for Random Write/Read.
 	1) If height of SST is more than H, it can elegant split.
 	2) Insert costs is O((log N)/B).
-	3) Using fractional cascading to speed up search, query cost is O(log N).
-	   Although query with O(log N), BUT SST-height is small, so query is very high performance.
-	   The maximum number of disk access operations are MAX-LEVEL.
+	3) Using fractional cascading to speed up search.
+	   Since SST-height is small, so query is very high performance.
 	4) Cache-oblivious write-optimized structure.
 
   b) small N-height:N is small, such as 8
   =======================================
-	L0:1 * 1024KB
-	L1:2 * 1024KB
-	L2:4 * 1024KB
+	L0: (L0-SIZE) * BASE^0
+	L1: (L0-SIZE) * BASE^1
+	L2: (L0-SIZE) * BASE^2
 	... ...
 
 	level structured

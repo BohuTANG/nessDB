@@ -1,5 +1,5 @@
 ================================================================
-nessDB v2.0 with Small-Splittable Tree (Another LSM-Tree)
+nessDB v2.0 with Small-Splittable Tree (one of Bε-tree)
 Copyright (C) 2012 BohuTANG________________ 
 _____________________________  __ \__  __ )
 __  __ \  _ \_  ___/_  ___/_  / / /_  __  |
@@ -9,11 +9,9 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 
   nessDB is a fast Key-Value database(embedded), which is written in ANSI C with BSD LICENSE and works in most POSIX systems without external dependencies.
 
-  nessDB is very efficient on disk-based random access.
+  nessDB is very efficient on disk-based random access, I'M SURE.
 
-  From Version 2.0, nessDB uses Small-Splittable Tree (SST), it's a Cache-oblivious write-optimized structure, for more details, please refer to documentations which in 'spec' folder.
-  Insert cost is O((log N)/B), and query is O(log N).
-
+  From Version 2.0, nessDB uses Small-Splittable Tree (SST), it's one of Bε-tree(ε=1/2) and Cache-oblivious write-optimized structure, for more details, please refer to documentations which in 'spec' folder.
   
   V2.0 FEATURES
   =============

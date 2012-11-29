@@ -51,7 +51,7 @@ int _get_idx(struct meta *meta, char *key)
 		i = (right + left) / 2 ;
 		node = &meta->nodes[i];
 
-		cmp = strcmp(key, node->cola->header.max_key);
+		cmp = strcmp(key, node->sst->header.max_key);
 		if (cmp == 0) 
 			return i;
 
@@ -79,15 +79,15 @@ void meta_dump(struct meta *meta)
 		int count = 0;
 
 		for (j = 0; j < MAX_LEVEL; j++) {
-			used += meta->nodes[i].cola->header.count[j] * ITEM_SIZE;
-			count += meta->nodes[i].cola->header.count[j];
+			used += meta->nodes[i].sst->header.count[j] * ITEM_SIZE;
+			count += meta->nodes[i].sst->header.count[j];
 		}
 
 		allc += count;
 		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s, used#%d, count#%d",
 				i,
 				meta->nodes[i].lsn,
-				meta->nodes[i].cola->header.max_key,
+				meta->nodes[i].sst->header.max_key,
 				used,
 				count);
 	}
@@ -95,21 +95,21 @@ void meta_dump(struct meta *meta)
 			allc);
 }
 
-void _scryed(struct meta *meta,struct cola *cola, struct cola_item *L, int start, int c, int idx)
+void _scryed(struct meta *meta,struct sst *sst, struct sst_item *L, int start, int c, int idx)
 {
 	int i;
 	int k = c + start;
 
 	for (i = start; i < k; i++) {
 		if (L[i].opt == 1) {
-			cola_add(cola, &L[i]);
+			sst_add(sst, &L[i]);
 		}
 	}
 
 	/* update new meta node */
 	memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
 	memset(&meta->nodes[idx], 0, sizeof(struct meta_node));
-	meta->nodes[idx].cola = cola;
+	meta->nodes[idx].sst = sst;
 	meta->nodes[idx].lsn = meta->size;
 
 	meta->size++;
@@ -128,10 +128,10 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	int c = 0;
 	int nxt_idx;
 
-	struct cola_item *L;
-	struct cola *cola;
+	struct sst_item *L;
+	struct sst *sst;
 
-	L = cola_in_one(node->cola, &c);
+	L = sst_in_one(node->sst, &c);
 
 	split = c / NESSDB_SST_SEGMENT;
 	mod = c % NESSDB_SST_SEGMENT;
@@ -143,21 +143,21 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 
 	/* rewrite SST */
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
-	cola = node->cola;
+	sst = node->sst;
 	/* truncate all SST */
-	cola_truncate(cola);
-	memcpy(node->cola->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
+	sst_truncate(sst);
+	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
 	for (i = 0; i < k; i++) {
 		if (L[i].opt == 1) {
-			cola_add(cola, &L[i]);
+			sst_add(sst, &L[i]);
 		}
 	}
 
 	/* others SST */
 	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
 		_make_sstname(meta, meta->size);
-		cola = cola_new(meta->sst_file, meta->cpt, meta->stats);
-		_scryed(meta, cola, L, mod + i*split, split, nxt_idx++);
+		sst = sst_new(meta->sst_file, meta->cpt, meta->stats);
+		_scryed(meta, sst, L, mod + i*split, split, nxt_idx++);
 	}
 	__DEBUG("---SST scryed end....");
 
@@ -171,7 +171,7 @@ void _build_meta(struct meta *meta)
 	int lsn;
 	DIR *dd;
 	struct dirent *de;
-	struct cola *cola;
+	struct sst *sst;
 	char sst_name[NESSDB_PATH_SIZE];
 
 	dd = opendir(meta->path);
@@ -181,11 +181,11 @@ void _build_meta(struct meta *meta)
 			memcpy(sst_name, de->d_name, strlen(de->d_name) - 4);
 			lsn = atoi(sst_name);
 			_make_sstname(meta, lsn);
-			cola = cola_new(meta->sst_file, meta->cpt, meta->stats);
+			sst = sst_new(meta->sst_file, meta->cpt, meta->stats);
 
-			idx = _get_idx(meta, cola->header.max_key);
+			idx = _get_idx(meta, sst->header.max_key);
 			memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
-			meta->nodes[idx].cola = cola;
+			meta->nodes[idx].sst = sst;
 			meta->nodes[idx].lsn = lsn;
 
 			meta->size++;
@@ -194,8 +194,8 @@ void _build_meta(struct meta *meta)
 
 	if (meta->size == 0) {
 		_make_sstname(meta, 0);
-		cola = cola_new(meta->sst_file, meta->cpt, meta->stats);
-		meta->nodes[0].cola = cola;
+		sst = sst_new(meta->sst_file, meta->cpt, meta->stats);
+		meta->nodes[0].sst = sst;
 		meta->nodes[0].lsn = 0;
 		meta->size++;
 	}
@@ -228,7 +228,7 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 	if (i > 0 && i == meta->size) 
 		node = &meta->nodes[i - 1];
 
-	if (node->cola->willfull) {
+	if (node->sst->willfull) {
 		_split_sst(meta, node);
 		node = meta_get(meta, key);
 	}
@@ -239,12 +239,12 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 void meta_free(struct meta *meta)
 {
 	int i;
-	struct cola *cola;
+	struct sst *sst;
 
 	for (i = 0; i < meta->size; i++) {
-		cola = meta->nodes[i].cola;
-		if (cola) 
-			cola_free(cola);
+		sst = meta->nodes[i].sst;
+		if (sst) 
+			sst_free(sst);
 	}
 
 	if (meta->cpt)
