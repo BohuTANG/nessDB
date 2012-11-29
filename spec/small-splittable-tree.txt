@@ -18,9 +18,10 @@ Small-Splittable Tree (SST) Algorithm
   =========================
 	0) Small height, very performance for Random Write/Read.
 	1) If height of SST is more than H, it can elegant split.
-	2) Insert costs is O((log N)/B).
+	2) Insert costs is O(logB(N)/√B).
 	3) Using fractional cascading to speed up search.
-	   Since SST-height is small, so query is very high performance.
+	   Since SST-height is small(defaut is 4), so query is very performance(At most 4 disk accesses no matter big-data).
+	  
 	4) Cache-oblivious write-optimized structure.
 
   b) small N-height:N is small, such as 8

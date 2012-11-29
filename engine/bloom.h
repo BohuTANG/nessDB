@@ -1,5 +1,5 @@
-#ifndef __NESS_BLOOM_H
-#define __NESS_BLOOM_H
+#ifndef __nessDB_BLOOM_H
+#define __nessDB_BLOOM_H
 
 #define NESSDB_BLOOM_BITS (1024 * 64) 
 typedef unsigned int(*hashfuncs)(const char *key);

@@ -40,7 +40,8 @@ void _buffer_extendby(struct buffer *b, int len)
 	b->buf = buffer;
 }
 
-void _string_vprintf(struct buffer *b, const char *fmt, va_list ap)
+void _string_vprintf(struct buffer *b,
+					 const char *fmt, va_list ap)
 {
 	int num_required;
 	

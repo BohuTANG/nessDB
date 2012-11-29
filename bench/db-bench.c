@@ -52,15 +52,20 @@ void _print_header(int count)
 	double index_size = (double)((double)(KSIZE + 8 + 1) * count) / 1048576.0;
 	double data_size = (double)((double)(VSIZE + 4) * count) / 1048576.0;
 
-	printf("Keys:		%d bytes each\n", KSIZE);
-	printf("Values:		%d bytes each\n", VSIZE);
-	printf("Entries:	%d\n", count);
-	printf("IndexSize:	%.1f MB (estimated)\n", index_size);
-	printf("DataSize:	%.1f MB (estimated)\n", data_size);
+	printf("Keys:\t\t%d bytes each\n", 
+			KSIZE);
+	printf("Values: \t%d bytes each\n", 
+			VSIZE);
+	printf("Entries:\t%d\n", 
+			count);
+	printf("IndexSize:\t%.1f MB (estimated)\n",
+			index_size);
+	printf("DataSize:\t%.1f MB (estimated)\n",
+			data_size);
 #ifdef BGMERGE
-	printf("Async Merge:	YES\n");
+	printf("Async Merge:\tYES\n");
 #else
-	printf("Async Merge:	NO\n");
+	printf("Async Merge:\tNO\n");
 #endif
 
 
@@ -70,8 +75,12 @@ void _print_header(int count)
 void _print_environment()
 {
 	time_t now = time(NULL);
-	printf("nessDB:		version %s(LSM-Tree storage engine)\n", V);
-	printf("Date:		%s", (char*)ctime(&now));
+
+	printf("nessDB:\t\tversion %s(LSM-Tree storage engine)\n", 
+			V);
+
+	printf("Date:\t\t%s", 
+			(char*)ctime(&now));
 
 	int num_cpus = 0;
 	char cpu_type[256] = {0};
@@ -98,8 +107,12 @@ void _print_environment()
 		}
 
 		fclose(cpuinfo);
-		printf("CPU:		%d * %s", num_cpus, cpu_type);
-		printf("CPUCache:	%s\n", cache_size);
+		printf("CPU:\t\t%d * %s", 
+				num_cpus, 
+				cpu_type);
+
+		printf("CPUCache:\t%s\n", 
+				cache_size);
 	}
 }
 
@@ -134,7 +147,10 @@ void _write_test(long int count)
 
 		db_add(db, &sk, &sv);
 		if ((i % 10000) == 0) {
-			fprintf(stderr,"random write finished %d ops%30s\r", i, "");
+			fprintf(stderr,"random write finished %d ops%30s\r", 
+					i, 
+					"");
+
 			fflush(stderr);
 		}
 	}
@@ -194,6 +210,7 @@ void _read_test(long int count)
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
 		memset(key, 0, KSIZE + 1);
+
 		/* if you want test random write, using flollowing */
 		//_random_key(key, KSIZE);
 		snprintf(key, KSIZE, "key-%d", i);
@@ -219,7 +236,6 @@ void _read_test(long int count)
 	db_close(db);
 
 	end = get_ustime_sec();
-
 	cost = end - start;
 	printf(LINE);
 	printf("|Random-Read	(done:%ld, found:%d): %.6f sec/op; %.1f reads /sec(estimated); cost:%.3f(sec)\n",
@@ -250,6 +266,7 @@ void _readone_test(char *key)
 		__INFO("Get Key:<%s>--->value is :<%s>", 
 				key, 
 				sv.data);
+
 		free(sv.data);
 	} else
 		__INFO("Get Key:<%s>,but value is NULL", 

@@ -45,7 +45,9 @@ int _level_max(int level, int gap)
 void sst_dump(struct sst *sst) {
 	int i;
 
-	__DEBUG("**%06d.SST dump:", sst->fd);
+	__DEBUG("**%06d.SST dump:", 
+			sst->fd);
+
 	for(i = 0; i< (int)MAX_LEVEL; i++) {
 		printf("\t\t-L#%d---count#%d, max-count:%d\n",
 				i,
@@ -187,6 +189,7 @@ struct sst *sst_new(const char *file, struct compact *cpt, struct stats *stats)
 		res = pread(sst->fd, &sst->header, HEADER_SIZE, 0);
 		if (res == -1)
 			goto ERR;
+
 		_build_block(sst);
 	} else
 		sst->fd = n_open(file, N_CREAT_FLAGS, 0644);

@@ -27,7 +27,8 @@ void  _check_dir(const char *pathname)
 			dirname[i] = 0;  
 			if(access(dirname, 0) != 0) {  
 				if(mkdir(dirname, 0755)==-1) 
-					__PANIC("creta dir error, %s", dirname);
+					__PANIC("creta dir error, %s", 
+							dirname);
 			}  
 			dirname[i] = '/';  
 		}  
@@ -37,7 +38,10 @@ void  _check_dir(const char *pathname)
 void _make_sstname(struct meta *meta, int lsn)
 {
 	memset(meta->sst_file, 0, NESSDB_PATH_SIZE);
-	snprintf(meta->sst_file, NESSDB_PATH_SIZE, "%s/%06d%s", meta->path, lsn, NESSDB_SST_EXT);
+	snprintf(meta->sst_file, NESSDB_PATH_SIZE, "%s/%06d%s", 
+			meta->path, 
+			lsn, 
+			NESSDB_SST_EXT);
 }
 
 int _get_idx(struct meta *meta, char *key)
@@ -144,6 +148,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	/* rewrite SST */
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
 	sst = node->sst;
+
 	/* truncate all SST */
 	sst_truncate(sst);
 	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));

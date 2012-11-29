@@ -19,6 +19,7 @@ void sst_insertion_sort(struct sst_item *item, int len)
 		for (j = i - 1; j >= 0; j--) {
 			cmp = strcmp(item[j].data, v.data);
 			if (cmp <= 0) {
+
 				/* covert the old version */
 				if (cmp == 0)
 					memcpy(&item[j], &v, COLA_ITEM_SIZE); 
@@ -32,7 +33,9 @@ void sst_insertion_sort(struct sst_item *item, int len)
 	}
 }
 
-int sst_merge_sort(struct compact *cpt, struct sst_item *c, struct sst_item *a_new, int alen, struct sst_item *b_old, int blen)
+int sst_merge_sort(struct compact *cpt, struct sst_item *c,
+				   struct sst_item *a_new, int alen,
+				   struct sst_item *b_old, int blen)
 {
 	int i, m = 0, n = 0, k;
 
@@ -42,6 +45,7 @@ int sst_merge_sort(struct compact *cpt, struct sst_item *c, struct sst_item *a_n
 		cmp = strcmp(a_new[m].data, b_old[n].data);
 		if (cmp == 0) {
 			memcpy(&c[i++], &a_new[m], COLA_ITEM_SIZE);
+
 			/* add delete slot to cpt */
 			if (a_new[m].opt == 0 && a_new[m].vlen > 0) 
 				if (cpt)

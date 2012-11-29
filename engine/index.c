@@ -106,7 +106,9 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 	if (idx->fd == -1) {
 		idx->fd = n_open(db_name, N_CREAT_FLAGS, 0644);
 		if (idx->fd == -1) 
-			__PANIC("db error, name#%s", db_name);
+			__PANIC("db error, name#%s", 
+					db_name);
+
 		magic = DB_MAGIC;
 		if (write(idx->fd, &magic, sizeof(magic)) < 0)
 			__PANIC("write db magic error");
@@ -145,7 +147,10 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	struct sst_item item;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE || (sv && sv->len > NESSDB_MAX_VAL_SIZE)) {
-		__ERROR("key or value is too long...#%d:%d", NESSDB_MAX_KEY_SIZE, NESSDB_MAX_VAL_SIZE);
+		__ERROR("key or value is too long...#%d:%d", 
+				NESSDB_MAX_KEY_SIZE, 
+				NESSDB_MAX_VAL_SIZE);
+
 		return nERR;
 	}
 
@@ -237,7 +242,9 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	struct skiplist *cur_list;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
-		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
+		__ERROR("key length big than MAX#%d", 
+				NESSDB_MAX_KEY_SIZE);
+
 		return nERR;
 	}
 
@@ -302,13 +309,17 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		res = read(idx->read_fd, &iscompress, sizeof(char));
 		if (res == -1) {
 			__ERROR("read iscompress flag error");
+
 			goto RET;
 		}
 
 		/* read crc flag */
 		res = read(idx->read_fd, &crc, sizeof(crc));
 		if (res == -1) {
-			__ERROR("read crc error #%d, key#%s", crc, sk->data);
+			__ERROR("read crc error #%d, key#%s", 
+					crc, 
+					sk->data);
+
 			goto RET;
 		}
 
@@ -316,7 +327,9 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		data = xcalloc(1, pair.vlen + 1);
 		res = read(idx->read_fd, data, pair.vlen);
 		if (res == -1) {
-			__ERROR("read data error, key#%d", sk->data);
+			__ERROR("read data error, key#%d", 
+					sk->data);
+
 			goto RET;
 		}
 
@@ -334,7 +347,12 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		db_crc = _crc16(data, pair.vlen);
 		if (crc != db_crc) {
 			idx->stats->STATS_CRC_ERRS++;
-			__ERROR("read key#%s, crc#%d, db_crc#%d, data [%s]", sk->data, crc, db_crc, data);
+			__ERROR("read key#%s, crc#%d, db_crc#%d, data [%s]", 
+					sk->data, 
+					crc, 
+					db_crc, 
+					data);
+
 			goto RET;
 		}
 
@@ -351,7 +369,9 @@ RET:
 STATUS index_remove(struct index *idx, struct slice *sk)
 {
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
-		__ERROR("key length big than MAX#%d", NESSDB_MAX_KEY_SIZE);
+		__ERROR("key length big than MAX#%d", 
+				NESSDB_MAX_KEY_SIZE);
+
 		return nERR;
 	}
 

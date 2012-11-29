@@ -12,7 +12,10 @@
 void _make_log_name(struct log *log, int lsn)
 {
 	memset(log->file, 0, NESSDB_PATH_SIZE);
-	snprintf(log->file, NESSDB_PATH_SIZE, "%s/%06d%s", log->path, lsn, NESSDB_LOG_EXT);
+	snprintf(log->file, NESSDB_PATH_SIZE, "%s/%06d%s", 
+			log->path, 
+			lsn, 
+			NESSDB_LOG_EXT);
 }
 
 int  _find_maxno_log(struct log *log)
@@ -47,7 +50,8 @@ void log_create(struct log *log)
 
 	log->fd = n_open(log->file, N_CREAT_FLAGS, 0644);
 	if (log->fd == -1)
-		__PANIC("create log file %s....", log->file);
+		__PANIC("create log file %s....", 
+				log->file);
 }
 
 void log_remove(struct log *log, int logno)
@@ -58,7 +62,8 @@ void log_remove(struct log *log, int logno)
 
 	res = remove(log->file);
 	if (res == -1)
-		__ERROR("remove log %s error", log->file);
+		__ERROR("remove log %s error", 
+				log->file);
 }
 
 void _log_recovery(struct log *log, struct meta *meta)
@@ -75,13 +80,18 @@ void _log_recovery(struct log *log, struct meta *meta)
 		fd = n_open(log->file, N_OPEN_FLAGS, 0644);
 
 		if (fd == -1) {
-			__ERROR("read log error, %s", log->file);
+			__ERROR("read log error, %s", 
+					log->file);
+
 			return;
 		}
 
 		rem = sizes = lseek(fd, 0, SEEK_END);
 
-		__DEBUG("--->begin to recover log#%s, log-sizes#%d", log->file, sizes);
+		__DEBUG("--->begin to recover log#%s, log-sizes#%d", 
+				log->file, 
+				sizes);
+
 		lseek(fd, 0, SEEK_SET);
 		while (rem) {
 			int klen = 0;
@@ -131,7 +141,7 @@ struct log *log_new(const char *path, struct meta *meta, int islog)
 	
 	log = xcalloc(1, sizeof(struct log));
 	memcpy(log->path, path, strlen(path));
-	log->buf = buffer_new(1024 * 1024 *16); /* 10MB buffer*/
+	log->buf = buffer_new(NESSDB_MAX_VAL_SIZE + 1024*1024*1);
 
 	max = _find_maxno_log(log);
 	log->no = max;
@@ -168,9 +178,8 @@ void log_append(struct log *log, struct sst_item *itm)
 	block = buffer_detach(log->buf);
 
 	res = write(log->fd, block, len);
-	if (res == -1) {
+	if (res == -1) 
 		__ERROR("log error!!!");
-	}
 }
 
 void log_free(struct log *log)
