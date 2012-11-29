@@ -14,7 +14,10 @@ int _find(struct compact *cpt, int v_len, uint64_t offset)
 	struct cpt_node *n;
 
 	if (v_len >= NESSDB_MAX_VAL_SIZE) {
-		__ERROR("val length#%d more than NESSDB_MAX_VAL_SIZE#%d", v_len, NESSDB_MAX_VAL_SIZE);
+		__ERROR("val length#%d more than NESSDB_MAX_VAL_SIZE#%d", 
+		v_len, 
+		NESSDB_MAX_VAL_SIZE);
+		
 		return 0;
 	}
 
@@ -42,7 +45,10 @@ int cpt_add(struct compact *cpt, int v_len, uint64_t offset)
 	struct cpt_node *n;
 
 	if (v_len >= NESSDB_MAX_VAL_SIZE) {
-		__ERROR("val length#%d more than NESSDB_MAX_VAL_SIZE#%d", v_len, NESSDB_MAX_VAL_SIZE);
+		__ERROR("val length#%d more than NESSDB_MAX_VAL_SIZE#%d", 
+		v_len, 
+		NESSDB_MAX_VAL_SIZE);
+		
 		return 0;
 	}
 
@@ -65,7 +71,10 @@ uint64_t cpt_get(struct compact *cpt, int v_len)
 	struct cpt_node *n;
 
 	if (v_len >= NESSDB_MAX_VAL_SIZE) {
-		__ERROR("val length#%d more than NESSDB_MAX_VAL_SIZE#%d", v_len, NESSDB_MAX_VAL_SIZE);
+		__ERROR("val length#%d more than NESSDB_MAX_VAL_SIZE#%d", 
+		v_len, 
+		NESSDB_MAX_VAL_SIZE);
+		
 		return off;
 	}
 
