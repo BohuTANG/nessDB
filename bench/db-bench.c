@@ -300,6 +300,10 @@ int main(int argc,char** argv)
 	} else if (strcmp(argv[1], "readone") == 0) {
 		_readone_test(argv[2]);
 	} else if (strcmp(argv[1], "writeone") == 0) {
+		if (argc != 4) {
+			fprintf(stderr,"Usage: db-bench writeone <key> <value>\n");
+			exit(1);
+		}
 		_writeone_test(argv[2], argv[3]);
 	} else if (strcmp(argv[1], "delete") == 0) {
 		_deleteone_test(argv[2]);
