@@ -69,7 +69,7 @@ Small-Splittable Tree (SST) Algorithm
 
   d) lookup
   =========
-     Using fractional cascading to speed up search, query cost is O(log N).
+     Using fractional cascading to speed up search, query cost is O(log_B N).
 
 
   e) when to split
