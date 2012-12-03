@@ -177,12 +177,6 @@ void _writeone_test(char *k, char *v)
 	struct slice sk, sv;
 	struct nessdb *db;
 
-	char key[KSIZE + 1];
-	char val[VSIZE + 1];
-
-	memset(key, 0, KSIZE + 1);
-	memset(val, 0, VSIZE + 1);
-
 	sk.len = strlen(k);
 	sk.data = k;
 	sv.len = strlen(v);
@@ -300,16 +294,10 @@ void _scan_test(char *start, char *end)
 	struct slice s1, s2;
 	struct nessdb *db;
 
-	char k1[KSIZE + 1];
-	char k2[VSIZE + 1];
-
-	memset(k1, 0, KSIZE + 1);
-	memset(k2, 0, KSIZE + 1);
-
 	s1.len = strlen(start);
-	s1.data = k1;
+	s1.data = start;
 	s2.len = strlen(end);
-	s2.data = k2;
+	s2.data = end;
 
 	db = db_open(DATAS);
 	ss = db_scan(db, &s1, &s2, &c);
