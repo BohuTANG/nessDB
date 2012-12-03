@@ -23,6 +23,8 @@ struct meta{
 
 struct meta *meta_new(const char *path, struct stats *stats);
 struct meta_node *meta_get(struct meta *meta, char *key);
+struct meta_node *meta_scan(struct meta *meta, char *start, char *end,
+							 int *ret_c);
 void meta_set(struct meta *meta, struct meta_node *node);
 void meta_set_byname(struct meta *meta, struct meta_node *node);
 void meta_dump(struct meta *meta);

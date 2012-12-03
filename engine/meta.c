@@ -241,6 +241,23 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 	return node;
 }
 
+/*
+ * meta scan for range query
+ */
+struct meta_node *meta_scan(struct meta *meta, char *start, char *end,
+						   int *ret_c)
+{
+	int s_idx = _get_idx(meta, start);
+	int e_idx = _get_idx(meta, end);
+	int c = e_idx - s_idx + 1;
+	struct meta_node *nodes = xcalloc(c, sizeof(struct meta_node));
+
+	*ret_c = c;
+	memcpy(nodes, &meta->nodes[s_idx], c);
+
+	return nodes;
+}
+
 void meta_free(struct meta *meta)
 {
 	int i;

@@ -37,6 +37,12 @@ STATUS db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	return ret;
 }
 
+struct slice *db_scan(struct nessdb *db, struct slice *start, struct slice *end,
+					  int *ret_c)
+{
+	return index_scan(db->idx, start, end, ret_c);
+}
+
 void db_stats(struct nessdb *db, struct slice *stats)
 {
 	int arch_bits = (sizeof(long) == 8) ? 64 : 32;

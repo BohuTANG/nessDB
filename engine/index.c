@@ -366,6 +366,24 @@ RET:
 	return nERR;
 }
 
+struct slice *index_scan(struct index *idx, struct slice *start, struct slice *end,
+						 int *ret_c)
+{
+	(void)ret_c;
+	int i;
+	int meta_c = 0;
+	struct meta_node *nodes = meta_scan(idx->meta, start->data, end->data,
+										&meta_c);
+
+	for (i = 0; i < meta_c; i++) {
+		__DEBUG(" %d.....scans get meta...lsn#%d", meta_c, nodes->lsn);
+	}
+	free(nodes);
+
+	return NULL;
+
+}
+
 STATUS index_remove(struct index *idx, struct slice *sk)
 {
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {

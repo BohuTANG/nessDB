@@ -121,6 +121,8 @@ extern "C" {
 	STATUS db_get(struct nessdb *db, struct slice *sk, struct slice *sv);
 	STATUS db_exists(struct nessdb *db, struct slice *sk);
 	STATUS db_add(struct nessdb *db, struct slice *sk, struct slice *sv);
+	struct slice *db_scan(struct nessdb *db, struct slice *start, struct slice *end,
+						   int *ret_c);
 	void db_stats(struct nessdb *db, struct slice *infos);
 	void db_remove(struct nessdb *db, struct slice *sk);
 	void db_close(struct nessdb *db);
