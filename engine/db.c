@@ -37,6 +37,22 @@ STATUS db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	return ret;
 }
 
+STATUS db_exists(struct nessdb *db, struct slice *sk)
+{
+	struct slice sv;
+
+	/* Here, JUST get index will be better */
+	int ret = index_get(db->idx, sk, &sv);
+
+	if (ret) {
+		free(sv.data);
+
+		return 1;
+	}
+
+	return 0;
+}
+
 struct slice *db_scan(struct nessdb *db, struct slice *start, struct slice *end,
 					  int *ret_c)
 {

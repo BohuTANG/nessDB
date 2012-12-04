@@ -314,7 +314,7 @@ STATUS sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 		if (sst->header.count[i] == 0)
 			continue;
 
-		blk_idx = block_search(sst->blk, sk->data, i);
+		blk_idx = block_search(sst->blk, sk, i);
 		if (blk_idx < 0)
 			continue;
 
@@ -323,7 +323,7 @@ STATUS sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 			goto ERR;
 
 		for (k = 0; k < BLOCK_GAP; k++) {
-			cmp = strcmp(sk->data, sst->oneblk[k].data);
+			cmp = strncmp(sk->data, sst->oneblk[k].data, sk->len);
 			if (cmp == 0) {
 				if (sst->oneblk[k].opt == 1) {
 					pair->offset = sst->oneblk[k].offset;

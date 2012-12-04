@@ -252,6 +252,7 @@ struct meta_node *meta_scan(struct meta *meta, char *start, char *end,
 	int c = e_idx - s_idx + 1;
 	struct meta_node *nodes = xcalloc(c, sizeof(struct meta_node));
 
+	__DEBUG("meta scan start#%d, end-idx#%d", s_idx, e_idx);
 	*ret_c = c;
 	memcpy(nodes, &meta->nodes[s_idx], c);
 

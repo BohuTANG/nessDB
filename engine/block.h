@@ -13,7 +13,7 @@ struct block {
 
 struct block *block_new(int l0_count);
 void block_build(struct block *block, struct sst_item *item, int count, int level);
-int block_search(struct block *block, const char *key, int level);
+int block_search(struct block *block, struct slice *sk, int level);
 void block_free(struct block *block);
 
 #endif

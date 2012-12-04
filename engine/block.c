@@ -48,14 +48,14 @@ void block_build(struct block *block, struct sst_item *items, int count, int lev
 	}
 }
 
-int block_search(struct block *block, const char *key, int level)
+int block_search(struct block *block, struct slice *sk, int level)
 {
 	int i;
 	int cmp;
 	int used = block->level_blk_used[level];
 
 	for (i = 0; i < used; i++) {
-		cmp = strcmp(key, block->blocks[level][i].data);
+		cmp = strncmp(sk->data, block->blocks[level][i].data, sk->len);
 		if (cmp == 0)
 			goto RET;
 
