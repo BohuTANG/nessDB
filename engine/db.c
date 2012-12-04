@@ -53,12 +53,6 @@ STATUS db_exists(struct nessdb *db, struct slice *sk)
 	return 0;
 }
 
-struct slice *db_scan(struct nessdb *db, struct slice *start, struct slice *end,
-					  int *ret_c)
-{
-	return index_scan(db->idx, start, end, ret_c);
-}
-
 void db_stats(struct nessdb *db, struct slice *stats)
 {
 	int arch_bits = (sizeof(long) == 8) ? 64 : 32;
@@ -117,6 +111,6 @@ void db_remove(struct nessdb *db, struct slice *sk)
 void db_close(struct nessdb *db)
 {
 	index_free(db->idx);
-	free(db->stats);
-	free(db);
+	xfree(db->stats);
+	xfree(db);
 }

@@ -89,6 +89,72 @@ void _flush_index(struct index *idx)
 	log_remove(idx->log, idx->log->no);
 }
 
+char *index_read_data(struct index *idx, struct ol_pair *pair)
+{
+	int res;
+	char *data = NULL;
+
+	if (pair->offset > 0UL && pair->vlen > 0) {
+		char iscompress = 0;
+		short crc = 0;
+		short db_crc = 0;
+		char *dest = NULL;
+
+		n_lseek(idx->read_fd, pair->offset, SEEK_SET);
+
+		/* read compress flag */
+		res = read(idx->read_fd, &iscompress, sizeof(char));
+		if (res == -1) {
+			__ERROR("read iscompress flag error");
+
+			goto RET;
+		}
+
+		/* read crc flag */
+		res = read(idx->read_fd, &crc, sizeof(crc));
+		if (res == -1) {
+			__ERROR("read crc error #%d", 
+					crc);
+
+			goto RET;
+		}
+
+		/* read data */
+		data = xcalloc(1, pair->vlen + 1);
+		res = read(idx->read_fd, data, pair->vlen);
+		if (res == -1) {
+			__ERROR("read data error");
+
+			goto RET;
+		}
+
+		/* decompressed */
+		if (iscompress) {
+			int vsize = qlz_size_decompressed(data);
+
+			dest = xcalloc(1, vsize);
+			pair->vlen = qlz_decompress(data, dest, &idx->destate);
+			xfree(data);
+
+			data = dest;
+		} 
+
+		db_crc = _crc16(data, pair->vlen);
+		if (crc != db_crc) {
+			idx->stats->STATS_CRC_ERRS++;
+			__ERROR("read data crc#%d, db_crc#%d, data [%s]", 
+					crc, 
+					db_crc, 
+					data);
+
+			goto RET;
+		}
+	}
+
+RET:
+	return data;
+}
+
 struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 {
 	int magic;
@@ -170,7 +236,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 			buffer_putshort(idx->buf, _crc16(dest, qsize));
 			buffer_putnstr(idx->buf, dest, qsize);
 			val_len = qsize;
-			free(dest);
+			xfree(dest);
 			idx->stats->STATS_COMPRESSES++;
 		} else {
 			buffer_putc(idx->buf, UNCOMPRESS);
@@ -235,7 +301,6 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv) 
 {
-	int res;
 	struct ol_pair pair;
 	struct meta_node *node;
 	struct skipnode *sknode;
@@ -296,66 +361,8 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		}
 	}
 
-	if (pair.offset > 0UL && pair.vlen > 0) {
-		char iscompress = 0;
-		short crc = 0;
-		short db_crc = 0;
-		char *data;
-		char *dest = NULL;
-
-		n_lseek(idx->read_fd, pair.offset, SEEK_SET);
-
-		/* read compress flag */
-		res = read(idx->read_fd, &iscompress, sizeof(char));
-		if (res == -1) {
-			__ERROR("read iscompress flag error");
-
-			goto RET;
-		}
-
-		/* read crc flag */
-		res = read(idx->read_fd, &crc, sizeof(crc));
-		if (res == -1) {
-			__ERROR("read crc error #%d, key#%s", 
-					crc, 
-					sk->data);
-
-			goto RET;
-		}
-
-		/* read data */
-		data = xcalloc(1, pair.vlen + 1);
-		res = read(idx->read_fd, data, pair.vlen);
-		if (res == -1) {
-			__ERROR("read data error, key#%d", 
-					sk->data);
-
-			goto RET;
-		}
-
-		/* decompressed */
-		if (iscompress) {
-			int vsize = qlz_size_decompressed(data);
-
-			dest = xcalloc(1, vsize);
-			pair.vlen = qlz_decompress(data, dest, &idx->destate);
-			free(data);
-
-			data = dest;
-		} 
-
-		db_crc = _crc16(data, pair.vlen);
-		if (crc != db_crc) {
-			idx->stats->STATS_CRC_ERRS++;
-			__ERROR("read key#%s, crc#%d, db_crc#%d, data [%s]", 
-					sk->data, 
-					crc, 
-					db_crc, 
-					data);
-
-			goto RET;
-		}
-
+	char *data = index_read_data(idx, &pair);
+	if (data) {
 		sv->data = data;
 		sv->len = pair.vlen;
 
@@ -364,24 +371,6 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 
 RET:
 	return nERR;
-}
-
-struct slice *index_scan(struct index *idx, struct slice *start, struct slice *end,
-						 int *ret_c)
-{
-	(void)ret_c;
-	int i;
-	int meta_c = 0;
-	struct meta_node *nodes = meta_scan(idx->meta, start->data, end->data,
-										&meta_c);
-
-	for (i = 0; i < meta_c; i++) {
-		__DEBUG(" %d.....scans get meta...lsn#%d", meta_c, nodes->lsn);
-	}
-	free(nodes);
-
-	return NULL;
-
 }
 
 STATUS index_remove(struct index *idx, struct slice *sk)
@@ -400,10 +389,10 @@ STATUS index_remove(struct index *idx, struct slice *sk)
 void index_free(struct index *idx)
 {
 	_flush_index(idx);
-	free(idx->merge_mutex);
-	free(idx->listfree_mutex);
+	xfree(idx->merge_mutex);
+	xfree(idx->listfree_mutex);
 	meta_free(idx->meta);
 	buffer_free(idx->buf);
 	log_free(idx->log);
-	free(idx);
+	xfree(idx);
 }

@@ -64,8 +64,8 @@ void bloom_free(struct bloom *bloom)
 {
 	if (bloom) {
 		if(bloom->hashfuncs)
-			free(bloom->hashfuncs);
+			xfree(bloom->hashfuncs);
 
-		free(bloom);
+		xfree(bloom);
 	}
 }

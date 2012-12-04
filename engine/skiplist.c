@@ -36,7 +36,7 @@ void _pool_destroy(struct pool *pool)
 {
 	while (pool->next != NULL) {
 		struct pool *next = pool->next;
-		free (pool);
+		xfree (pool);
 		pool = next;
 	}
 }
@@ -79,8 +79,8 @@ struct skiplist *skiplist_new(size_t size)
 void skiplist_free(struct skiplist *list)
 {
 	_pool_destroy(list->pool);
-	free(list->hdr);
-	free(list);
+	xfree(list->hdr);
+	xfree(list);
 }
 
 int skiplist_notfull(struct skiplist *list)
@@ -153,4 +153,3 @@ struct skipnode *skiplist_lookup(struct skiplist *list, char* data)
 
 	return NULL;
 }
-

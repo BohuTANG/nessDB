@@ -83,7 +83,7 @@ uint64_t cpt_get(struct compact *cpt, int v_len)
 	if (n) {
 		off = n->offset;
 		cpt->nodes[v_len] = n->nxt;
-		free(n);
+		xfree(n);
 		cpt->count--;
 	} else {
 		int i;
@@ -97,7 +97,7 @@ uint64_t cpt_get(struct compact *cpt, int v_len)
 			if (n) {
 				off = n->offset;
 				cpt->nodes[i] = n->nxt;
-				free(n);
+				xfree(n);
 				cpt->count--;
 				break;
 			}
@@ -118,12 +118,12 @@ void cpt_free(struct compact *cpt)
 
 			while (n) {
 				nxt = n->nxt;
-				free(n);
+				xfree(n);
 				n = nxt;
 			}
 		}
 
-		free(cpt->nodes);
-		free(cpt);
+		xfree(cpt->nodes);
+		xfree(cpt);
 	}
 }

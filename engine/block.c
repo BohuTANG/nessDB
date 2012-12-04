@@ -77,7 +77,7 @@ void block_free(struct block *block)
 	int i;
 
 	for (i = 0; i < (int)MAX_LEVEL; i++) 
-		free(block->blocks[i]);
+		xfree(block->blocks[i]);
 
-	free(block);
+	xfree(block);
 }

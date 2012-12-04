@@ -289,21 +289,10 @@ void _deleteone_test(char *key)
 
 void _scan_test(char *start, char *end)
 {
-	int c = 0;
-	struct slice *ss;
-	struct slice s1, s2;
-	struct nessdb *db;
+	(void)start;
+	(void)end;
 
-	s1.len = strlen(start);
-	s1.data = start;
-	s2.len = strlen(end);
-	s2.data = end;
-
-	db = db_open(DATAS);
-	ss = db_scan(db, &s1, &s2, &c);
-	(void)ss;
-
-	db_close(db);
+	/* TODO */
 }
 
 int main(int argc,char** argv)

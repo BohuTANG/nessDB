@@ -43,3 +43,8 @@ void *xrealloc(void *p, size_t n)
 	return p;
 }
 
+void xfree(void *p)
+{
+	if (p)
+		free(p);
+}

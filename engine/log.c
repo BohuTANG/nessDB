@@ -188,5 +188,5 @@ void log_free(struct log *log)
 		close(log->fd);
 
 	buffer_free(log->buf);
-	free(log);
+	xfree(log);
 }
