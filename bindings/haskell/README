@@ -9,6 +9,7 @@
   e.g.
   cabal configure --extra-include-dirs ../../engine/
 
+  cabal build
 
   Testing 
   ========
@@ -17,13 +18,17 @@
   cabal configure --extra-include-dirs ../../engine/  --flags build-example \
       --extra-lib-dirs=$ABSOLUTE_PATH_TO_LIBNESSDB
   
-  {-- yes, that's ugly, finding workaround.... --}
 
+  cabal build
+  
   export LD_LIBRARY_PATH=$PATH_TO_LIBNESSDB_SO 
 
-  ./NessTest
+  ./dist/build/nessdb-example/nessdb-example
 
-  {-- and of course, you should build libnessdb.so first. --}
+  {-- 
+      yes, that's ugly, finding workaround....
+
+      and of course, you should build libnessdb.so first. --}
 
 
 
