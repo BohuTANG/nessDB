@@ -1,6 +1,7 @@
 #ifndef __nessDB_META_H
 #define __nessDB_META_H
 
+#include "internal.h"
 #include "db.h"
 #include "sst.h"
 

@@ -1,6 +1,7 @@
 #ifndef __nessDB_INDEX_H
 #define __nessDB_INDEX_H
 
+#include "internal.h"
 #include "db.h"
 #include "meta.h"
 #include "buffer.h"
@@ -36,9 +37,9 @@ struct index{
 };
 
 struct index *index_new(const char *path, int mtb_size, struct stats *stats);
-STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv);
-STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv);
-STATUS index_remove(struct index *idx, struct slice *sk);
+int index_add(struct index *idx, struct slice *sk, struct slice *sv);
+int index_get(struct index *idx, struct slice *sk, struct slice *sv);
+int index_remove(struct index *idx, struct slice *sk);
 char *index_read_data(struct index *idx, struct ol_pair *pair);
 void index_free(struct index *idx);
 

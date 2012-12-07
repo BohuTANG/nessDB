@@ -261,7 +261,7 @@ void _readone_test(char *key)
 				key, 
 				sv.data);
 
-		free(sv.data);
+		db_free_data(sv.data);
 	} else
 		__INFO("Get Key:<%s>,but value is NULL", 
 				key);

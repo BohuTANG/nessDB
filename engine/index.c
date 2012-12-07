@@ -201,7 +201,7 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 	return idx;
 }
 
-STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
+int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int ret;
 	int buff_len;
@@ -217,7 +217,7 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 				NESSDB_MAX_KEY_SIZE, 
 				NESSDB_MAX_VAL_SIZE);
 
-		return nERR;
+		return 0;
 	}
 
 	offset = idx->db_alloc;
@@ -296,10 +296,10 @@ STATUS index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 	skiplist_insert(idx->list, &item);
 
-	return nOK;
+	return 1;
 }
 
-STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv) 
+int index_get(struct index *idx, struct slice *sk, struct slice *sv) 
 {
 	struct ol_pair pair;
 	struct meta_node *node;
@@ -310,7 +310,7 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		__ERROR("key length big than MAX#%d", 
 				NESSDB_MAX_KEY_SIZE);
 
-		return nERR;
+		return 0;
 	}
 
 	idx->stats->STATS_READS++;
@@ -366,20 +366,20 @@ STATUS index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		sv->data = data;
 		sv->len = pair.vlen;
 
-		return nOK;
+		return 1;
 	}
 
 RET:
-	return nERR;
+	return 0;
 }
 
-STATUS index_remove(struct index *idx, struct slice *sk)
+int index_remove(struct index *idx, struct slice *sk)
 {
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", 
 				NESSDB_MAX_KEY_SIZE);
 
-		return nERR;
+		return 0;
 	}
 
 	idx->stats->STATS_REMOVES++;

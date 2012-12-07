@@ -1,6 +1,7 @@
 #ifndef __nessDB_COMPACT_H
 #define __nessDB_COMPACT_H
 
+#include "internal.h"
 #include "db.h"
 
 struct cpt_node {

@@ -1,6 +1,7 @@
 #ifndef __nessDB_SORTS_H
 #define __nessDB_SORTS_H
 
+#include "internal.h"
 #include "db.h"
 #include "compact.h"
 

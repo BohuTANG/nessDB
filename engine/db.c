@@ -11,6 +11,11 @@
 #include "debug.h"
 #include "xmalloc.h"
 
+struct nessdb {
+	struct index *idx;
+	struct stats *stats;
+};
+
 struct nessdb *db_open(const char *basedir)
 {
 	struct nessdb *db;
@@ -23,12 +28,12 @@ struct nessdb *db_open(const char *basedir)
 	return db;
 }
 
-STATUS db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
+int db_add(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	return index_add(db->idx, sk, sv);
 }
 
-STATUS db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
+int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 {
 	int ret;
 
@@ -37,7 +42,7 @@ STATUS db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 	return ret;
 }
 
-STATUS db_exists(struct nessdb *db, struct slice *sk)
+int db_exists(struct nessdb *db, struct slice *sk)
 {
 	struct slice sv;
 
@@ -113,4 +118,10 @@ void db_close(struct nessdb *db)
 	index_free(db->idx);
 	xfree(db->stats);
 	xfree(db);
+}
+
+void db_free_data(void *data)
+{
+	if (data)
+		xfree(data);
 }

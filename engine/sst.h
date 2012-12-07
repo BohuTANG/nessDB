@@ -33,9 +33,9 @@ struct sst {
 };
 
 struct sst *sst_new(const char *file, struct compact *cpt, struct stats *stats);
-STATUS sst_add(struct sst *sst, struct sst_item *item);
-STATUS sst_isfull(struct sst *sst);
-STATUS sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair);
+int sst_add(struct sst *sst, struct sst_item *item);
+int sst_isfull(struct sst *sst);
+int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair);
 void sst_truncate(struct sst *sst);
 struct sst_item *sst_in_one(struct sst *sst, int *c);
 void sst_dump(struct sst *sst);

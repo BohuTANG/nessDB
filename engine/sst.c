@@ -208,7 +208,7 @@ ERR:
 	return NULL;
 }
 
-STATUS sst_add(struct sst *sst, struct sst_item *item)
+int sst_add(struct sst *sst, struct sst_item *item)
 {
 	int cmp;
 	int res;
@@ -240,10 +240,10 @@ STATUS sst_add(struct sst *sst, struct sst_item *item)
 	if (sst->header.count[0] >= _level_max(0, 1))
 		_check_merge(sst);
 	
-	return nOK;
+	return 1;
 
 ERR:
-	return nERR;
+	return 0;
 }
 
 void sst_truncate(struct sst *sst)
@@ -284,7 +284,7 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 }
 
 #define BLOCK_SIZE (BLOCK_GAP * ITEM_SIZE)
-STATUS sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
+int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
 	int i = 0;
@@ -335,9 +335,9 @@ STATUS sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	}
 
 RET:
-	return nOK;
+	return 1;
 ERR:
-	return nERR;
+	return 0;
 }
 
 void sst_free(struct sst *sst)

@@ -1,6 +1,7 @@
 #ifndef __nessDB_BLOCK_H
 #define __nessDB_BLOCK_H
 
+#include "internal.h"
 #include "db.h"
 
 struct block {

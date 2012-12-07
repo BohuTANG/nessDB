@@ -1,6 +1,7 @@
 #ifndef __nessDB_LOG_H
 #define __nessDB_LOG_H
 
+#include "internal.h"
 #include "db.h"
 #include "meta.h"
 #include "buffer.h"
