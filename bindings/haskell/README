@@ -1,0 +1,33 @@
+ haskell binding for NessDB
+
+
+  Install
+  ========
+
+  cabal configure --extra-include-dirs $PATH_TO_NESSDB_DB_H
+
+  e.g.
+  cabal configure --extra-include-dirs ../../engine/
+
+
+  Testing 
+  ========
+  There's a little test program. To compile it,
+
+  cabal configure --extra-include-dirs ../../engine/  --flags build-example \
+      --extra-lib-dirs=$ABSOLUTE_PATH_TO_LIBNESSDB
+  
+  {-- yes, that's ugly, finding workaround.... --}
+
+  export LD_LIBRARY_PATH=$PATH_TO_LIBNESSDB_SO 
+
+  ./NessTest
+
+  {-- and of course, you should build libnessdb.so first. --}
+
+
+
+  NOTICE:
+  =======
+
+  *NOT* thread safe -- you have been warned (-; 
