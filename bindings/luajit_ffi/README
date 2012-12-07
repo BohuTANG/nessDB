@@ -1,0 +1,18 @@
+This is nessDB LuaJIT FFI binding.
+
+nessdb.lua module expose nessDB C structures and C functions.
+It's a "Think in C" binding.
+
+test.lua use the low level binding but define user friendly functions.
+Use it as an exemple.
+
+HOW TO TEST :
+First, compile libnessdb.so (default target in the toplevel Makefile).
+The file nessdb.lua load the libnessdb.so library, check the path in nessdb.lua if file location change.
+
+Then,
+cd bindings/luajit_ffi
+luajit ./test.lua
+OR
+./test.lua (only work if execute bit is set)
+
