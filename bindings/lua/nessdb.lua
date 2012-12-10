@@ -35,6 +35,7 @@ function close(self)
     end
 
      dclose(db)
+     self.db = nil
      return true
 end
 
