@@ -1,11 +1,11 @@
 # Include path where lua.h, luaconf.h and lauxlib.h reside:
-INCLUDES= -I/opt/lua/include -I../../engine
+INCLUDES= -I/usr/local/include/luajit-2.0 -I../../engine
 
 LDINCLUDES= -L../..
 LD= -lnessdb
 
 # Lua executable name. Used to find the install path and for testing.
-LUA= /opt/lua/bin/lua
+LUA= luajit
 
 CC= gcc
 CCOPT= -O2 -fomit-frame-pointer

@@ -19,7 +19,7 @@ install location is package.cpath::
 Use
 ------------------------------------------------------------
 
-see the file `nessDB/binding/lua/test.lua`
+see the file `test.lua <lua/test.lua>`_
 
 
 
