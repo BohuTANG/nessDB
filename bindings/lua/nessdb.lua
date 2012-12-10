@@ -67,8 +67,8 @@ function remove(self, key)
     if not db then
         return nil, "open db first"
     end
-    local r = ddel(db, key)
-    return r
+    ddel(db, key)
+    return true
 end
 
 function exists(self, key)
