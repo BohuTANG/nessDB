@@ -101,9 +101,9 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 
 	_update_header(sst);
 
-	free(L);
-	free(L_nxt);
-	free(L_merge);
+	xfree(L);
+	xfree(L_nxt);
+	xfree(L_merge);
 
 	sst->stats->STATS_LEVEL_MERGES++;
 } 
@@ -171,7 +171,7 @@ void _build_block(struct sst *sst)
 		L = read_one_level(sst, i, c);
 		if (c > 0)
 			block_build(sst->blk, L, c, i); 
-		free(L);
+		xfree(L);
 	}
 }
 
@@ -203,7 +203,7 @@ struct sst *sst_new(const char *file, struct compact *cpt, struct stats *stats)
 
 ERR:
 	if (sst)
-		free(sst);
+		xfree(sst);
 
 	return NULL;
 }
@@ -272,8 +272,8 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
 				pre_lc = sst_merge_sort(sst->cpt, L, cur, cur_lc, pre, pre_lc);
 
-				free(pre);
-				free(cur);
+				xfree(pre);
+				xfree(cur);
 			}
 		}
 	}
@@ -299,12 +299,12 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 				pair->offset = L[i].offset;
 				pair->vlen = L[i].vlen;
 			}
-			free(L);
+			xfree(L);
 
 			goto RET;
 		}
 	}
-	free(L);
+	xfree(L);
 
 	for (i = 1; i < MAX_LEVEL; i++) {
 		int k;
@@ -347,6 +347,6 @@ void sst_free(struct sst *sst)
 
 	bloom_free(sst->bf);
 	block_free(sst->blk);
-	free(sst->oneblk);
-	free(sst);
+	xfree(sst->oneblk);
+	xfree(sst);
 }

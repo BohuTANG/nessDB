@@ -213,7 +213,7 @@ void _read_test(long int count)
 		sk.data = key;
 		ret = db_get(db, &sk, &sv);
 		if (ret) {
-			free(sv.data);
+			db_free_data(sv.data);
 			found++;
 		} else
 			__INFO("not found key#%s", 

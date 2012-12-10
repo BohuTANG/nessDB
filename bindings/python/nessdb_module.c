@@ -59,7 +59,7 @@ pynessdb_db_get(PyObject *self, PyObject *args)
     ret = db_get((struct nessdb*)db, &sk, &sv);
     if (ret == 1) {
         PyObject *value=PyString_FromStringAndSize(sv.data,sv.len);
-        free(sv.data);
+        db_free_data(sv.data);
         return value;
     }
     Py_INCREF(Py_None);

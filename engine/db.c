@@ -50,7 +50,7 @@ int db_exists(struct nessdb *db, struct slice *sk)
 	int ret = index_get(db->idx, sk, &sv);
 
 	if (ret) {
-		free(sv.data);
+		xfree(sv.data);
 
 		return 1;
 	}
