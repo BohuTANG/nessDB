@@ -14,80 +14,16 @@
 
 #define DB_MAGIC (20121212)
 
-void _merging(struct meta *meta, struct skiplist *list)
-{
-	struct meta_node *node;
-	struct skipnode *first, *cur;
-
-	first = list->hdr;
-	cur = list->hdr->forward[0];
-	while (cur != first) {
-		node = meta_get(meta, cur->itm.data);
-		sst_add(node->sst, &cur->itm);
-		cur = cur->forward[0];
-	}
-}
-
 void *_merge_job(void *arg)
 {
 	struct index *idx;
-	struct skiplist *list;
 
 	idx = (struct index*)arg;
+	(void)idx;
 
-#ifdef BGMERGE
-	pthread_mutex_lock(idx->merge_mutex);
-#endif
-
-	list = idx->park.merging;
-	idx->stats->STATS_MTBL_MERGING_COUNTS = list->count;
-	if (list->count > 0)
-		_merging(idx->meta, list);
-
-#ifdef BGMERGE
-	pthread_mutex_lock(idx->listfree_mutex);
-#endif
-
-	skiplist_free(list);
-	idx->stats->STATS_MTBL_MERGING_COUNTS = 0UL;
-
-#ifdef BGMERGE
-	pthread_mutex_unlock(idx->listfree_mutex);
-#endif
-
-	log_remove(idx->log, idx->park.logno);
-
-#ifdef BGMERGE
-	pthread_mutex_unlock(idx->merge_mutex);
-	pthread_detach(pthread_self());
-	pthread_exit(NULL);
-#else
 	return NULL;
-#endif
 }
 
-void _flush_index(struct index *idx)
-{
-	struct skiplist *list;
-
-	__DEBUG("begin to flush MTBL to disk...");
-
-	list = idx->list;
-	if (list->count > 0) {
-#ifdef BGMERGE
-		pthread_mutex_lock(idx->merge_mutex);
-#endif
-		_merging(idx->meta, list);
-#ifdef BGMERGE
-		pthread_mutex_unlock(idx->merge_mutex);
-#endif
-
-	}
-	skiplist_free(list);
-
-	/* remove current log */
-	log_remove(idx->log, idx->log->no);
-}
 
 char *index_read_data(struct index *idx, struct ol_pair *pair)
 {
@@ -159,6 +95,7 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 {
 	int magic;
 	char db_name[NESSDB_PATH_SIZE];
+	char tow_name[NESSDB_PATH_SIZE];
 	struct index *idx = xcalloc(1, sizeof(struct index));
 
 	idx->stats = stats;
@@ -167,6 +104,8 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 
 	memset(db_name, 0, NESSDB_PATH_SIZE);
 	snprintf(db_name, NESSDB_PATH_SIZE, "%s/%s", path, NESSDB_DB);
+	memset(tow_name, 0, NESSDB_PATH_SIZE);
+	snprintf(tow_name, NESSDB_PATH_SIZE, "%s/tower.SST", path);
 
 	idx->fd = n_open(db_name, N_OPEN_FLAGS, 0644);
 	if (idx->fd == -1) {
@@ -183,20 +122,11 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 
 	idx->read_fd = n_open(db_name, N_OPEN_FLAGS);
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
-	idx->list = skiplist_new(mtb_size);
 	idx->max_mtb_size = mtb_size;
-	idx->log = log_new(path, idx->meta, NESSDB_IS_LOG_RECOVERY);
 	memset(&idx->enstate, 0, sizeof(qlz_state_compress));
 	memset(&idx->destate, 0, sizeof(qlz_state_decompress));
 
-	idx->merge_mutex = xmalloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(idx->merge_mutex, NULL);
-	idx->listfree_mutex = xmalloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(idx->listfree_mutex, NULL);
-
-	/* Detached thread attr */
-	pthread_attr_init(&idx->attr);
-	pthread_attr_setdetachstate(&idx->attr, PTHREAD_CREATE_DETACHED);
+	idx->sst = sst_new(tow_name, idx->meta->cpt, idx->stats);
 
 	return idx;
 }
@@ -270,31 +200,13 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		item.opt = (sv==NULL?DEL:ADD);
 	}
 
-	/* log append */
-	log_append(idx->log, &item);
-
-	idx->stats->STATS_MTBL_COUNTS = idx->list->count;
-	if (!skiplist_notfull(idx->list)) {
-#ifdef BGMERGE
-		pthread_t tid;
-		pthread_mutex_lock(idx->merge_mutex);
-#endif
-
-		idx->stats->STATS_MERGES++;
-		idx->park.merging = idx->list;
-		idx->park.logno = idx->log->no;
-
-#ifdef BGMERGE
-		pthread_mutex_unlock(idx->merge_mutex);
-		pthread_create(&tid, &idx->attr, _merge_job, idx);
-#else
-		_merge_job((void*)idx);
-#endif
-
-		idx->list = skiplist_new(idx->max_mtb_size);
-		log_create(idx->log);
-	}
-	skiplist_insert(idx->list, &item);
+	if (sst_level_isfull(idx->sst, MAX_LEVEL - 1)) {
+		sst_dump(idx->sst);
+		__PANIC("...............last full");
+		//todo create new thread to flush
+	} else
+		sst_add(idx->sst, &item);
+			
 
 	return 1;
 }
@@ -303,8 +215,6 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	struct ol_pair pair;
 	struct meta_node *node;
-	struct skipnode *sknode;
-	struct skiplist *cur_list;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE) {
 		__ERROR("key length big than MAX#%d", 
@@ -316,48 +226,20 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	idx->stats->STATS_READS++;
 	memset(&pair, 0, sizeof pair);
 
-	/* active memtable */
-	cur_list = idx->list;
-	sknode = skiplist_lookup(cur_list, sk->data);
-	if (sknode) {
-		if (sknode->itm.opt == ADD) {
-			idx->stats->STATS_R_FROM_MTBL++;
-			pair.offset = sknode->itm.offset;
-			pair.vlen = sknode->itm.vlen;
+	node =  meta_get(idx->meta, sk->data);
+	if (node) {
+		if (bloom_get(node->sst->bf, sk->data)) {
+			idx->stats->STATS_R_BF++;
+		} else {
+			idx->stats->STATS_R_NOTIN_BF++;
+			goto RET;
 		}
-	} else {
-#ifdef BGMERGE
-		pthread_mutex_lock(idx->listfree_mutex);
 
-		struct skiplist *merging_list = idx->park.merging;
-		if (merging_list) {
-			sknode = skiplist_lookup(merging_list, sk->data);
-			if (sknode && sknode->itm.opt == ADD ) {
-				idx->stats->STATS_R_FROM_MTBL++;
-				pair.offset = sknode->itm.offset;
-				pair.vlen = sknode->itm.vlen;
-			}
-		}
-		pthread_mutex_unlock(idx->listfree_mutex);
-#endif
-	} 
-
-	if (!sknode) {
-		node =  meta_get(idx->meta, sk->data);
-		if (node) {
-			if (bloom_get(node->sst->bf, sk->data)) {
-				idx->stats->STATS_R_BF++;
-			} else {
-				idx->stats->STATS_R_NOTIN_BF++;
-				goto RET;
-			}
-
-			if (sst_get(node->sst, sk, &pair)) {
-				idx->stats->STATS_R_COLA++;
-			} else {
-				idx->stats->STATS_R_NOTIN_COLA++;
-				goto RET;
-			}
+		if (sst_get(node->sst, sk, &pair)) {
+			idx->stats->STATS_R_COLA++;
+		} else {
+			idx->stats->STATS_R_NOTIN_COLA++;
+			goto RET;
 		}
 	}
 
@@ -388,11 +270,7 @@ int index_remove(struct index *idx, struct slice *sk)
 
 void index_free(struct index *idx)
 {
-	_flush_index(idx);
-	xfree(idx->merge_mutex);
-	xfree(idx->listfree_mutex);
 	meta_free(idx->meta);
 	buffer_free(idx->buf);
-	log_free(idx->log);
 	xfree(idx);
 }

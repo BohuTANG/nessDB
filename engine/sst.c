@@ -400,6 +400,11 @@ ERR:
 	return 0;
 }
 
+int sst_level_isfull(struct sst *sst, int level)
+{
+	return sst->header.count[level] > _level_max(level, 1<<8);
+}
+
 void sst_free(struct sst *sst)
 {
 	if (sst->fd > 0)

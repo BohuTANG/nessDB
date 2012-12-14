@@ -5,17 +5,10 @@
 #include "db.h"
 #include "meta.h"
 #include "buffer.h"
-#include "skiplist.h"
-#include "log.h"
 #include "quicklz.h"
 
 typedef enum {UNCOMPRESS = 0, COMPRESS = 1} QLZ_FLAG;
 typedef enum {DEL = 0, ADD = 1} OPT_FLAG;
-
-struct idx_park {
-	int logno;
-	struct skiplist *merging;
-};
 
 struct index{
 	int fd;
@@ -24,10 +17,8 @@ struct index{
 	uint64_t db_alloc;
 	struct meta *meta;
 	struct buffer *buf;
-	struct skiplist *list;
-	struct log *log;
-	struct idx_park park;
 	struct stats *stats;
+	struct sst *sst;
 	qlz_state_compress enstate;
 	qlz_state_decompress destate;
 

@@ -15,8 +15,6 @@ LIB_OBJS = \
 	./engine/buffer.o\
 	./engine/index.o\
 	./engine/bloom.o\
-	./engine/skiplist.o\
-	./engine/log.o\
 	./engine/quicklz.o\
 	./engine/compact.o\
 	./engine/block.o\
