@@ -8,9 +8,69 @@
  */
 
 #include "sst.h"
-#include "sorts.h"
 #include "debug.h"
 #include "xmalloc.h"
+
+void _insertion_sort(struct sst_item *item, int len)
+{
+	int i, j;
+
+	for (i = 0; i < len; i++) {
+		int cmp;
+		struct sst_item v = item[i];
+
+		for (j = i - 1; j >= 0; j--) {
+			cmp = strcmp(item[j].data, v.data);
+			if (cmp <= 0) {
+
+				/* covert the old version */
+				if (cmp == 0)
+					memcpy(&item[j], &v, ITEM_SIZE); 
+
+				break;
+			}
+
+			memcpy(&item[j + 1], &item[j], ITEM_SIZE);
+		}
+		memcpy(&item[j + 1], &v, ITEM_SIZE);
+	}
+}
+
+int _merge_sort(struct compact *cpt, struct sst_item *c,
+				   struct sst_item *a_new, int alen,
+				   struct sst_item *b_old, int blen)
+{
+	int i, m = 0, n = 0, k;
+
+	for (i = 0; (m < alen) && (n < blen);) {
+		int cmp;
+
+		cmp = strcmp(a_new[m].data, b_old[n].data);
+		if (cmp == 0) {
+			memcpy(&c[i++], &a_new[m], ITEM_SIZE);
+
+			/* add delete slot to cpt */
+			if (a_new[m].opt == 0 && a_new[m].vlen > 0) 
+				if (cpt)
+					cpt_add(cpt, a_new[m].vlen, a_new[m].offset); 
+			n++;
+			m++;
+		} else if (cmp < 0) 
+			memcpy(&c[i++], &a_new[m++], ITEM_SIZE);
+		else 
+			memcpy(&c[i++], &b_old[n++], ITEM_SIZE);
+	}
+
+	if (m == alen) {
+		for (k = n; k < blen; k++)
+			memcpy(&c[i++], &b_old[k], ITEM_SIZE);
+	} else if (n == blen) { 
+		for (k = m; k < alen; k++)
+			memcpy(&c[i++], &a_new[k], ITEM_SIZE);
+	}
+
+	return i;
+}
 
 /* 
  * calc level's offset of file 
@@ -69,7 +129,7 @@ struct sst_item * read_one_level(struct sst *sst, int level, int readc)
 			__PANIC("read klen error");
 
 		if (level == 0)
-			sst_insertion_sort(L, readc);
+			_insertion_sort(L, readc);
 	}
 
 	return L;
@@ -92,7 +152,7 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 	struct sst_item *L_nxt = read_one_level(sst, level + 1, c2);
 	struct sst_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
-	lmerge_c = sst_merge_sort(sst->cpt, L_merge, L, mergec, L_nxt, c2);
+	lmerge_c = _merge_sort(sst->cpt, L_merge, L, mergec, L_nxt, c2);
 	write_one_level(sst, L_merge, lmerge_c, level + 1);
 
 	/* update count */
@@ -270,7 +330,7 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 				struct sst_item *cur = read_one_level(sst, i, cur_lc);
 
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
-				pre_lc = sst_merge_sort(sst->cpt, L, cur, cur_lc, pre, pre_lc);
+				pre_lc = _merge_sort(sst->cpt, L, cur, cur_lc, pre, pre_lc);
 
 				xfree(pre);
 				xfree(cur);

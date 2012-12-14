@@ -10,7 +10,6 @@ CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
 LIB_OBJS = \
 	./engine/xmalloc.o\
 	./engine/debug.o\
-	./engine/sorts.o\
 	./engine/sst.o\
 	./engine/meta.o\
 	./engine/buffer.o\
