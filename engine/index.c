@@ -16,14 +16,40 @@
 
 void *_merge_job(void *arg)
 {
+	int i;
+	int c;
+	int lev = MAX_LEVEL - 1;
+
 	struct index *idx;
+	struct sst_item *items;
+	struct meta_node *node;
+
+#ifdef BGMERGE
+	pthread_mutex_lock(idx->flush_lock);
+#endif
+
+	__DEBUG("begin to merge last level of tower...");
 
 	idx = (struct index*)arg;
-	(void)idx;
+	c = idx->sst->header.count[lev];
+	items = read_one_level(idx->sst, lev, c);
+	for (i = 0; i < c; i++) {
+		node = meta_get(idx->meta, items[i].data);
+		sst_add(node->sst, &items[i]);
+	}
 
+	xfree(items);
+	idx->sst->header.count[lev] = 0;
+	__DEBUG("end merging last level of tower...");
+
+#ifdef BGMERGE
+	pthread_mutex_unlock(idx->flush_lock);
+	pthread_detach(pthread_self());
+	pthread_exit(NULL);
+#else
 	return NULL;
+#endif
 }
-
 
 char *index_read_data(struct index *idx, struct ol_pair *pair)
 {
@@ -91,6 +117,7 @@ RET:
 	return data;
 }
 
+#define TOWER ("first.tower")
 struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 {
 	int magic;
@@ -105,7 +132,7 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 	memset(db_name, 0, NESSDB_PATH_SIZE);
 	snprintf(db_name, NESSDB_PATH_SIZE, "%s/%s", path, NESSDB_DB);
 	memset(tow_name, 0, NESSDB_PATH_SIZE);
-	snprintf(tow_name, NESSDB_PATH_SIZE, "%s/tower.SST", path);
+	snprintf(tow_name, NESSDB_PATH_SIZE, "%s/%s", path, TOWER);
 
 	idx->fd = n_open(db_name, N_OPEN_FLAGS, 0644);
 	if (idx->fd == -1) {
@@ -128,6 +155,13 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 
 	idx->sst = sst_new(tow_name, idx->meta->cpt, idx->stats);
 
+	idx->flush_lock = xmalloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(idx->flush_lock, NULL);
+
+	/* Detached thread attr */
+	pthread_attr_init(&idx->attr);
+	pthread_attr_setdetachstate(&idx->attr, PTHREAD_CREATE_DETACHED);
+
 	return idx;
 }
 
@@ -136,6 +170,8 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	int ret;
 	int buff_len;
 	int val_len;
+	int lev = MAX_LEVEL - 1;
+
 	uint64_t offset;
 	uint64_t cpt_offset = 0;
 
@@ -200,13 +236,18 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		item.opt = (sv==NULL?DEL:ADD);
 	}
 
-	if (sst_level_isfull(idx->sst, MAX_LEVEL - 1)) {
-		sst_dump(idx->sst);
-		__PANIC("...............last full");
-		//todo create new thread to flush
-	} else
-		sst_add(idx->sst, &item);
-			
+	if (sst_level_isfull(idx->sst, lev)) {
+#ifdef BGMERGE
+		pthread_mutex_lock(idx->flush_lock);
+		pthread_mutex_unlock(idx->flush_lock);
+
+		pthread_t tid;
+		pthread_create(&tid, &idx->attr, _merge_job, idx);
+#else
+		_merge_job((void*)idx);
+#endif
+	} 
+	sst_add(idx->sst, &item);
 
 	return 1;
 }
@@ -272,5 +313,7 @@ void index_free(struct index *idx)
 {
 	meta_free(idx->meta);
 	buffer_free(idx->buf);
+	pthread_mutex_destroy(idx->flush_lock);
+	xfree(idx->flush_lock);
 	xfree(idx);
 }
