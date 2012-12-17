@@ -139,6 +139,7 @@ void write_one_level(struct sst *sst, struct sst_item *L, int count, int level)
 {
 	int res;
 
+	block_build(sst->blk, L, count, level);
 	res = pwrite(sst->fd, L, count * ITEM_SIZE, _pos_calc(level));
 	if (res == -1)
 		__PANIC("write to one level....");
@@ -209,14 +210,8 @@ void _check_merge(struct sst *sst)
 		}
 	} 
 
-	if (full >= (MAX_LEVEL - 1)) {
-		__DEBUG("--all levels[%d] is full#%d, need to be scryed...", 
-				MAX_LEVEL - 1,  
-				full);
-
+	if (full >= (MAX_LEVEL - 1))
 		sst->willfull = 1;
-		sst_dump(sst);
-	}
 }
 
 void _build_block(struct sst *sst)

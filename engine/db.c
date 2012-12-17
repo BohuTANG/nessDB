@@ -23,7 +23,7 @@ struct nessdb *db_open(const char *basedir)
 	db = xcalloc(1, sizeof(struct nessdb));
 	db->stats = xcalloc(1, sizeof(struct stats));
 	db->stats->STATS_START_TIME = time(NULL);
-	db->idx = index_new(basedir, NESSDB_MAX_MTB_SIZE, db->stats);
+	db->idx = index_new(basedir, db->stats);
 
 	return db;
 }
@@ -82,8 +82,6 @@ void db_stats(struct nessdb *db, struct slice *stats)
 			"\ttotal_crc_errors:%llu\r\n"
 			"\ttotal_compress_count:%llu\r\n"
 			"\ttotal_hole_reuse_count:%llu\r\n"
-			"\ttotal_mtbl_count:%llu\r\n"
-			"\ttotal_merging_mtbl_count:%llu\r\n"
 			,
 		NESSDB_VERSION,
 		arch_bits,
@@ -103,9 +101,7 @@ void db_stats(struct nessdb *db, struct slice *stats)
 		db->stats->STATS_R_COLA,
 		db->stats->STATS_CRC_ERRS, 
 		db->stats->STATS_COMPRESSES, 
-		db->stats->STATS_HOLE_REUSES,
-		db->stats->STATS_MTBL_COUNTS,
-		db->stats->STATS_MTBL_MERGING_COUNTS);
+		db->stats->STATS_HOLE_REUSES);
 }
 
 void db_remove(struct nessdb *db, struct slice *sk)

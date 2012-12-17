@@ -12,6 +12,7 @@ typedef enum {DEL = 0, ADD = 1} OPT_FLAG;
 
 struct parking {
 	int lsn;
+	int async;
 	struct sst *merging_sst;
 };
 
@@ -21,7 +22,6 @@ struct index{
 	int read_fd;
 	int max_mtb_size;
 	uint64_t db_alloc;
-	volatile int bg_exit;
 	char tower_file[NESSDB_PATH_SIZE];
 	char path[NESSDB_PATH_SIZE];
 
@@ -37,7 +37,7 @@ struct index{
 	pthread_mutex_t *merge_lock;
 };
 
-struct index *index_new(const char *path, int mtb_size, struct stats *stats);
+struct index *index_new(const char *path, struct stats *stats);
 int index_add(struct index *idx, struct slice *sk, struct slice *sv);
 int index_get(struct index *idx, struct slice *sk, struct slice *sv);
 int index_remove(struct index *idx, struct slice *sk);

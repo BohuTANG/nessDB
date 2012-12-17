@@ -53,20 +53,20 @@
 #define NESSDB_VERSION ("v2.0")               /* nessDB version flag   */
 #define NESSDB_SST_SEGMENT (4)                /* SST splited numbers   */
 #define NESSDB_PATH_SIZE (1024)               /* Max length of path    */ 
-#define NESSDB_MAX_MTB_SIZE (500000)          /* Max Memtable items    */
 #define NESSDB_MAX_VAL_SIZE (1024*1024*10)    /* Max value length      */
+
 #define NESSDB_COMPRESS_LIMIT (1024)          /* Flag of compression   */
 #define NESSDB_COMPACT_LIMIT (1000)           /* Flag of compact       */
-#define NESSDB_IS_LOG_RECOVERY (1)
 
-/* NOTICE: These macros can NOT be modified, or you will be lost */
+/* NOTICE: These macros can NOT be modified
+ * OR you will be lost in ness
+ */
 #define MAX_LEVEL (4)
 #define LEVEL_BASE (8)
 #define L0_SIZE (64*1024)
 #define BLOCK_GAP (256)
 #define NESSDB_MAX_KEY_SIZE (35) 
 
-#define NESSDB_LOG_EXT (".LOG")
 #define NESSDB_SST_EXT (".SST")
 #define NESSDB_DB ("ness.DB")
 
@@ -78,7 +78,7 @@ struct sst_item {
 } __attribute__((packed));
 
 struct stats {
-	volatile unsigned long long  STATS_WRITES;             /* all counts #write            */
+	volatile unsigned long long STATS_WRITES;              /* all counts #write            */
 	volatile unsigned long long STATS_READS;               /* all counts #read             */
 	volatile unsigned long long STATS_REMOVES;             /* all counts #remove           */
 	volatile unsigned long long STATS_MERGES;              /* all counts #background merge */
@@ -91,9 +91,6 @@ struct stats {
 	volatile unsigned long long STATS_CRC_ERRS;            /* all crc errors               */
 	volatile unsigned long long STATS_COMPRESSES;          /* all counts #compress         */
 	volatile unsigned long long STATS_HOLE_REUSES;         /* all counts #holes reuse      */
-
-	volatile unsigned long long STATS_MTBL_COUNTS;         /* all counts #MTBL             */
-	volatile unsigned long long STATS_MTBL_MERGING_COUNTS; /* all counts #merging MTBL     */
 
 	volatile unsigned long long STATS_LEVEL_MERGES;        /* all counts #levels merge     */
 	volatile unsigned long long STATS_SST_SPLITS;          /* all counts #SST split        */

@@ -13,20 +13,22 @@
 #include "xmalloc.h"
 
 #define DB_MAGIC (20121212)
+#define NESSDB_TOWER_EXT (".TOWER")
 
 void _make_towername(struct index *idx, int lsn)
 {
 	memset(idx->tower_file, 0, NESSDB_PATH_SIZE);
-	snprintf(idx->tower_file, NESSDB_PATH_SIZE, "%s/%04d.TOWER", 
+	snprintf(idx->tower_file, NESSDB_PATH_SIZE, "%s/%04d%s", 
 			idx->path, 
-			lsn);
-
+			lsn,
+			NESSDB_TOWER_EXT);
 }
 
 void *_merge_job(void *arg)
 {
 	int i;
 	int lsn;
+	int async;
 	int c = 0;
 
 	struct sst_item *items;
@@ -40,6 +42,8 @@ void *_merge_job(void *arg)
 
 	sst = idx->park.merging_sst;
 	lsn = idx->park.lsn;
+	async = idx->park.async;
+
 	items = sst_in_one(sst, &c);
 	for (i = 0; i < c; i++) {
 		node = meta_get(idx->meta, items[i].data);
@@ -57,8 +61,60 @@ void *_merge_job(void *arg)
 
 	__DEBUG("--->end merging last level of tower, merge count#%d", c);
 	pthread_mutex_unlock(idx->merge_lock);
-	pthread_detach(pthread_self());
-	pthread_exit(NULL);
+
+	if (async) {
+		pthread_detach(pthread_self());
+		pthread_exit(NULL);
+	} else
+		return NULL;
+}
+
+void _build_tower(struct index *idx)
+{
+	int lsn;
+	DIR *dd;
+	struct sst *sst;
+	struct dirent *de;
+	char tower_name[NESSDB_PATH_SIZE];
+
+	dd = opendir(idx->path);
+	while ((de = readdir(dd))) {
+		if (strstr(de->d_name, NESSDB_TOWER_EXT)) {
+			memset(tower_name, 0, NESSDB_PATH_SIZE);
+			memcpy(tower_name, de->d_name, strlen(de->d_name) - strlen(NESSDB_TOWER_EXT));
+
+			lsn = atoi(tower_name);
+			_make_towername(idx, lsn);
+			sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
+
+			/* remerge to SSTs */
+			pthread_mutex_lock(idx->merge_lock);
+			idx->park.lsn = lsn;
+			idx->park.async = 0;
+			idx->park.merging_sst = sst;
+			pthread_mutex_unlock(idx->merge_lock);
+
+			_merge_job(idx);
+		}
+	}
+	closedir(dd);
+}
+
+void _check(struct index *idx)
+{
+	if (idx->sst->willfull) {
+		pthread_mutex_lock(idx->merge_lock);
+		idx->park.lsn = idx->lsn;
+		idx->park.async = 1;
+		idx->park.merging_sst = idx->sst;
+		pthread_mutex_unlock(idx->merge_lock);
+
+		pthread_t tid;
+		pthread_create(&tid, &idx->attr, _merge_job, idx);
+
+		_make_towername(idx, ++idx->lsn);
+		idx->sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
+	}
 }
 
 char *index_read_data(struct index *idx, struct ol_pair *pair)
@@ -127,7 +183,7 @@ RET:
 	return data;
 }
 
-struct index *index_new(const char *path, int mtb_size, struct stats *stats)
+struct index *index_new(const char *path, struct stats *stats)
 {
 	int magic;
 	char db_name[NESSDB_PATH_SIZE];
@@ -156,14 +212,16 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 
 	idx->read_fd = n_open(db_name, N_OPEN_FLAGS);
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
-	idx->max_mtb_size = mtb_size;
 	memset(&idx->enstate, 0, sizeof(qlz_state_compress));
 	memset(&idx->destate, 0, sizeof(qlz_state_decompress));
 
 	idx->merge_lock = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_lock, NULL);
 
-	/* tower file */
+	/* build tower */
+	_build_tower(idx);
+
+	/* new tower file */
 	_make_towername(idx, idx->lsn);
 	idx->sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
 
@@ -171,24 +229,7 @@ struct index *index_new(const char *path, int mtb_size, struct stats *stats)
 	pthread_attr_init(&idx->attr);
 	pthread_attr_setdetachstate(&idx->attr, PTHREAD_CREATE_DETACHED);
 
-
 	return idx;
-}
-
-void _check(struct index *idx)
-{
-	if (idx->sst->willfull) {
-		pthread_mutex_lock(idx->merge_lock);
-		idx->park.lsn = idx->lsn;
-		idx->park.merging_sst = idx->sst;
-		pthread_mutex_unlock(idx->merge_lock);
-
-		pthread_t tid;
-		pthread_create(&tid, &idx->attr, _merge_job, idx);
-
-		_make_towername(idx, ++idx->lsn);
-		idx->sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
-	}
 }
 
 int index_add(struct index *idx, struct slice *sk, struct slice *sv)
@@ -284,20 +325,30 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	idx->stats->STATS_READS++;
 	memset(&pair, 0, sizeof pair);
 
-	node =  meta_get(idx->meta, sk->data);
-	if (node) {
-		if (bloom_get(node->sst->bf, sk->data)) {
-			idx->stats->STATS_R_BF++;
-		} else {
-			idx->stats->STATS_R_NOTIN_BF++;
-			goto RET;
+	/* get from TOWERs */
+	if (idx->sst) {
+		if (!sst_get(idx->sst, sk, &pair)) {
+			if (idx->park.merging_sst)
+				sst_get(idx->park.merging_sst, sk, &pair); /* need locks */
 		}
+	}
 
-		if (sst_get(node->sst, sk, &pair)) {
-			idx->stats->STATS_R_COLA++;
-		} else {
-			idx->stats->STATS_R_NOTIN_COLA++;
-			goto RET;
+	if (pair.offset == 0UL) {
+		node =  meta_get(idx->meta, sk->data);
+		if (node) {
+			if (bloom_get(node->sst->bf, sk->data)) {
+				idx->stats->STATS_R_BF++;
+			} else {
+				idx->stats->STATS_R_NOTIN_BF++;
+				goto RET;
+			}
+
+			if (sst_get(node->sst, sk, &pair)) {
+				idx->stats->STATS_R_COLA++;
+			} else {
+				idx->stats->STATS_R_NOTIN_COLA++;
+				goto RET;
+			}
 		}
 	}
 
@@ -345,5 +396,7 @@ void index_free(struct index *idx)
 	buffer_free(idx->buf);
 	pthread_mutex_destroy(idx->merge_lock);
 	xfree(idx->merge_lock);
+	if (idx->sst)
+		sst_free(idx->sst);
 	xfree(idx);
 }
