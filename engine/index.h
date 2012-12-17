@@ -10,20 +10,31 @@
 typedef enum {UNCOMPRESS = 0, COMPRESS = 1} QLZ_FLAG;
 typedef enum {DEL = 0, ADD = 1} OPT_FLAG;
 
+struct parking {
+	int lsn;
+	struct sst *merging_sst;
+};
+
 struct index{
 	int fd;
+	int lsn;
 	int read_fd;
 	int max_mtb_size;
 	uint64_t db_alloc;
+	volatile int bg_exit;
+	char tower_file[NESSDB_PATH_SIZE];
+	char path[NESSDB_PATH_SIZE];
+
 	struct meta *meta;
 	struct buffer *buf;
 	struct stats *stats;
 	struct sst *sst;
+	struct parking park;
 	qlz_state_compress enstate;
 	qlz_state_decompress destate;
 
 	pthread_attr_t attr;
-	pthread_mutex_t *flush_lock;
+	pthread_mutex_t *merge_lock;
 };
 
 struct index *index_new(const char *path, int mtb_size, struct stats *stats);
