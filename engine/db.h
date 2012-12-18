@@ -6,6 +6,11 @@ struct slice {
 	int len;
 };
 
+struct ness_kv {
+	struct slice sk;
+	struct slice sv;
+};
+
 #ifdef __cplusplus
 	extern "C" {
 #endif
@@ -18,6 +23,13 @@ struct slice {
 	void db_remove(struct nessdb *db, struct slice *sk);
 	void db_close(struct nessdb *db);
 	void db_free_data(void *data);
+
+	/* 
+	 * Range: [start, end)
+	 */
+	struct ness_kv *db_scan(struct nessdb *db, 
+							struct slice *start, struct slice *end, 
+							int limit, int *c);
 
 #ifdef __cplusplus
 	}

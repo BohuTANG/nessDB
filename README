@@ -60,7 +60,23 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 		} else
 			print("Not found");
 
-  e. CLOSE
+  e. SCAN
+  		kv = db_scan(db, &s1, &s2, limit, &ret_c);
+ 		for (i = 0; i < ret_c; i++) {
+	  		char *k = kv[i].sk.data;
+	  		char *v = kv[i].sv.data;
+
+			... ...
+
+			/* free key&value */
+	  		db_free_data(k);
+	  		db_free_data(v);
+  		}
+		/* free kv list */
+		if (kv)
+			db_free_data(kv);
+
+  f. CLOSE
   		db_close(db);
 
   NOTICE:

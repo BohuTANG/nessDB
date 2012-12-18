@@ -288,12 +288,33 @@ void _deleteone_test(char *key)
 	db_close(db);
 }
 
-void _scan_test(char *start, char *end)
+void _scan_test(char *start, char *end, int limit)
 {
-	(void)start;
-	(void)end;
+	int i;
+	int ret_c = 0;
+	struct slice s1, s2;
+	struct nessdb *db;
+	struct ness_kv *kv;
 
-	/* TODO */
+	s1.len = strlen(start);
+	s1.data = start;
+	s2.len = strlen(end);
+	s2.data = end;
+
+	db = db_open(DATAS);
+	kv = db_scan(db, &s1, &s2, limit, &ret_c);
+	for (i = 0; i < ret_c; i++) {
+		char *k = kv[i].sk.data;
+		char *v = kv[i].sv.data;
+
+		__DEBUG("%s--%s", k, v);
+		db_free_data(k);
+		db_free_data(v);
+	}
+	if (kv)
+		db_free_data(kv);
+
+	db_close(db);
 }
 
 int main(int argc,char** argv)
@@ -326,11 +347,11 @@ int main(int argc,char** argv)
 		}
 		_writeone_test(argv[2], argv[3]);
 	} else if (strcmp(argv[1], "scan") == 0) {
-		if (argc != 4) {
+		if (argc != 5) {
 			fprintf(stderr,"Usage: db-bench scan <key-statr> <key-end>\n");
 			exit(1);
 		}
-		_scan_test(argv[2], argv[3]);
+		_scan_test(argv[2], argv[3], atoi(argv[4]));
 	} else if (strcmp(argv[1], "delete") == 0) {
 		_deleteone_test(argv[2]);
 	} else {

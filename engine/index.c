@@ -403,3 +403,62 @@ void index_free(struct index *idx)
 		sst_free(idx->sst);
 	xfree(idx);
 }
+
+
+/*
+ * [start, end): 
+ */
+struct ness_kv *index_scan(struct index *idx, 
+						   struct slice *start, struct slice *end, 
+						   int limit, int *c)
+{
+	int i;
+	int k;
+	int ms = 0;
+	int ret = 0;
+	struct ol_pair pair;
+	struct sst_item *items = NULL;
+	struct ness_kv *kv = xcalloc(1, sizeof(struct ness_kv));
+	struct meta_node *nodes = meta_scan(idx->meta, 
+										start->data, end->data, 
+										&ms);
+
+	for (i = 0; i < ms; i++) {
+		int itms = 0;
+
+		items = sst_in_one(nodes[i].sst, &itms);
+		kv = xrealloc(kv, itms * sizeof(struct ness_kv));
+
+		for(k = 0; k < itms; k++) {
+			if (ret >= limit)
+				goto RET;
+
+			int cmp_a = strcmp(items[k].data, start->data);
+			int cmp_b = strcmp(items[k].data, end->data);
+
+			if (cmp_a >= 0 && cmp_b < 0) {
+				pair.offset = items[k].offset;
+				pair.vlen = items[k].vlen;
+
+				kv[ret].sv.data = index_read_data(idx, &pair);
+				kv[ret].sv.len = pair.vlen;
+
+				kv[ret].sk.data = strdup(items[k].data);
+				kv[ret].sk.len = strlen(items[k].data);
+				ret++;
+			} 
+		}
+
+		xfree(items);
+		items = NULL;
+	}
+
+RET:
+	if (items)
+		xfree(items);
+	if (nodes)
+		xfree(nodes);
+	*c = ret;
+
+	return kv;
+}
