@@ -63,12 +63,6 @@ void _print_header(int count)
 			index_size);
 	printf("DataSize:\t%.1f MB (estimated)\n",
 			data_size);
-#ifdef BGMERGE
-	printf("Async Merge:\tYES\n");
-#else
-	printf("Async Merge:\tNO\n");
-#endif
-
 
 	printf(LINE1);
 }
