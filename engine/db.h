@@ -28,8 +28,8 @@ struct ness_kv {
 	 * Range: [start, end)
 	 */
 	struct ness_kv *db_scan(struct nessdb *db, 
-							struct slice *start, struct slice *end, 
-							int limit, int *c);
+				struct slice *start, struct slice *end, 
+				int limit, int *c);
 
 #ifdef __cplusplus
 	}
