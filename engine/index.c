@@ -38,7 +38,6 @@ void *_merge_job(void *arg)
 	struct index *idx = (struct index*)arg;
 
 	pthread_mutex_lock(idx->merge_lock);
-	__DEBUG("--->begin merging last level of tower");
 
 	sst = idx->park.merging_sst;
 	lsn = idx->park.lsn;
@@ -54,12 +53,11 @@ void *_merge_job(void *arg)
 	/* remove merged TOWER */
 	_make_towername(idx, lsn);
 	remove(idx->tower_file);
-	__DEBUG("...remove %s", idx->tower_file);
 
 	idx->park.merging_sst = NULL;
 	sst_free(sst);
 
-	__DEBUG("--->end merging last level of tower, merge count#%d", c);
+	__DEBUG("--->backgroud merging end, merge count#%d", c);
 	pthread_mutex_unlock(idx->merge_lock);
 
 	if (async) {
@@ -72,6 +70,9 @@ void *_merge_job(void *arg)
 void _build_tower(struct index *idx)
 {
 	int lsn;
+	int i = 0;
+	int max = 0;
+
 	DIR *dd;
 	struct sst *sst;
 	struct dirent *de;
@@ -82,22 +83,28 @@ void _build_tower(struct index *idx)
 		if (strstr(de->d_name, NESSDB_TOWER_EXT)) {
 			memset(tower_name, 0, NESSDB_PATH_SIZE);
 			memcpy(tower_name, de->d_name, strlen(de->d_name) - strlen(NESSDB_TOWER_EXT));
-
 			lsn = atoi(tower_name);
-			_make_towername(idx, lsn);
-			sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
+			max = lsn>max ? lsn:max;
+			i++;
 
-			/* remerge to SSTs */
-			pthread_mutex_lock(idx->merge_lock);
-			idx->park.lsn = lsn;
-			idx->park.async = 0;
-			idx->park.merging_sst = sst;
-			pthread_mutex_unlock(idx->merge_lock);
-
-			_merge_job(idx);
+			if (i > 2) 
+				__PANIC("...TOWERS must be <= 2, pls check!");
 		}
 	}
 	closedir(dd);
+
+	/* redo older tower */
+	for (; i > 0; i--) {
+		lsn = (max - i + 1);
+		_make_towername(idx, lsn);
+		sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
+		pthread_mutex_lock(idx->merge_lock);
+		idx->park.lsn = lsn;
+		idx->park.async = 0;
+		idx->park.merging_sst = sst;
+		pthread_mutex_unlock(idx->merge_lock);
+		_merge_job(idx);
+	}
 }
 
 void _check(struct index *idx)
@@ -381,12 +388,8 @@ void _flush_index(struct index *idx)
 {
 	__DEBUG("begin to flush MTBL to disk...");
 
-#ifdef BGMERGE
 	pthread_mutex_lock(idx->merge_lock);
 	pthread_mutex_unlock(idx->merge_lock);
-#else
-	(void)idx;
-#endif
 }
 
 void index_free(struct index *idx)

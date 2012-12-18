@@ -40,7 +40,6 @@ void sst_truncate(struct sst *sst);
 struct sst_item *sst_in_one(struct sst *sst, int *c);
 struct sst_item *read_one_level(struct sst *sst, int level, int readc);
 void sst_dump(struct sst *sst);
-int sst_level_isfull(struct sst *sst, int level);
 void sst_free(struct sst *sst);
 
 #endif

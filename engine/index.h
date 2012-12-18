@@ -20,7 +20,6 @@ struct index{
 	int fd;
 	int lsn;
 	int read_fd;
-	int max_mtb_size;
 	uint64_t db_alloc;
 	char tower_file[NESSDB_PATH_SIZE];
 	char path[NESSDB_PATH_SIZE];

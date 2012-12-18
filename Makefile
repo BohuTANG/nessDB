@@ -1,8 +1,5 @@
 CC = gcc
 
-#background-threading merge
-BGMERGE = -DBGMERGE
-
 #debug levle
 DEBUG =	-g  -ggdb -DINFO
 CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
