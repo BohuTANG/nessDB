@@ -409,8 +409,8 @@ void index_free(struct index *idx)
  * [start, end): 
  */
 struct ness_kv *index_scan(struct index *idx, 
-						   struct slice *start, struct slice *end, 
-						   int limit, int *c)
+			   struct slice *start, struct slice *end, 
+			   int limit, int *c)
 {
 	int i;
 	int k;
@@ -420,8 +420,8 @@ struct ness_kv *index_scan(struct index *idx,
 	struct sst_item *items = NULL;
 	struct ness_kv *kv = xcalloc(1, sizeof(struct ness_kv));
 	struct meta_node *nodes = meta_scan(idx->meta, 
-										start->data, end->data, 
-										&ms);
+					    start->data, end->data, 
+					    &ms);
 
 	for (i = 0; i < ms; i++) {
 		int itms = 0;
