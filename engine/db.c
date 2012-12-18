@@ -123,8 +123,8 @@ void db_free_data(void *data)
 }
 
 struct ness_kv *db_scan(struct nessdb *db, 
-						   struct slice *start, struct slice *end, 
-						   int limit, int *c)
+			struct slice *start, struct slice *end, 
+			int limit, int *c)
 {
 	return index_scan(db->idx, 
 					  start, end, 
