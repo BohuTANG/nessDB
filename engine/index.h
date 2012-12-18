@@ -44,7 +44,7 @@ char *index_read_data(struct index *idx, struct ol_pair *pair);
 void index_free(struct index *idx);
 
 struct ness_kv *index_scan(struct index *idx, 
-						   struct slice *start, struct slice *end, 
-						   int limit, int *c);
+			   struct slice *start, struct slice *end, 
+			   int limit, int *c);
 
 #endif
