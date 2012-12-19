@@ -65,7 +65,7 @@
 #define LEVEL_BASE (8)
 #define L0_SIZE (64*1024)
 #define BLOCK_GAP (256)
-#define NESSDB_MAX_KEY_SIZE (35) 
+#define NESSDB_MAX_KEY_SIZE (48) 
 
 #define NESSDB_SST_EXT (".SST")
 #define NESSDB_DB ("ness.DB")

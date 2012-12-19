@@ -1,3 +1,7 @@
+/*
+ * Please NOTICE DB limits:
+ * https://github.com/shuttler/nessDB/wiki/nessDB-limits
+ */
 #ifndef __nessDB_H
 #define __nessDB_H
 

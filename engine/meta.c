@@ -141,7 +141,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	mod = c % NESSDB_SST_SEGMENT;
 	k = split + mod;
 
-	__DEBUG("---will scryed SST to %d, all count#%d....", 
+	__DEBUG("---will scryed SST to %d, sst count#%d....", 
 			NESSDB_SST_SEGMENT, 
 			c);
 
