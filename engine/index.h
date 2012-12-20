@@ -2,13 +2,17 @@
 #define __nessDB_INDEX_H
 
 #include "internal.h"
-#include "db.h"
 #include "meta.h"
 #include "buffer.h"
 #include "quicklz.h"
 
 typedef enum {UNCOMPRESS = 0, COMPRESS = 1} QLZ_FLAG;
 typedef enum {DEL = 0, ADD = 1} OPT_FLAG;
+
+struct ness_kv {
+	struct slice sk;
+	struct slice sv;
+};
 
 struct parking {
 	int lsn;

@@ -428,6 +428,9 @@ struct ness_kv *index_scan(struct index *idx,
 	for (i = 0; i < ms; i++) {
 		int itms = 0;
 
+		if (!nodes[i].sst)
+			return kv;
+
 		items = sst_in_one(nodes[i].sst, &itms);
 		kv = xrealloc(kv, itms * sizeof(struct ness_kv));
 

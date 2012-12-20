@@ -10,9 +10,13 @@ struct slice {
 	int len;
 };
 
-struct ness_kv {
-	struct slice sk;
-	struct slice sv;
+struct iter {
+	int c;
+	int idx;
+	int valid;
+	struct slice *key;
+	struct slice *value;
+	struct ness_kv *kvs;
 };
 
 #ifdef __cplusplus
@@ -31,9 +35,10 @@ struct ness_kv {
 	/* 
 	 * Range: [start, end)
 	 */
-	struct ness_kv *db_scan(struct nessdb *db, 
+	struct iter *db_scan(struct nessdb *db, 
 				struct slice *start, struct slice *end, 
-				int limit, int *c);
+				int limit);
+	void db_iter_next(struct iter *it);
 
 #ifdef __cplusplus
 	}

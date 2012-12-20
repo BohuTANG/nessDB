@@ -14,7 +14,7 @@ pynessdb_db_open(PyObject *self, PyObject *args)
     const char *db_path;
 	struct nessdb *ret;
     
-    if (!PyArg_ParseTuple(args, "si", &db_path))
+    if (!PyArg_ParseTuple(args, "s", &db_path))
         return NULL;
 
     ret = db_open(db_path);

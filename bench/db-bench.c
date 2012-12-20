@@ -284,11 +284,9 @@ void _deleteone_test(char *key)
 
 void _scan_test(char *start, char *end, int limit)
 {
-	int i;
-	int ret_c = 0;
 	struct slice s1, s2;
 	struct nessdb *db;
-	struct ness_kv *kv;
+	struct iter *it;
 
 	s1.len = strlen(start);
 	s1.data = start;
@@ -296,17 +294,12 @@ void _scan_test(char *start, char *end, int limit)
 	s2.data = end;
 
 	db = db_open(DATAS);
-	kv = db_scan(db, &s1, &s2, limit, &ret_c);
-	for (i = 0; i < ret_c; i++) {
-		char *k = kv[i].sk.data;
-		char *v = kv[i].sv.data;
+	it = db_scan(db, &s1, &s2, limit);
 
-		__DEBUG("%s--%s", k, v);
-		db_free_data(k);
-		db_free_data(v);
+	__DEBUG("---scan count:%d", it->c);
+	for(; it->valid; db_iter_next(it)) {
+		__DEBUG("\t---[%s]:[%s]", it->key->data, it->value->data);
 	}
-	if (kv)
-		db_free_data(kv);
 
 	db_close(db);
 }
