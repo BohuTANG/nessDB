@@ -390,6 +390,9 @@ void _flush_index(struct index *idx)
 
 	pthread_mutex_lock(idx->merge_lock);
 	pthread_mutex_unlock(idx->merge_lock);
+
+	/* merge TOWER to SST */
+	_build_tower(idx);
 }
 
 void index_free(struct index *idx)
@@ -403,7 +406,6 @@ void index_free(struct index *idx)
 		sst_free(idx->sst);
 	xfree(idx);
 }
-
 
 /*
  * [start, end): 
