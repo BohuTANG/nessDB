@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include "xmalloc.h"
 #include "debug.h"
 
 void _check_memory(void *p) 
