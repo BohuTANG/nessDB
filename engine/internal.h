@@ -62,8 +62,8 @@
  * OR you will be lost in ness
  */
 #define MAX_LEVEL (4)
-#define LEVEL_BASE (8)
-#define L0_SIZE (64*1024)
+#define LEVEL_BASE (4)
+#define L0_SIZE (256*1024)
 #define BLOCK_GAP (256)
 #define NESSDB_MAX_KEY_SIZE (48) 
 

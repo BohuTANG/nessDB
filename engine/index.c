@@ -57,7 +57,6 @@ void *_merge_job(void *arg)
 	idx->park.merging_sst = NULL;
 	sst_free(sst);
 
-	__DEBUG("--->backgroud merging end, merge count#%d", c);
 	pthread_mutex_unlock(idx->merge_lock);
 
 	if (async) {
@@ -386,7 +385,7 @@ int index_remove(struct index *idx, struct slice *sk)
 
 void _flush_index(struct index *idx)
 {
-	__DEBUG("begin to flush MTBL to disk...");
+	__DEBUG("begin to flush TOWER to disk...");
 
 	pthread_mutex_lock(idx->merge_lock);
 	pthread_mutex_unlock(idx->merge_lock);
@@ -402,6 +401,9 @@ void index_free(struct index *idx)
 	buffer_free(idx->buf);
 	pthread_mutex_destroy(idx->merge_lock);
 	xfree(idx->merge_lock);
+	if (idx->fd > 0)
+		fsync(idx->fd);
+
 	if (idx->sst)
 		sst_free(idx->sst);
 	xfree(idx);

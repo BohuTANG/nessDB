@@ -141,10 +141,6 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	mod = c % NESSDB_SST_SEGMENT;
 	k = split + mod;
 
-	__DEBUG("---will scryed SST to %d, sst count#%d....", 
-			NESSDB_SST_SEGMENT, 
-			c);
-
 	/* rewrite SST */
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
 	sst = node->sst;
@@ -164,7 +160,6 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 		sst = sst_new(meta->sst_file, meta->cpt, meta->stats);
 		_scryed(meta, sst, L, mod + i*split, split, nxt_idx++);
 	}
-	__DEBUG("---SST scryed end....");
 
 	xfree(L);
 	meta->stats->STATS_SST_SPLITS++;
@@ -265,8 +260,11 @@ void meta_free(struct meta *meta)
 
 	for (i = 0; i < meta->size; i++) {
 		sst = meta->nodes[i].sst;
-		if (sst) 
+		if (sst) {
+			if (sst->fd > 0)
+				fsync(sst->fd);
 			sst_free(sst);
+		}
 	}
 
 	if (meta->cpt)
