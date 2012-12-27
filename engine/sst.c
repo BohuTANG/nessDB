@@ -23,7 +23,7 @@ void _insertion_sort(struct sst_item *item, int len)
 			cmp = strcmp(item[j].data, v.data);
 			if (cmp <= 0) {
 
-				/* covert the old version */
+				/* Cover the old version */
 				if (cmp == 0)
 					memcpy(&item[j], &v, ITEM_SIZE); 
 
@@ -49,7 +49,7 @@ int _merge_sort(struct compact *cpt, struct sst_item *c,
 		if (cmp == 0) {
 			memcpy(&c[i++], &a_new[m], ITEM_SIZE);
 
-			/* add delete slot to cpt */
+			/* Add delete slot to cpt */
 			if (a_new[m].opt == 0 && a_new[m].vlen > 0) 
 				if (cpt)
 					cpt_add(cpt, a_new[m].vlen, a_new[m].offset); 
@@ -73,7 +73,7 @@ int _merge_sort(struct compact *cpt, struct sst_item *c,
 }
 
 /* 
- * calc level's offset of file 
+ * Calc level's offset of the SST file 
  */
 int _pos_calc(int level)
 {
@@ -147,23 +147,24 @@ void write_one_level(struct sst *sst, struct sst_item *L, int count, int level)
 
 void  _merge_to_next(struct sst *sst, int level, int mergec) 
 {
-	int c2 = sst->header.count[level + 1];
+	int nxt_level = level + 1;
+	int c2 = sst->header.count[nxt_level];
 	int lmerge_c = mergec + c2;
 	struct sst_item *L = read_one_level(sst, level, mergec);
-	struct sst_item *L_nxt = read_one_level(sst, level + 1, c2);
+	struct sst_item *L_nxt = read_one_level(sst, nxt_level, c2);
 	struct sst_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
 	lmerge_c = _merge_sort(sst->cpt, L_merge, L, mergec, L_nxt, c2);
-	write_one_level(sst, L_merge, lmerge_c, level + 1);
+	write_one_level(sst, L_merge, lmerge_c, nxt_level);
 
-	/* update count */
+	/* Update count */
 	sst->header.count[level] -= mergec;
-	sst->header.full[level] = 0;
+	sst->header.count[nxt_level] = lmerge_c;
 
 	/* update full flag */
-	if (lmerge_c >= _level_max(level + 1, 3))
-		sst->header.full[level + 1] = 1;
-	sst->header.count[level + 1] = lmerge_c;
+	sst->header.full[level] = 0;
+	if (lmerge_c >= _level_max(nxt_level, 3))
+		sst->header.full[nxt_level] = 1;
 
 	_update_header(sst);
 
@@ -181,21 +182,27 @@ void _check_merge(struct sst *sst)
 
 	for (i = MAX_LEVEL - 2; i >= 0; i--) {
 		if (sst->header.full[i]) {
-			/* level-i and level-(i+1) all is full */
+			/* Level-i and Level-(i+1) all is full */
 			if (sst->header.full[i + 1] == 0) {
 				int c = sst->header.count[i];
 				int nxt_c = sst->header.count[i + 1];
 				int nxt_max = _level_max(i + 1, 3);
 				int delta = nxt_max - (c + nxt_c);
 
-				/* merge full level to next level */
+				/* Merge full level to next level */
 				if (delta >= 0) {
 					_merge_to_next(sst, i, c);
 				} else {
-					/* merge the delta to next level */
+					/*
+					 * Merge the delta to next level 
+					 * If next level holes less than (level<<1)*16
+					 * Mark the next level is full
+					 */
 					delta = nxt_max - nxt_c;
-					if (delta > 0)
+					if (delta > (i<<1) * 16  )
 						_merge_to_next(sst, i, delta);
+					else
+						sst->header.full[i + 1] = 1;
 				}
 			}
 		}
@@ -265,13 +272,13 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	int res;
 	int pos;
 
-	/* bloom filter */
+	/* Bloom filter */
 	if (item->opt == 1)
 		bloom_add(sst->bf, item->data);
 
 	int klen = strlen(item->data);
 	pos = HEADER_SIZE + sst->header.count[0] * ITEM_SIZE;
-	/* swap max key */
+	/* Swap max key */
 	cmp = strcmp(item->data, sst->header.max_key);
 	if (cmp > 0) { 
 		memset(sst->header.max_key, 0, NESSDB_MAX_KEY_SIZE);
@@ -282,11 +289,11 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	if (res == -1)
 		goto ERR;
 
-	/* update header */
+	/* Update header */
 	sst->header.count[0]++;
 	_update_header(sst);
 
-	/* if L0 is full, to check */
+	/* If L0 is full, to check */
 	if (sst->header.count[0] >= _level_max(0, 1)) {
 		sst->header.full[0] = 1;
 		_check_merge(sst);
@@ -335,7 +342,7 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 	return L;
 }
 
-#define BLOCK_SIZE (BLOCK_GAP * ITEM_SIZE)
+#define SST_BLOCK_SIZE (BLOCK_GAP * ITEM_SIZE)
 int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
@@ -370,7 +377,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 		if (blk_idx < 0)
 			continue;
 
-		res = pread(sst->fd, sst->oneblk, BLOCK_SIZE, _pos_calc(i) + blk_idx * BLOCK_SIZE);
+		res = pread(sst->fd, sst->oneblk, SST_BLOCK_SIZE, _pos_calc(i) + blk_idx * SST_BLOCK_SIZE);
 		if (res == -1)
 			goto ERR;
 
