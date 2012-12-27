@@ -16,6 +16,7 @@ struct ol_pair {
 
 struct sst_header {
 	int count[MAX_LEVEL];
+	char full[MAX_LEVEL];
 	char max_key[NESSDB_MAX_KEY_SIZE];
 	unsigned char bitset[NESSDB_BLOOM_BITS / 8];
 } __attribute__((packed));

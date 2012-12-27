@@ -158,6 +158,11 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 
 	/* update count */
 	sst->header.count[level] -= mergec;
+	sst->header.full[level] = 0;
+
+	/* update full flag */
+	if (lmerge_c >= _level_max(level + 1, 3))
+		sst->header.full[level + 1] = 1;
 	sst->header.count[level + 1] = lmerge_c;
 
 	_update_header(sst);
@@ -172,43 +177,34 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 void _check_merge(struct sst *sst)
 {
 	int i;
-	int c;
-	int max;
-	int nxt_c = 0;
-	int nxt_max = 0;
 	int full = 0;
 
+	for (i = MAX_LEVEL - 2; i >= 0; i--) {
+		if (sst->header.full[i]) {
+			/* level-i and level-(i+1) all is full */
+			if (sst->header.full[i + 1] == 0) {
+				int c = sst->header.count[i];
+				int nxt_c = sst->header.count[i + 1];
+				int nxt_max = _level_max(i + 1, 3);
+				int delta = nxt_max - (c + nxt_c);
+
+				/* merge full level to next level */
+				if (delta >= 0) {
+					_merge_to_next(sst, i, c);
+				} else {
+					/* merge the delta to next level */
+					delta = nxt_max - nxt_c;
+					if (delta > 0)
+						_merge_to_next(sst, i, delta);
+				}
+			}
+		}
+	}
+
 	for (i = MAX_LEVEL - 1; i >= 0; i--) {
-		c = sst->header.count[i];
-		max = _level_max(i, 3);
-
-		/* bottom level */
-		if (i == (MAX_LEVEL - 1)) {
-			if (c >= max)
-				full++;
-			continue;
-		} else {
-			nxt_c = sst->header.count[i + 1];
-			nxt_max = _level_max(i + 1, 3);
-			if (nxt_c >= nxt_max) {
-				full++;
-				continue;
-			}
-		}
-
-		if (c >= max) {
-			int diff = nxt_max - (c + nxt_c);
-
-			/* merge full level to next level */
-			if (diff >= 0) {
-				_merge_to_next(sst, i, c);
-			} else {
-				diff = nxt_max - nxt_c;
-				if (diff > 0)
-					_merge_to_next(sst, i, diff);
-			}
-		}
-	} 
+		if (sst->header.full[i]) 
+			full++;
+	}
 
 	if (full >= (MAX_LEVEL - 1))
 		sst->willfull = 1;
@@ -288,12 +284,13 @@ int sst_add(struct sst *sst, struct sst_item *item)
 
 	/* update header */
 	sst->header.count[0]++;
-
 	_update_header(sst);
 
 	/* if L0 is full, to check */
-	if (sst->header.count[0] >= _level_max(0, 1))
+	if (sst->header.count[0] >= _level_max(0, 1)) {
+		sst->header.full[0] = 1;
 		_check_merge(sst);
+	}
 	
 	return 1;
 
