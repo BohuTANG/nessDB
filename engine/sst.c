@@ -289,9 +289,10 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	if (res == -1)
 		goto ERR;
 
-	/* Update header */
+	/* Update header, every N, flush to disk */
 	sst->header.count[0]++;
-	_update_header(sst);
+	if (sst->header.count[0] % 64 == 0)
+		_update_header(sst);
 
 	/* If L0 is full, to check */
 	if (sst->header.count[0] >= _level_max(0, 1)) {
