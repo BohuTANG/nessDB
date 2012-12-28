@@ -402,6 +402,7 @@ ERR:
 
 void sst_free(struct sst *sst)
 {
+	_update_header(sst);
 	if (sst->fd > 0)
 		close(sst->fd);
 

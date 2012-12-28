@@ -111,7 +111,7 @@ void _print_environment()
 	}
 }
 
-void _write_test(long int count)
+void _write_test(long int count, int r)
 {
 	int i;
 	double cost;
@@ -131,8 +131,10 @@ void _write_test(long int count)
 
 	start = get_ustime_sec();
 	for (i = 0; i < count; i++) {
-		//_random_key(key, KSIZE);
-		snprintf(key, KSIZE, "key-%d", i);
+		if (r)
+			_random_key(key, KSIZE);
+		else
+			snprintf(key, KSIZE, "key-%d", i);
 		snprintf(val, VSIZE, "val-%d", i);
 
 		sk.len = KSIZE;
@@ -315,10 +317,14 @@ int main(int argc,char** argv)
 	}
 	
 	if (strcmp(argv[1], "write") == 0) {
+		int r = 0;
+
 		count = atoi(argv[2]);
 		_print_header(count);
 		_print_environment();
-		_write_test(count);
+		if (argc == 4)
+			r = 1;
+		_write_test(count, r);
 	} else if (strcmp(argv[1], "read") == 0) {
 		count = atoi(argv[2]);
 		_print_header(count);
