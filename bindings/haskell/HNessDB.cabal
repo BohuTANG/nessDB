@@ -24,8 +24,6 @@ library
   build-depends:     base >= 2 && < 5 
 
   ghc-options:      -Wall 
-  c-sources:        c/free_val.c
-  include-dirs:     cbits
 
 Executable nessdb-example 
   Hs-source-dirs:      example
