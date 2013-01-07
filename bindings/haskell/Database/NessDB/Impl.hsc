@@ -8,16 +8,15 @@ import Foreign.C.String
 import Control.Monad
 
 #include "db.h"
-#include "free_val.h"
 
-newtype Status = Status { status :: CInt } deriving (Eq, Ord, Num, Show)
+newtype Status = Status { status :: CInt } deriving (Eq, Num, Show)
 
-#{enum Status, Status,
-    sOK  = nOK,
-    sERR = nERR
-}
+sOK :: Status
+sOK = Status 1
 
---data Nessdb = IO (Ptr ())
+sERR :: Status
+sERR = Status 0
+
 type Nessdb = Ptr ()
 
 type RStatus = IO (Status)
@@ -36,6 +35,18 @@ instance Storable Slice where
     peek p = return Slice 
               `ap` (#{peek struct slice, data} p)
               `ap` (#{peek struct slice, len} p)
+{--
+--TODO
+struct iter {
+    int c;
+    int idx;
+    int valid;
+    struct slice *key;
+    struct slice *value;
+    struct ness_kv *kvs;
+};
+--}
+
 
 foreign import ccall unsafe "db_open"
     c_db_open :: Ptr CChar -> Nessdb
@@ -46,8 +57,8 @@ foreign import ccall unsafe "db_add"
 foreign import ccall unsafe "db_get"
     c_db_get :: Nessdb -> Ptr Slice -> Ptr Slice -> RStatus
 
-foreign import ccall unsafe "free_val"
-    c_free_val :: Ptr Slice -> IO () 
+foreign import ccall unsafe "db_free_data"
+    c_free_data :: Ptr CChar -> IO () 
 
 {--
 foreign import ccall unsafe "db_exists"
@@ -68,9 +79,9 @@ db_open' path = withCString path $ return . c_db_open
 
 db_open :: String -> IO (Maybe Nessdb)
 db_open path = db_open' path >>= \h ->
-                if  h == nullPtr
-                then return Nothing
-                else return $ Just h
+                return (if h == nullPtr
+                          then Nothing
+                          else Just h)
 
 db_add :: Nessdb -> String -> String -> RStatus 
 db_add db key val = withCString key ( \k -> 
@@ -78,21 +89,20 @@ db_add db key val = withCString key ( \k ->
         let sk = Slice k $ length key 
             sv = Slice v $ length val 
         in with sk ( \psk ->
-             with sv (\psv ->
-                c_db_add db psk psv))))
+             with sv (c_db_add db psk))))
                 -- look ma, am I speaking lisp in haskell?
 
 db_get :: Nessdb -> String -> IO (Maybe String)
 db_get db key = withCString key ( \k ->
     let sk = Slice k $ length key
     in with sk ( \pk ->
-        alloca  ( \pv -> do
+        alloca  ( \pv ->
              c_db_get db pk pv >>= \s ->
                  if s == sOK then
                      peek pv >>=
                          \v -> do
                             str <- peekCStringLen (buffer v, buffer_len v) 
-                            c_free_val pv -- free the char *data
+                            c_free_data (buffer v)
                             return $ Just str
                  else
                     return Nothing)))
@@ -103,5 +113,5 @@ db_remove db key = withCString key ( \k ->
         in with sk ( \pk -> c_db_remove db pk))
 
 db_close :: Nessdb -> IO()
-db_close db = c_db_close db
+db_close = c_db_close
 
