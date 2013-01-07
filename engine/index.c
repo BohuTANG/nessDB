@@ -130,8 +130,8 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 
 	if (pair->offset > 0UL && pair->vlen > 0) {
 		char iscompress = 0;
-		short crc = 0;
-		short db_crc = 0;
+		uint16_t crc = 0;
+		uint16_t db_crc = 0;
 		char *dest = NULL;
 
 		n_lseek(idx->read_fd, pair->offset, SEEK_SET);
@@ -162,6 +162,17 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 			goto RET;
 		}
 
+		db_crc = _crc16(data, pair->vlen);
+		if (crc != db_crc) {
+			idx->stats->STATS_CRC_ERRS++;
+			__ERROR("read data crc#%u, db_crc#%u, data [%s]", 
+					crc, 
+					db_crc, 
+					data);
+
+			goto RET;
+		}
+
 		/* decompressed */
 		if (iscompress) {
 			int vsize = qlz_size_decompressed(data);
@@ -172,17 +183,6 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 
 			data = dest;
 		} 
-
-		db_crc = _crc16(data, pair->vlen);
-		if (crc != db_crc) {
-			idx->stats->STATS_CRC_ERRS++;
-			__ERROR("read data crc#%d, db_crc#%d, data [%s]", 
-					crc, 
-					db_crc, 
-					data);
-
-			goto RET;
-		}
 	}
 
 RET:
