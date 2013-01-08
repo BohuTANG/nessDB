@@ -297,9 +297,9 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		}
 
 		if (cpt_offset > 0) {
-			ret = pwrite(idx->fd, line, buff_len, cpt_offset);
+			ret = pwrite64(idx->fd, line, buff_len, cpt_offset);
 		} else {
-			ret = write(idx->fd, line, buff_len);
+			ret = pwrite64(idx->fd, line, buff_len, idx->db_alloc);
 			if (ret == -1) 
 				__PANIC("write db error");
 
