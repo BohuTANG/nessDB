@@ -78,24 +78,22 @@ struct sst_item {
 } __attribute__((packed));
 
 struct stats {
-	volatile unsigned long long STATS_WRITES;              /* all counts #write            */
-	volatile unsigned long long STATS_READS;               /* all counts #read             */
-	volatile unsigned long long STATS_REMOVES;             /* all counts #remove           */
-	volatile unsigned long long STATS_MERGES;              /* all counts #background merge */
+	unsigned long long STATS_WRITES;              /* all counts #write            */
+	unsigned long long STATS_READS;               /* all counts #read             */
+	unsigned long long STATS_REMOVES;             /* all counts #remove           */
+	unsigned long long STATS_R_FROM_MTBL;         /* all counts #mtbl */
+	unsigned long long STATS_R_COLA;              /* all counts #read filesystem  */
+	unsigned long long STATS_R_NOTIN_COLA;        /* all counts #read filesystem  */
+	unsigned long long STATS_R_BF;                /* all counts #not bloomfilter  */
+	unsigned long long STATS_R_NOTIN_BF;          /* all counts #not bloomfilter  */
+	unsigned long long STATS_CRC_ERRS;            /* all crc errors               */
+	unsigned long long STATS_COMPRESSES;          /* all counts #compress         */
+	unsigned long long STATS_HOLE_REUSES;         /* all counts #holes reuse      */
 
-	volatile unsigned long long STATS_R_FROM_MTBL;         /* all counts #mtbl */
-	volatile unsigned long long STATS_R_COLA;              /* all counts #read filesystem  */
-	volatile unsigned long long STATS_R_NOTIN_COLA;        /* all counts #read filesystem  */
-	volatile unsigned long long STATS_R_BF;                /* all counts #not bloomfilter  */
-	volatile unsigned long long STATS_R_NOTIN_BF;          /* all counts #not bloomfilter  */
-	volatile unsigned long long STATS_CRC_ERRS;            /* all crc errors               */
-	volatile unsigned long long STATS_COMPRESSES;          /* all counts #compress         */
-	volatile unsigned long long STATS_HOLE_REUSES;         /* all counts #holes reuse      */
-
-	volatile unsigned long long STATS_LEVEL_MERGES;        /* all counts #levels merge     */
-	volatile unsigned long long STATS_SST_SPLITS;          /* all counts #SST split        */
-	volatile unsigned long long STATS_SST_MERGEONE;        /* all counts #SST merge to one */
-	volatile time_t   STATS_START_TIME;			
+	unsigned long long STATS_LEVEL_MERGES;        /* all counts #levels merge     */
+	unsigned long long STATS_SST_SPLITS;          /* all counts #SST split        */
+	unsigned long long STATS_SST_MERGEONE;        /* all counts #SST merge to one */
+	time_t   STATS_START_TIME;			
 };
 
 #endif

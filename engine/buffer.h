@@ -7,7 +7,6 @@ struct buffer {
     char *buf;
 	int SEEK;
 	int NUL;
-	int POS;
     int buflen;
 };
 
@@ -18,7 +17,6 @@ void buffer_clear(struct buffer *b);
 char *buffer_detach(struct buffer *b);
 
 void buffer_putc(struct buffer *b, const char c);
-char buffer_getc(struct buffer *b);
 void buffer_putstr(struct buffer *b, const char *str);
 void buffer_putnstr(struct buffer *b, const char *str, size_t n);
 void buffer_putint(struct buffer *b, int val);
@@ -30,6 +28,7 @@ uint32_t buffer_getint(struct buffer *b);
 uint64_t buffer_getlong(struct buffer *b);
 char *buffer_getnstr(struct buffer *b, size_t n);
 char buffer_getchar(struct buffer *b);
+void buffer_seekfirst(struct buffer *b);
 
 void buffer_dump(struct buffer *b);
 

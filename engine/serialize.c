@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2012-2013, BohuTANG <overred.shuttler at gmail dot com>
+ * All rights reserved.
+ * Code is licensed with GPL. See COPYING.GPL file.
+ *
+ */
+
 #include "serialize.h"
 
 struct serial *serial_new(int size)
@@ -36,13 +43,14 @@ void serialize(struct serial *s, struct sst_item *itms, int c)
 struct sst_item *unserialize(struct serial *s, int c)
 {
 	int i;
+	int klen;
 	struct sst_item *itms;
 
 	itms = xcalloc(c + 1, sizeof(struct sst_item));
 
 	for (i = 0; i < c; i++) {
 		buffer_getint(s->buf);
-		buffer_getint(s->buf);
+		klen = buffer_getint(s->buf);
 		memcpy(itms[i].data, buffer_getnstr(s->buf, klen), klen);
 		itms[i].offset = buffer_getlong(s->buf);
 		itms[i].vlen = buffer_getint(s->buf);
@@ -55,6 +63,6 @@ struct sst_item *unserialize(struct serial *s, int c)
 void serial_free(struct serial *s)
 {
 	if (s->buf)
-		xfree(s->buf);
+		buffer_free(s->buf);
 	xfree(s);
 }

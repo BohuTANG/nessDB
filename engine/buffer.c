@@ -102,11 +102,6 @@ void buffer_putc(struct buffer *b, const char c)
 	b->buf[b->NUL] = '\0';
 }
 
-char buffer_getc(struct buffer *b)
-{
-	return b->buf[b->POS++];
-}
-
 void buffer_putint(struct buffer *b, int val)
 {
 	_buffer_extendby(b, sizeof(int));
@@ -153,9 +148,52 @@ char * buffer_detach(struct buffer *b)
 	return buffer;
 }
 
+void buffer_seekfirst(struct buffer *b)
+{
+	b->SEEK = 0;
+}
+
+char buffer_getchar(struct buffer *b)
+{
+	return b->buf[b->SEEK++];
+}
+
 uint32_t buffer_getint(struct buffer *b)
 {
+	uint32_t val = 0;
 
+	val |= b->buf[b->SEEK++];
+	val |= b->buf[b->SEEK++] << 8;
+	val |= b->buf[b->SEEK++] << 16;
+	val |= b->buf[b->SEEK++] << 24;
+
+	return val;
+}
+
+uint64_t buffer_getlong(struct buffer *b) 
+{
+	uint64_t val = 0;
+
+	val |= b->buf[b->SEEK++];
+	val |= b->buf[b->SEEK++] << 8;
+	val |= b->buf[b->SEEK++] << 16;
+	val |= b->buf[b->SEEK++] << 24;
+	val |= (uint64_t)b->buf[b->SEEK++] << 32;
+	val |= (uint64_t)b->buf[b->SEEK++] << 40;
+	val |= (uint64_t)b->buf[b->SEEK++] << 48;
+	val |= (uint64_t)b->buf[b->SEEK++] << 56;
+
+	return val;
+}
+
+char *buffer_getnstr(struct buffer *b, size_t n)
+{
+	char *str;
+
+	str = (b->buf + b->SEEK);
+	b->SEEK += n;
+
+	return str;
 }
 
 void buffer_dump(struct buffer *b)
