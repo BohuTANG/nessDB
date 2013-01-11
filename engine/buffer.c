@@ -153,6 +153,11 @@ char * buffer_detach(struct buffer *b)
 	return buffer;
 }
 
+uint32_t buffer_getint(struct buffer *b)
+{
+
+}
+
 void buffer_dump(struct buffer *b)
 {
 	int i;
