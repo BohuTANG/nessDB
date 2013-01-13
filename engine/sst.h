@@ -3,7 +3,6 @@
 
 #include "db.h"
 #include "bloom.h"
-#include "compact.h"
 #include "block.h"
 
 #define HEADER_SIZE (sizeof(struct sst_header))
@@ -27,13 +26,12 @@ struct sst {
 	int sst_count;
 	struct sst_header header;
 	struct bloom *bf;
-	struct compact *cpt;
 	struct stats *stats;
 	struct block *blk;
 	struct sst_item *oneblk;
 };
 
-struct sst *sst_new(const char *file, struct compact *cpt, struct stats *stats);
+struct sst *sst_new(const char *file, struct stats *stats);
 int sst_add(struct sst *sst, struct sst_item *item);
 int sst_isfull(struct sst *sst);
 int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair);

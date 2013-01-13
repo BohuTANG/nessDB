@@ -18,7 +18,6 @@ struct meta{
 	char path[NESSDB_PATH_SIZE];
 	char sst_file[NESSDB_PATH_SIZE];
 	struct meta_node nodes[NESSDB_MAX_META];
-	struct compact *cpt;
 	struct stats *stats;
 };
 

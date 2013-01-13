@@ -13,9 +13,7 @@ LIB_OBJS = \
 	./engine/index.o\
 	./engine/bloom.o\
 	./engine/quicklz.o\
-	./engine/compact.o\
 	./engine/block.o\
-	./engine/serialize.o\
 	./engine/db.o
 
 TEST = \

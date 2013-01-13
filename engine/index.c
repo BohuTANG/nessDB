@@ -96,7 +96,7 @@ void _build_tower(struct index *idx)
 	for (; i > 0; i--) {
 		lsn = (max - i + 1);
 		_make_towername(idx, lsn);
-		sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
+		sst = sst_new(idx->tower_file, idx->stats);
 		pthread_mutex_lock(idx->merge_lock);
 		idx->park.lsn = lsn;
 		idx->park.async = 0;
@@ -119,7 +119,7 @@ void _check(struct index *idx)
 		pthread_create(&tid, &idx->attr, _merge_job, idx);
 
 		_make_towername(idx, ++idx->lsn);
-		idx->sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
+		idx->sst = sst_new(idx->tower_file, idx->stats);
 	}
 }
 
@@ -229,7 +229,7 @@ struct index *index_new(const char *path, struct stats *stats)
 
 	/* new tower file */
 	_make_towername(idx, idx->lsn);
-	idx->sst = sst_new(idx->tower_file, idx->meta->cpt, idx->stats);
+	idx->sst = sst_new(idx->tower_file, idx->stats);
 
 	/* Detached thread attr */
 	pthread_attr_init(&idx->attr);
@@ -245,7 +245,6 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	int val_len;
 
 	uint64_t offset;
-	uint64_t cpt_offset = 0;
 
 	char *line;
 	struct sst_item item;
@@ -289,22 +288,11 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 		buff_len = idx->buf->NUL;
 		line = buffer_detach(idx->buf);
 
-		/* too many delete holes, we need to use them */
-		if (idx->meta->cpt->count > NESSDB_COMPACT_LIMIT) {
-			cpt_offset = cpt_get(idx->meta->cpt, val_len);
-			offset = cpt_offset;
-			idx->stats->STATS_HOLE_REUSES++;
-		}
+		ret = n_pwrite(idx->fd, line, buff_len, idx->db_alloc);
+		if (ret == -1) 
+			__PANIC("write db error");
 
-		if (cpt_offset > 0) {
-			ret = pwrite64(idx->fd, line, buff_len, cpt_offset);
-		} else {
-			ret = pwrite64(idx->fd, line, buff_len, idx->db_alloc);
-			if (ret == -1) 
-				__PANIC("write db error");
-
-			idx->db_alloc += buff_len;
-		}
+		idx->db_alloc += buff_len;
 
 		item.offset = offset;
 		item.vlen = val_len;

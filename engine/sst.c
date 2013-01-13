@@ -36,7 +36,7 @@ void _insertion_sort(struct sst_item *item, int len)
 	}
 }
 
-int _merge_sort(struct compact *cpt, struct sst_item *c,
+int _merge_sort(struct sst_item *c,
 				   struct sst_item *a_new, int alen,
 				   struct sst_item *b_old, int blen)
 {
@@ -49,10 +49,6 @@ int _merge_sort(struct compact *cpt, struct sst_item *c,
 		if (cmp == 0) {
 			memcpy(&c[i++], &a_new[m], ITEM_SIZE);
 
-			/* Add delete slot to cpt */
-			if (a_new[m].opt == 0 && a_new[m].vlen > 0) 
-				if (cpt)
-					cpt_add(cpt, a_new[m].vlen, a_new[m].offset); 
 			n++;
 			m++;
 		} else if (cmp < 0) 
@@ -154,7 +150,7 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 	struct sst_item *L_nxt = read_one_level(sst, nxt_level, c2);
 	struct sst_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
-	lmerge_c = _merge_sort(sst->cpt, L_merge, L, mergec, L_nxt, c2);
+	lmerge_c = _merge_sort(L_merge, L, mergec, L_nxt, c2);
 	write_one_level(sst, L_merge, lmerge_c, nxt_level);
 
 	/* Update count */
@@ -234,7 +230,7 @@ void _build_block(struct sst *sst)
 }
 
 #define BLOCK0_COUNT ((L0_SIZE/ITEM_SIZE)/BLOCK_GAP + 1)
-struct sst *sst_new(const char *file, struct compact *cpt, struct stats *stats)
+struct sst *sst_new(const char *file, struct stats *stats)
 {
 	int res;
 	struct sst *sst = xcalloc(1, sizeof(struct sst));
@@ -254,8 +250,6 @@ struct sst *sst_new(const char *file, struct compact *cpt, struct stats *stats)
 
 	sst->stats = stats;
 	sst->bf = bloom_new(sst->header.bitset);
-	if (cpt != NULL)
-		sst->cpt = cpt;
 
 	return sst;
 
@@ -328,7 +322,7 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 				struct sst_item *cur = read_one_level(sst, i, cur_lc);
 
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
-				pre_lc = _merge_sort(sst->cpt, L, cur, cur_lc, pre, pre_lc);
+				pre_lc = _merge_sort(L, cur, cur_lc, pre, pre_lc);
 
 				xfree(pre);
 				xfree(cur);
