@@ -267,7 +267,7 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	int pos;
 
 	/* Bloom filter */
-	if (item->opt == 1)
+	if (item->opt & 1)
 		bloom_add(sst->bf, item->data);
 
 	int klen = strlen(item->data);
@@ -347,7 +347,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	for (i = 0; i < c; i++) {
 		cmp = strcmp(sk->data, L[i].data);
 		if (cmp == 0) {
-			if (L[i].opt == 1) {
+			if (L[i].opt & 1) {
 				pair->offset = L[i].offset;
 				pair->vlen = L[i].vlen;
 			}
@@ -377,7 +377,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 		for (k = 0; k < BLOCK_GAP; k++) {
 			cmp = strncmp(sk->data, sst->oneblk[k].data, sk->len);
 			if (cmp == 0) {
-				if (sst->oneblk[k].opt == 1) {
+				if (sst->oneblk[k].opt & 1) {
 					pair->offset = sst->oneblk[k].offset;
 					pair->vlen = sst->oneblk[k].vlen;
 				}

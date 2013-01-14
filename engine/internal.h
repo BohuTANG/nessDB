@@ -67,7 +67,7 @@
 #define LEVEL_BASE (4)
 #define L0_SIZE (256*1024)
 #define BLOCK_GAP (256)
-#define NESSDB_MAX_KEY_SIZE (48) 
+#define NESSDB_MAX_KEY_SIZE (36) 
 
 #define NESSDB_SST_EXT (".SST")
 #define NESSDB_DB ("ness.DB")
@@ -75,8 +75,9 @@
 struct sst_item {
 	char data[NESSDB_MAX_KEY_SIZE];
 	uint64_t offset;
-	uint32_t vlen;
-	char opt;
+	uint32_t vlen:30;
+	int opt:1;
+	int in:1;
 } __attribute__((packed));
 
 struct stats {
