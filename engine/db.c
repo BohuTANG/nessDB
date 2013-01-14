@@ -74,6 +74,7 @@ void db_stats(struct nessdb *db, struct slice *stats)
 			"\tprocess_id:%ld\r\n"
 			"\tuptime_in_seconds:%d\r\n"
 			"\tuptime_in_days:%d\r\n"
+			"\tdb_wasted_ratio:%.2f\r\n"
 
 			"# Stats\r\n"
 			"\ttotal_read_count:%llu\r\n"
@@ -83,7 +84,6 @@ void db_stats(struct nessdb *db, struct slice *stats)
 			"\ttotal_r_from_disk:%llu\r\n"
 			"\ttotal_crc_errors:%llu\r\n"
 			"\ttotal_compress_count:%llu\r\n"
-			"\ttotal_hole_reuse_count:%llu\r\n"
 			,
 		NESSDB_VERSION,
 		arch_bits,
@@ -95,6 +95,7 @@ void db_stats(struct nessdb *db, struct slice *stats)
 		(long)getpid(),
 		(int)uptime,
 		upday,
+		db->stats->STATS_DB_WASTED,
 
 		db->stats->STATS_READS, 
 		db->stats->STATS_WRITES, 
@@ -102,8 +103,7 @@ void db_stats(struct nessdb *db, struct slice *stats)
 		db->stats->STATS_R_FROM_MTBL, 
 		db->stats->STATS_R_COLA,
 		db->stats->STATS_CRC_ERRS, 
-		db->stats->STATS_COMPRESSES, 
-		db->stats->STATS_HOLE_REUSES);
+		db->stats->STATS_COMPRESSES);
 }
 
 void db_remove(struct nessdb *db, struct slice *sk)

@@ -91,12 +91,12 @@ struct stats {
 	unsigned long long STATS_R_NOTIN_BF;          /* all counts #not bloomfilter  */
 	unsigned long long STATS_CRC_ERRS;            /* all crc errors               */
 	unsigned long long STATS_COMPRESSES;          /* all counts #compress         */
-	unsigned long long STATS_HOLE_REUSES;         /* all counts #holes reuse      */
 
 	unsigned long long STATS_LEVEL_MERGES;        /* all counts #levels merge     */
 	unsigned long long STATS_SST_SPLITS;          /* all counts #SST split        */
 	unsigned long long STATS_SST_MERGEONE;        /* all counts #SST merge to one */
 	time_t   STATS_START_TIME;			
+	double STATS_DB_WASTED;
 };
 
 #endif

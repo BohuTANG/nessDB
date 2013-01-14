@@ -74,6 +74,7 @@ void meta_dump(struct meta *meta)
 {
 	int i, j;
 	int allc = 0;
+	uint64_t allwasted = 0;
 	
 	__DEBUG("---meta(%d):", 
 			meta->size);
@@ -81,6 +82,7 @@ void meta_dump(struct meta *meta)
 	for (i = 0; i < meta->size; i++) {
 		int used = 0;
 		int count = 0;
+		int wasted = meta->nodes[i].sst->header.wasted;
 
 		for (j = 0; j < MAX_LEVEL; j++) {
 			used += meta->nodes[i].sst->header.count[j] * ITEM_SIZE;
@@ -88,15 +90,18 @@ void meta_dump(struct meta *meta)
 		}
 
 		allc += count;
-		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s, used#%d, count#%d",
+		allwasted += wasted;
+		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s, used#%d, hole-wasted#%d, count#%d",
 				i,
 				meta->nodes[i].lsn,
 				meta->nodes[i].sst->header.max_key,
 				used,
+				wasted,
 				count);
 	}
-	__DEBUG("\t----allcount:%d", 
-			allc);
+	__DEBUG("\t----allcount:%d, allwasted(KB):%llu", 
+			allc,
+			allwasted/1024);
 }
 
 void _scryed(struct meta *meta,struct sst *sst, struct sst_item *L, int start, int c, int idx)

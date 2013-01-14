@@ -11,7 +11,7 @@
 #include "debug.h"
 #include "xmalloc.h"
 
-void _insertion_sort(struct sst_item *item, int len)
+void _insertion_sort(struct sst *sst, struct sst_item *item, int len)
 {
 	int i, j;
 
@@ -21,13 +21,20 @@ void _insertion_sort(struct sst_item *item, int len)
 
 		for (j = i - 1; j >= 0; j--) {
 			cmp = strcmp(item[j].data, v.data);
-			if (cmp <= 0) {
-
-				/* Cover the old version */
-				if (cmp == 0)
-					memcpy(&item[j], &v, ITEM_SIZE); 
-
+			if (cmp < 0)
 				break;
+
+			else if (cmp == 0) {
+				/* Cover the old version */
+				if (cmp == 0) {
+					/* Add removed-hole to wasted */
+					if ((item[j].opt&1) &&
+							((v.opt&1) == 0))
+						sst->header.wasted += item[j].vlen;
+
+					memcpy(&item[j], &v, ITEM_SIZE); 
+				}
+				continue;
 			}
 
 			memcpy(&item[j + 1], &item[j], ITEM_SIZE);
@@ -36,9 +43,9 @@ void _insertion_sort(struct sst_item *item, int len)
 	}
 }
 
-int _merge_sort(struct sst_item *c,
-				   struct sst_item *a_new, int alen,
-				   struct sst_item *b_old, int blen)
+int _merge_sort(struct sst *sst, struct sst_item *c,
+		struct sst_item *a_new, int alen,
+		struct sst_item *b_old, int blen)
 {
 	int i, m = 0, n = 0, k;
 
@@ -47,6 +54,11 @@ int _merge_sort(struct sst_item *c,
 
 		cmp = strcmp(a_new[m].data, b_old[n].data);
 		if (cmp == 0) {
+			/* Add removed-hole to wasted */
+			if ((b_old[n].opt&1) && 
+					((a_new[m].opt&1) == 0))
+				sst->header.wasted += b_old[n].vlen;
+
 			memcpy(&c[i++], &a_new[m], ITEM_SIZE);
 
 			n++;
@@ -125,7 +137,7 @@ struct sst_item * read_one_level(struct sst *sst, int level, int readc)
 			__PANIC("read klen error");
 
 		if (level == 0)
-			_insertion_sort(L, readc);
+			_insertion_sort(sst, L, readc);
 	}
 
 	return L;
@@ -150,7 +162,7 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 	struct sst_item *L_nxt = read_one_level(sst, nxt_level, c2);
 	struct sst_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
-	lmerge_c = _merge_sort(L_merge, L, mergec, L_nxt, c2);
+	lmerge_c = _merge_sort(sst, L_merge, L, mergec, L_nxt, c2);
 	write_one_level(sst, L_merge, lmerge_c, nxt_level);
 
 	/* Update count */
@@ -322,7 +334,7 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 				struct sst_item *cur = read_one_level(sst, i, cur_lc);
 
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
-				pre_lc = _merge_sort(L, cur, cur_lc, pre, pre_lc);
+				pre_lc = _merge_sort(sst, L, cur, cur_lc, pre, pre_lc);
 
 				xfree(pre);
 				xfree(cur);
@@ -347,7 +359,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	for (i = 0; i < c; i++) {
 		cmp = strcmp(sk->data, L[i].data);
 		if (cmp == 0) {
-			if (L[i].opt & 1) {
+			if (L[i].opt&1) {
 				pair->offset = L[i].offset;
 				pair->vlen = L[i].vlen;
 			}
@@ -377,7 +389,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 		for (k = 0; k < BLOCK_GAP; k++) {
 			cmp = strncmp(sk->data, sst->oneblk[k].data, sk->len);
 			if (cmp == 0) {
-				if (sst->oneblk[k].opt & 1) {
+				if (sst->oneblk[k].opt&1) {
 					pair->offset = sst->oneblk[k].offset;
 					pair->vlen = sst->oneblk[k].vlen;
 				}

@@ -123,6 +123,17 @@ void _check(struct index *idx)
 	}
 }
 
+uint64_t _wasted(struct index *idx) 
+{
+	int i;
+	uint64_t wasted = 0;
+
+	for (i = 0; i < idx->meta->size; i++) 
+		wasted += idx->meta->nodes[i].sst->header.wasted;
+
+	return wasted;
+}
+
 char *index_read_data(struct index *idx, struct ol_pair *pair)
 {
 	int res;
@@ -218,6 +229,10 @@ struct index *index_new(const char *path, struct stats *stats)
 
 	idx->read_fd = n_open(db_name, N_OPEN_FLAGS);
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
+
+	/* DB wasted ratio */
+	stats->STATS_DB_WASTED = (double) (_wasted(idx)/idx->db_alloc);
+
 	memset(&idx->enstate, 0, sizeof(qlz_state_compress));
 	memset(&idx->destate, 0, sizeof(qlz_state_decompress));
 
