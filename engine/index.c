@@ -402,8 +402,11 @@ void index_free(struct index *idx)
 	_flush_index(idx);
 	meta_free(idx->meta);
 	buffer_free(idx->buf);
+
+	pthread_mutex_unlock(idx->merge_lock);
 	pthread_mutex_destroy(idx->merge_lock);
 	xfree(idx->merge_lock);
+
 	if (idx->fd > 0)
 		fsync(idx->fd);
 
