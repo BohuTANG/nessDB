@@ -125,7 +125,7 @@ void sst_dump(struct sst *sst) {
 	printf("\n");
 }
 
-struct sst_item * read_one_level(struct sst *sst, int level, int readc)
+struct sst_item * read_one_level(struct sst *sst, int level, int readc, int issort)
 {
 	int res;
 	int c = sst->header.count[level];
@@ -136,7 +136,7 @@ struct sst_item * read_one_level(struct sst *sst, int level, int readc)
 		if (res == -1)
 			__PANIC("read klen error");
 
-		if (level == 0)
+		if (level == 0 && issort)
 			_insertion_sort(sst, L, readc);
 	}
 
@@ -158,8 +158,8 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 	int nxt_level = level + 1;
 	int c2 = sst->header.count[nxt_level];
 	int lmerge_c = mergec + c2;
-	struct sst_item *L = read_one_level(sst, level, mergec);
-	struct sst_item *L_nxt = read_one_level(sst, nxt_level, c2);
+	struct sst_item *L = read_one_level(sst, level, mergec, 1);
+	struct sst_item *L_nxt = read_one_level(sst, nxt_level, c2, 1);
 	struct sst_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
 	lmerge_c = _merge_sort(sst, L_merge, L, mergec, L_nxt, c2);
@@ -229,12 +229,12 @@ void _build_block(struct sst *sst)
 {
 	int i;
 
-	for (i = 0; i < MAX_LEVEL; i++) {
+	for (i = 1; i < MAX_LEVEL; i++) {
 		int c;
 		struct sst_item *L;
 
 		c = sst->header.count[i];
-		L = read_one_level(sst, i, c);
+		L = read_one_level(sst, i, c, 1);
 		if (c > 0)
 			block_build(sst->blk, L, c, i); 
 		xfree(L);
@@ -331,11 +331,11 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 		cur_lc = sst->header.count[i];
 		if (cur_lc > 0) {
 			if (i == 0) {
-				L = read_one_level(sst, i, cur_lc);
+				L = read_one_level(sst, i, cur_lc, 1);
 				pre_lc += cur_lc;
 			} else {
 				struct sst_item *pre = L;
-				struct sst_item *cur = read_one_level(sst, i, cur_lc);
+				struct sst_item *cur = read_one_level(sst, i, cur_lc, 1);
 
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
 				pre_lc = _merge_sort(sst, L, cur, cur_lc, pre, pre_lc);
@@ -357,7 +357,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	int cmp;
 	int i = 0;
 	int c = sst->header.count[i];
-	struct sst_item *L = read_one_level(sst, 0, c);
+	struct sst_item *L = read_one_level(sst, 0, c, 0);
 
 	/* level 0 */
 	for (i = 0; i < c; i++) {
