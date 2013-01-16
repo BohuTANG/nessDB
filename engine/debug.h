@@ -11,6 +11,8 @@ typedef enum {LEVEL_DEBUG = 0, LEVEL_INFO, LEVEL_WARNING, LEVEL_ERROR} DEBUG_LEV
 
 void __debug(char *file, int line, DEBUG_LEVEL level, const char *fmt, ...);
 
+void __DEBUG_INIT_SIGNAL();
+
 #ifdef INFO
 	#define __INFO(format, args...)\
 		do { __debug(__FILE__, __LINE__, LEVEL_INFO, format, ##args); } while (0)

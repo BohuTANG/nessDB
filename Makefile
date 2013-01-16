@@ -1,7 +1,8 @@
 CC = gcc
 
 #debug levle
-DEBUG =	-g  -ggdb -DINFO
+DOG = -rdynamic -DDOG
+DEBUG =	-g  -ggdb -DINFO $(DOG)
 CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
 
 LIB_OBJS = \
@@ -43,7 +44,7 @@ $(LIBRARY): $(LIB_OBJS)
 	$(CC) -pthread -fPIC -shared $(LIB_OBJS) -o libnessdb.so -lm
 
 db-bench:  $(LIB_OBJS) $(TEST)
-	$(CC) -pthread $(LIB_OBJS) bench/db-bench.o -o $@ -lm
+	$(CC) -pthread $(LIB_OBJS) $(DEBUG) bench/db-bench.o -o $@ -lm
 
 buffer-test:  $(LIB_OBJS) $(TEST)
 	$(CC) -pthread  $(LIB_OBJS) test/buffer-test.o -o $@ -lm
