@@ -265,14 +265,18 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	struct sst_item item;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE || 
-			(sv && sv->len > NESSDB_MAX_VAL_SIZE) ||
-			sk->len <0 ||
-			sv->len < 0) {
-		__ERROR("key or value error...#%d:%d", 
-				sk->len, 
-				sv->len);
+			sk->len <0) {
+		__ERROR("key error...#%d", 
+				sk->len);
 
 		return 0;
+	}
+
+	if (sv) {
+		if (sv->len > NESSDB_MAX_VAL_SIZE ||
+				sv->len < 0)
+			__ERROR("value error...#%d", 
+					sv->len);
 	}
 
 	/* checking */
