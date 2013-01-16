@@ -105,9 +105,9 @@ void _update_header(struct sst *sst)
 		return;
 }
 
-int _level_max(int level, int gap)
+uint32_t _level_max(int level, int gap)
 {
-	return (int)(pow(LEVEL_BASE, level) * L0_SIZE / ITEM_SIZE - gap);
+	return (uint32_t)(pow(LEVEL_BASE, level) * L0_SIZE / ITEM_SIZE - gap);
 }
 
 void sst_dump(struct sst *sst) {
@@ -153,11 +153,11 @@ void write_one_level(struct sst *sst, struct sst_item *L, int count, int level)
 		__PANIC("write to one level....");
 }
 
-void  _merge_to_next(struct sst *sst, int level, int mergec) 
+void  _merge_to_next(struct sst *sst, int level, uint32_t mergec) 
 {
 	int nxt_level = level + 1;
-	int c2 = sst->header.count[nxt_level];
-	int lmerge_c = mergec + c2;
+	uint32_t c2 = sst->header.count[nxt_level];
+	uint32_t lmerge_c = mergec + c2;
 	struct sst_item *L = read_one_level(sst, level, mergec, 1);
 	struct sst_item *L_nxt = read_one_level(sst, nxt_level, c2, 1);
 	struct sst_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
@@ -166,6 +166,14 @@ void  _merge_to_next(struct sst *sst, int level, int mergec)
 	write_one_level(sst, L_merge, lmerge_c, nxt_level);
 
 	/* Update count */
+	if (sst->header.count[level] < mergec) {
+		__ERROR("----level#%d, count#%d, mergec#%d", 
+				level, 
+				sst->header.count[level], 
+				mergec);
+		abort();
+	}
+
 	sst->header.count[level] -= mergec;
 	sst->header.count[nxt_level] = lmerge_c;
 
@@ -207,7 +215,7 @@ void _check_merge(struct sst *sst)
 					 * Mark the next level is full
 					 */
 					delta = nxt_max - nxt_c;
-					if (delta > (i<<1) * 16  )
+					if (delta > ((i<<1) * 16))
 						_merge_to_next(sst, i, delta);
 					else
 						sst->header.full[i + 1] = 1;

@@ -15,7 +15,7 @@ struct ol_pair {
 
 struct sst_header {
 	int wasted;
-	int count[MAX_LEVEL];
+	uint32_t count[MAX_LEVEL];
 	char full[MAX_LEVEL];
 	char max_key[NESSDB_MAX_KEY_SIZE];
 	unsigned char bitset[NESSDB_BLOOM_BITS / 8];
