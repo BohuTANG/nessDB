@@ -31,9 +31,6 @@ struct nessdb *db_open(const char *basedir)
 	db->idx = index_new(basedir, db->stats);
 	db->iter = xcalloc(1, sizeof(struct iter));
 
-	char *p = NULL;
-	*p = 0;
-
 	return db;
 }
 
