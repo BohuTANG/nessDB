@@ -29,7 +29,7 @@ void __debug_raw(int level, const char *msg,
 		
 		fp = fopen(EVENT_NAME, "a");
 		if (fp) { 
-			fprintf(stderr,"[%d] %s %c %s, error:%s %s:%d\n", 
+			fprintf(stderr,"[%d] %s %c %s, os-error:%s %s:%d\n", 
 					(int)getpid(), 
 					buf, 
 					c[level], 
@@ -37,7 +37,7 @@ void __debug_raw(int level, const char *msg,
 					strerror(errno), 
 					file, 
 					line);
-			fprintf(fp,"[%d] %s %c %s, error:%s %s:%d\n", 
+			fprintf(fp,"[%d] %s %c %s, os-error:%s %s:%d\n", 
 					(int)getpid(),
 					buf,
 					c[level],
