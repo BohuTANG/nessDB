@@ -360,7 +360,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	struct sst_item *L = read_one_level(sst, 0, c, 0);
 
 	/* level 0 */
-	for (i = 0; i < c; i++) {
+	for (i = c - 1; i >= 0; i--) {
 		cmp = strcmp(sk->data, L[i].data);
 		if (cmp == 0) {
 			if (L[i].opt&1) {
