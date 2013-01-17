@@ -1,25 +1,25 @@
 #ifndef __nessDB_INTERNAL_H
 #define __nessDB_INTERNAL_H
 
-#ifndef _GNU_SOURCE
-	#define _GNU_SOURCE
+#define _BSD_SOURCE
+
+#if defined(__linux__)
+#define _GNU_SOURCE
 #endif
 
-#ifndef __USE_FILE_OFFSET64
-	#define __USE_FILE_OFFSET64
+#if defined(__linux__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#define _XOPEN_SOURCE 700
+#else
+#define _XOPEN_SOURCE
 #endif
 
-#ifndef __USE_LARGEFILE64
-	#define __USE_LARGEFILE64
-#endif
-
-#ifndef _LARGEFILE64_SOURCE
-	#define _LARGEFILE64_SOURCE
-#endif
+#define _LARGEFILE_SOURCE
+#define _FILE_OFFSET_BITS 64
 
 #ifndef O_BINARY
-	#define O_BINARY (0) 
+#define O_BINARY (0) 
 #endif
+
 
 #include <dirent.h>
 #include <string.h>
