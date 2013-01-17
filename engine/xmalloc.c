@@ -14,8 +14,10 @@
 
 void _check_memory(void *p, size_t s) 
 {
-	if (p == 0)
+	if (p == 0) {
+		abort();
 		__PANIC("memory allocation failed -- exiting, malloc-size#%d", s);
+	}
 
 }
 

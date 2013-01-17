@@ -83,10 +83,10 @@ int _merge_sort(struct sst *sst, struct sst_item *c,
 /* 
  * Calc level's offset of the SST file 
  */
-int _pos_calc(int level)
+uint32_t _pos_calc(int level)
 {
 	int i = 0;
-	int off = HEADER_SIZE;
+	uint32_t off = HEADER_SIZE;
 	
 	while(i < level) {
 		off += (pow(LEVEL_BASE, i) * L0_SIZE);
@@ -125,7 +125,7 @@ void sst_dump(struct sst *sst) {
 	printf("\n");
 }
 
-struct sst_item * read_one_level(struct sst *sst, int level, int readc, int issort)
+struct sst_item * read_one_level(struct sst *sst, int level, uint32_t readc, int issort)
 {
 	int res;
 	int c = sst->header.count[level];
@@ -143,7 +143,7 @@ struct sst_item * read_one_level(struct sst *sst, int level, int readc, int isso
 	return L;
 }
 
-void write_one_level(struct sst *sst, struct sst_item *L, int count, int level)
+void write_one_level(struct sst *sst, struct sst_item *L, uint32_t count, int level)
 {
 	int res;
 
@@ -153,28 +153,20 @@ void write_one_level(struct sst *sst, struct sst_item *L, int count, int level)
 		__PANIC("write to one level....");
 }
 
-void  _merge_to_next(struct sst *sst, int level, uint32_t mergec) 
+void  _merge_to_next(struct sst *sst, int level) 
 {
 	int nxt_level = level + 1;
+	uint32_t c1 = sst->header.count[level];
 	uint32_t c2 = sst->header.count[nxt_level];
-	uint32_t lmerge_c = mergec + c2;
-	struct sst_item *L = read_one_level(sst, level, mergec, 1);
+	uint32_t lmerge_c = c1 + c2;
+	struct sst_item *L = read_one_level(sst, level, c1, 1);
 	struct sst_item *L_nxt = read_one_level(sst, nxt_level, c2, 1);
 	struct sst_item *L_merge = xcalloc(lmerge_c + 1, ITEM_SIZE);
 
-	lmerge_c = _merge_sort(sst, L_merge, L, mergec, L_nxt, c2);
+	lmerge_c = _merge_sort(sst, L_merge, L, c1, L_nxt, c2);
 	write_one_level(sst, L_merge, lmerge_c, nxt_level);
 
-	/* Update count */
-	if (sst->header.count[level] < mergec) {
-		__ERROR("----level#%d, count#%d, mergec#%d", 
-				level, 
-				sst->header.count[level], 
-				mergec);
-		abort();
-	}
-
-	sst->header.count[level] -= mergec;
+	sst->header.count[level] = 0;
 	sst->header.count[nxt_level] = lmerge_c;
 
 	/* update full flag */
@@ -206,20 +198,10 @@ void _check_merge(struct sst *sst)
 				int delta = nxt_max - (c + nxt_c);
 
 				/* Merge full level to next level */
-				if (delta >= 0) {
-					_merge_to_next(sst, i, c);
-				} else {
-					/*
-					 * Merge the delta to next level 
-					 * If next level holes less than (level<<1)*16
-					 * Mark the next level is full
-					 */
-					delta = nxt_max - nxt_c;
-					if (delta > ((i<<1) * 16))
-						_merge_to_next(sst, i, delta);
-					else
-						sst->header.full[i + 1] = 1;
-				}
+				if (delta >= 0)
+					_merge_to_next(sst, i);
+				else 
+					sst->header.full[i + 1] = 1;
 			}
 		}
 	}
@@ -364,7 +346,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
 	int i = 0;
-	int c = sst->header.count[i];
+	uint32_t c = sst->header.count[i];
 	struct sst_item *L = read_one_level(sst, 0, c, 0);
 
 	/* level 0 */

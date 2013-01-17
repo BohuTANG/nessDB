@@ -14,7 +14,7 @@ struct ol_pair {
 };
 
 struct sst_header {
-	int wasted;
+	uint32_t wasted;
 	uint32_t count[MAX_LEVEL];
 	char full[MAX_LEVEL];
 	char max_key[NESSDB_MAX_KEY_SIZE];
@@ -24,7 +24,7 @@ struct sst_header {
 struct sst {
 	int fd;
 	int willfull;
-	int sst_count;
+	uint32_t sst_count;
 	struct sst_header header;
 	struct bloom *bf;
 	struct stats *stats;
@@ -39,7 +39,6 @@ int sst_isfull(struct sst *sst);
 int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair);
 void sst_truncate(struct sst *sst);
 struct sst_item *sst_in_one(struct sst *sst, int *c);
-struct sst_item *read_one_level(struct sst *sst, int level, int readc, int issort);
 void sst_dump(struct sst *sst);
 void sst_free(struct sst *sst);
 
