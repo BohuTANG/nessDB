@@ -92,9 +92,9 @@ void db_stats(struct nessdb *db, struct slice *stats)
 		NESSDB_VERSION,
 		arch_bits,
 #ifdef __GNUC__
-		__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__,
+		__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__,
 #else
-		0,0,0,
+		0, 0, 0,
 #endif
 		(long)getpid(),
 		(int)uptime,
