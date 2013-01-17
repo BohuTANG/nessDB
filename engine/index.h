@@ -20,7 +20,7 @@ struct parking {
 	struct sst *merging_sst;
 };
 
-struct index{
+struct index {
 	int fd;
 	int lsn;
 	int read_fd;

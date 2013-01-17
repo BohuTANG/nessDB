@@ -25,8 +25,8 @@ void  _check_dir(const char *pathname)
 	for (i = 1; i < len; i++) {  
 		if (dirname[i] == '/') {  
 			dirname[i] = 0;  
-			if(access(dirname, 0) != 0) {  
-				if(mkdir(dirname, 0755)==-1) 
+			if (access(dirname, 0) != 0) {  
+				if (mkdir(dirname, 0755) == -1) 
 					__PANIC("creta dir error, %s", 
 							dirname);
 			}  
@@ -104,7 +104,7 @@ void meta_dump(struct meta *meta)
 			allwasted/1024);
 }
 
-void _scryed(struct meta *meta,struct sst *sst, struct sst_item *L, int start, int c, int idx)
+void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L, int start, int c, int idx)
 {
 	int i;
 	int k = c + start;

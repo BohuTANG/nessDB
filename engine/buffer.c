@@ -26,7 +26,7 @@ unsigned _next_power(unsigned x)
 
 void _buffer_extendby(struct buffer *b, int len)
 {
-	char* buffer;
+	char *buffer;
 
 	len += b->NUL;
 	if (len <= b->buflen)
@@ -87,7 +87,7 @@ void buffer_putstr(struct buffer *b, const char *str)
 	b->buf[b->NUL] = '\0';
 }
 
-void buffer_putnstr(struct buffer *b, const char *str,size_t n)
+void buffer_putnstr(struct buffer *b, const char *str, size_t n)
 {
 	_buffer_extendby(b, n + 1);
 	memcpy(&b->buf[b->NUL], str, n);
@@ -140,7 +140,7 @@ void buffer_scatf(struct buffer *b, const char *fmt, ...)
 	va_end(ap);
 }
 
-char * buffer_detach(struct buffer *b)
+char *buffer_detach(struct buffer *b)
 {
 	char *buffer = b->buf;
 
