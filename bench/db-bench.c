@@ -1,6 +1,6 @@
 /*
  * nessDB storage engine
- * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
+ * Copyright (c) 2012-2013, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  *
  */
@@ -12,13 +12,7 @@
 	 	$./db-bench <op: write | read> <count>
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <string.h>
-#include <time.h>
-#include <sys/time.h>
+#include "../engine/internal.h"
 #include "../engine/debug.h"
 #include "../engine/db.h"
 
@@ -71,7 +65,7 @@ void _print_environment()
 {
 	time_t now = time(NULL);
 
-	printf("nessDB:\t\tversion %s(LSM-Tree storage engine)\n", 
+	printf("nessDB:\t\tversion %s(Bε-tree storage engine)\n", 
 			V);
 
 	printf("Date:\t\t%s", 

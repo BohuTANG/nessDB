@@ -1,14 +1,10 @@
 /*
- * Copyright (c) 2012, BohuTANG <overred.shuttler at gmail dot com>
+ * Copyright (c) 2012-2013, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/types.h>
 #include "xmalloc.h"
 #include "debug.h"
 

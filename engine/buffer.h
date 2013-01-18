@@ -1,7 +1,7 @@
 #ifndef __nessDB_BUF_H
 #define __nessDB_BUF_H
 
-#include <stdint.h>
+#include "internal.h"
 
 struct buffer {
 	char *buf;

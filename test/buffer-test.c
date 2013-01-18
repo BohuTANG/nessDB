@@ -1,5 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
+#include "../engine/internal.h"
 #include "../engine/buffer.h"
 #include "../engine/debug.h"
 

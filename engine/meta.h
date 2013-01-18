@@ -2,7 +2,6 @@
 #define __nessDB_META_H
 
 #include "internal.h"
-#include "db.h"
 #include "sst.h"
 
 #define NESSDB_MAX_META (3000) 

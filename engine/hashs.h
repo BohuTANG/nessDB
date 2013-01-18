@@ -1,7 +1,7 @@
 #ifndef __nessDB_HASHS_H
 #define __nessDB_HASHS_H
 
-#include <stdint.h>
+#include "internal.h"
 
 static inline unsigned int sax_hash(const char *key)
 {

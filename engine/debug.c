@@ -5,15 +5,6 @@
  *
  */
 
-#include "internal.h"
-
-#include <execinfo.h>
-#include <signal.h>
-#include <ucontext.h>
-
-#include <time.h>
-#include <stdarg.h>
-#include <errno.h>
 #include "debug.h"
 
 #define EVENT_NAME "ness.event"

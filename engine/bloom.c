@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2011-2012, BohuTANG <overred.shuttler at gmail dot com>
+ * Copyright (c) 2012-2013, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with BSD. See COPYING.BSD file.
  *
  */
 
-#include "db.h"
 #include "bloom.h"
 #include "debug.h"
 #include "hashs.h"

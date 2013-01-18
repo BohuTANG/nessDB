@@ -1,7 +1,7 @@
 #ifndef __nessDB_SST_H
 #define __nessDB_SST_H
 
-#include "db.h"
+#include "internal.h"
 #include "bloom.h"
 #include "block.h"
 
