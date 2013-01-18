@@ -20,7 +20,7 @@ static inline unsigned int djb_hash(const char *key)
 	unsigned int h = 5381;
 
 	while (*key) {
-		h = ((h<< 5) + h) + (unsigned char) *key;  /* hash * 33 + c */
+		h = ((h << 5) + h) + (unsigned char) *key;  /* hash * 33 + c */
 		++key;
 	}
 
@@ -63,12 +63,13 @@ static const uint16_t _crc16tab[256]= {
 };
 
 /* CRC16 implementation acording to CCITT standards. */
-static inline uint16_t _crc16(const char *buf, int len) {
-    int counter;
-    uint16_t crc = 0;
-    for (counter = 0; counter < len; counter++)
-            crc = (crc<<8) ^ _crc16tab[((crc>>8) ^ *buf++)&0x00FF];
-    return crc;
+static inline uint16_t _crc16(const char *buf, int len)
+{
+	int counter;
+	uint16_t crc = 0;
+	for (counter = 0; counter < len; counter++)
+		crc = (crc << 8) ^ _crc16tab[((crc >> 8) ^ *buf++) & 0x00FF];
+	return crc;
 }
 
 #endif

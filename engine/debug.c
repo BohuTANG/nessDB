@@ -26,14 +26,14 @@ void __debug_raw(int level, const char *msg,
 	FILE *fp;
 	char buf[64];
 
-	strftime(buf, sizeof(buf),"%d %b %I:%M:%S", 
+	strftime(buf, sizeof(buf), "%d %b %I:%M:%S", 
 			localtime(&now));
 
 	if (level == LEVEL_ERROR) {
 		
 		fp = fopen(EVENT_NAME, "a");
 		if (fp) { 
-			fprintf(stderr,"[%d] %s %c %s, os-error:%s %s:%d\n", 
+			fprintf(stderr, "[%d] %s %c %s, os-error:%s %s:%d\n", 
 					(int)getpid(), 
 					buf, 
 					c[level], 
@@ -41,7 +41,7 @@ void __debug_raw(int level, const char *msg,
 					strerror(errno), 
 					file, 
 					line);
-			fprintf(fp,"[%d] %s %c %s, os-error:%s %s:%d\n", 
+			fprintf(fp, "[%d] %s %c %s, os-error:%s %s:%d\n", 
 					(int)getpid(),
 					buf,
 					c[level],
@@ -70,55 +70,57 @@ void __debug(char *file, int line,
 	vsnprintf(msg, sizeof(msg), fmt, ap);
 	va_end(ap);
 
-	__debug_raw((int)level,msg, file, line);
+	__debug_raw((int)level, msg, file, line);
 }
 
 
-static void *__get_context_eip(ucontext_t *uc) {
+static void *__get_context_eip(ucontext_t *uc)
+{
 #if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_6)
     /* OSX < 10.6 */
     #if defined(__x86_64__)
-    return (void*) uc->uc_mcontext->__ss.__rip;
+    return (void *) uc->uc_mcontext->__ss.__rip;
     #elif defined(__i386__)
-    return (void*) uc->uc_mcontext->__ss.__eip;
+    return (void *) uc->uc_mcontext->__ss.__eip;
     #else
-    return (void*) uc->uc_mcontext->__ss.__srr0;
+    return (void *) uc->uc_mcontext->__ss.__srr0;
     #endif
 #elif defined(__APPLE__) && defined(MAC_OS_X_VERSION_10_6)
     /* OSX >= 10.6 */
     #if defined(_STRUCT_X86_THREAD_STATE64) && !defined(__i386__)
-    return (void*) uc->uc_mcontext->__ss.__rip;
+    return (void *) uc->uc_mcontext->__ss.__rip;
     #else
-    return (void*) uc->uc_mcontext->__ss.__eip;
+    return (void *) uc->uc_mcontext->__ss.__eip;
     #endif
 #elif defined(__linux__)
     /* Linux */
     #if defined(__i386__)
-    return (void*) uc->uc_mcontext.gregs[14]; /* Linux 32 */
+    return (void *) uc->uc_mcontext.gregs[14]; /* Linux 32 */
     #elif defined(__X86_64__) || defined(__x86_64__)
-    return (void*) uc->uc_mcontext.gregs[16]; /* Linux 64 */
+    return (void *) uc->uc_mcontext.gregs[16]; /* Linux 64 */
     #elif defined(__ia64__) /* Linux IA64 */
-    return (void*) uc->uc_mcontext.sc_ip;
+    return (void *) uc->uc_mcontext.sc_ip;
     #endif
 #else
     return NULL;
 #endif
 }
 
-void __log_stacktrace(ucontext_t *uc) {
-    void *trace[100];
-    int trace_size = 0, fd;
+void __log_stacktrace(ucontext_t *uc)
+{
+	void *trace[100];
+	int trace_size = 0, fd;
 
 	fd = open(EVENT_NAME, O_APPEND | O_CREAT | O_WRONLY, 0644);
 	if (fd == -1) 
 		return;
 
 	/* Generate the stack trace */
-    trace_size = backtrace(trace, 100);
+	trace_size = backtrace(trace, 100);
 
-    /* overwrite sigaction with caller's address */
-    if (__get_context_eip(uc) != NULL)
-        trace[1] = __get_context_eip(uc);
+	/* overwrite sigaction with caller's address */
+	if (__get_context_eip(uc) != NULL)
+		trace[1] = __get_context_eip(uc);
 
 	/* Write symbols to log file */
 	backtrace_symbols_fd(trace, trace_size, fd);
@@ -126,11 +128,12 @@ void __log_stacktrace(ucontext_t *uc) {
 	exit(EXIT_FAILURE);
 }
 
-void __dog_signal(int sig, siginfo_t *info, void *secret) {
+void __dog_signal(int sig, siginfo_t *info, void *secret)
+{
 	(void)sig;
 	(void)info;
 
-    ucontext_t *uc = (ucontext_t*) secret;
+    ucontext_t *uc = (ucontext_t *) secret;
     __log_stacktrace(uc);
 }
 

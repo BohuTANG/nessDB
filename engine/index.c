@@ -35,7 +35,7 @@ void *_merge_job(void *arg)
 	struct meta_node *node;
 
 	struct sst *sst;
-	struct index *idx = (struct index*)arg;
+	struct index *idx = (struct index *)arg;
 
 	pthread_mutex_lock(idx->merge_lock);
 
@@ -83,7 +83,7 @@ void _build_tower(struct index *idx)
 			memset(tower_name, 0, NESSDB_PATH_SIZE);
 			memcpy(tower_name, de->d_name, strlen(de->d_name) - strlen(NESSDB_TOWER_EXT));
 			lsn = atoi(tower_name);
-			max = lsn>max ? lsn:max;
+			max = lsn > max ? lsn : max;
 			i++;
 
 			if (i > 2) 
@@ -265,7 +265,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	struct sst_item item;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE || 
-			sk->len <0) {
+			sk->len < 0) {
 		__ERROR("key error...#%d", 
 				sk->len);
 
@@ -318,7 +318,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 		item.offset = offset;
 		item.vlen = val_len;
-		item.opt = (sv==NULL?DEL:ADD);
+		item.opt = (sv == NULL ? DEL : ADD);
 	}
 
 	sst_add(idx->sst, &item);
@@ -340,7 +340,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	}
 
 	idx->stats->STATS_READS++;
-	memset(&pair, 0, sizeof pair);
+	memset(&pair, 0, sizeof(pair));
 
 	/* get from TOWERs */
 	if (idx->sst) {

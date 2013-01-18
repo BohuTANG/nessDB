@@ -15,9 +15,9 @@
 	#define CHAR_BIT (8)
 #endif
 
-#define SETBIT_1(bitset,i) (bitset[i / CHAR_BIT] |=  (1<<(i % CHAR_BIT)))
-#define SETBIT_0(bitset,i) (bitset[i / CHAR_BIT] &=  (~(1<<(i % CHAR_BIT))))
-#define GETBIT(bitset,i) (bitset[i / CHAR_BIT] &   (1<<(i % CHAR_BIT)))
+#define SETBIT_1(bitset, i) (bitset[i / CHAR_BIT] |=  (1<<(i % CHAR_BIT)))
+#define SETBIT_0(bitset, i) (bitset[i / CHAR_BIT] &=  (~(1<<(i % CHAR_BIT))))
+#define GETBIT(bitset, i) (bitset[i / CHAR_BIT] &   (1<<(i % CHAR_BIT)))
 #define HFUNCNUM (2)
 
 struct bloom *bloom_new(unsigned char *bitset)
@@ -63,7 +63,7 @@ int bloom_get(struct bloom *bloom, const char *key)
 void bloom_free(struct bloom *bloom)
 {
 	if (bloom) {
-		if(bloom->hashfuncs)
+		if (bloom->hashfuncs)
 			xfree(bloom->hashfuncs);
 
 		xfree(bloom);

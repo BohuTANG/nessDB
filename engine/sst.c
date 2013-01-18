@@ -101,7 +101,7 @@ uint32_t _pos_calc(int level)
 	int i = 0;
 	uint32_t off = HEADER_SIZE;
 	
-	while(i < level) {
+	while (i < level) {
 		off += (pow(LEVEL_BASE, i) * L0_SIZE);
 		i++;
 	}
@@ -123,13 +123,14 @@ uint32_t _level_max(int level, int gap)
 	return (uint32_t)(pow(LEVEL_BASE, level) * L0_SIZE / ITEM_SIZE - gap);
 }
 
-void sst_dump(struct sst *sst) {
+void sst_dump(struct sst *sst)
+{
 	int i;
 
 	__DEBUG("**%06d.SST dump:", 
 			sst->fd);
 
-	for(i = 0; i< (int)MAX_LEVEL; i++) {
+	for (i = 0; i < (int)MAX_LEVEL; i++) {
 		printf("\t\t-L#%d---count#%d, max-count:%d\n",
 				i,
 				sst->header.count[i],
@@ -138,7 +139,7 @@ void sst_dump(struct sst *sst) {
 	printf("\n");
 }
 
-struct sst_item * read_one_level(struct sst *sst, int level, uint32_t readc, int issort)
+struct sst_item *read_one_level(struct sst *sst, int level, uint32_t readc, int issort)
 {
 	int res;
 	int c = sst->header.count[level];
@@ -257,7 +258,7 @@ struct sst *sst_new(const char *file, struct stats *stats)
 	struct sst *sst = xcalloc(1, sizeof(struct sst));
 
 	sst->oneblk = xcalloc(BLOCK_GAP, ITEM_SIZE);
-	sst->blk= block_new(BLOCK0_COUNT);
+	sst->blk = block_new(BLOCK0_COUNT);
 
 	sst->fd = n_open(file, N_OPEN_FLAGS, 0644);
 	if (sst->fd > 0) {

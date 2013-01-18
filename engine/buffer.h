@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 struct buffer {
-    char *buf;
+	char *buf;
 	int SEEK;
 	int NUL;
-    int buflen;
+	int buflen;
 };
 
 struct buffer *buffer_new(size_t reserve);

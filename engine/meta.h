@@ -8,12 +8,12 @@
 #define NESSDB_MAX_META (3000) 
 #define META_NODE_SIZE sizeof(struct meta_node)
 
-struct meta_node{
+struct meta_node {
 	int lsn;
 	struct sst *sst;
 };
 
-struct meta{
+struct meta {
 	int size;
 	char path[NESSDB_PATH_SIZE];
 	char sst_file[NESSDB_PATH_SIZE];
