@@ -137,6 +137,7 @@ uint64_t _wasted(struct index *idx)
 char *index_read_data(struct index *idx, struct ol_pair *pair)
 {
 	int res;
+	int pos = pair->offset;
 	char *data = NULL;
 
 	if (pair->offset > 0UL && pair->vlen > 0) {
@@ -145,28 +146,29 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 		uint16_t db_crc = 0;
 		char *dest = NULL;
 
-		n_lseek(idx->read_fd, pair->offset, SEEK_SET);
 
 		/* read compress flag */
-		res = read(idx->read_fd, &iscompress, sizeof(char));
+		res = pread(idx->read_fd, &iscompress, sizeof(char), pos);
 		if (res == -1) {
 			__ERROR("read iscompress flag error");
 
 			goto RET;
 		}
+		pos += sizeof(char);
 
 		/* read crc flag */
-		res = read(idx->read_fd, &crc, sizeof(crc));
+		res = pread(idx->read_fd, &crc, sizeof(crc), pos);
 		if (res == -1) {
-			__ERROR("read crc error #%d", 
+			__ERROR("read crc error #%u", 
 					crc);
 
 			goto RET;
 		}
+		pos += sizeof(crc);
 
 		/* read data */
 		data = xcalloc(1, pair->vlen + 1);
-		res = read(idx->read_fd, data, pair->vlen);
+		res = pread(idx->read_fd, data, pair->vlen, pos);
 		if (res == -1) {
 			__ERROR("read data error");
 
@@ -176,9 +178,10 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 		db_crc = _crc16(data, pair->vlen);
 		if (crc != db_crc) {
 			idx->stats->STATS_CRC_ERRS++;
-			__ERROR("read data crc#%u, db_crc#%u, data [%s]", 
+			__ERROR("read data crc#[%u-%u], data:len[%u], datas:[%s]", 
 					crc, 
 					db_crc, 
+					pair->vlen,
 					data);
 
 			goto RET;
