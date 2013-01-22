@@ -300,7 +300,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 			char *dest = xcalloc(1, val_len + 400);
 			int qsize = qlz_compress(sv->data, dest, val_len, &idx->enstate);
 
-			buffer_putc(idx->buf, 1);
+			buffer_putc(idx->buf, COMPRESS);
 			buffer_putshort(idx->buf, _crc16(dest, qsize));
 			buffer_putnstr(idx->buf, dest, qsize);
 			val_len = qsize;
@@ -308,7 +308,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 			idx->stats->STATS_COMPRESSES++;
 		} else {
-			buffer_putc(idx->buf, 0);
+			buffer_putc(idx->buf, UNCOMPRESS);
 			buffer_putshort(idx->buf, _crc16(sv->data, sv->len));
 			buffer_putnstr(idx->buf, sv->data, sv->len);
 		}
