@@ -148,19 +148,21 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 
 
 		/* read compress flag */
-		res = pread(idx->read_fd, &iscompress, sizeof(char), pos);
+		res = n_pread64(idx->read_fd, &iscompress, sizeof(char), pos);
 		if (res == -1) {
-			__ERROR("read iscompress flag error");
+			__ERROR("read iscompress flag error, offset#%llu",
+					pos);
 
 			goto RET;
 		}
 		pos += sizeof(char);
 
 		/* read crc flag */
-		res = pread(idx->read_fd, &crc, sizeof(crc), pos);
+		res = n_pread64(idx->read_fd, &crc, sizeof(crc), pos);
 		if (res == -1) {
-			__ERROR("read crc error #%u", 
-					crc);
+			__ERROR("read crc error #%u, offset#%llu", 
+					crc,
+					pos);
 
 			goto RET;
 		}
@@ -168,9 +170,10 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 
 		/* read data */
 		data = xcalloc(1, pair->vlen + 1);
-		res = pread(idx->read_fd, data, pair->vlen, pos);
+		res = n_pread64(idx->read_fd, data, pair->vlen, pos);
 		if (res == -1) {
-			__ERROR("read data error");
+			__ERROR("read data error, offset#%llu",
+					pos);
 
 			goto RET;
 		}
@@ -260,7 +263,6 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 {
 	int ret;
 	int buff_len;
-	int val_len;
 
 	uint64_t offset;
 
@@ -291,29 +293,30 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	if (sv) {
 		idx->stats->STATS_WRITES++;
 
-		val_len = sv->len;
+		int val_len = sv->len;
+
 		/* compressed */
 		if (sv->len >= NESSDB_COMPRESS_LIMIT) {
-			char *dest = xcalloc(1, sv->len + 400);
-			int qsize = qlz_compress(sv->data, dest, sv->len, &idx->enstate);
+			char *dest = xcalloc(1, val_len + 400);
+			int qsize = qlz_compress(sv->data, dest, val_len, &idx->enstate);
 
-			buffer_putc(idx->buf, COMPRESS);
+			buffer_putc(idx->buf, 1);
 			buffer_putshort(idx->buf, _crc16(dest, qsize));
 			buffer_putnstr(idx->buf, dest, qsize);
 			val_len = qsize;
 			xfree(dest);
+
 			idx->stats->STATS_COMPRESSES++;
 		} else {
-			buffer_putc(idx->buf, UNCOMPRESS);
+			buffer_putc(idx->buf, 0);
 			buffer_putshort(idx->buf, _crc16(sv->data, sv->len));
 			buffer_putnstr(idx->buf, sv->data, sv->len);
-			val_len = sv->len;
 		}
 
 		buff_len = idx->buf->NUL;
 		line = buffer_detach(idx->buf);
 
-		ret = n_pwrite(idx->fd, line, buff_len, idx->db_alloc);
+		ret = n_pwrite64(idx->fd, line, buff_len, idx->db_alloc);
 		if (ret == -1) 
 			__PANIC("write db error");
 

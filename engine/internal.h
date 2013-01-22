@@ -47,14 +47,16 @@
 	# define n_open (open64)
 	# define n_lseek (lseek64)
 	# define n_fstat (fstat64)
-	# define n_pwrite (pwrite64)
+	# define n_pwrite64 (pwrite64)
+	# define n_pread64 (pread64)
 	# define N_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE)
 	# define N_OPEN_FLAGS   (O_RDWR | O_BINARY | O_LARGEFILE)
 #else
 	# define n_open (open)
 	# define n_lseek (lseek)
 	# define n_fstat (fstat)
-	# define n_pwrite (pwrite)
+	# define n_pwrite64 (pwrite)
+	# define n_pread64 (pread)
 	# define N_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY)
 	# define N_OPEN_FLAGS   (O_RDWR | O_BINARY)
 #endif
