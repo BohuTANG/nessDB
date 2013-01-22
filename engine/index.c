@@ -137,7 +137,7 @@ uint64_t _wasted(struct index *idx)
 char *index_read_data(struct index *idx, struct ol_pair *pair)
 {
 	int res;
-	int pos = pair->offset;
+	uint64_t pos = pair->offset;
 	char *data = NULL;
 
 	if (pair->offset > 0UL && pair->vlen > 0) {
