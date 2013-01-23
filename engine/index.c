@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, BohuTANG <overred.shuttler at gmail dot com>
+ * Copyright (c) 2012-2013, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
@@ -50,7 +50,9 @@ void *_merge_job(void *arg)
 	}
 	xfree(items);
 
-	/* remove merged TOWER */
+	/* 
+	 * remove merged TOWER 
+	 */
 	_make_towername(idx, lsn);
 	remove(idx->tower_file);
 
@@ -92,7 +94,9 @@ void _build_tower(struct index *idx)
 	}
 	closedir(dd);
 
-	/* redo older tower */
+	/* 
+	 * redo older tower 
+	 */
 	for (; i > 0; i--) {
 		lsn = (max - i + 1);
 		_make_towername(idx, lsn);
@@ -137,17 +141,17 @@ uint64_t _wasted(struct index *idx)
 char *index_read_data(struct index *idx, struct ol_pair *pair)
 {
 	int res;
-	uint64_t pos = pair->offset;
 	char *data = NULL;
+	uint64_t pos = pair->offset;
 
 	if (pair->offset > 0UL && pair->vlen > 0) {
 		char iscompress = 0;
 		uint16_t crc = 0;
 		uint16_t db_crc = 0;
-		char *dest = NULL;
 
-
-		/* read compress flag */
+		/* 
+		 * read compress flag 
+		 */
 		res = n_pread64(idx->read_fd, &iscompress, sizeof(char), pos);
 		if (res == -1) {
 			__ERROR("read iscompress flag error, offset#%llu",
@@ -157,7 +161,9 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 		}
 		pos += sizeof(char);
 
-		/* read crc flag */
+		/*
+		 * read crc flag 
+		 */
 		res = n_pread64(idx->read_fd, &crc, sizeof(crc), pos);
 		if (res == -1) {
 			__ERROR("read crc error #%u, offset#%llu", 
@@ -168,7 +174,9 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 		}
 		pos += sizeof(crc);
 
-		/* read data */
+		/* 
+		 * read data 
+		 */
 		data = xcalloc(1, pair->vlen + 1);
 		res = n_pread64(idx->read_fd, data, pair->vlen, pos);
 		if (res == -1) {
@@ -190,11 +198,13 @@ char *index_read_data(struct index *idx, struct ol_pair *pair)
 			goto RET;
 		}
 
-		/* decompressed */
+		/* 
+		 * decompressed 
+		 */
 		if (iscompress) {
 			int vsize = qlz_size_decompressed(data);
+			char *dest = xcalloc(1, vsize);
 
-			dest = xcalloc(1, vsize);
 			pair->vlen = qlz_decompress(data, dest, &idx->destate);
 			xfree(data);
 
@@ -236,7 +246,9 @@ struct index *index_new(const char *path, struct stats *stats)
 	idx->read_fd = n_open(db_name, N_OPEN_FLAGS);
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
 
-	/* DB wasted ratio */
+	/* 
+	 * DB wasted ratio 
+	 */
 	stats->STATS_DB_WASTED = (double) (_wasted(idx)/idx->db_alloc);
 
 	memset(&idx->enstate, 0, sizeof(qlz_state_compress));
@@ -245,14 +257,20 @@ struct index *index_new(const char *path, struct stats *stats)
 	idx->merge_lock = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_lock, NULL);
 
-	/* build tower */
+	/* 
+	 * build tower 
+	 */
 	_build_tower(idx);
 
-	/* new tower file */
+	/* 
+	 * new tower file 
+	 */
 	_make_towername(idx, idx->lsn);
 	idx->sst = sst_new(idx->tower_file, idx->stats);
 
-	/* Detached thread attr */
+	/* 
+	 * Detached thread attr 
+	 */
 	pthread_attr_init(&idx->attr);
 	pthread_attr_setdetachstate(&idx->attr, PTHREAD_CREATE_DETACHED);
 
@@ -284,7 +302,9 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 					sv->len);
 	}
 
-	/* checking */
+	/* 
+	 * checking
+	 */
 	_check(idx);
 
 	offset = idx->db_alloc;
@@ -292,10 +312,11 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	memcpy(item.data, sk->data, sk->len);
 	if (sv) {
 		idx->stats->STATS_WRITES++;
-
 		int val_len = sv->len;
 
-		/* compressed */
+		/* 
+		 * compressed 
+		 */
 		if (sv->len >= NESSDB_COMPRESS_LIMIT) {
 			char *dest = xcalloc(1, val_len + 400);
 			int qsize = qlz_compress(sv->data, dest, val_len, &idx->enstate);
@@ -334,6 +355,7 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 
 int index_get(struct index *idx, struct slice *sk, struct slice *sv) 
 {
+	char *data;
 	struct ol_pair pair;
 	struct meta_node *node;
 
@@ -348,13 +370,13 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 	idx->stats->STATS_READS++;
 	memset(&pair, 0, sizeof(pair));
 
-	/* get from TOWERs */
-	if (idx->sst) {
-		if (!sst_get(idx->sst, sk, &pair)) {
+	/* 
+	 * get from TOWERs 
+	 */
+	if (idx->sst) 
+		if (!sst_get(idx->sst, sk, &pair))
 			if (idx->park.merging_sst)
-				sst_get(idx->park.merging_sst, sk, &pair); /* need locks */
-		}
-	}
+				sst_get(idx->park.merging_sst, sk, &pair);
 
 	if (pair.offset == 0UL) {
 		node =  meta_get(idx->meta, sk->data);
@@ -375,7 +397,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		}
 	}
 
-	char *data = index_read_data(idx, &pair);
+	data = index_read_data(idx, &pair);
 	if (data) {
 		sv->data = data;
 		sv->len = pair.vlen;
@@ -409,7 +431,9 @@ void _flush_index(struct index *idx)
 	pthread_mutex_lock(idx->merge_lock);
 	pthread_mutex_unlock(idx->merge_lock);
 
-	/* merge TOWER to SST */
+	/* 
+	 * merge TOWER to SST 
+	 */
 	_build_tower(idx);
 }
 
