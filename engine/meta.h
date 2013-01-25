@@ -7,6 +7,8 @@
 #define NESSDB_MAX_META (3000) 
 #define META_NODE_SIZE sizeof(struct meta_node)
 
+typedef enum {M_R = 0, M_W= 1} META_FLAG;
+
 struct meta_node {
 	int lsn;
 	struct sst *sst;
@@ -21,7 +23,7 @@ struct meta {
 };
 
 struct meta *meta_new(const char *path, struct stats *stats);
-struct meta_node *meta_get(struct meta *meta, char *key);
+struct meta_node *meta_get(struct meta *meta, char *key, META_FLAG flag);
 struct meta_node *meta_scan(struct meta *meta, char *start, char *end,
 							 int *ret_c);
 void meta_dump(struct meta *meta);

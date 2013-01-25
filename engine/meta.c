@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, BohuTANG <overred.shuttler at gmail dot com>
+ * Copyright (c) 2012-2013, BohuTANG <overred.shuttler at gmail dot com>
  * All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
@@ -221,7 +221,7 @@ struct meta *meta_new(const char *path, struct stats *stats)
 	return m;
 }
 
-struct meta_node *meta_get(struct meta *meta, char *key)
+struct meta_node *meta_get(struct meta *meta, char *key, META_FLAG flag)
 {
 	int i;
 	struct meta_node *node;
@@ -232,9 +232,9 @@ struct meta_node *meta_get(struct meta *meta, char *key)
 	if (i > 0 && i == meta->size) 
 		node = &meta->nodes[i - 1];
 
-	if (node->sst->willfull) {
+	if ((flag == M_W) && node->sst->willfull) {
 		_split_sst(meta, node);
-		node = meta_get(meta, key);
+		node = meta_get(meta, key, flag);
 	}
 
 	return node;

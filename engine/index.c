@@ -45,7 +45,7 @@ void *_merge_job(void *arg)
 
 	items = sst_in_one(sst, &c);
 	for (i = 0; i < c; i++) {
-		node = meta_get(idx->meta, items[i].data);
+		node = meta_get(idx->meta, items[i].data, M_W);
 		sst_add(node->sst, &items[i]);
 	}
 	xfree(items);
@@ -379,7 +379,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 				sst_get(idx->park.merging_sst, sk, &pair);
 
 	if (pair.offset == 0UL) {
-		node =  meta_get(idx->meta, sk->data);
+		node =  meta_get(idx->meta, sk->data, M_R);
 		if (node) {
 			if (bloom_get(node->sst->bf, sk->data)) {
 				idx->stats->STATS_R_BF++;
