@@ -21,10 +21,6 @@ struct nessdb *db_open(const char *basedir)
 {
 	struct nessdb *db;
 
-#ifdef DOG
-	__DEBUG_INIT_SIGNAL();
-#endif
-
 	db = xcalloc(1, sizeof(struct nessdb));
 	db->stats = xcalloc(1, sizeof(struct stats));
 	db->stats->STATS_START_TIME = time(NULL);

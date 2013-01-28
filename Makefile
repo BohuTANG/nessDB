@@ -1,8 +1,7 @@
 CC = gcc
 
 #debug levle
-DOG = -rdynamic -DDOG
-DEBUG =	-g  -ggdb -DINFO $(DOG)
+DEBUG =	-g  -ggdb -DINFO
 CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
 
 LIB_OBJS = \
