@@ -260,6 +260,31 @@ void _readone_test(char *key)
 	db_close(db);
 }
 
+void _exists_test(char *key)
+{
+	int ret;
+	struct slice sk;
+	struct nessdb *db;
+	char k[KSIZE + 1];
+	int len = strlen(key);
+
+	memset(k, 0, KSIZE + 1);
+	memcpy(k, key, len);
+
+	db = db_open(DATAS);
+	sk.len = (KSIZE + 1);
+	sk.data = k;
+
+	ret = db_exists(db, &sk);
+	if (ret)
+		__INFO("yes");
+	 else
+		__INFO("OOPS");
+
+	db_close(db);
+}
+
+
 void _deleteone_test(char *key)
 {
 	struct slice sk;
@@ -305,6 +330,9 @@ int main(int argc,char** argv)
 		_read_test(count);
 	} else if (strcmp(argv[1], "readone") == 0) {
 		_readone_test(argv[2]);
+
+	} else if (strcmp(argv[1], "exists") == 0) {
+		_exists_test(argv[2]);
 	} else if (strcmp(argv[1], "writeone") == 0) {
 		if (argc != 4) {
 			fprintf(stderr,"Usage: db-bench writeone <key> <value>\n");
