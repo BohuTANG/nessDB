@@ -1,16 +1,8 @@
 #ifndef __nessDB_INTERNAL_H
 #define __nessDB_INTERNAL_H
 
-#define _BSD_SOURCE
-
 #if defined(__linux__)
-#define _GNU_SOURCE
-#endif
-
-#if defined(__linux__) || defined(__OpenBSD__) || defined(__NetBSD__)
-#define _XOPEN_SOURCE 700
-#else
-#define _XOPEN_SOURCE
+	#define _GNU_SOURCE
 #endif
 
 #define _LARGEFILE_SOURCE
