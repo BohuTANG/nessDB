@@ -9,7 +9,7 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 
   nessDB is a fast Key-Value database(embedded), which is written in ANSI C with GPL LICENSE and works in most POSIX systems without external dependencies.
 
-  From Version 2.0, nessDB uses Small-Splittable Tree (SST), it's one of Bε-tree(ε=1/2) and Cache-oblivious write-optimized structure, for more details, please refer to documentations which in 'spec' folder.
+  From Version 2.0, nessDB uses Small-Splittable Tree (SST), it's one of Bε-tree and Cache-oblivious write-optimized structure, for more details, please refer to documentations which in 'spec' folder.
   
   V2.0 FEATURES
   =============
@@ -58,28 +58,18 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 		} else
 			print("Not found");
 
-  e. SCAN
-		struct slice s1, s2;
-		struct iter *it;
-
-		s1.len = strlen(start);
-		s1.data = start;
-		s2.len = strlen(end);
-		s2.data = end;
-
-		it = db_scan(db, &s1, &s2, limit);
-
-		__DEBUG("---scan count:%d", it->c);
-		for(; it->valid; db_iter_next(it)) {
-			__DEBUG("\t---[%s]:[%s]", it->key->data, it->value->data);
-		}
-
+  e. EXISTS 
+		struct slice sk;
+		sk.len = 3;
+		sk.data = "key";
+		int ret = db_exists(db, &sk);
+		if (ret == 1)
+			print("yes, exists");
+		else
+			print("oops");
 
   f. CLOSE
   		db_close(db);
-
-  NOTICE:
-  From version 2.0, the copyright from BSD change to GPL!
 
   Thanks for your attention!
 
