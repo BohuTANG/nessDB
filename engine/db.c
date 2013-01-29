@@ -14,7 +14,6 @@
 struct nessdb {
 	struct index *idx;
 	struct stats *stats;
-	struct iter *iter;
 };
 
 struct nessdb *db_open(const char *basedir)
@@ -25,7 +24,6 @@ struct nessdb *db_open(const char *basedir)
 	db->stats = xcalloc(1, sizeof(struct stats));
 	db->stats->STATS_START_TIME = time(NULL);
 	db->idx = index_new(basedir, db->stats);
-	db->iter = xcalloc(1, sizeof(struct iter));
 
 	return db;
 }
@@ -46,16 +44,10 @@ int db_get(struct nessdb *db, struct slice *sk, struct slice *sv)
 
 int db_exists(struct nessdb *db, struct slice *sk)
 {
-	struct slice sv;
+	int ret = index_exists(db->idx, sk);
 
-	/* Here, JUST get index will be better */
-	int ret = index_get(db->idx, sk, &sv);
-
-	if (ret) {
-		xfree(sv.data);
-
+	if (ret)
 		return 1;
-	}
 
 	return 0;
 }
@@ -111,15 +103,9 @@ void db_remove(struct nessdb *db, struct slice *sk)
 	index_remove(db->idx, sk);
 }
 
-void db_shrink(struct nessdb *db)
-{
-	(void)db;
-}
-
 void db_close(struct nessdb *db)
 {
 	index_free(db->idx);
-	xfree(db->iter);
 	xfree(db->stats);
 	xfree(db);
 }
@@ -128,46 +114,4 @@ void db_free_data(void *data)
 {
 	if (data)
 		xfree(data);
-}
-
-struct iter *db_scan(struct nessdb *db, 
-			struct slice *start, struct slice *end, 
-			int limit)
-{
-	db->iter->kvs = index_scan(db->idx, 
-					  start, end, 
-					  limit, &db->iter->c);
-
-	db->iter->idx = 0;
-
-	if (db->iter->c > 0) {
-		db->iter->key = &db->iter->kvs[0].sk;
-		db->iter->value = &db->iter->kvs[0].sv;
-		db->iter->idx++;
-		db->iter->valid = 1;
-	} else {
-		db->iter->valid = 0;
-		xfree(db->iter->kvs);
-	}
-
-	return db->iter;
-}
-
-void db_iter_next(struct iter *iter)
-{
-	if (iter->kvs[iter->idx - 1].sk.data)
-		xfree(iter->kvs[iter->idx - 1].sk.data);
-	if (iter->kvs[iter->idx - 1].sv.data)
-		xfree(iter->kvs[iter->idx - 1].sv.data);
-
-	if (iter->idx == iter->c) {
-		xfree(iter->kvs);
-		iter->valid = 0;
-		return;
-	}
-
-	iter->key = &iter->kvs[iter->idx].sk;
-	iter->value = &iter->kvs[iter->idx].sv;
-	iter->valid = 1;
-	iter->idx++;
 }

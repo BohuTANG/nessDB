@@ -243,6 +243,12 @@ struct index *index_new(const char *path, struct stats *stats)
 		idx->db_alloc += sizeof(magic);
 	}
 
+	/*
+	 * Non-block flock check
+	 */
+	if((flock(idx->fd, LOCK_EX | LOCK_NB))< 0)
+		__PANIC("...the database file owned by other process");
+
 	idx->read_fd = n_open(db_name, N_OPEN_FLAGS);
 	idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
 
@@ -353,10 +359,8 @@ int index_add(struct index *idx, struct slice *sk, struct slice *sv)
 	return 1;
 }
 
-int index_get(struct index *idx, struct slice *sk, struct slice *sv) 
+void _get_ol_pair(struct index *idx, struct ol_pair *pair, struct slice *sk)
 {
-	char *data;
-	struct ol_pair pair;
 	struct meta_node *node;
 
 	if (sk->len >= NESSDB_MAX_KEY_SIZE ||
@@ -364,21 +368,20 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		__ERROR("key length error#%d", 
 				sk->len);
 
-		return 0;
+		return;
 	}
 
 	idx->stats->STATS_READS++;
-	memset(&pair, 0, sizeof(pair));
 
 	/* 
 	 * get from TOWERs 
 	 */
 	if (idx->sst) 
-		if (!sst_get(idx->sst, sk, &pair))
+		if (!sst_get(idx->sst, sk, pair))
 			if (idx->park.merging_sst)
-				sst_get(idx->park.merging_sst, sk, &pair);
+				sst_get(idx->park.merging_sst, sk, pair);
 
-	if (pair.offset == 0UL) {
+	if (pair->offset == 0UL) {
 		node =  meta_get(idx->meta, sk->data, M_R);
 		if (node) {
 			if (bloom_get(node->sst->bf, sk->data)) {
@@ -388,7 +391,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 				goto RET;
 			}
 
-			if (sst_get(node->sst, sk, &pair)) {
+			if (sst_get(node->sst, sk, pair)) {
 				idx->stats->STATS_R_COLA++;
 			} else {
 				idx->stats->STATS_R_NOTIN_COLA++;
@@ -397,16 +400,52 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv)
 		}
 	}
 
+RET:
+	return;
+}
+
+int index_get(struct index *idx, struct slice *sk, struct slice *sv) 
+{
+	char *data;
+	struct ol_pair pair= 
+	{
+		.offset = 0UL,
+		.vlen = 0
+	};
+
+	_get_ol_pair(idx, &pair, sk);
+
+	if (pair.offset == 0UL)
+		goto NOTFOUND;
+
 	data = index_read_data(idx, &pair);
 	if (data) {
 		sv->data = data;
 		sv->len = pair.vlen;
-
-		return 1;
+		goto RET;
 	}
 
-RET:
+NOTFOUND:
 	return 0;
+
+RET:
+	return 1;
+}
+
+int index_exists(struct index *idx, struct slice *sk)
+{
+	struct ol_pair pair= 
+	{
+		.offset = 0UL,
+		.vlen = 0
+	};
+	
+	_get_ol_pair(idx, &pair, sk);
+
+	if (pair.offset == 0UL)
+		return 0;
+
+	return 1;
 }
 
 int index_remove(struct index *idx, struct slice *sk)
@@ -446,6 +485,7 @@ void index_free(struct index *idx)
 	pthread_mutex_unlock(idx->merge_lock);
 	pthread_mutex_destroy(idx->merge_lock);
 	xfree(idx->merge_lock);
+	flock(idx->fd, LOCK_UN);
 
 	if (idx->fd > 0)
 		fsync(idx->fd);
@@ -453,65 +493,4 @@ void index_free(struct index *idx)
 	if (idx->sst)
 		sst_free(idx->sst);
 	xfree(idx);
-}
-
-/*
- * [start, end): 
- */
-struct ness_kv *index_scan(struct index *idx, 
-			   struct slice *start, struct slice *end, 
-			   int limit, int *c)
-{
-	int i;
-	int k;
-	int ms = 0;
-	int ret = 0;
-	struct ol_pair pair;
-	struct sst_item *items = NULL;
-	struct ness_kv *kv = xcalloc(1, sizeof(struct ness_kv));
-	struct meta_node *nodes = meta_scan(idx->meta, 
-					    start->data, end->data, 
-					    &ms);
-
-	for (i = 0; i < ms; i++) {
-		int itms = 0;
-
-		if (!nodes[i].sst)
-			return kv;
-
-		items = sst_in_one(nodes[i].sst, &itms);
-		kv = xrealloc(kv, itms * sizeof(struct ness_kv));
-
-		for(k = 0; k < itms; k++) {
-			if (ret >= limit)
-				goto RET;
-
-			int cmp_a = strcmp(items[k].data, start->data);
-			int cmp_b = strcmp(items[k].data, end->data);
-
-			if (cmp_a >= 0 && cmp_b < 0) {
-				pair.offset = items[k].offset;
-				pair.vlen = items[k].vlen;
-
-				kv[ret].sv.data = index_read_data(idx, &pair);
-				kv[ret].sv.len = pair.vlen;
-
-				kv[ret].sk.data = strdup(items[k].data);
-				kv[ret].sk.len = strlen(items[k].data);
-				ret++;
-			} 
-		}
-
-		xfree(items);
-		items = NULL;
-	}
-
-RET:
-	if (items)
-		xfree(items);
-	if (nodes)
-		xfree(nodes);
-	*c = ret;
-
-	return kv;
 }

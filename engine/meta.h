@@ -24,8 +24,6 @@ struct meta {
 
 struct meta *meta_new(const char *path, struct stats *stats);
 struct meta_node *meta_get(struct meta *meta, char *key, META_FLAG flag);
-struct meta_node *meta_scan(struct meta *meta, char *start, char *end,
-							 int *ret_c);
 void meta_dump(struct meta *meta);
 void meta_free(struct meta *meta);
 

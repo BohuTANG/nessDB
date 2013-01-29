@@ -43,12 +43,9 @@ struct index {
 struct index *index_new(const char *path, struct stats *stats);
 int index_add(struct index *idx, struct slice *sk, struct slice *sv);
 int index_get(struct index *idx, struct slice *sk, struct slice *sv);
+int index_exists(struct index *idx, struct slice *sk);
 int index_remove(struct index *idx, struct slice *sk);
 char *index_read_data(struct index *idx, struct ol_pair *pair);
 void index_free(struct index *idx);
-
-struct ness_kv *index_scan(struct index *idx, 
-			   struct slice *start, struct slice *end, 
-			   int limit, int *c);
 
 #endif
