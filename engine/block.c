@@ -55,7 +55,7 @@ int block_search(struct block *block, struct slice *sk, int level)
 	int used = block->level_blk_used[level];
 
 	for (i = 0; i < used; i++) {
-		cmp = strncmp(sk->data, block->blocks[level][i].data, sk->len);
+		cmp = ness_strcmp(sk->data, block->blocks[level][i].data);
 		if (cmp == 0)
 			goto RET;
 

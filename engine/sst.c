@@ -20,7 +20,7 @@ void _insertion_sort(struct sst *sst, struct sst_item *item, int len)
 		struct sst_item v = item[i];
 
 		for (j = i - 1; j >= 0; j--) {
-			cmp = strcmp(item[j].data, v.data);
+			cmp = ness_strcmp(item[j].data, v.data);
 			if (cmp < 0)
 				break;
 
@@ -56,14 +56,14 @@ int _merge_sort(struct sst *sst, struct sst_item *c,
 		 * Deduplicate data from b_old
 		 */
 		if (n > 0) {
-			cmp = strcmp(b_old[n].data, b_old[n - 1].data);
+			cmp = ness_strcmp(b_old[n].data, b_old[n - 1].data);
 			if (cmp == 0) {
 				n++;
 				continue;
 			}
 		}
 
-		cmp = strcmp(a_new[m].data, b_old[n].data);
+		cmp = ness_strcmp(a_new[m].data, b_old[n].data);
 		if (cmp == 0) {
 			/* 
 			 * Add removed-hole to wasted
@@ -305,7 +305,7 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	/* 
 	 * Swap max key 
 	 */
-	cmp = strcmp(item->data, sst->header.max_key);
+	cmp = ness_strcmp(item->data, sst->header.max_key);
 	if (cmp > 0) { 
 		memset(sst->header.max_key, 0, NESSDB_MAX_KEY_SIZE);
 		memcpy(sst->header.max_key, item->data, klen);
@@ -381,7 +381,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	 * Linear Search in level 0
 	 */
 	for (i = c - 1; i >= 0; i--) {
-		cmp = strcmp(sk->data, L[i].data);
+		cmp = ness_strcmp(sk->data, L[i].data);
 		if (cmp == 0) {
 			if (L[i].opt&1) {
 				pair->offset = L[i].offset;
@@ -411,7 +411,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 			goto ERR;
 
 		for (k = 0; k < BLOCK_GAP; k++) {
-			cmp = strncmp(sk->data, sst->oneblk[k].data, sk->len);
+			cmp = ness_strcmp(sk->data, sst->oneblk[k].data);
 			if (cmp == 0) {
 				if (sst->oneblk[k].opt&1) {
 					pair->offset = sst->oneblk[k].offset;

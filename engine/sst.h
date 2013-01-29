@@ -8,6 +8,11 @@
 #define HEADER_SIZE (sizeof(struct sst_header))
 #define ITEM_SIZE (sizeof(struct sst_item))
 
+static inline int ness_strcmp(const char *a, const char *b)
+{
+	return strcmp(a,b);
+}
+
 struct ol_pair {
 	uint64_t offset;
 	uint32_t vlen;

@@ -55,7 +55,7 @@ int _get_idx(struct meta *meta, char *key)
 		i = (right + left) / 2 ;
 		node = &meta->nodes[i];
 
-		cmp = strcmp(key, node->sst->header.max_key);
+		cmp = ness_strcmp(key, node->sst->header.max_key);
 		if (cmp == 0) 
 			return i;
 
