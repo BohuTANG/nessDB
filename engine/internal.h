@@ -29,7 +29,6 @@
 #include <sys/file.h>
 #include <execinfo.h>
 #include <signal.h>
-#include <ucontext.h>
 #include <time.h>
 #include <sys/time.h>
 #include <stdarg.h>
