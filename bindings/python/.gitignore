@@ -5,6 +5,7 @@
 *.a
 *.so
 ndbs/*
+log/*
 db-bench
 db-server
 core
