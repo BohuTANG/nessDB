@@ -291,6 +291,7 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	int cmp;
 	int res;
 	int pos;
+	int klen;
 
 	pthread_mutex_lock(sst->lock);
 	/* 
@@ -299,8 +300,7 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	if (item->opt & 1)
 		bloom_add(sst->bf, item->data);
 
-	int klen = strlen(item->data);
-
+	klen = strlen(item->data);
 	pos = HEADER_SIZE + sst->header.count[0] * ITEM_SIZE;
 
 	/* 

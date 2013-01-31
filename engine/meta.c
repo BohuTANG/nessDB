@@ -55,7 +55,10 @@ int _get_idx(struct meta *meta, char *key)
 		i = (right + left) / 2 ;
 		node = &meta->nodes[i];
 
+		pthread_mutex_lock(node->sst->lock);
 		cmp = ness_strcmp(key, node->sst->header.max_key);
+		pthread_mutex_unlock(node->sst->lock);
+
 		if (cmp == 0) 
 			return i;
 
@@ -160,7 +163,9 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	 * truncate all SST 
 	 */
 	sst_truncate(sst);
+	pthread_mutex_lock(node->sst->lock);
 	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
+	pthread_mutex_unlock(node->sst->lock);
 	for (i = 0; i < k; i++) {
 		if (L[i].opt & 1) {
 			sst_add(sst, &L[i]);
