@@ -38,6 +38,7 @@ struct index {
 
 	pthread_attr_t attr;
 	pthread_mutex_t *merge_lock;
+	pthread_mutex_t *remove_lock;
 };
 
 struct index *index_new(const char *path, struct stats *stats);

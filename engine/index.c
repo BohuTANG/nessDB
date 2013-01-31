@@ -53,14 +53,15 @@ void *_merge_job(void *arg)
 	/* 
 	 * remove merged TOWER 
 	 */
+	pthread_mutex_lock(idx->remove_lock);
 	_make_towername(idx, lsn);
 	remove(idx->tower_file);
 
 	idx->park.merging_sst = NULL;
 	sst_free(sst);
+	pthread_mutex_unlock(idx->remove_lock);
 
 	pthread_mutex_unlock(idx->merge_lock);
-
 	if (async) {
 		pthread_detach(pthread_self());
 		pthread_exit(NULL);
@@ -263,6 +264,9 @@ struct index *index_new(const char *path, struct stats *stats)
 	idx->merge_lock = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(idx->merge_lock, NULL);
 
+	idx->remove_lock = xmalloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(idx->remove_lock, NULL);
+
 	/* 
 	 * build tower 
 	 */
@@ -378,8 +382,11 @@ void _get_ol_pair(struct index *idx, struct ol_pair *pair, struct slice *sk)
 	 */
 	if (idx->sst) 
 		if (!sst_get(idx->sst, sk, pair))
-			if (idx->park.merging_sst)
+			if (idx->park.merging_sst) {
+				pthread_mutex_lock(idx->remove_lock);
 				sst_get(idx->park.merging_sst, sk, pair);
+				pthread_mutex_unlock(idx->remove_lock);
+			}
 
 	if (pair->offset == 0UL) {
 		node =  meta_get(idx->meta, sk->data, M_R);
