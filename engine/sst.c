@@ -292,6 +292,7 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	int res;
 	int pos;
 
+	pthread_mutex_lock(sst->lock);
 	/* 
 	 * Bloom filter
 	 */
@@ -326,9 +327,12 @@ int sst_add(struct sst *sst, struct sst_item *item)
 		_check_merge(sst);
 	}
 	
+
+	pthread_mutex_unlock(sst->lock);
 	return 1;
 
 ERR:
+	pthread_mutex_unlock(sst->lock);
 	return 0;
 }
 
@@ -374,8 +378,12 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 {
 	int cmp;
 	int i = 0;
-	uint32_t c = sst->header.count[i];
-	struct sst_item *L = read_one_level(sst, 0, c, 0);
+	uint32_t c;
+	struct sst_item *L;
+
+	pthread_mutex_lock(sst->lock);
+	c = sst->header.count[i];
+	L = read_one_level(sst, 0, c, 0);
 
 	/* 
 	 * Linear Search in level 0
@@ -423,8 +431,11 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	}
 
 RET:
+	pthread_mutex_unlock(sst->lock);
 	return 1;
+
 ERR:
+	pthread_mutex_unlock(sst->lock);
 	return 0;
 }
 
