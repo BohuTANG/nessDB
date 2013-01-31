@@ -338,8 +338,10 @@ ERR:
 
 void sst_truncate(struct sst *sst)
 {
+	pthread_mutex_lock(sst->lock);
 	memset(&sst->header, 0, HEADER_SIZE);
 	sst->willfull = 0;
+	pthread_mutex_unlock(sst->lock);
 }
 
 struct sst_item *sst_in_one(struct sst *sst, int *c) 
