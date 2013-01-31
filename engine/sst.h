@@ -2,7 +2,6 @@
 #define __nessDB_SST_H
 
 #include "internal.h"
-#include "bloom.h"
 #include "block.h"
 
 #define HEADER_SIZE (sizeof(struct sst_header))
@@ -23,7 +22,6 @@ struct sst_header {
 	uint32_t count[MAX_LEVEL];
 	char full[MAX_LEVEL];
 	char max_key[NESSDB_MAX_KEY_SIZE];
-	unsigned char bitset[NESSDB_BLOOM_BITS / 8];
 } __attribute__((packed));
 
 struct sst {
@@ -31,7 +29,6 @@ struct sst {
 	int willfull;
 	uint32_t sst_count;
 	struct sst_header header;
-	struct bloom *bf;
 	struct stats *stats;
 	struct block *blk;
 	struct sst_item *oneblk;

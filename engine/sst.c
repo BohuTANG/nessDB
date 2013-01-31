@@ -113,7 +113,9 @@ void _update_header(struct sst *sst)
 {
 	int res;
 
+	pthread_mutex_lock(sst->lock);
 	res = pwrite(sst->fd, &sst->header, HEADER_SIZE, 0);
+	pthread_mutex_unlock(sst->lock);
 	if (res == -1)
 		return;
 }
@@ -271,8 +273,6 @@ struct sst *sst_new(const char *file, struct stats *stats)
 		sst->fd = n_open(file, N_CREAT_FLAGS, 0644);
 
 	sst->stats = stats;
-	sst->bf = bloom_new(sst->header.bitset);
-
 
 	sst->lock = xmalloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(sst->lock, NULL);
@@ -293,12 +293,6 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	int pos;
 	int klen;
 
-	pthread_mutex_lock(sst->lock);
-	/* 
-	 * Bloom filter
-	 */
-	if (item->opt & 1)
-		bloom_add(sst->bf, item->data);
 
 	klen = strlen(item->data);
 	pos = HEADER_SIZE + sst->header.count[0] * ITEM_SIZE;
@@ -327,12 +321,9 @@ int sst_add(struct sst *sst, struct sst_item *item)
 		_check_merge(sst);
 	}
 	
-
-	pthread_mutex_unlock(sst->lock);
 	return 1;
 
 ERR:
-	pthread_mutex_unlock(sst->lock);
 	return 0;
 }
 
@@ -450,7 +441,6 @@ void sst_free(struct sst *sst)
 	if (sst->fd > 0)
 		close(sst->fd);
 
-	bloom_free(sst->bf);
 	block_free(sst->blk);
 	xfree(sst->oneblk);
 	xfree(sst);

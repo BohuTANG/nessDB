@@ -88,8 +88,6 @@ struct stats {
 	unsigned long long STATS_R_FROM_MTBL;         /* all counts #mtbl */
 	unsigned long long STATS_R_COLA;              /* all counts #read filesystem  */
 	unsigned long long STATS_R_NOTIN_COLA;        /* all counts #read filesystem  */
-	unsigned long long STATS_R_BF;                /* all counts #not bloomfilter  */
-	unsigned long long STATS_R_NOTIN_BF;          /* all counts #not bloomfilter  */
 	unsigned long long STATS_CRC_ERRS;            /* all crc errors               */
 	unsigned long long STATS_COMPRESSES;          /* all counts #compress         */
 
