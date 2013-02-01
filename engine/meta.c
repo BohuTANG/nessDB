@@ -46,29 +46,16 @@ void _make_sstname(struct meta *meta, int lsn)
 
 int _get_idx(struct meta *meta, char *key)
 {
-	int cmp;
-	int left = 0, i;
+	int cmp, i;
 	int right = meta->size;
 	struct meta_node *node;
 
-	while (left < right) {
-		i = (right + left) / 2 ;
+	for (i = 0; i < right; i++) {
 		node = &meta->nodes[i];
-
-		pthread_mutex_lock(node->sst->lock);
 		cmp = ness_strcmp(key, node->sst->header.max_key);
-		pthread_mutex_unlock(node->sst->lock);
-
-		if (cmp == 0) 
-			return i;
-
-		if (cmp < 0)
-			right = i;
-		else
-			left = i + 1;
+		if (cmp <= 0) 
+			break;
 	}
-
-	i = left;
 
 	return i;
 }
@@ -121,14 +108,12 @@ void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L, int start, 
 	/* 
 	 * update new meta node 
 	 */
-	pthread_mutex_lock(meta->lock);
 	memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
 	memset(&meta->nodes[idx], 0, sizeof(struct meta_node));
 	meta->nodes[idx].sst = sst;
 	meta->nodes[idx].lsn = meta->size;
 
 	meta->size++;
-	pthread_mutex_unlock(meta->lock);
 
 	if (meta->size >= (int)(NESSDB_MAX_META - 1))
 		__PANIC("OVER max metas, MAX#%d", 
@@ -153,22 +138,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	mod = c % NESSDB_SST_SEGMENT;
 	k = split + mod;
 
-	/* 
-	 * rewrite SST 
-	 */
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
-	sst = node->sst;
-
-	/*
-	 * truncate all SST 
-	 */
-	sst_truncate(sst);
-	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
-	for (i = 0; i < k; i++) {
-		if (L[i].opt & 1) {
-			sst_add(sst, &L[i]);
-		}
-	}
 
 	/*
 	 * others SST 
@@ -177,6 +147,19 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 		_make_sstname(meta, meta->size);
 		sst = sst_new(meta->sst_file, meta->stats);
 		_scryed(meta, sst, L, mod + i*split, split, nxt_idx++);
+	}
+
+	/*
+	 * truncate current SST, write head of list datas to it.
+	 * This needs lock.
+	 */
+	sst = node->sst;
+	sst_truncate(sst);
+	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
+	for (i = 0; i < k; i++) {
+		if (L[i].opt == 1) {
+			sst_add(sst, &L[i]);
+		}
 	}
 
 	xfree(L);
@@ -231,9 +214,6 @@ struct meta *meta_new(const char *path, struct stats *stats)
 	_check_dir(path);
 	_build_meta(m);
 
-	m->lock = xmalloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(m->lock, NULL);
-
 	return m;
 }
 
@@ -242,10 +222,8 @@ struct meta_node *meta_get(struct meta *meta, char *key, META_FLAG flag)
 	int i;
 	struct meta_node *node;
 
-	pthread_mutex_lock(meta->lock);
 	i = _get_idx(meta, key);
 	node = &meta->nodes[i];
-	pthread_mutex_unlock(meta->lock);
 
 	if (i > 0 && i == meta->size) 
 		node = &meta->nodes[i - 1];
@@ -271,10 +249,6 @@ void meta_free(struct meta *meta)
 			sst_free(sst);
 		}
 	}
-
-	pthread_mutex_unlock(meta->lock);
-	pthread_mutex_destroy(meta->lock);
-	xfree(meta->lock);
 
 	if (meta)
 		xfree(meta);

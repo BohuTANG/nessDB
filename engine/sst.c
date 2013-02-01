@@ -113,9 +113,7 @@ void _update_header(struct sst *sst)
 {
 	int res;
 
-	pthread_mutex_lock(sst->lock);
 	res = pwrite(sst->fd, &sst->header, HEADER_SIZE, 0);
-	pthread_mutex_unlock(sst->lock);
 	if (res == -1)
 		return;
 }
@@ -277,9 +275,6 @@ struct sst *sst_new(const char *file, struct stats *stats)
 
 	sst->stats = stats;
 
-	sst->lock = xmalloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(sst->lock, NULL);
-
 	return sst;
 
 ERR:
@@ -331,10 +326,8 @@ ERR:
 
 void sst_truncate(struct sst *sst)
 {
-	pthread_mutex_lock(sst->lock);
 	memset(&sst->header, 0, HEADER_SIZE);
 	sst->willfull = 0;
-	pthread_mutex_unlock(sst->lock);
 }
 
 struct sst_item *sst_in_one(struct sst *sst, int *c) 
@@ -376,7 +369,6 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	uint32_t c;
 	struct sst_item *L;
 
-	pthread_mutex_lock(sst->lock);
 	c = sst->header.count[i];
 	L = read_one_level(sst, 0, c, 0);
 
@@ -431,20 +423,14 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	}
 
 RET:
-	pthread_mutex_unlock(sst->lock);
 	return 1;
 
 ERR:
-	pthread_mutex_unlock(sst->lock);
 	return 0;
 }
 
 void sst_free(struct sst *sst)
 {
-	pthread_mutex_unlock(sst->lock);
-	pthread_mutex_destroy(sst->lock);
-	xfree(sst->lock);
-
 	if (sst->fd > 0)
 		close(sst->fd);
 

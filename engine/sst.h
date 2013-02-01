@@ -32,7 +32,6 @@ struct sst {
 	struct stats *stats;
 	struct block *blk;
 	struct sst_item *oneblk;
-	pthread_mutex_t *lock;
 };
 
 struct sst *sst_new(const char *file, struct stats *stats);
