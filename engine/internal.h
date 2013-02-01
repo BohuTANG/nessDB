@@ -77,8 +77,8 @@
 struct sst_item {
 	char data[NESSDB_MAX_KEY_SIZE];
 	uint64_t offset;
-	uint32_t vlen:30;
-	int opt:2;
+	uint32_t vlen;
+	char opt;
 } __attribute__((packed));
 
 struct stats {
