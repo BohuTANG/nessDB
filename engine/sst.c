@@ -389,10 +389,14 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 			if (L[i].opt == 1) {
 				pair->offset = L[i].offset;
 				pair->vlen = L[i].vlen;
-			}
-			xfree(L);
+				xfree(L);
 
-			goto RET;
+				goto RET;
+			} else {
+				xfree(L);
+
+				goto ERR;
+			}
 		}
 	}
 	xfree(L);
@@ -419,8 +423,9 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 				if (sst->oneblk[k].opt == 1) {
 					pair->offset = sst->oneblk[k].offset;
 					pair->vlen = sst->oneblk[k].vlen;
-				}
-				goto RET;
+					goto RET;
+				} else 
+					goto ERR;
 			}
 		}
 	}
