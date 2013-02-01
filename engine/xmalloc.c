@@ -8,13 +8,14 @@
 #include "xmalloc.h"
 #include "debug.h"
 
-void _check_memory(void *p, size_t s) 
+void _check_memory(void *p, size_t s)
 {
-	if (p == 0) 
-		__PANIC("memory allocation failed -- exiting, malloc-size#%d", s);
+	if (p == 0)
+		__PANIC("memory allocation failed -- exiting, malloc-size#%d",
+				s);
 }
 
-void *xmalloc(size_t s) 
+void *xmalloc(size_t s)
 {
 	void *p = 0;
 
@@ -24,7 +25,7 @@ void *xmalloc(size_t s)
 	return p;
 }
 
-void *xcalloc(size_t n, size_t s) 
+void *xcalloc(size_t n, size_t s)
 {
 	void *p = 0;
 
@@ -34,7 +35,7 @@ void *xcalloc(size_t n, size_t s)
 	return p;
 }
 
-void *xrealloc(void *p, size_t s) 
+void *xrealloc(void *p, size_t s)
 {
 	p = realloc(p, s);
 	_check_memory(p, s);

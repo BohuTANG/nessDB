@@ -9,7 +9,7 @@
 #define _FILE_OFFSET_BITS 64
 
 #ifndef O_BINARY
-#define O_BINARY (0) 
+#define O_BINARY (0)
 #endif
 
 #include <stdio.h>
@@ -41,7 +41,8 @@
 	# define n_fstat (fstat64)
 	# define n_pwrite64 (pwrite64)
 	# define n_pread64 (pread64)
-	# define N_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY | O_LARGEFILE)
+	# define N_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT |\
+			O_BINARY | O_LARGEFILE)
 	# define N_OPEN_FLAGS   (O_RDWR | O_BINARY | O_LARGEFILE)
 #else
 	# define n_open (open)
@@ -55,7 +56,7 @@
 
 #define NESSDB_VERSION ("v2.0")               /* nessDB version flag   */
 #define NESSDB_SST_SEGMENT (4)                /* SST splited numbers   */
-#define NESSDB_PATH_SIZE (1024)               /* Max length of path    */ 
+#define NESSDB_PATH_SIZE (1024)               /* Max length of path    */
 #define NESSDB_MAX_VAL_SIZE (1024*1024*10)    /* Max value length      */
 
 #define NESSDB_COMPRESS_LIMIT (1024)          /* Flag of compression   */
@@ -68,7 +69,7 @@
 #define LEVEL_BASE (4)
 #define L0_SIZE (256*1024)
 #define BLOCK_GAP (256)
-#define NESSDB_MAX_KEY_SIZE (36) 
+#define NESSDB_MAX_KEY_SIZE (36)
 
 #define NESSDB_SST_EXT (".SST")
 #define NESSDB_DB ("ness.DB")
@@ -81,19 +82,19 @@ struct sst_item {
 } __attribute__((packed));
 
 struct stats {
-	unsigned long long STATS_WRITES;              /* all counts #write            */
-	unsigned long long STATS_READS;               /* all counts #read             */
-	unsigned long long STATS_REMOVES;             /* all counts #remove           */
-	unsigned long long STATS_R_FROM_MTBL;         /* all counts #mtbl */
-	unsigned long long STATS_R_COLA;              /* all counts #read filesystem  */
-	unsigned long long STATS_R_NOTIN_COLA;        /* all counts #read filesystem  */
-	unsigned long long STATS_CRC_ERRS;            /* all crc errors               */
-	unsigned long long STATS_COMPRESSES;          /* all counts #compress         */
+	unsigned long long STATS_WRITES; /* all counts #write */
+	unsigned long long STATS_READS; /* all counts #read */
+	unsigned long long STATS_REMOVES; /* all counts #remove */
+	unsigned long long STATS_R_FROM_MTBL; /* all counts #mtbl */
+	unsigned long long STATS_R_COLA; /* all counts #read filesystem */
+	unsigned long long STATS_R_NOTIN_COLA; /* all counts #read filesystem */
+	unsigned long long STATS_CRC_ERRS; /* all crc errors */
+	unsigned long long STATS_COMPRESSES; /* all counts #compress */
 
-	unsigned long long STATS_LEVEL_MERGES;        /* all counts #levels merge     */
-	unsigned long long STATS_SST_SPLITS;          /* all counts #SST split        */
-	unsigned long long STATS_SST_MERGEONE;        /* all counts #SST merge to one */
-	time_t   STATS_START_TIME;			
+	unsigned long long STATS_LEVEL_MERGES; /* all counts #levels merge */
+	unsigned long long STATS_SST_SPLITS; /* all counts #SST split */
+	unsigned long long STATS_SST_MERGEONE;
+	time_t   STATS_START_TIME;
 	double STATS_DB_WASTED;
 };
 

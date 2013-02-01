@@ -9,7 +9,7 @@
 
 static inline int ness_strcmp(const char *a, const char *b)
 {
-	return strcmp(a,b);
+	return strcmp(a, b);
 }
 
 struct ol_pair {

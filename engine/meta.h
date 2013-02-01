@@ -4,10 +4,10 @@
 #include "internal.h"
 #include "sst.h"
 
-#define NESSDB_MAX_META (3000) 
-#define META_NODE_SIZE sizeof(struct meta_node)
+#define NESSDB_MAX_META (3000)
+#define META_NODE_SIZE (sizeof(struct meta_node))
 
-typedef enum {M_R = 0, M_W= 1} META_FLAG;
+enum META_FLAG {M_R = 0, M_W = 1};
 
 struct meta_node {
 	int lsn;
@@ -23,7 +23,7 @@ struct meta {
 };
 
 struct meta *meta_new(const char *path, struct stats *stats);
-struct meta_node *meta_get(struct meta *meta, char *key, META_FLAG flag);
+struct meta_node *meta_get(struct meta *meta, char *key, enum META_FLAG flag);
 void meta_dump(struct meta *meta);
 void meta_free(struct meta *meta);
 

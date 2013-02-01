@@ -3,7 +3,8 @@
  * All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
- * This is Bε-tree with ε=1/2, using array as LEVELs, seems like COLAS(Cache Oblivious Lookahead Arrays).
+ * This is Bε-tree with ε=1/2, using array as LEVELs,
+ * seems like COLAS(Cache Oblivious Lookahead Arrays).
  * The main algorithm described is here: spec/small-splittable-tree.txt
  */
 
@@ -25,14 +26,16 @@ void _insertion_sort(struct sst *sst, struct sst_item *item, int len)
 				break;
 
 			else if (cmp == 0) {
-				/* 
-				 * Cover all of the old version when key is same in array
+
+				/*
+				 * Cover all of the old version when
+				 * key is same in array
 				 */
 				if ((item[j].opt == 1) &&
 						(v.opt == 0))
 					sst->header.wasted += item[j].vlen;
 
-				memcpy(&item[j], &v, ITEM_SIZE); 
+				memcpy(&item[j], &v, ITEM_SIZE);
 
 				continue;
 			}
@@ -52,7 +55,7 @@ int _merge_sort(struct sst *sst, struct sst_item *c,
 	for (i = 0; (m < alen) && (n < blen);) {
 		int cmp;
 
-		/* 
+		/*
 		 * Deduplicate data from b_old
 		 */
 		if (n > 0) {
@@ -65,10 +68,10 @@ int _merge_sort(struct sst *sst, struct sst_item *c,
 
 		cmp = ness_strcmp(a_new[m].data, b_old[n].data);
 		if (cmp == 0) {
-			/* 
+			/*
 			 * Add removed-hole to wasted
 			 */
-			if ((b_old[n].opt == 1) && 
+			if ((b_old[n].opt == 1) &&
 					(a_new[m].opt  == 0))
 				sst->header.wasted += b_old[n].vlen;
 
@@ -76,16 +79,16 @@ int _merge_sort(struct sst *sst, struct sst_item *c,
 
 			n++;
 			m++;
-		} else if (cmp < 0) 
+		} else if (cmp < 0)
 			memcpy(&c[i++], &a_new[m++], ITEM_SIZE);
-		else 
+		else
 			memcpy(&c[i++], &b_old[n++], ITEM_SIZE);
 	}
 
 	if (m == alen) {
 		for (k = n; k < blen; k++)
 			memcpy(&c[i++], &b_old[k], ITEM_SIZE);
-	} else if (n == blen) { 
+	} else if (n == blen) {
 		for (k = m; k < alen; k++)
 			memcpy(&c[i++], &a_new[k], ITEM_SIZE);
 	}
@@ -93,14 +96,14 @@ int _merge_sort(struct sst *sst, struct sst_item *c,
 	return i;
 }
 
-/* 
- * Calc level's offset of the SST file 
+/*
+ * Calc level's offset of the SST file
  */
 uint32_t _pos_calc(int level)
 {
 	int i = 0;
 	uint32_t off = HEADER_SIZE;
-	
+
 	while (i < level) {
 		off += (pow(LEVEL_BASE, i) * L0_SIZE);
 		i++;
@@ -127,7 +130,7 @@ void sst_dump(struct sst *sst)
 {
 	int i;
 
-	__DEBUG("**%06d.SST dump:", 
+	__DEBUG("**%06d.SST dump:",
 			sst->fd);
 
 	for (i = 0; i < (int)MAX_LEVEL; i++) {
@@ -139,14 +142,16 @@ void sst_dump(struct sst *sst)
 	printf("\n");
 }
 
-struct sst_item *read_one_level(struct sst *sst, int level, uint32_t readc, int issort)
+struct sst_item *read_one_level(struct sst *sst, int level,
+		uint32_t readc, int issort)
 {
 	int res;
 	int c = sst->header.count[level];
 	struct sst_item *L = xcalloc(readc + 1, ITEM_SIZE);
 
 	if (c > 0) {
-		res = pread(sst->fd, L, readc * ITEM_SIZE, _pos_calc(level) + (c - readc) * ITEM_SIZE);
+		res = pread(sst->fd, L, readc * ITEM_SIZE,
+				_pos_calc(level) + (c - readc) * ITEM_SIZE);
 		if (res == -1)
 			__PANIC("read klen error");
 
@@ -157,7 +162,8 @@ struct sst_item *read_one_level(struct sst *sst, int level, uint32_t readc, int 
 	return L;
 }
 
-void write_one_level(struct sst *sst, struct sst_item *L, uint32_t count, int level)
+void write_one_level(struct sst *sst, struct sst_item *L,
+		uint32_t count, int level)
 {
 	int res;
 
@@ -170,7 +176,7 @@ void write_one_level(struct sst *sst, struct sst_item *L, uint32_t count, int le
 		__PANIC("write to one level....");
 }
 
-void  _merge_to_next(struct sst *sst, int level) 
+void  _merge_to_next(struct sst *sst, int level)
 {
 	int nxt_level = level + 1;
 	uint32_t c1 = sst->header.count[level];
@@ -186,7 +192,7 @@ void  _merge_to_next(struct sst *sst, int level)
 	sst->header.count[level] = 0;
 	sst->header.count[nxt_level] = lmerge_c;
 
-	/* 
+	/*
 	 * Update full flag when there is enough size
 	 */
 	sst->header.full[level] = 0;
@@ -200,7 +206,7 @@ void  _merge_to_next(struct sst *sst, int level)
 	xfree(L_merge);
 
 	sst->stats->STATS_LEVEL_MERGES++;
-} 
+}
 
 void _check_merge(struct sst *sst)
 {
@@ -209,7 +215,7 @@ void _check_merge(struct sst *sst)
 
 	for (i = MAX_LEVEL - 2; i >= 0; i--) {
 		if (sst->header.full[i]) {
-			/* 
+			/*
 			 * Level-i and Level-(i+1) all is full
 			 */
 			if (sst->header.full[i + 1] == 0) {
@@ -218,19 +224,19 @@ void _check_merge(struct sst *sst)
 				int nxt_max = _level_max(i + 1, 3);
 				int delta = nxt_max - (c + nxt_c);
 
-				/* 
+				/*
 				 * Merge full level to next level
 				 */
 				if (delta >= 0)
 					_merge_to_next(sst, i);
-				else 
+				else
 					sst->header.full[i + 1] = 1;
 			}
 		}
 	}
 
 	for (i = MAX_LEVEL - 1; i >= 0; i--) {
-		if (sst->header.full[i]) 
+		if (sst->header.full[i])
 			full++;
 	}
 
@@ -249,7 +255,7 @@ void _build_block(struct sst *sst)
 		c = sst->header.count[i];
 		L = read_one_level(sst, i, c, 1);
 		if (c > 0)
-			block_build(sst->blk, L, c, i); 
+			block_build(sst->blk, L, c, i);
 		xfree(L);
 	}
 }
@@ -294,11 +300,11 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	klen = strlen(item->data);
 	pos = HEADER_SIZE + sst->header.count[0] * ITEM_SIZE;
 
-	/* 
-	 * Swap max key 
+	/*
+	 * Swap max key
 	 */
 	cmp = ness_strcmp(item->data, sst->header.max_key);
-	if (cmp > 0) { 
+	if (cmp > 0) {
 		memset(sst->header.max_key, 0, NESSDB_MAX_KEY_SIZE);
 		memcpy(sst->header.max_key, item->data, klen);
 	}
@@ -310,14 +316,14 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	sst->header.count[0]++;
 	_update_header(sst);
 
-	/* 
+	/*
 	 * If L0 is full, to check
 	 */
 	if (sst->header.count[0] >= _level_max(0, 1)) {
 		sst->header.full[0] = 1;
 		_check_merge(sst);
 	}
-	
+
 	return 1;
 
 ERR:
@@ -330,12 +336,12 @@ void sst_truncate(struct sst *sst)
 	sst->willfull = 0;
 }
 
-struct sst_item *sst_in_one(struct sst *sst, int *c) 
+struct sst_item *sst_in_one(struct sst *sst, int *c)
 {
 	int i;
 	int cur_lc;
 	int pre_lc = 0;
-	struct sst_item *L = NULL; 
+	struct sst_item *L = NULL;
 
 	for (i = 0; i < MAX_LEVEL; i++) {
 		cur_lc = sst->header.count[i];
@@ -345,10 +351,13 @@ struct sst_item *sst_in_one(struct sst *sst, int *c)
 				pre_lc += cur_lc;
 			} else {
 				struct sst_item *pre = L;
-				struct sst_item *cur = read_one_level(sst, i, cur_lc, 1);
+				struct sst_item *cur = read_one_level(sst, i,
+						cur_lc, 1);
 
 				L = xcalloc(cur_lc + pre_lc + 1, ITEM_SIZE);
-				pre_lc = _merge_sort(sst, L, cur, cur_lc, pre, pre_lc);
+				pre_lc = _merge_sort(sst, L,
+						cur, cur_lc,
+						pre, pre_lc);
 
 				xfree(pre);
 				xfree(cur);
@@ -372,7 +381,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	c = sst->header.count[i];
 	L = read_one_level(sst, 0, c, 0);
 
-	/* 
+	/*
 	 * Linear Search in level 0
 	 */
 	for (i = c - 1; i >= 0; i--) {
@@ -405,7 +414,8 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 		if (blk_idx < 0)
 			continue;
 
-		res = pread(sst->fd, sst->oneblk, SST_BLOCK_SIZE, _pos_calc(i) + blk_idx * SST_BLOCK_SIZE);
+		res = pread(sst->fd, sst->oneblk, SST_BLOCK_SIZE,
+				_pos_calc(i) + blk_idx * SST_BLOCK_SIZE);
 		if (res == -1)
 			goto ERR;
 
@@ -416,7 +426,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 					pair->offset = sst->oneblk[k].offset;
 					pair->vlen = sst->oneblk[k].vlen;
 					goto RET;
-				} else 
+				} else
 					goto ERR;
 			}
 		}

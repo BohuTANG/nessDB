@@ -5,7 +5,7 @@
  *
  */
 
-#include "buffer.h" 
+#include "buffer.h"
 #include "xmalloc.h"
 #include "debug.h"
 
@@ -40,8 +40,11 @@ void _string_vprintf(struct buffer *b,
 					 const char *fmt, va_list ap)
 {
 	int num_required;
-	
-	while ((num_required = vsnprintf(b->buf + b->NUL, b->buflen - b->NUL, fmt, ap)) >= b->buflen - b->NUL)
+
+	while ((num_required = vsnprintf(b->buf + b->NUL,
+					b->buflen - b->NUL,
+					fmt,
+					ap)) >= b->buflen - b->NUL)
 		_buffer_extendby(b, num_required + 1);
 
 	b->NUL += num_required;
@@ -166,7 +169,7 @@ uint32_t buffer_getint(struct buffer *b)
 	return val;
 }
 
-uint64_t buffer_getlong(struct buffer *b) 
+uint64_t buffer_getlong(struct buffer *b)
 {
 	uint64_t val = 0;
 

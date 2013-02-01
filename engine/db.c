@@ -58,7 +58,7 @@ void db_stats(struct nessdb *db, struct slice *stats)
 	time_t uptime = time(NULL) - db->stats->STATS_START_TIME;
 	int upday = uptime / (3600 * 24);
 
-	snprintf(stats->data, stats->len, 
+	snprintf(stats->data, stats->len,
 			"# nessDB\r\n"
 			"\tversion:%s\r\n"
 			"\tarch_bits:%d\r\n"
@@ -89,12 +89,12 @@ void db_stats(struct nessdb *db, struct slice *stats)
 		upday,
 		db->stats->STATS_DB_WASTED,
 
-		db->stats->STATS_READS, 
-		db->stats->STATS_WRITES, 
-		db->stats->STATS_REMOVES, 
-		db->stats->STATS_R_FROM_MTBL, 
+		db->stats->STATS_READS,
+		db->stats->STATS_WRITES,
+		db->stats->STATS_REMOVES,
+		db->stats->STATS_R_FROM_MTBL,
 		db->stats->STATS_R_COLA,
-		db->stats->STATS_CRC_ERRS, 
+		db->stats->STATS_CRC_ERRS,
 		db->stats->STATS_COMPRESSES);
 }
 

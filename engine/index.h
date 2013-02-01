@@ -6,8 +6,8 @@
 #include "buffer.h"
 #include "quicklz.h"
 
-typedef enum {UNCOMPRESS = 0, COMPRESS = 1} QLZ_FLAG;
-typedef enum {DEL = 0, ADD = 1} OPT_FLAG;
+enum QLZ_FLAG {UNCOMPRESS = 0, COMPRESS = 1};
+enum OPT_FLAG {DEL = 0, ADD = 1};
 
 struct ness_kv {
 	struct slice sk;

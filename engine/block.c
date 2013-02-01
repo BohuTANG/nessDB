@@ -4,7 +4,8 @@
  * Code is licensed with GPL. See COPYING.GPL file.
  *
  * Block is some like fractional cascading.
- * Here using sketch algorithm to speed up SST level's search, search costs is O(log N)
+ * Here using sketch algorithm to speed up SST level's search,
+ * search costs is O(log N)
  */
 
 #include "block.h"
@@ -26,7 +27,8 @@ struct block *block_new(int l0_blk_count)
 	return block;
 }
 
-void block_build(struct block *block, struct sst_item *items, int count, int level)
+void block_build(struct block *block, struct sst_item *items,
+			int count, int level)
 {
 	int i;
 	int x = count / BLOCK_GAP;
@@ -38,12 +40,14 @@ void block_build(struct block *block, struct sst_item *items, int count, int lev
 	memset(block->blocks[level], 0, block->level_blks[level] * ITEM_SIZE);
 	block->level_blk_used[level] = 0;
 	for (i = 0; i < x; i++) {
-		memcpy(&block->blocks[level][i], &items[i * BLOCK_GAP], ITEM_SIZE);
+		memcpy(&block->blocks[level][i], &items[i * BLOCK_GAP],
+				ITEM_SIZE);
 		block->level_blk_used[level]++;
 	}
 
 	if (mod > 0) {
-		memcpy(&block->blocks[level][i], &items[count - mod], ITEM_SIZE);
+		memcpy(&block->blocks[level][i], &items[count - mod],
+				ITEM_SIZE);
 		block->level_blk_used[level]++;
 	}
 }
@@ -82,7 +86,7 @@ void block_free(struct block *block)
 {
 	int i;
 
-	for (i = 0; i < (int)MAX_LEVEL; i++) 
+	for (i = 0; i < (int)MAX_LEVEL; i++)
 		xfree(block->blocks[i]);
 
 	xfree(block);

@@ -9,38 +9,38 @@
 #include "debug.h"
 #include "xmalloc.h"
 
-void  _check_dir(const char *pathname)  
-{  
+void  _check_dir(const char *pathname)
+{
 	int i, len;
-	char  dirname[NESSDB_PATH_SIZE];  
+	char  dirname[NESSDB_PATH_SIZE];
 
-	strcpy(dirname, pathname);  
-	i = strlen(dirname);  
+	strcpy(dirname, pathname);
+	i = strlen(dirname);
 	len = i;
 
-	if (dirname[len-1] != '/')  
-		strcat(dirname,  "/");  
+	if (dirname[len-1] != '/')
+		strcat(dirname,  "/");
 
-	len = strlen(dirname);  
-	for (i = 1; i < len; i++) {  
-		if (dirname[i] == '/') {  
-			dirname[i] = 0;  
-			if (access(dirname, 0) != 0) {  
-				if (mkdir(dirname, 0755) == -1) 
-					__PANIC("creta dir error, %s", 
+	len = strlen(dirname);
+	for (i = 1; i < len; i++) {
+		if (dirname[i] == '/') {
+			dirname[i] = 0;
+			if (access(dirname, 0) != 0) {
+				if (mkdir(dirname, 0755) == -1)
+					__PANIC("creta dir error, %s",
 							dirname);
-			}  
-			dirname[i] = '/';  
-		}  
-	}  
+			}
+			dirname[i] = '/';
+		}
+	}
 }
 
 void _make_sstname(struct meta *meta, int lsn)
 {
 	memset(meta->sst_file, 0, NESSDB_PATH_SIZE);
-	snprintf(meta->sst_file, NESSDB_PATH_SIZE, "%s/%06d%s", 
-			meta->path, 
-			lsn, 
+	snprintf(meta->sst_file, NESSDB_PATH_SIZE, "%s/%06d%s",
+			meta->path,
+			lsn,
 			NESSDB_SST_EXT);
 }
 
@@ -53,7 +53,7 @@ int _get_idx(struct meta *meta, char *key)
 	for (i = 0; i < right; i++) {
 		node = &meta->nodes[i];
 		cmp = ness_strcmp(key, node->sst->header.max_key);
-		if (cmp <= 0) 
+		if (cmp <= 0)
 			break;
 	}
 
@@ -65,8 +65,8 @@ void meta_dump(struct meta *meta)
 	int i, j;
 	int allc = 0;
 	uint64_t allwasted = 0;
-	
-	__DEBUG("---meta(%d):", 
+
+	__DEBUG("---meta(%d):",
 			meta->size);
 
 	for (i = 0; i < meta->size; i++) {
@@ -81,7 +81,8 @@ void meta_dump(struct meta *meta)
 
 		allc += count;
 		allwasted += wasted;
-		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s, used#%d, hole-wasted#%d, count#%d",
+		__DEBUG("\t-----[%d] #%06d.SST, max-key#%s,"
+				"used#%d, hole-wasted#%d, count#%d",
 				i,
 				meta->nodes[i].lsn,
 				meta->nodes[i].sst->header.max_key,
@@ -89,26 +90,26 @@ void meta_dump(struct meta *meta)
 				wasted,
 				count);
 	}
-	__DEBUG("\t----allcount:%d, allwasted(KB):%llu", 
+	__DEBUG("\t----allcount:%d, allwasted(KB):%llu",
 			allc,
 			allwasted/1024);
 }
 
-void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L, int start, int c, int idx)
+void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L,
+		int start, int c, int idx)
 {
 	int i;
 	int k = c + start;
 
-	for (i = start; i < k; i++) {
-		if (L[i].opt & 1) {
+	for (i = start; i < k; i++)
+		if (L[i].opt & 1)
 			sst_add(sst, &L[i]);
-		}
-	}
 
-	/* 
-	 * update new meta node 
+	/*
+	 * update new meta node
 	 */
-	memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
+	memmove(&meta->nodes[idx + 1], &meta->nodes[idx],
+			(meta->size - idx) * META_NODE_SIZE);
 	memset(&meta->nodes[idx], 0, sizeof(struct meta_node));
 	meta->nodes[idx].sst = sst;
 	meta->nodes[idx].lsn = meta->size;
@@ -116,7 +117,7 @@ void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L, int start, 
 	meta->size++;
 
 	if (meta->size >= (int)(NESSDB_MAX_META - 1))
-		__PANIC("OVER max metas, MAX#%d", 
+		__PANIC("OVER max metas, MAX#%d",
 				NESSDB_MAX_META);
 }
 
@@ -141,7 +142,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
 
 	/*
-	 * others SST 
+	 * others SST
 	 */
 	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
 		_make_sstname(meta, meta->size);
@@ -156,11 +157,9 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	sst = node->sst;
 	sst_truncate(sst);
 	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
-	for (i = 0; i < k; i++) {
-		if (L[i].opt == 1) {
+	for (i = 0; i < k; i++)
+		if (L[i].opt == 1)
 			sst_add(sst, &L[i]);
-		}
-	}
 
 	xfree(L);
 	meta->stats->STATS_SST_SPLITS++;
@@ -185,7 +184,8 @@ void _build_meta(struct meta *meta)
 			sst = sst_new(meta->sst_file, meta->stats);
 
 			idx = _get_idx(meta, sst->header.max_key);
-			memmove(&meta->nodes[idx + 1], &meta->nodes[idx], (meta->size - idx) * META_NODE_SIZE);
+			memmove(&meta->nodes[idx + 1], &meta->nodes[idx],
+					(meta->size - idx) * META_NODE_SIZE);
 			meta->nodes[idx].sst = sst;
 			meta->nodes[idx].lsn = lsn;
 
@@ -217,7 +217,7 @@ struct meta *meta_new(const char *path, struct stats *stats)
 	return m;
 }
 
-struct meta_node *meta_get(struct meta *meta, char *key, META_FLAG flag)
+struct meta_node *meta_get(struct meta *meta, char *key, enum META_FLAG flag)
 {
 	int i;
 	struct meta_node *node;
@@ -225,7 +225,7 @@ struct meta_node *meta_get(struct meta *meta, char *key, META_FLAG flag)
 	i = _get_idx(meta, key);
 	node = &meta->nodes[i];
 
-	if (i > 0 && i == meta->size) 
+	if (i > 0 && i == meta->size)
 		node = &meta->nodes[i - 1];
 
 	if ((flag == M_W) && node->sst->willfull) {
