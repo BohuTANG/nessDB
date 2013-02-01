@@ -48,6 +48,12 @@ void block_build(struct block *block, struct sst_item *items, int count, int lev
 	}
 }
 
+void block_reset(struct block *block, int level)
+{
+	block->level_blk_used[level] = 0;
+	memset(block->blocks[level], 0, block->level_blks[level] * ITEM_SIZE);
+}
+
 int block_search(struct block *block, struct slice *sk, int level)
 {
 	int i;

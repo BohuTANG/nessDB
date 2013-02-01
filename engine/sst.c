@@ -28,8 +28,8 @@ void _insertion_sort(struct sst *sst, struct sst_item *item, int len)
 				/* 
 				 * Cover all of the old version when key is same in array
 				 */
-				if ((item[j].opt&1) &&
-						((v.opt&1) == 0))
+				if ((item[j].opt == 1) &&
+						(v.opt == 0))
 					sst->header.wasted += item[j].vlen;
 
 				memcpy(&item[j], &v, ITEM_SIZE); 
@@ -68,8 +68,8 @@ int _merge_sort(struct sst *sst, struct sst_item *c,
 			/* 
 			 * Add removed-hole to wasted
 			 */
-			if ((b_old[n].opt&1) && 
-					((a_new[m].opt&1) == 0))
+			if ((b_old[n].opt == 1) && 
+					(a_new[m].opt  == 0))
 				sst->header.wasted += b_old[n].vlen;
 
 			memcpy(&c[i++], &a_new[m], ITEM_SIZE);
@@ -162,6 +162,9 @@ struct sst_item *read_one_level(struct sst *sst, int level, uint32_t readc, int 
 void write_one_level(struct sst *sst, struct sst_item *L, uint32_t count, int level)
 {
 	int res;
+
+	if (level > 1)
+		block_reset(sst->blk, level - 1);
 
 	block_build(sst->blk, L, count, level);
 	res = pwrite(sst->fd, L, count * ITEM_SIZE, _pos_calc(level));
@@ -293,7 +296,6 @@ int sst_add(struct sst *sst, struct sst_item *item)
 	int pos;
 	int klen;
 
-
 	klen = strlen(item->data);
 	pos = HEADER_SIZE + sst->header.count[0] * ITEM_SIZE;
 
@@ -384,7 +386,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 	for (i = c - 1; i >= 0; i--) {
 		cmp = ness_strcmp(sk->data, L[i].data);
 		if (cmp == 0) {
-			if (L[i].opt&1) {
+			if (L[i].opt == 1) {
 				pair->offset = L[i].offset;
 				pair->vlen = L[i].vlen;
 			}
@@ -414,7 +416,7 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 		for (k = 0; k < BLOCK_GAP; k++) {
 			cmp = ness_strcmp(sk->data, sst->oneblk[k].data);
 			if (cmp == 0) {
-				if (sst->oneblk[k].opt&1) {
+				if (sst->oneblk[k].opt == 1) {
 					pair->offset = sst->oneblk[k].offset;
 					pair->vlen = sst->oneblk[k].vlen;
 				}
