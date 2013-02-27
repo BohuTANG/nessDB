@@ -432,11 +432,11 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair)
 		}
 	}
 
-RET:
-	return 1;
-
 ERR:
 	return 0;
+
+RET:
+	return 1;
 }
 
 void sst_free(struct sst *sst)

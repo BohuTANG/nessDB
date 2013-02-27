@@ -384,11 +384,13 @@ void _get_ol_pair(struct index *idx, struct ol_pair *pair, struct slice *sk)
 	/*
 	 * get from TOWERs
 	 */
-	if (idx->sst)
-		if (!sst_get(idx->sst, sk, pair))
-			if (idx->park.merging_sst)
-				sst_get(idx->park.merging_sst, sk, pair);
+	if (sst_get(idx->sst, sk, pair))
+		goto SST_SEARCH;
 
+	if (idx->park.merging_sst) 
+		sst_get(idx->park.merging_sst, sk, pair);
+
+SST_SEARCH:
 	if (pair->offset == 0UL) {
 		node =  meta_get(idx->meta, sk->data, M_R);
 		if (node) {
