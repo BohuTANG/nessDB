@@ -214,6 +214,9 @@ struct meta *meta_new(const char *path, struct stats *stats)
 	_check_dir(path);
 	_build_meta(m);
 
+	m->r_lock = xmalloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(m->r_lock, NULL);
+
 	return m;
 }
 
@@ -222,14 +225,28 @@ struct meta_node *meta_get(struct meta *meta, char *key, enum META_FLAG flag)
 	int i;
 	struct meta_node *node;
 
+	/*
+	 * It maybe splitting on background-thread, so we need fetch lock
+	 */
+	pthread_mutex_lock(meta->r_lock);
+
 	i = _get_idx(meta, key);
 	node = &meta->nodes[i];
-
 	if (i > 0 && i == meta->size)
 		node = &meta->nodes[i - 1];
 
+	pthread_mutex_unlock(meta->r_lock);
+
 	if ((flag == M_W) && node->sst->willfull) {
+		/*
+		 *If flag is M_W, it means that it's merging on background-thread
+		 */
+		pthread_mutex_lock(meta->r_lock);
+		__ERROR("------> Begin to split sst....");
 		_split_sst(meta, node);
+		__ERROR("<------ End to split sst....\n");
+		pthread_mutex_unlock(meta->r_lock);
+
 		node = meta_get(meta, key, flag);
 	}
 
@@ -250,6 +267,9 @@ void meta_free(struct meta *meta)
 		}
 	}
 
-	if (meta)
-		xfree(meta);
+	pthread_mutex_unlock(meta->r_lock);
+	pthread_mutex_destroy(meta->r_lock);
+	xfree(meta->r_lock);
+
+	xfree(meta);
 }

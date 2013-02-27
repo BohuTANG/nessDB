@@ -13,3 +13,4 @@ db-bench
 merge-test
 core
 *.event
+tags

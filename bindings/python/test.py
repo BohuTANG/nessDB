@@ -23,6 +23,9 @@ def ness_write(db, c):
 		key = gen_random_str(16)
 		f.write(key+'\n')
 		db.db_add(key, "abcd")
+        	if (db.db_get(key) is None):
+            		print "---------------------->not found........."
+
 		if (i % 10000) == 0:
 			sys.stdout.write("\r\x1b[K ....write finished " + i.__str__())
 	 		sys.stdout.flush()

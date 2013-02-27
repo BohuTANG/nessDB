@@ -20,6 +20,9 @@ struct meta {
 	char sst_file[NESSDB_PATH_SIZE];
 	struct meta_node nodes[NESSDB_MAX_META];
 	struct stats *stats;
+
+	pthread_attr_t attr;
+	pthread_mutex_t *r_lock;
 };
 
 struct meta *meta_new(const char *path, struct stats *stats);
