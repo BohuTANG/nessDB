@@ -39,6 +39,7 @@ void *_merge_job(void *arg)
 
 	pthread_mutex_lock(idx->merge_lock);
 
+	__ERROR("*****begin to flush....");
 	sst = idx->park.merging_sst;
 	lsn = idx->park.lsn;
 	async = idx->park.async;
@@ -51,6 +52,7 @@ void *_merge_job(void *arg)
 	xfree(items);
 
 	idx->park.merging_sst = NULL;
+
 	/*
 	 * remove merged TOWER
 	 */
@@ -58,6 +60,7 @@ void *_merge_job(void *arg)
 	remove(idx->tower_file);
 	sst_free(sst);
 
+	__ERROR("*****end to flush....\n");
 	pthread_mutex_unlock(idx->merge_lock);
 	if (async) {
 		pthread_detach(pthread_self());

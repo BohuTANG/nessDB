@@ -95,8 +95,8 @@ void meta_dump(struct meta *meta)
 			allwasted/1024);
 }
 
-void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L,
-		int start, int c, int idx)
+void _scryed(struct sst *sst, struct sst_item *L,
+		int start, int c)
 {
 	int i;
 	int k = c + start;
@@ -104,7 +104,10 @@ void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L,
 	for (i = start; i < k; i++)
 		if (L[i].opt & 1)
 			sst_add(sst, &L[i]);
+}
 
+void _update(struct meta *meta, struct sst *sst, int idx)
+{
 	/*
 	 * update new meta node
 	 */
@@ -119,6 +122,7 @@ void _scryed(struct meta *meta, struct sst *sst, struct sst_item *L,
 	if (meta->size >= (int)(NESSDB_MAX_META - 1))
 		__PANIC("OVER max metas, MAX#%d",
 				NESSDB_MAX_META);
+
 }
 
 void _split_sst(struct meta *meta, struct meta_node *node)
@@ -132,6 +136,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 
 	struct sst_item *L;
 	struct sst *sst;
+	struct sst *ssts[NESSDB_SST_SEGMENT - 1];
 
 	L = sst_in_one(node->sst, &c);
 
@@ -142,21 +147,44 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	nxt_idx = _get_idx(meta, L[k - 1].data) + 1;
 
 	/*
-	 * others SST
+	 * Scryed new SSTs
 	 */
 	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
 		_make_sstname(meta, meta->size);
-		sst = sst_new(meta->sst_file, meta->stats);
-		_scryed(meta, sst, L, mod + i*split, split, nxt_idx++);
+		ssts[i - 1] = sst_new(meta->sst_file, meta->stats);
+		_scryed(ssts[i - 1], L, mod + i*split, split);
 	}
+
+	/*
+	 * When all others entries all scyred to others SST
+	 * Since this is on other thread, so must to fetch the read lock
+	 * If is splitting, it always return the old meta meta[X] when meta_get
+	 *
+	 * Update the meta info, as
+	 * old meta: meta[X] -> old_sst
+	 * new meta:
+	 *           meta[X] ->old_sst (but with new <min, max>)
+	 *           meta[X + 1] ->new_sst
+	 *           meta[X + 2] ->new_sst
+	 *           ... ...
+	 */
+	pthread_mutex_lock(meta->r_lock);
+	
+	sst = node->sst;
+	sst_truncate(sst);
+	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
+
+	/*
+	 * Update the new splitted SST meta
+	 */
+	for (i = 0; i < NESSDB_SST_SEGMENT - 1; i++) 
+		_update(meta, ssts[i], nxt_idx++);
+	pthread_mutex_unlock(meta->r_lock);
 
 	/*
 	 * truncate current SST, write head of list datas to it.
 	 * This needs lock.
 	 */
-	sst = node->sst;
-	sst_truncate(sst);
-	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
 	for (i = 0; i < k; i++)
 		if (L[i].opt == 1)
 			sst_add(sst, &L[i]);
@@ -241,12 +269,9 @@ struct meta_node *meta_get(struct meta *meta, char *key, enum META_FLAG flag)
 		/*
 		 *If flag is M_W, it means that it's merging on background-thread
 		 */
-		pthread_mutex_lock(meta->r_lock);
 		__ERROR("------> Begin to split sst....");
 		_split_sst(meta, node);
 		__ERROR("<------ End to split sst....\n");
-		pthread_mutex_unlock(meta->r_lock);
-
 		node = meta_get(meta, key, flag);
 	}
 
