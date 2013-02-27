@@ -20,7 +20,6 @@ struct ol_pair {
 struct sst_header {
 	uint32_t wasted;
 	uint32_t count[MAX_LEVEL];
-	uint16_t next;
 	char full[MAX_LEVEL];
 	char max_key[NESSDB_MAX_KEY_SIZE];
 } __attribute__((packed));
