@@ -179,15 +179,15 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	 */
 	for (i = 0; i < NESSDB_SST_SEGMENT - 1; i++) 
 		_update(meta, ssts[i], nxt_idx++);
-	pthread_mutex_unlock(meta->r_lock);
 
 	/*
-	 * truncate current SST, write head of list datas to it.
-	 * This needs lock.
+	 * Rewrite the old SST with the ahead entries [0, k]
 	 */
 	for (i = 0; i < k; i++)
 		if (L[i].opt == 1)
 			sst_add(sst, &L[i]);
+
+	pthread_mutex_unlock(meta->r_lock);
 
 	xfree(L);
 	meta->stats->STATS_SST_SPLITS++;
