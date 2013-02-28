@@ -269,9 +269,7 @@ struct meta_node *meta_get(struct meta *meta, char *key, enum META_FLAG flag)
 		/*
 		 *If flag is M_W, it means that it's merging on background-thread
 		 */
-		__ERROR("------> Begin to split sst....");
 		_split_sst(meta, node);
-		__ERROR("<------ End to split sst....\n");
 		node = meta_get(meta, key, flag);
 	}
 
