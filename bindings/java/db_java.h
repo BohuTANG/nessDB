@@ -6,12 +6,12 @@
 #ifdef __cplusplus
 	extern "C" {
 #endif
-JNIEXPORT jint JNICALL Java_com_kv_nessDB_open(JNIEnv *, jobject , jstring, jlong);
-JNIEXPORT jint JNICALL Java_com_kv_nessDB_set(JNIEnv *, jobject, jbyteArray, jint, jbyteArray, jint);
-JNIEXPORT jint JNICALL Java_com_kv_nessDB_get(JNIEnv *, jobject, jbyteArray, jint, jbyteArray, jint);
-JNIEXPORT jint JNICALL Java_com_kv_nessDB_remove(JNIEnv *, jobject, jbyteArray, jint);
-JNIEXPORT void JNICALL Java_com_kv_nessDB_stats(JNIEnv *, jobject, jbyteArray, jint);
-JNIEXPORT void JNICALL Java_com_kv_nessDB_close(JNIEnv *, jobject);
+JNIEXPORT jlong JNICALL Java_org_nessdb_DB_open(JNIEnv *, jobject , jstring);
+JNIEXPORT jint JNICALL Java_org_nessdb_DB_set(JNIEnv *, jobject, jlong, jbyteArray, jint, jbyteArray, jint);
+JNIEXPORT jbyteArray JNICALL Java_org_nessdb_DB_get(JNIEnv *, jobject, jlong, jbyteArray, jint);
+JNIEXPORT jint JNICALL Java_org_nessdb_DB_remove(JNIEnv *, jobject, jlong, jbyteArray, jint);
+JNIEXPORT void JNICALL Java_org_nessdb_DB_stats(JNIEnv *, jobject, jlong, jbyteArray, jint);
+JNIEXPORT void JNICALL Java_org_nessdb_DB_close(JNIEnv *, jobject, jlong);
 
 #ifdef __cplusplus
 }
