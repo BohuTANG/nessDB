@@ -41,6 +41,12 @@ int sst_get(struct sst *sst, struct slice *sk, struct ol_pair *pair);
 void sst_truncate(struct sst *sst);
 struct sst_item *sst_in_one(struct sst *sst, int *c);
 void sst_dump(struct sst *sst);
+
+char *sst_mmap(int fd);
+void sst_unmmap(char *mmap, int fd);
+struct sst_header *sst_mmap_header(const char *map);
+struct sst_item *sst_mmap_level(const char *map, int level);
+
 void sst_free(struct sst *sst);
 
 #endif

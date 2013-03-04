@@ -23,6 +23,7 @@ struct slice {
 	int db_add(struct nessdb *db, struct slice *sk, struct slice *sv);
 	void db_stats(struct nessdb *db, struct slice *infos);
 	void db_remove(struct nessdb *db, struct slice *sk);
+	void db_shrink(struct nessdb *db);
 	void db_close(struct nessdb *db);
 	void db_free_data(void *data);
 

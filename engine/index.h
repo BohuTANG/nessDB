@@ -27,6 +27,7 @@ struct index {
 	uint64_t db_alloc;
 	char tower_file[NESSDB_PATH_SIZE];
 	char path[NESSDB_PATH_SIZE];
+	char basepath[NESSDB_PATH_SIZE];
 
 	struct meta *meta;
 	struct buffer *buf;
@@ -46,6 +47,7 @@ int index_get(struct index *idx, struct slice *sk, struct slice *sv);
 int index_exists(struct index *idx, struct slice *sk);
 int index_remove(struct index *idx, struct slice *sk);
 char *index_read_data(struct index *idx, struct ol_pair *pair);
+void index_shrink(struct index *idx);
 void index_free(struct index *idx);
 
 #endif

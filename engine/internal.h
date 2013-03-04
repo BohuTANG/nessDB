@@ -33,6 +33,7 @@
 #include <sys/time.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <sys/mman.h>
 
 
 #if defined(__linux__)

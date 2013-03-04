@@ -439,6 +439,54 @@ RET:
 	return 1;
 }
 
+/*
+ * Mmap the SST file to memory
+ */
+char *sst_mmap(int fd)
+{
+	char *m = NULL;
+	int sizes = n_lseek(fd, 0, SEEK_END);
+	
+	if (sizes == 0)
+		return m;
+
+	m = mmap(0, sizes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+	if (m == MAP_FAILED)
+		__ERROR("...sst mmap failed...");
+
+	return m;
+}
+
+void sst_unmmap(char *mmap, int fd)
+{
+	int sizes = n_lseek(fd, 0, SEEK_END);
+
+	if (mmap == NULL || sizes == 0)
+		return;
+	
+	if (msync(mmap, sizes, MS_SYNC) == -1)
+		__ERROR("Msync ERROR");
+
+	if (munmap(mmap, sizes) == -1)
+		__ERROR("Un-mmapping the file ERROR");
+}
+
+/*
+ * Get the pointer of one level
+ */
+struct sst_item *sst_mmap_level(const char *map, int level)
+{
+	int pos = _pos_calc(level);
+
+	return (struct sst_item*)(map + pos);
+}
+
+struct sst_header *sst_mmap_header(const char *map)
+{
+	return (struct sst_header*) map;
+}
+
 void sst_free(struct sst *sst)
 {
 	if (sst->fd > 0)

@@ -103,6 +103,11 @@ void db_remove(struct nessdb *db, struct slice *sk)
 	index_remove(db->idx, sk);
 }
 
+void db_shrink(struct nessdb *db)
+{
+	index_shrink(db->idx);
+}
+
 void db_close(struct nessdb *db)
 {
 	index_free(db->idx);
