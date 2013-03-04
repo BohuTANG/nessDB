@@ -199,7 +199,7 @@ void _read_test(long int count)
 		/* if you want test random write, using flollowing */
 		//_random_key(key, KSIZE);
 		snprintf(key, KSIZE, "key-%d", i);
-		sk.len = KSIZE;
+		sk.len = strlen(key);
 		sk.data = key;
 		ret = db_get(db, &sk, &sv);
 		if (ret) {
@@ -243,7 +243,7 @@ void _readone_test(char *key)
 	memcpy(k, key, len);
 
 	db = db_open(DATAS);
-	sk.len = (KSIZE + 1);
+	sk.len = strlen(k);
 	sk.data = k;
 
 	ret = db_get(db, &sk, &sv);
@@ -284,7 +284,6 @@ void _exists_test(char *key)
 	db_close(db);
 }
 
-
 void _deleteone_test(char *key)
 {
 	struct slice sk;
@@ -300,6 +299,14 @@ void _deleteone_test(char *key)
 	sk.data = k;
 
 	db_remove(db, &sk);
+	db_close(db);
+}
+
+void _shrink_test()
+{
+	struct nessdb *db;
+	db = db_open(DATAS);
+	db_shrink(db);
 	db_close(db);
 }
 
@@ -333,6 +340,8 @@ int main(int argc,char** argv)
 
 	} else if (strcmp(argv[1], "exists") == 0) {
 		_exists_test(argv[2]);
+	} else if (strcmp(argv[1], "shrink") == 0) {
+		_shrink_test();
 	} else if (strcmp(argv[1], "writeone") == 0) {
 		if (argc != 4) {
 			fprintf(stderr,"Usage: db-bench writeone <key> <value>\n");

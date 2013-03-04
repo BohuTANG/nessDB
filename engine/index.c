@@ -592,6 +592,7 @@ void index_shrink(struct index *idx)
 		sst_unmmap(mmap, sst_fd);
 	}
 
+	//todo: tower
 	close(bak_fd);
 	remove(bak_db_file);
 	__ERROR("---->Oh, shrink success....");
