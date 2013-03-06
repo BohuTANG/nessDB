@@ -29,6 +29,7 @@ struct sst {
 	int willfull;
 	uint32_t sst_count;
 	char file[NESSDB_PATH_SIZE];
+	char sst_file[NESSDB_PATH_SIZE];
 	struct sst_header header;
 	struct stats *stats;
 	struct block *blk;

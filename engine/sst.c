@@ -267,6 +267,7 @@ struct sst *sst_new(const char *file, struct stats *stats)
 	struct sst *sst = xcalloc(1, sizeof(struct sst));
 
 	memcpy(sst->file, file, strlen(file));
+	memcpy(sst->sst_file, file, strlen(file));
 	sst->oneblk = xcalloc(BLOCK_GAP, ITEM_SIZE);
 	sst->blk = block_new(BLOCK0_COUNT);
 

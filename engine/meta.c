@@ -150,7 +150,12 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	 * Scryed new SSTs
 	 */
 	for (i = 1; i < NESSDB_SST_SEGMENT; i++) {
-		_make_sstname(meta, meta->size);
+		int lsn = meta->size + i;
+
+		/*
+		 * To make new sst name
+		 */
+		_make_sstname(meta, lsn);
 		ssts[i - 1] = sst_new(meta->sst_file, meta->stats);
 		_scryed(ssts[i - 1], L, mod + i*split, split);
 	}
@@ -172,6 +177,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	
 	sst = node->sst;
 	sst_truncate(sst);
+
 	memcpy(node->sst->header.max_key, L[k - 1].data, strlen(L[k - 1].data));
 
 	/*

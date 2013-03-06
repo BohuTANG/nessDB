@@ -14,6 +14,7 @@
 
 #define DB_MAGIC (20121212)
 #define NESSDB_TOWER_EXT (".TOWER")
+#define REDO_LOG ("ness.REDO")
 
 void _make_towername(struct index *idx, int lsn)
 {
@@ -223,8 +224,10 @@ RET:
 
 struct index *index_new(const char *path, struct stats *stats)
 {
+	int redo_fd;
 	int magic;
 	char db_name[NESSDB_PATH_SIZE];
+	char redo_name[NESSDB_PATH_SIZE];
 	struct index *idx = xcalloc(1, sizeof(struct index));
 
 	idx->stats = stats;
@@ -233,8 +236,19 @@ struct index *index_new(const char *path, struct stats *stats)
 
 	memcpy(idx->path, path, strlen(path));
 	memcpy(idx->basepath, path, strlen(path));
+
 	memset(db_name, 0, NESSDB_PATH_SIZE);
 	snprintf(db_name, NESSDB_PATH_SIZE, "%s/%s", path, NESSDB_DB);
+
+	memset(redo_name, 0, NESSDB_PATH_SIZE);
+	snprintf(redo_name, NESSDB_PATH_SIZE, "%s/%s", path, REDO_LOG);
+
+	redo_fd = n_open(redo_name, N_OPEN_FLAGS, 0644);
+	if (redo_fd > 0) {
+		close(redo_fd);
+		__PANIC("---OOPS, the ness.REDO is exists, there are some transaction to rollback"
+				"\tTransaction Infos: db_shrink failed");
+	}
 
 	idx->fd = n_open(db_name, N_OPEN_FLAGS, 0644);
 	if (idx->fd == -1) {
@@ -486,15 +500,27 @@ void index_shrink(struct index *idx)
 
 	char bak_db_file [NESSDB_PATH_SIZE];
 	char db_file [NESSDB_PATH_SIZE];
+	char redo_file [NESSDB_PATH_SIZE];
 
 	pthread_mutex_lock(idx->merge_lock);
 
 	__ERROR("---->begin to shrink database....");
 	memset(bak_db_file, 0, NESSDB_PATH_SIZE);
 	memset(db_file, 0, NESSDB_PATH_SIZE);
+	memset(redo_file, 0, NESSDB_PATH_SIZE);
 
 	snprintf(bak_db_file, NESSDB_PATH_SIZE, "%s/ness.BAK", idx->basepath);
 	snprintf(db_file, NESSDB_PATH_SIZE, "%s/%s", idx->basepath, NESSDB_DB);
+	snprintf(redo_file, NESSDB_PATH_SIZE, "%s/%s", idx->basepath, REDO_LOG);
+
+	/*
+	 * Create the redo transaction log
+	 */
+	__ERROR("---->begin to create REDO transaction....");
+	int redo_fd = n_open(redo_file, N_CREAT_FLAGS, 0644);
+
+	if (redo_fd == -1)
+		__PANIC("Create redo log failed");
 
 	if (idx->fd > 0)
 		close(idx->fd);
@@ -537,11 +563,19 @@ void index_shrink(struct index *idx)
 
 
 	__ERROR("---->begin to shrink database, this will takes many mins....");
-	for (l = 0; l < idx->meta->size; l++) {
+	for (l = 0; l <= idx->meta->size; l++) {
 		/*
 		 * 1) mmap all SST to mapping
 		 */
-		int sst_fd = idx->meta->nodes[l].sst->fd;
+		int sst_fd;
+
+		/*
+		 * if l==meta->size, it the only one TOWER file
+		 */
+		if (l == idx->meta->size)
+			sst_fd = idx->sst->fd;
+		else
+			sst_fd = idx->meta->nodes[l].sst->fd;
 
 		mmap = sst_mmap(sst_fd);
 		if (mmap) {
@@ -592,9 +626,16 @@ void index_shrink(struct index *idx)
 		sst_unmmap(mmap, sst_fd);
 	}
 
-	//todo: tower
 	close(bak_fd);
 	remove(bak_db_file);
+
+	/*
+	 * Clean the redo transaction log
+	 */
+	if (redo_fd > 0)
+		close(redo_fd);
+	remove(redo_file);
+	__ERROR("---->delete the  REDO transaction....");
 	__ERROR("---->Oh, shrink success....");
 
 	pthread_mutex_unlock(idx->merge_lock);
