@@ -24,6 +24,8 @@ struct index {
 	int fd;
 	int lsn;
 	int read_fd;
+	time_t bak_ctime;
+	time_t db_ctime;
 	uint64_t db_alloc;
 	char tower_file[NESSDB_PATH_SIZE];
 	char path[NESSDB_PATH_SIZE];

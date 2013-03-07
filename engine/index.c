@@ -222,6 +222,7 @@ RET:
 	return data;
 }
 
+void index_shrink(struct index *idx);
 struct index *index_new(const char *path, struct stats *stats)
 {
 	int redo_fd;
@@ -246,8 +247,9 @@ struct index *index_new(const char *path, struct stats *stats)
 	redo_fd = n_open(redo_name, N_OPEN_FLAGS, 0644);
 	if (redo_fd > 0) {
 		close(redo_fd);
-		__PANIC("---OOPS, the ness.REDO is exists, there are some transaction to rollback"
-				"\tTransaction Infos: db_shrink failed");
+
+		__ERROR("Detect shrink transaction not finished, REDO it");
+		index_shrink(idx);
 	}
 
 	idx->fd = n_open(db_name, N_OPEN_FLAGS, 0644);
@@ -502,7 +504,8 @@ void index_shrink(struct index *idx)
 	char db_file [NESSDB_PATH_SIZE];
 	char redo_file [NESSDB_PATH_SIZE];
 
-	pthread_mutex_lock(idx->merge_lock);
+	if (idx->merge_lock)
+		pthread_mutex_lock(idx->merge_lock);
 
 	__ERROR("---->begin to shrink database....");
 	memset(bak_db_file, 0, NESSDB_PATH_SIZE);
@@ -517,10 +520,10 @@ void index_shrink(struct index *idx)
 	 * Create the redo transaction log
 	 */
 	__ERROR("---->begin to create REDO transaction....");
-	int redo_fd = n_open(redo_file, N_CREAT_FLAGS, 0644);
+	int redo_fd = n_open(redo_file, N_OPEN_FLAGS, 0644);
 
 	if (redo_fd == -1)
-		__PANIC("Create redo log failed");
+		redo_fd = n_open(redo_file, N_CREAT_FLAGS, 0644);
 
 	if (idx->fd > 0)
 		close(idx->fd);
@@ -532,30 +535,39 @@ void index_shrink(struct index *idx)
 	/*
 	 * Rename the database to backup
 	 */
-	__ERROR("---->begin to rename database: ness.DB --> ness.BAK....");
-	if (rename(db_file, bak_db_file) == -1)
-		__PANIC(" rename failed when do shrink....");
-	__ERROR("---->rename success....");
 
-	/*
-	 * Open back database file 
-	 */
-	__ERROR("---->begin to open ness.BAK....");
+	__ERROR("---->begin to rename/open with ness.BAK....");
 	bak_fd = n_open(bak_db_file, N_OPEN_FLAGS, 0644);
-	if (bak_fd == -1)
-		__PANIC("open database back failed when shrink"
-				"please rename ness.BAK to ness.DB and restart...");
-	__ERROR("---->open success....");
+	if (bak_fd == -1) {
+		__ERROR("---->begin to rename database: ness.DB --> ness.BAK....");
+		if (rename(db_file, bak_db_file) == -1)
+			__PANIC(" rename failed when do shrink....");
+		__ERROR("---->rename success....");
+		bak_fd = n_open(bak_db_file, N_OPEN_FLAGS, 0644);
+	}
 
 	/*
 	 * Creat the database file
 	 */
-	__ERROR("---->begin to create ness.DB....");
-	idx->fd = n_open(db_file, N_CREAT_FLAGS, 0644);
-	if (write(idx->fd, &magic, sizeof(magic)) < 0)
-		__PANIC("write db magic error");
-	idx->db_alloc += sizeof(magic);
-	__ERROR("---->create success....");
+	__ERROR("---->begin to create/open ness.DB....");
+	idx->fd = n_open(db_file, N_OPEN_FLAGS, 0644);
+	if (idx->fd == -1) {
+		idx->fd = n_open(db_file, N_CREAT_FLAGS, 0644);
+		if (write(idx->fd, &magic, sizeof(magic)) < 0)
+			__PANIC("write db magic error");
+		idx->db_alloc += sizeof(magic);
+		__ERROR("---->success....");
+	} else 
+		idx->db_alloc = n_lseek(idx->fd, 0, SEEK_END);
+
+	/*
+	 * Get the stat of ness.DB
+	 */
+	struct stat st;
+
+	stat(db_file, &st);
+	idx->db_ctime = st.st_ctime;
+	__ERROR("---->the last modification time is:%i", idx->db_ctime);
 
 	idx->read_fd = n_open(db_file, N_OPEN_FLAGS, 0644);
 	if (idx->fd == -1 || idx->read_fd == 1)
@@ -567,63 +579,87 @@ void index_shrink(struct index *idx)
 		/*
 		 * 1) mmap all SST to mapping
 		 */
-		int sst_fd;
+		int sst_fd = -1;
+		char *sname = NULL;
 
 		/*
 		 * if l==meta->size, it the only one TOWER file
 		 */
-		if (l == idx->meta->size)
-			sst_fd = idx->sst->fd;
-		else
+		if (l == idx->meta->size) {
+			if (idx->sst) {
+				sst_fd = idx->sst->fd;
+				sname = idx->sst->sst_file;
+			}
+		} else {
 			sst_fd = idx->meta->nodes[l].sst->fd;
+			sname = idx->meta->nodes[l].sst->sst_file;
+		}
 
-		mmap = sst_mmap(sst_fd);
-		if (mmap) {
-			int i, k;
-			/*
-			 * 2)SST header
-			 */
-			struct sst_header *hdr = sst_mmap_header(mmap);
+		if (sst_fd > 0) {
+			mmap = sst_mmap(sst_fd);
+			if (mmap) {
+				int i, k;
+				/*
+				 * 2)SST header
+				 */
+				struct sst_header *hdr = sst_mmap_header(mmap);
+				
+				/*
+				 * If ctime is same, it has shrinked.
+				 */
+				if (hdr->sct== idx->db_ctime) {
+					sst_unmmap(mmap, sst_fd);
+					__ERROR("\t this SST %s has shrinked", sname);
+					continue;
+				}
+				
+				/*
+				 * Update ctime of this SST
+				 * To mark is shrinked
+				 */
+				hdr->sct= idx->db_ctime;
 
-			/*
-			 * 3) each level of SST
-			 */
-			for (i = 0; i < MAX_LEVEL; i++) {
-				int c = hdr->count[i];
-				struct sst_item *itm = sst_mmap_level(mmap, i);
+				/*
+				 * 3) each level of SST
+				 */
+				for (i = 0; i < MAX_LEVEL; i++) {
+					int c = hdr->count[i];
+					struct sst_item *itm = sst_mmap_level(mmap, i);
 
-				for (k = 0; k < c; k++) {
-					if (itm[k].opt == 1) {
-						/*
-						 * Pread crc and value from bak
-						 */
-						uint16_t crc = 0;
-						uint32_t offset = 0;
-						char *data = xcalloc(1, itm[k].vlen + 1);
+					for (k = 0; k < c; k++) {
+						if (itm[k].opt == 1) {
+							/*
+							 * Pread crc and value from bak
+							 */
+							uint16_t crc = 0;
+							uint32_t offset = 0;
+							char *data = xcalloc(1, itm[k].vlen + 1);
 
-						n_pread64(bak_fd, &crc, sizeof(crc), itm[k].offset);
-						n_pread64(bak_fd, data, itm[k].vlen, itm[k].offset + sizeof(crc));
+							n_pread64(bak_fd, &crc, sizeof(crc), itm[k].offset);
+							n_pread64(bak_fd, data, itm[k].vlen, itm[k].offset + sizeof(crc));
 
-						/*
-						 * pwrite crc&value to new database
-						 */
-						n_pread64(idx->fd, &crc, sizeof(crc), idx->db_alloc);
-						offset += sizeof(crc);
+							/*
+							 * pwrite crc&value to new database
+							 */
+							n_pread64(idx->fd, &crc, sizeof(crc), idx->db_alloc);
+							offset += sizeof(crc);
 
-						n_pread64(idx->fd, data, itm[k].vlen, idx->db_alloc + offset);
-						offset += itm[k].vlen;
-						xfree(data);
+							n_pread64(idx->fd, data, itm[k].vlen, idx->db_alloc + offset);
+							offset += itm[k].vlen;
+							xfree(data);
 
-						/*
-						 * update new offset to SST
-						 */
-						itm[k].offset = idx->db_alloc;
-						idx->db_alloc += offset;
+							/*
+							 * update new offset to SST
+							 */
+							itm[k].offset = idx->db_alloc;
+							idx->db_alloc += offset;
+						}
 					}
 				}
 			}
+			sst_unmmap(mmap, sst_fd);
+			__ERROR("\t....finished %s", sname);
 		}
-		sst_unmmap(mmap, sst_fd);
 	}
 
 	close(bak_fd);
@@ -638,7 +674,8 @@ void index_shrink(struct index *idx)
 	__ERROR("---->delete the  REDO transaction....");
 	__ERROR("---->Oh, shrink success....");
 
-	pthread_mutex_unlock(idx->merge_lock);
+	if (idx->merge_lock)
+		pthread_mutex_unlock(idx->merge_lock);
 }
 
 void index_free(struct index *idx)
