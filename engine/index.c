@@ -641,10 +641,10 @@ void index_shrink(struct index *idx)
 							/*
 							 * pwrite crc&value to new database
 							 */
-							n_pread64(idx->fd, &crc, sizeof(crc), idx->db_alloc);
+							n_pwrite64(idx->fd, &crc, sizeof(crc), idx->db_alloc);
 							offset += sizeof(crc);
 
-							n_pread64(idx->fd, data, itm[k].vlen, idx->db_alloc + offset);
+							n_pwrite64(idx->fd, data, itm[k].vlen, idx->db_alloc + offset);
 							offset += itm[k].vlen;
 							xfree(data);
 
