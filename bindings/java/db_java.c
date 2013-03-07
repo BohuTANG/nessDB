@@ -148,28 +148,28 @@ JNIEXPORT jbyteArray JNICALL Java_org_nessdb_DB_get(JNIEnv *jenv, jobject clazz,
 	return jval;
 }
 
-JNIEXPORT void JNICALL Java_org_nessdb_DB_stats(JNIEnv *jenv, jobject clazz, jlong ptr, 
-													   jbyteArray jval, jint jblen)
+JNIEXPORT jbyteArray JNICALL Java_org_nessdb_DB_stats(JNIEnv *jenv, jobject clazz, jlong ptr)
 {
 	(void)clazz;
-	char buf[1024*10] = {0};
+	char buf[1024 * 10] = {0};
 	struct slice stats;
 
     struct nessdb *_db = (struct nessdb *)ptr;
 	if (!_db) {
 		__ERROR("info-->db is null, pls open first\n");
 
-		return;
+		return NULL;
 	}
 
-	if (jblen <= 0)
-		return;
-
-	stats.len = jblen;
+	stats.len = 1024 * 10;
 	stats.data = buf;
+
 	db_stats(_db, &stats);
 
-	(*jenv)->SetByteArrayRegion(jenv, jval, 0, jblen, (jbyte*)buf);
+    jbyteArray jval = (*jenv)->NewByteArray(jenv, stats.len);
+	(*jenv)->SetByteArrayRegion(jenv, jval, 0, stats.len, (jbyte*)stats.data);
+
+    return jval;
 }
 
 JNIEXPORT jint JNICALL Java_org_nessdb_DB_remove(JNIEnv *jenv, jobject clazz, jlong ptr, 
@@ -228,6 +228,18 @@ JNIEXPORT void JNICALL Java_org_nessdb_DB_close(JNIEnv *jenv, jobject clazz, jlo
     struct nessdb *_db = (struct nessdb *)ptr;
 	if (_db) {
 		db_close(_db);
+		_db = NULL;
+	}
+}
+
+JNIEXPORT void JNICALL Java_org_nessdb_DB_shrink(JNIEnv *jenv, jobject clazz, jlong ptr)
+{
+	(void)jenv;
+	(void)clazz;
+
+    struct nessdb *_db = (struct nessdb *)ptr;
+	if (_db) {
+		db_shrink(_db);
 		_db = NULL;
 	}
 }

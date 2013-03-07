@@ -7,8 +7,7 @@ public class DB {
 	}
 
 	private static void loadNativeLib() {
-		System.load("/home/yanghu/Project/nessdb/bindings/java/libnessdb_jni.so");
-		//System.loadLibrary("nessdb_jni");
+		System.loadLibrary("nessdb_jni");
 	}
 
 	private String path;
@@ -44,14 +43,28 @@ public class DB {
 		return get(ptr, key, klen);
 	}
 
-	public void remove(byte[] key, int klen) throws DBException {
+	public boolean remove(byte[] key, int klen) throws DBException {
 		if (ptr == 0) {
 			throw new DBException("open db first.");
 		}
-		remove(ptr, key, klen);
+		return remove(ptr, key, klen) == 1;
 	}
 
-	public String info() {
+	public void shrink() throws DBException {
+		if (ptr == 0) {
+			throw new DBException("open db first.");
+		}
+		shrink(ptr);
+	}
+
+	public String info() throws DBException {
+		if (ptr == 0) {
+			throw new DBException("open db first.");
+		}
+		byte[] b = stats(ptr);
+		if (b != null) {
+			return new String(b);
+		}
 		return null;
 	}
 
@@ -63,13 +76,16 @@ public class DB {
 
 	private native long open(String sst_path);
 
-	private native int set(long ptr, byte[] key, int klen, byte[] value, int vlen);
+	private native int set(long ptr, byte[] key, int klen, byte[] value,
+			int vlen);
 
 	private native byte[] get(long ptr, byte[] key, int klen);
 
 	private native int remove(long ptr, byte[] key, int klen);
 
-	private native void info(long ptr, byte[] infos, int vlen);
+	private native byte[] stats(long ptr);
 
 	private native void close(long ptr);
+
+	private native void shrink(long ptr);
 }
