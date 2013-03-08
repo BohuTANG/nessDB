@@ -68,7 +68,10 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 		else
 			print("oops");
 
-  f. CLOSE
+  f. SHRINK 
+  		db_shrink(db);
+
+  g. CLOSE
   		db_close(db);
 
   Thanks for your attention!
