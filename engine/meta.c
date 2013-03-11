@@ -161,7 +161,7 @@ void _split_sst(struct meta *meta, struct meta_node *node)
 	}
 
 	/*
-	 * When all others entries all scyred to others SST
+	 * Scyred to other SSTs
 	 * Since this is on other thread, so must to fetch the read lock
 	 * If is splitting, it always return the old meta meta[X] when meta_get
 	 *

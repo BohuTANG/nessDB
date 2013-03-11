@@ -30,6 +30,9 @@ class NessDB(object):
     def db_info(self):
         return _nessdb.db_info(self.db)
    
+    def db_shrink(self):
+        return _nessdb.db_shrink(self.db)
+
     def db_close(self):
         return _nessdb.db_close(self.db)
     

@@ -98,6 +98,18 @@ pynessdb_db_stats(PyObject *self, PyObject *args)
     return Py_BuildValue("s", stats);
 }
 
+static PyObject *
+pynessdb_db_shrink(PyObject *self, PyObject *args)
+{
+    long db=0;
+    
+    if (!PyArg_ParseTuple(args, "l", &db))
+        return NULL;
+    if(!db)
+        db_shrink((struct nessdb*)db);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 
 static PyObject *
 pynessdb_db_close(PyObject *self, PyObject *args)
@@ -119,6 +131,7 @@ static PyMethodDef NessDBMethods[] = {
     {"db_get",  pynessdb_db_get, METH_VARARGS,""},
     {"db_exists",  pynessdb_db_exists, METH_VARARGS,""},
     {"db_stats", pynessdb_db_stats, METH_VARARGS,""},
+    {"db_shrink",  pynessdb_db_shrink, METH_VARARGS,""},
     {"db_close",  pynessdb_db_close, METH_VARARGS,""},
     {NULL, NULL, 0, NULL}
 };

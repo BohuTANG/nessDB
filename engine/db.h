@@ -15,14 +15,17 @@ struct slice {
 #endif
 
 	struct nessdb *db_open(const char *basedir);
-	/*
-	 * Just for read only
-	 */
 	int db_get(struct nessdb *db, struct slice *sk, struct slice *sv);
 	int db_exists(struct nessdb *db, struct slice *sk);
 	int db_add(struct nessdb *db, struct slice *sk, struct slice *sv);
 	void db_stats(struct nessdb *db, struct slice *infos);
 	void db_remove(struct nessdb *db, struct slice *sk);
+
+	/*
+	 * Shrink the database
+	 * Often used in: many times deleted/updated
+	 * This will block read&write util shrink done
+	 */
 	void db_shrink(struct nessdb *db);
 	void db_close(struct nessdb *db);
 	void db_free_data(void *data);

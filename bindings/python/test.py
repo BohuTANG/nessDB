@@ -69,5 +69,10 @@ if __name__ == '__main__':
 			db = ness_open("ndbs")
 			ness_check(db, int(sys.argv[2]))
 			db.db_close()
+		if (sys.argv[1] == "shrink"):
+			db = ness_open("ndbs")
+			print 'to do shrink...'
+			db.db_shrink()
+			db.db_close()
 	else:
 		print "test.py write <count>"
