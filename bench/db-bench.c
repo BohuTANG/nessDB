@@ -131,9 +131,9 @@ void _write_test(long int count, int r)
 			snprintf(key, KSIZE, "key-%d", i);
 		snprintf(val, VSIZE, "val-%d", i);
 
-		sk.len = KSIZE;
+		sk.len = strlen(key);
 		sk.data = key;
-		sv.len = VSIZE;
+		sv.len = strlen(val);
 		sv.data = val;
 
 		db_add(db, &sk, &sv);
