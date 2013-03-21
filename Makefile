@@ -1,8 +1,23 @@
 CC = gcc
 
-#debug levle
-DEBUG =	-g  -ggdb -DINFO
-CFLAGS =  -c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
+BGMERGE = -DBGMERGE
+DEBUG =	-g -ggdb -DINFO
+
+#detect OS,support Linux and Mac OS
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+	CFLAGS =-c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
+	LDFLAGS=-fPIC -shared
+	LIB_EXTENSION=so
+endif
+ifeq ($(UNAME), Darwin)
+	CFLAGS =-c -std=c99 -W -Wall -Werror $(DEBUG) $(BGMERGE)
+	LDFLAGS=-std=c99 -W -Wall -Werror -dynamiclib -flat_namespace
+	LIB_EXTENSION=dylib
+endif
+
+
+
 
 LIB_OBJS = \
 	./engine/xmalloc.o\
@@ -16,15 +31,13 @@ LIB_OBJS = \
 	./engine/db.o
 
 TEST = \
-	./test/buffer-test.o\
 	./bench/db-bench.o
 
 
 EXE = \
 	./db-bench\
-	./buffer-test
 
-LIBRARY = libnessdb.so
+LIBRARY = libnessdb.$(LIB_EXTENSION)
 
 all: $(LIBRARY)
 
@@ -33,16 +46,16 @@ clean:
 	-rm -f $(LIB_OBJS)
 	-rm -f $(EXE)
 	-rm -f $(TEST)
+	cd test;make clean
 
 cleandb:
 	-rm -rf ndbs
 	-rm -rf *.event
 
 $(LIBRARY): $(LIB_OBJS)
-	$(CC) -pthread -fPIC -shared $(LIB_OBJS) -o libnessdb.so -lm
+	$(CC) -pthread $(LDFLAGS) $(LIB_OBJS) -o libnessdb.$(LIB_EXTENSION) -lm
 
-db-bench:  $(LIB_OBJS) $(TEST)
+db-bench:  bench/db-bench.o $(LIB_OBJS)
 	$(CC) -pthread $(LIB_OBJS) $(DEBUG) bench/db-bench.o -o $@ -lm
-
-buffer-test:  $(LIB_OBJS) $(TEST)
-	$(CC) -pthread  $(LIB_OBJS) test/buffer-test.o -o $@ -lm
+test: $(LIB_OBJS)
+	cd test;make
