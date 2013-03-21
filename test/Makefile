@@ -23,8 +23,8 @@ all: test
 %.o: %.c ctest.h
 	$(CC) $(CCFLAGS) $(INCPATH) -c -o $@ $<
 
-test: main.o ctest.h buffer-test.o
-	$(CC) $(LDFLAGS) main.o buffer-test.o -o test
+test: main.o ctest.h buffer-test.o db-test.o
+	$(CC) $(LDFLAGS) main.o buffer-test.o db-test.o -o test
 clean:
 	rm -f test *.o
 
