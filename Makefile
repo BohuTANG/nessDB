@@ -57,5 +57,5 @@ $(LIBRARY): $(LIB_OBJS)
 
 db-bench:  bench/db-bench.o $(LIB_OBJS)
 	$(CC) -pthread $(LIB_OBJS) $(DEBUG) bench/db-bench.o -o $@ -lm
-test: $(LIB_OBJS)
+test: all $(LIB_OBJS)
 	cd test;make
