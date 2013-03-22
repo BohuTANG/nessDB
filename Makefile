@@ -59,4 +59,4 @@ db-bench:  bench/db-bench.o $(LIB_OBJS)
 	$(CC) -pthread $(LIB_OBJS) $(DEBUG) bench/db-bench.o -o $@ -lm
 test: all $(LIB_OBJS)
 	cd test;make
-	./test/test
+	export LD_LIBRARY_PATH=. && ./test/test
