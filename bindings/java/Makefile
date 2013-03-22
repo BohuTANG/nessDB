@@ -1,7 +1,18 @@
 CC = gcc
 
 DEBUG=-g  -ggdb -DINFO
-CFLAGS=-std=c99 -W -Wall -Werror -fPIC $(DEBUG)
+#detect OS,support Linux and Mac OS
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+	CFLAGS =-c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
+	LDFLAGS=-fPIC -shared
+	LIB_EXTENSION=so
+endif
+ifeq ($(UNAME), Darwin)
+	CFLAGS =-c -std=c99 -W -Wall -Werror $(DEBUG) $(BGMERGE)
+	LDFLAGS=-dynamiclib
+	LIB_EXTENSION=dylib
+endif
 LIB_JNI_OBJS=\
 	db_java.o	
 
@@ -16,7 +27,7 @@ LIB_OBJS=\
 	../../engine/block.o\
 	../../engine/db.o
 
-LIBRARY=libnessdb_jni.so
+LIBRARY=libnessdb_jni.$(LIB_EXTENSION)
 
 all: $(LIBRARY)
 
@@ -25,4 +36,4 @@ clean:
 	-rm -f $(LIB_JNI_OBJS)
 
 $(LIBRARY): $(LIB_OBJS) $(LIB_JNI_OBJS)
-	$(CC) -pthread -fPIC -shared $^ -o $@ -lm
+	$(CC) -pthread $(LDFLAGS) $^ -o $@ -lm
