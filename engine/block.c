@@ -1,93 +1,189 @@
 /*
- * Copyright (c) 2012-2013, BohuTANG <overred.shuttler at gmail dot com>
- * All rights reserved.
+ * Copyright (c) 2012-2014 The nessDB Project Developers. All rights reserved.
  * Code is licensed with GPL. See COPYING.GPL file.
  *
- * Block is some like fractional cascading.
- * Here using sketch algorithm to speed up SST level's search,
- * search costs is O(log N)
  */
 
 #include "block.h"
-#include "sst.h"
-#include "xmalloc.h"
-#include "debug.h"
 
-struct block *block_new(int l0_blk_count)
+/* auto extend pairs array size */
+void _extend(struct block *b, uint32_t n)
 {
-	int i;
-	struct block *block = xcalloc(1, sizeof(struct block));
+	DISKOFF size = b->pairs_used + n;
 
-	for (i = 0; i < (int)MAX_LEVEL; i++) {
-		block->level_blks[i] = (pow(LEVEL_BASE, i) * l0_blk_count);
-		block->blocks[i] = xcalloc(block->level_blks[i], ITEM_SIZE);
-		block->blks += block->level_blks[i];
-	}
+	if (size >= b->pairs_size) {
+		DISKOFF atleast = b->pairs_size * 2;
 
-	return block;
-}
-
-void block_build(struct block *block, struct sst_item *items,
-			int count, int level)
-{
-	int i;
-	int x = count / BLOCK_GAP;
-	int mod = count % BLOCK_GAP;
-
-	if (count == 0)
-		return;
-
-	memset(block->blocks[level], 0, block->level_blks[level] * ITEM_SIZE);
-	block->level_blk_used[level] = 0;
-	for (i = 0; i < x; i++) {
-		memcpy(&block->blocks[level][i], &items[i * BLOCK_GAP],
-				ITEM_SIZE);
-		block->level_blk_used[level]++;
-	}
-
-	if (mod > 0) {
-		memcpy(&block->blocks[level][i], &items[count - mod],
-				ITEM_SIZE);
-		block->level_blk_used[level]++;
+		if (size < atleast)
+			size = atleast;
+		b->pairs = xrealloc(b->pairs, size * sizeof(struct block_pair));
+		b->pairs_size = size;
 	}
 }
 
-void block_reset(struct block *block, int level)
+static int _pair_compare_fun(const void *a, const void *b)
 {
-	block->level_blk_used[level] = 0;
-	memset(block->blocks[level], 0, block->level_blks[level] * ITEM_SIZE);
+	struct block_pair *pa = (struct block_pair*)a;
+	struct block_pair *pb = (struct block_pair*)b;
+
+	if (pa->offset > pb->offset)
+		return 1;
+	else if (pa->offset < pb->offset)
+		return -1;
+
+	return 0;
 }
 
-int block_search(struct block *block, struct slice *sk, int level)
+struct block *block_new()
 {
-	int i;
-	int cmp;
-	int used = block->level_blk_used[level];
+	struct block *b;
 
-	for (i = 0; i < used; i++) {
-		cmp = ness_strcmp(sk->data, block->blocks[level][i].data);
-		if (cmp == 0)
-			goto RET;
+	b = xcalloc(1, sizeof(*b));
+	rwlock_init(&b->rwlock);
+	b->allocated += ALIGN(BLOCK_OFFSET_START);
 
-		if (cmp < 0) {
-			i -= 1;
-			goto RET;
+	return b;
+}
+
+
+void block_init(struct block *b,
+		struct block_pair *pairs,
+		uint32_t n)
+{
+	uint32_t i;
+
+	nassert(n > 0);
+
+	write_lock(&b->rwlock);
+	qsort(pairs, n, sizeof(*pairs), _pair_compare_fun);
+	for (i = 0; i < n; i++) {
+		_extend(b, 1);
+		memcpy(&b->pairs[i], &pairs[i], sizeof(*pairs));
+		b->pairs_used++;
+	}
+
+	/* get the last allocated postion of file*/
+	b->allocated += pairs[n - 1].offset;
+	b->allocated += ALIGN(pairs[n - 1].real_size);
+	write_unlock(&b->rwlock);
+}
+
+DISKOFF block_alloc_off(struct block *b,
+		uint64_t nid,
+		uint32_t real_size,
+		uint32_t skeleton_size,
+		uint32_t height)
+{
+	DISKOFF r;
+	uint32_t i;
+	int found = 0;
+	uint32_t pos = 0;
+
+	write_lock(&b->rwlock);
+	r = ALIGN(b->allocated);
+	_extend(b, 1);
+
+	/*
+	 * set old hole to fly
+	 * it is not visible until you call 'block_shrink'
+	 */
+	for (i = 0; i < b->pairs_used; i++) {
+		if (b->pairs[i].nid == nid) {
+			b->pairs[i].used = 0;
+			break;
 		}
 	}
 
-RET:
-	if (i == used)
-		i -= 1;
+	/* find the not-fly hole to reuse */
+	if (b->pairs_used > 0) {
+		for (pos = 0; pos < (b->pairs_used - 1); pos++) {
+			DISKOFF off_aligned;
+			struct block_pair *p;
+			struct block_pair *nxtp;
 
-	return i;
+			p = &b->pairs[pos];
+			nxtp = &b->pairs[pos + 1];
+			off_aligned = (ALIGN(p->offset) + ALIGN(p->real_size));
+			if ((off_aligned + ALIGN(real_size)) <= nxtp->offset) {
+				r = off_aligned;
+				memmove(&b->pairs[pos + 1 + 1],
+						&b->pairs[pos + 1],
+						sizeof(*b->pairs) * (b->pairs_used - pos - 1));
+				found = 1;
+				break;
+			}
+		}
+	}
+
+	/* found the reuse hole */
+	if (found) {
+		pos += 1;
+	} else {
+		pos = b->pairs_used;
+		b->allocated = (ALIGN(b->allocated) +  ALIGN(real_size));
+	}
+
+	b->pairs[pos].offset = r;
+	b->pairs[pos].height = height;
+	b->pairs[pos].real_size = real_size;
+	b->pairs[pos].skeleton_size = skeleton_size;
+	b->pairs[pos].nid = nid;
+	b->pairs[pos].used = 1;
+
+	b->pairs_used++;
+	write_unlock(&b->rwlock);
+
+	return r;
 }
 
-void block_free(struct block *block)
+int block_get_off_bynid(struct block *b,
+		uint64_t nid,
+		struct block_pair **bpair)
 {
-	int i;
+	uint32_t i;
+	int rval = NESS_ERR;
 
-	for (i = 0; i < (int)MAX_LEVEL; i++)
-		xfree(block->blocks[i]);
+	read_lock(&b->rwlock);
+	for (i = 0; i < b->pairs_used; i++) {
+		if (b->pairs[i].nid == nid) {
+			if (b->pairs[i].used) {
+				*bpair = &b->pairs[i];
+				rval = NESS_OK;
+				break;
+			}
+		}
+	}
+	read_unlock(&b->rwlock);
 
-	xfree(block);
+	return rval;
+}
+
+/*
+ * REQUIRES:
+ *	block write lock
+ *
+ * EFFECTS:
+ *	empower the fly holes to be visiable
+ */
+void block_shrink(struct block *b)
+{
+	uint32_t i, j;
+
+	write_lock(&b->rwlock);
+	for (i = 0, j = 0; i < b->pairs_used; i++) {
+		if (b->pairs[i].used) {
+			b->pairs[j++] = b->pairs[i];
+		}
+	}
+	b->pairs_used = j;
+	write_unlock(&b->rwlock);
+}
+
+void block_free(struct block *b)
+{
+	if (!b) return;
+
+	rwlock_destroy(&b->rwlock);
+	xfree(b->pairs);
+	xfree(b);
 }

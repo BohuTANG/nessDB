@@ -1,0 +1,39 @@
+Lock
+
+CONTENTS:
+
+1. Lock Requires
+2. DeadLock Avoid
+
+
+
+
+1. Lock Requires
+
+Locks are acquired/released ALL in CACHE.
+The ATOMIC in CACHE is CPAIR:
+struct cpair {
+	NID k;
+	struct node *v;
+	struct cpair *list_next;
+	struct cpair *list_prev;
+	struct cpair *hash_next;
+
+	ness_mutex_t pair_mtx;		/* barriers for pair */
+	ness_rwlock_t disk_mtx;		/* barriers for reading/writing to disk */
+	ness_rwlock_t value_lock;	/* barriers for value */
+};
+
+CPAIR is a container, she has some LOCK/LATCH to protect her members in MULTI-THREAD.
+NODE is protected by 'value-lock'.
+NODE WRITE-BACK is protected by 'disk_mtx'.
+
+
+2. DeadLock Avoid
+
+To Avoid DeadLock we must obtain locks in a fixed order(in 2PL):
+A.lock() -> B.lock() -> B.unlock() -> A.unlock()
+Use helgrind to detect locking order.
+
+
+-- BohuTANG

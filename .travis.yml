@@ -1,7 +1,7 @@
 language: c
 
-script: make && make db-bench
+script: make
 
 notifications:
   email:
-    - overred.shuttler@gmail.com
+      - overred.shuttler@gmail.com

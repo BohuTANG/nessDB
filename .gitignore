@@ -1,18 +1,35 @@
+# Object files
 *.o
-*~
-*.lo
-.*.swp
-*.a
-*.so
-*.gcno
-*.gcda
-*.gcov
-*.pyc
-ndbs/*
-db-bench
-merge-test
-core
-*.event
-tags
+*.ko
+*.obj
+*.elf
 
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
 *.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Others
+*~
+vgcore*
+core
+db-bench
+ness.event
+ness.redo*
+dbbench/
+test
+tags
+*.brt

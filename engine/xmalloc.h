@@ -1,11 +1,30 @@
-#ifndef __nessDB_XMALLOC_H
-#define __nessDB_XMALLOC_H
+/*
+ * Copyright (c) 2012-2014 The nessDB Project Developers. All rights reserved.
+ * Code is licensed with GPL. See COPYING.GPL file.
+ *
+ */
 
-#include "internal.h"
+#ifndef nessDB_XMALLOC_H_
+#define nessDB_XMALLOC_H_
 
-void *xmalloc(size_t n);
+#define _GNU_SOURCE
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+void *xmalloc(size_t s);
 void *xcalloc(size_t n, size_t s);
-void *xrealloc(void *p, size_t n);
+void *xmalloc_aligned(size_t alignment, size_t s);
+void *xrealloc(void *p, size_t s);
+void *xrealloc_aligned(void *p, size_t olds, size_t alignment, size_t s);
+void *xmemdup(void *p, size_t s);
+void *xmemmove(void *dst, void *src, size_t s);
 void xfree(void *p);
+void xcheck_all_free();
+void xreset();
 
-#endif
+#endif /* nessDB_XMALLOC_H_ */

@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2012-2014 The nessDB Project Developers. All rights reserved.
+ * Code is licensed with GPL. See COPYING.GPL file.
+ *
+ */
+
+#ifndef nessDB_BASEMENT_H_
+#define nessDB_BASEMENT_H_
+
+#include "internal.h"
+#include "mempool.h"
+#include "skiplist.h"
+#include "msg.h"
+
+/**
+ * @file basement.h
+ * @brief basement definitions
+ *
+ * basement is a sorted-structure for nodes
+ *
+ */
+
+#define FIXKEY_SIZE (sizeof(struct fixkey))
+struct fixkey {
+	uint32_t ksize;
+	uint32_t vsize;
+	uint16_t type;
+} __attribute__((__packed__));
+
+struct basement_iter {
+	int valid;
+	struct msg key;
+	struct msg val;
+	msgtype_t type;
+	struct basement *bsm;
+	struct skiplist_iter list_iter;
+};
+
+struct basement {
+	uint32_t count;
+	struct mempool *mpool;
+	struct skiplist *list;
+};
+
+struct basement *basement_new();
+
+void basement_put(struct basement *bsm,
+		struct msg *key,
+		struct msg *val,
+		msgtype_t type);
+
+uint32_t basement_memsize(struct basement *);
+uint32_t basement_count(struct basement *);
+void basement_free(struct basement *);
+
+/* basement iterator */
+void basement_iter_init(struct basement_iter *, struct basement *);
+int basement_iter_valid(struct basement_iter *);
+void basement_iter_next(struct basement_iter *);
+void basement_iter_prev(struct basement_iter *);
+void basement_iter_seek(struct basement_iter *, struct msg *);
+void basement_iter_seektofirst(struct basement_iter *);
+void basement_iter_seektolast(struct basement_iter *);
+
+#endif /* _nessDB_BASEMENT_H_ */

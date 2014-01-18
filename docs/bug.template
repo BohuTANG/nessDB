@@ -1,0 +1,32 @@
+============================================================================
+                        BUG REPORT TEMPLATE
+============================================================================
+
+System Configuration:
+---------------------
+  Architecture (example: Intel Core i7)		:
+
+  Operating System (example: Linux 3.8.0)	:
+
+  Compiler used (example: gcc 4.7.3)		:
+
+
+Please enter a FULL description of your problem:
+------------------------------------------------
+
+
+
+
+
+Please describe a way to repeat the problem.   Please try to provide a
+concise reproducible example, if at all possible:
+----------------------------------------------------------------------
+
+
+
+
+
+If you know how this problem might be fixed, list the solution below:
+---------------------------------------------------------------------
+
+

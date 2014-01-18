@@ -1,79 +1,21 @@
 ================================================================
-nessDB v2.0 with Small-Splittable Tree (one of Bε-tree)
-Copyright (C) 2012-2013 BohuTANG________________ 
+nessDB v3.0 with Buffered-Tree.
+(C) 2012-2014 nessDB Authors ________________
 _____________________________  __ \__  __ )
 __  __ \  _ \_  ___/_  ___/_  / / /_  __  |
-_  / / /  __/(__  )_(__  )_  /_/ /_  /_/ / 
-/_/ /_/\___//____/ /____/ /_____/ /_____/  
+_  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
+/_/ /_/\___//____/ /____/ /_____/ /_____/
 ================================================================
 
   nessDB is a fast Key-Value database(embedded), which is written in ANSI C with GPL LICENSE and works in most POSIX systems without external dependencies.
 
-  From Version 2.0, nessDB uses Small-Splittable Tree (SST), it's one of Bε-tree and Cache-oblivious write-optimized structure, for more details, please refer to documentations which in 'spec' folder.
-  
-  V2.0 FEATURES
+  V3.0 FEATURES
   =============
-  a. Better performances on Random-Read/Write
-  b. Using Small-Splittable Tree as storage engine
-  c. Using fractional cascading to speed up search
-  d. Cache-oblivious write-optimized structure
+  a. Using Buffered-Tree as index data structure
+  b. Supporting Range-Query
+  c. Thread-Safe
 
-  HOW TODO BENCHMARK
-  ==================
-  $make db-bench
-  $./db-bench <write | read > <count> 
-	or 
-  $./db-bench readone <key>
+  V3.0 is still cooking.
+  For more work-in-process, please see TODO.
 
-  If you want delete all indexes/db/logs, you should do:
-  $make cleandb
-
-  HOW TO USE AS DB ENGINE
-  =======================
-  a. OPEN
-		struct nessdb *db = db_open(db-path); 
-
-  b. ADD
-  		struct slice sk, sv;
-		sk.len = 3;
-		sk.data = "key";
-		sv.len = 5;
-		sv.data = "value";
-		db_add(db, &sk, &sv);
-
-  c. DELETE
-  		struct slice sk;
-		sk.len = 3;
-		sk.data = "key";
-		db_remove(db, &sk);
-
-  d. READ
-  		struct slice sk, sv;
-		sk.len = 3;
-		sk.data = "key";
-		int ret = db_get(db, &sk, &sv);
-		if (ret == 1) {
-			printf("data is %s", sv.data);
-			db_free_data(sv.data);
-		} else
-			print("Not found");
-
-  e. EXISTS 
-		struct slice sk;
-		sk.len = 3;
-		sk.data = "key";
-		int ret = db_exists(db, &sk);
-		if (ret == 1)
-			print("yes, exists");
-		else
-			print("oops");
-
-  f. SHRINK 
-  		db_shrink(db);
-
-  g. CLOSE
-  		db_close(db);
-
-  Thanks for your attention!
-
-  				--BohuTANG--
+  			--BohuTANG--

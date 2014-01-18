@@ -1,8 +1,13 @@
-#ifndef __nessDB_INTERNAL_H
-#define __nessDB_INTERNAL_H
+/*
+ * Copyright (c) 2012-2014 The nessDB Project Developers. All rights reserved.
+ * Code is licensed with GPL. See COPYING.GPL file.
+ *
+ */
 
+#ifndef nessDB_INTERNAL_H_
+#define nessDB_INTERNAL_H_
 #if defined(__linux__)
-	#define _GNU_SOURCE
+#define _GNU_SOURCE
 #endif
 
 #define _LARGEFILE_SOURCE
@@ -12,91 +17,72 @@
 #define O_BINARY (0)
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <dirent.h>
-#include <string.h>
-#include <fcntl.h>
-#include <string.h>
-#include <unistd.h>
-#include <math.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <pthread.h>
-#include <sys/types.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <assert.h>
+#include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/file.h>
-#include <execinfo.h>
-#include <signal.h>
+#include <inttypes.h>
 #include <time.h>
 #include <sys/time.h>
-#include <stdarg.h>
+#include <sys/stat.h>
+#include <pthread.h>
 #include <errno.h>
-#include <sys/mman.h>
+#include <unistd.h>
+#include "xmalloc.h"
 
+/* reserved 1024bytes for double-write tree header */
+#define BLOCK_OFFSET_START (ALIGN(1024))
 
-#if defined(__linux__)
-	# define n_open (open64)
-	# define n_lseek (lseek64)
-	# define n_fstat (fstat64)
-	# define n_pwrite64 (pwrite64)
-	# define n_pread64 (pread64)
-	# define N_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT |\
-			O_BINARY | O_LARGEFILE)
-	# define N_OPEN_FLAGS   (O_RDWR | O_BINARY | O_LARGEFILE)
-#else
-	# define n_open (open)
-	# define n_lseek (lseek)
-	# define n_fstat (fstat)
-	# define n_pwrite64 (pwrite)
-	# define n_pread64 (pread)
-	# define N_CREAT_FLAGS  (O_RDWR | O_TRUNC | O_CREAT | O_BINARY)
-	# define N_OPEN_FLAGS   (O_RDWR | O_BINARY)
-#endif
+/* reserved NID for block-self using */
+#define NID_START (3)
+#define FILE_NAME_MAXLEN (256)
 
-#define NESSDB_VERSION ("v2.0")               /* nessDB version flag   */
-#define NESSDB_SST_SEGMENT (4)                /* SST splited numbers   */
-#define NESSDB_PATH_SIZE (1024)               /* Max length of path    */
-#define NESSDB_MAX_VAL_SIZE (1024*1024*10)    /* Max value length      */
+typedef uint64_t NID;
+typedef uint64_t DISKOFF;
 
-#define NESSDB_COMPRESS_LIMIT (1024)          /* Flag of compression   */
-#define NESSDB_COMPACT_LIMIT (1000)           /* Flag of compact       */
+typedef enum {
+	NESS_NO_COMPRESS,
+	NESS_QUICKLZ_METHOD
+} ness_compress_method_t;
 
-/* NOTICE: These macros can NOT be modified
- * OR you will be lost in ness
+typedef enum {
+	NESS_ERR = 0,
+	NESS_OK = 1,
+	NESS_INNER_XSUM_ERR = -100,
+	NESS_LEAF_XSUM_ERR = -101,
+	NESS_PART_XSUM_ERR = -102,
+	NESS_HDR_XSUM_ERR = -103,
+	NESS_DO_XSUM_ERR = -104,
+	NESS_READ_ERR = -110,
+	NESS_WRITE_ERR = -111,
+	NESS_FSYNC_ERR = -112,
+	NESS_SERIAL_BLOCKPAIR_ERR = -200,
+	NESS_DESERIAL_BLOCKPAIR_ERR = -201,
+	NESS_BLOCK_NULL_ERR = -300,
+	NESS_BUF_TO_BSM_ERR = -400,
+	NESS_BSM_TO_BUF_ERR = -401,
+	NESS_SERIAL_NONLEAF_FROM_BUF_ERR = -500,
+	NESS_DESERIAL_NONLEAF_FROM_BUF_ERR = -501,
+	NESS_LAYOUT_VERSION_OLDER_ERR = -600,
+	NESS_LOG_READ_SIZE_ERR = -700,
+	NESS_LOG_READ_DATA_ERR = -701,
+	NESS_LOG_READ_XSUM_ERR = -702,
+	NESS_LOG_EOF = -703,
+} ness_errno_t;
+
+/*
+ * align to ALIGNMENT for direct I/O
+ * but it is not always 512 bytes:
+ * http://people.redhat.com/msnitzer/docs/io-limits.txt
  */
-#define MAX_LEVEL (4)
-#define LEVEL_BASE (4)
-#define L0_SIZE (256*1024)
-#define BLOCK_GAP (256)
-#define NESSDB_MAX_KEY_SIZE (36)
+#define ALIGNMENT (512)
+static inline uint64_t ALIGN(uint64_t v)
+{
+	return  (v + ALIGNMENT - 1)&~(ALIGNMENT - 1);
+}
 
-#define NESSDB_SST_EXT (".SST")
-#define NESSDB_DB ("ness.DB")
-
-struct sst_item {
-	char data[NESSDB_MAX_KEY_SIZE];
-	uint64_t offset;
-	uint32_t vlen;
-	char opt;
-} __attribute__((packed));
-
-struct stats {
-	unsigned long long STATS_WRITES; /* all counts #write */
-	unsigned long long STATS_READS; /* all counts #read */
-	unsigned long long STATS_REMOVES; /* all counts #remove */
-	unsigned long long STATS_R_FROM_MTBL; /* all counts #mtbl */
-	unsigned long long STATS_R_COLA; /* all counts #read filesystem */
-	unsigned long long STATS_R_NOTIN_COLA; /* all counts #read filesystem */
-	unsigned long long STATS_CRC_ERRS; /* all crc errors */
-	unsigned long long STATS_COMPRESSES; /* all counts #compress */
-
-	unsigned long long STATS_LEVEL_MERGES; /* all counts #levels merge */
-	unsigned long long STATS_SST_SPLITS; /* all counts #SST split */
-	unsigned long long STATS_SST_MERGEONE;
-	time_t   STATS_START_TIME;
-	double STATS_DB_WASTED;
-};
-
-#endif
+#endif /* nessDB_INTERNAL_H_ */

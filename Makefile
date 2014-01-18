@@ -1,62 +1,72 @@
+# Detect OS
+TARGET_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+
+PLATFORM_FLAGS=
+PLATFORM_SHARED_CFLAGS=-fPIC
+PLATFORM_SHARED_LDFLAGS=-c -std=c99 -pedantic -W -Wall -Werror
+
+ifeq ($(TARGET_OS), Linux)
+	PLATFORM_FLAGS=-DOS_LINUX
+else ifeq ($(TARGET_OS), Darwin)
+	PLATFORM_FLAGS=-DOS_MACOSX
+else ifeq ($(TARGET_OS), OS_ANDROID_CROSSCOMPILE)
+	PLATFORM_FLAGS=-DOS_ANDROID
+else
+	echo "Unknown platform!" >&2
+	exit 1
+endif
+
 CC = gcc
+# OPT ?= -O2 -DERROR # (A) Production use (optimized mode)
+OPT ?= -g2 -DINFO -DASSERT # (B) Debug mode, w/ full line-level debugging symbols
+# OPT ?= -O2 -g2 -DERROR # (C) Profiling mode: opt, but w/debugging symbols
+#-----------------------------------------------
 
-BGMERGE = -DBGMERGE
-DEBUG =	-g -ggdb -DINFO
+CFLAGS = -Iengine -Idb $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PLATFORM_FLAGS) $(OPT)
 
-#detect OS,support Linux and Mac OS
-UNAME := $(shell uname)
-ifeq ($(UNAME), Linux)
-	CFLAGS =-c -std=c99 -W -Wall -Werror -fPIC $(DEBUG) $(BGMERGE)
-	LDFLAGS=-fPIC -shared
-	LIB_EXTENSION=so
-endif
-ifeq ($(UNAME), Darwin)
-	CFLAGS =-c -std=c99 -W -Wall -Werror $(DEBUG) $(BGMERGE)
-	LDFLAGS=-std=c99 -W -Wall -Werror -dynamiclib -flat_namespace
-	LIB_EXTENSION=dylib
-endif
+LIB_OBJS =	 			\
+	./engine/compress/compress.o	\
+	./engine/compress/quicklz.o	\
+	./engine/hdrserialize.o	\
+	./engine/serialize.o	\
+	./engine/skiplist.o		\
+	./engine/xmalloc.o		\
+	./engine/atomic.o		\
+	./engine/mempool.o		\
+	./engine/basement.o		\
+	./engine/posix.o		\
+	./engine/crc32.o		\
+	./engine/node.o		\
+	./engine/tree.o		\
+	./engine/tcursor.o		\
+	./engine/block.o		\
+	./engine/debug.o		\
+	./engine/cpair.o		\
+	./engine/file.o			\
+	./engine/msg.o			\
+	./engine/buf.o			\
+	./db/dbcache.o			\
+	./db/logw.o			\
+	./db/logr.o			\
+	./db/memtable.o			\
+	./db/db.o			
 
 
-
-
-LIB_OBJS = \
-	./engine/xmalloc.o\
-	./engine/debug.o\
-	./engine/sst.o\
-	./engine/meta.o\
-	./engine/buffer.o\
-	./engine/index.o\
-	./engine/quicklz.o\
-	./engine/block.o\
-	./engine/db.o
-
-TEST = \
+BENCH_OBJS = \
 	./bench/db-bench.o
 
-
-EXE = \
-	./db-bench\
-
-LIBRARY = libnessdb.$(LIB_EXTENSION)
+LIBRARY = libbrt.so
 
 all: $(LIBRARY)
 
 clean:
-	-rm -f $(LIBRARY)  
-	-rm -f $(LIB_OBJS)
-	-rm -f $(EXE)
-	-rm -f $(TEST)
-	cd test;make clean
+	-rm -rf $(LIBRARY) $(LIB_OBJS) $(BENCH_OBJS) $(TEST) ness.event test.brt db-bench dbbench/
 
 cleandb:
-	-rm -rf ndbs
-	-rm -rf *.event
+	-rm -rf dbbench/
 
 $(LIBRARY): $(LIB_OBJS)
-	$(CC) -pthread $(LDFLAGS) $(LIB_OBJS) -o libnessdb.$(LIB_EXTENSION) -lm
+	$(CC) -pthread -fPIC -shared $(LIB_OBJS) -o $(LIBRARY) -lm
 
-db-bench:  bench/db-bench.o $(LIB_OBJS)
-	$(CC) -pthread $(LIB_OBJS) $(DEBUG) bench/db-bench.o -o $@ -lm
-test: all $(LIB_OBJS)
-	cd test;make
-	export LD_LIBRARY_PATH=. && ./test/test
+db-bench: $(BENCH_OBJS) $(LIB_OBJS)
+	$(CC) -pthread $(LIB_OBJS) $(BENCH_OBJS) $(DEBUG) -o $@

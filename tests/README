@@ -1,0 +1,16 @@
+Test Suites with ctest.
+
+How to use
+----------
+$make
+$./test
+
+Tips on writing good unit tests
+--------------------------------
+a) memory issues detection:
+    valgrind --leak-check=full ./test
+
+b) lock-condition and data-race detection:
+    valgrind --tool=helgrind ./test
+
+all errors must be ZERO, man!
