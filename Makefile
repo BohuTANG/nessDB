@@ -48,11 +48,11 @@ LIB_OBJS =	 			\
 	./db/dbcache.o			\
 	./db/logw.o			\
 	./db/logr.o			\
-	./db/memtable.o			\
 	./db/db.o			
 
 
 BENCH_OBJS = \
+	./bench/random.o \
 	./bench/db-bench.o
 
 LIBRARY = libbrt.so

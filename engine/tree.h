@@ -62,7 +62,8 @@ struct tree *tree_new(const char *dbname,
 int tree_put(struct tree *t,
 		struct msg *k,
 		struct msg *v,
-		msgtype_t type);
+		msgtype_t type,
+		TXID txid);
 
 void tree_free(struct tree *t);
 

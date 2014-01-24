@@ -11,6 +11,7 @@
 #include "dbcache.h"
 #include "ctest.h"
 
+#define DUMMY_TXID (0UL)
 #define DBPATH0 "cursor-test-0.brt"
 CTEST(cursor, empty)
 {
@@ -89,7 +90,7 @@ CTEST(cursor, 1leaf)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT);
+		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
 	}
 
 	/* cursor */
@@ -156,7 +157,7 @@ CTEST(cursor, onlyleaf)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT);
+		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
 	}
 
 	/* check leaf split*/
@@ -237,7 +238,7 @@ CTEST(cursor, inner)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT);
+		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
 	}
 
 	/* check leaf split*/
@@ -321,7 +322,7 @@ CTEST(cursor, inner_large)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT);
+		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
 	}
 
 	/* cursor */

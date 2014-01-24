@@ -62,7 +62,7 @@ CTEST(basement, insert_and_lookup)
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
 		msgs[i] = msgdup(&k);
-		basement_put(bsm, &k, &v, MSG_PUT);
+		basement_put(bsm, &k, &v, MSG_PUT, 0UL);
 	}
 
 	basement_iter_init(&iter, bsm);

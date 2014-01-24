@@ -169,17 +169,11 @@ void _leaf_split(struct tree *t,
 	basement_iter_seektofirst(&iter);
 	while (basement_iter_valid(&iter)) {
 		if (i <= mid) {
-			basement_put(bsma,
-					&iter.key,
-					&iter.val,
-					iter.type);
+			basement_put(bsma, &iter.key, &iter.val, iter.type, iter.txid);
 			if (i == mid)
 				spk = msgdup(&iter.key);
 		} else {
-			basement_put(bsmb,
-					&iter.key,
-					&iter.val,
-					iter.type);
+			basement_put(bsmb, &iter.key, &iter.val, iter.type, iter.txid);
 		}
 		basement_iter_next(&iter);
 		i++;
@@ -369,13 +363,11 @@ void _leaf_put_cmd(struct tree *t,
 		struct node *leaf,
 		struct msg *k,
 		struct msg *v,
-		msgtype_t type)
+		msgtype_t type,
+		TXID txid)
 {
 	write_lock(&leaf->u.l.le->rwlock);
-	basement_put(leaf->u.l.le->bsm,
-			k,
-			v,
-			type);
+	basement_put(leaf->u.l.le->bsm, k, v, type, txid);
 	node_set_dirty(leaf);
 	write_unlock(&leaf->u.l.le->rwlock);
 
@@ -393,7 +385,8 @@ void _nonleaf_put_cmd(struct tree *t,
 		struct node *node,
 		struct msg *k,
 		struct msg *v,
-		msgtype_t type)
+		msgtype_t type,
+		TXID txid)
 {
 	uint32_t pidx;
 	struct partition *part;
@@ -406,7 +399,7 @@ void _nonleaf_put_cmd(struct tree *t,
 	}
 
 	write_lock(&part->rwlock);
-	basement_put(part->buffer, k, v, type);
+	basement_put(part->buffer, k, v, type, txid);
 	node_set_dirty(node);
 	write_unlock(&part->rwlock);
 
@@ -423,12 +416,13 @@ void _node_put_cmd(struct tree *t,
 		struct node *node,
 		struct msg *k,
 		struct msg *v,
-		msgtype_t type)
+		msgtype_t type,
+		TXID txid)
 {
 	if (node->height == 0)
-		_leaf_put_cmd(t, node, k, v, type);
+		_leaf_put_cmd(t, node, k, v, type, txid);
 	else
-		_nonleaf_put_cmd(t, node, k, v, type);
+		_nonleaf_put_cmd(t, node, k, v, type, txid);
 }
 
 /*
@@ -471,7 +465,8 @@ int _flush_some_child(struct tree *t, struct node *parent)
 				child,
 				&iter.key,
 				&iter.val,
-				iter.type);
+				iter.type,
+				iter.txid);
 		basement_iter_next(&iter);
 	}
 
@@ -596,7 +591,8 @@ void _root_split(struct tree *t,
 int _root_put_cmd(struct tree *t,
 		struct msg *k,
 		struct msg *v,
-		msgtype_t type)
+		msgtype_t type,
+		TXID txid)
 {
 	struct node *root;
 	enum reactivity re;
@@ -658,7 +654,7 @@ CHANGE_LOCK_TYPE:
 	default : abort();
 	}
 
-	_node_put_cmd(t, root, k, v, type);
+	_node_put_cmd(t, root, k, v, type, txid);
 	c_op->cache_unpin(t->cache, root);
 
 	return NESS_OK;
@@ -765,9 +761,13 @@ ERR:
 	return NESS_ERR;
 }
 
-int tree_put(struct tree *t, struct msg *k, struct msg *v, msgtype_t type)
+int tree_put(struct tree *t,
+		struct msg *k,
+		struct msg *v,
+		msgtype_t type,
+		TXID txid)
 {
-	return  _root_put_cmd(t, k, v, type);
+	return  _root_put_cmd(t, k, v, type, txid);
 }
 
 void tree_free(struct tree *t)

@@ -56,13 +56,12 @@ struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
 		struct skipnode **prev)
 {
 	int level;
-	struct skipnode *x;
+	register struct skipnode *x;
+	register struct skipnode *next;
 
 	level = _get_height(sl) - 1;
 	x = sl->header;
 	while (1) {
-		struct skipnode *next;
-
 		next = x->next[level];
 		if ((next != NULL) && (sl->compare_cb(next->key, key) < 0)) {
 			x = next;

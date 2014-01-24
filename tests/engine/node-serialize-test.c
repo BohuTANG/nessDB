@@ -13,6 +13,7 @@
 #include "serialize.h"
 #include "ctest.h"
 
+#define DUMMY_TXID (0UL)
 #define BRT_FILE ("node-test.brt")
 
 CTEST(node_serial_test, leaf_empty) {
@@ -68,14 +69,14 @@ CTEST(node_serial_test, leaf_2_record) {
 	k.data = "hello";
 	v.size = 6;
 	v.data = "world";
-	basement_put(dummy_leaf->u.l.le->bsm, &k, &v, MSG_PUT);
+	basement_put(dummy_leaf->u.l.le->bsm, &k, &v, MSG_PUT, DUMMY_TXID);
 
 	struct msg k1, v1;
 	k1.size = 6;
 	k1.data = "hellx";
 	v1.size = 6;
 	v1.data = "worlx";
-	basement_put(dummy_leaf->u.l.le->bsm, &k1, &v1, MSG_PUT);
+	basement_put(dummy_leaf->u.l.le->bsm, &k1, &v1, MSG_PUT, DUMMY_TXID);
 
 	ret = serialize_node_to_disk(fd, b, dummy_leaf, hdr);
 	ASSERT_TRUE(ret > 0);
@@ -143,7 +144,8 @@ CTEST(node_serial_test, node_2th_part_empty) {
 	k.data = "hello";
 	v.size = 5;
 	v.data = "world";
-	basement_put(dummy_node->u.n.parts[0].buffer, &k, &v, MSG_PUT);
+	basement_put(dummy_node->u.n.parts[0].buffer, &k, &v, MSG_PUT,
+			DUMMY_TXID);
 
 	
 	hdr->method = NESS_QUICKLZ_METHOD;

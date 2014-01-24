@@ -1,44 +1,22 @@
 #include "db.h"
 #include "posix.h"
-#include "skiplist.h"
+#include "random.h"
 
 #define KEY_SIZE (16)
 #define VAL_SIZE (100)
 
-void _random_key(char *key,int length) {
-	int i;
-	char salt[36]= "abcdefghijklmnopqrstuvwxyz123456789";
-
-	for (i = 0; i < length; i++)
-		key[i] = salt[rand() % 36];
-}
-
-int main(int argc, char *argv[])
+void do_bench(struct nessdb *db, struct random *rnd, uint32_t loop)
 {
-	int i;
+	uint32_t i;
 	int done = 0;;
 	int next_report = 100;
-
-	int loop;
-	struct nessdb *db;
-	char basedir[] = "./dbbench/";
-	struct timespec start;
-	struct timespec end;
-
-	if (argc != 2) {
-		printf("./db-bench [count]\n");
-		return 0;
-	}
-	loop = atoi(argv[1]);
-
-	db = db_open(basedir);
-
-	gettime(&start);
 	char kbuf[KEY_SIZE];
-	char vbuf[VAL_SIZE];
-	_random_key(vbuf, VAL_SIZE);
+
 	for (i = 0; i < loop; i++) {
-		_random_key(kbuf, KEY_SIZE);
+		uint32_t krnd = rnd_next(rnd);
+		snprintf(kbuf, KEY_SIZE, "%016d", krnd);
+		char *vbuf = rnd_str(rnd, VAL_SIZE);
+
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 		db_set(db, &k, &v);
@@ -61,16 +39,41 @@ int main(int argc, char *argv[])
 			fflush(stderr);
 		}
 	}
+}
+
+int main(int argc, char *argv[])
+{
+
+	int loop;
+	struct nessdb *db;
+	char basedir[] = "./dbbench/";
+	struct timespec start;
+	struct timespec end;
+	struct random *rnd;
+
+	if (argc != 2) {
+		printf("./db-bench [count]\n");
+		return 0;
+	}
+	loop = atoi(argv[1]);
+	rnd = rnd_new();
+	db = db_open(basedir);
+
+	gettime(&start);
+	do_bench(db, rnd, loop);
 	gettime(&end);
 
+	uint64_t bytes = loop * (KEY_SIZE + VAL_SIZE);
 	long long cost_ms = time_diff_ms(start, end) + 1;
-	printf("--------loop:%d, cost:%d(ms), %.f ops/sec\n",
+	printf("--------loop:%d, cost:%d(ms), %.f ops/sec, %6.1f MB/sec\n",
 			loop,
 			(int)cost_ms,
-			(double)(loop/cost_ms)*1000);
+			(double)(loop/cost_ms)*1000,
+			(double)((bytes/cost_ms/1048576.0) * 1000));
 
 
 	db_close(db);
+	rnd_free(rnd);
 
 	return 1;
 }

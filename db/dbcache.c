@@ -48,7 +48,7 @@ static inline int _must_evict(struct dbcache *dbc)
 	int must;
 	
 	mutex_lock(&dbc->mtx);
-	must = ((dbc->cache_size > dbc->opts->read_buffer_size_bytes));
+	must = ((dbc->cache_size > dbc->opts->cache_limits_bytes));
 	mutex_unlock(&dbc->mtx);
 
 	return must;
@@ -59,7 +59,7 @@ static inline int _need_evict(struct dbcache *dbc)
 	int need;
 
 	mutex_lock(&dbc->mtx);
-	need = (dbc->cache_size > (dbc->opts->read_buffer_size_bytes *
+	need = (dbc->cache_size > (dbc->opts->cache_limits_bytes *
 				dbc->opts->cache_high_watermark / 100));
 	mutex_unlock(&dbc->mtx);
 
@@ -117,7 +117,7 @@ void _cache_dump(struct dbcache *dbc, const char *msg)
 	}
 	printf("---all size\t[%" PRIu64 "]MB\n", all_size / (1024 * 1024));
 	printf("---limit size\t[%" PRIu64 "]MB\n\n",
-			dbc->opts->read_buffer_size_bytes / (1024 * 1024));
+			dbc->opts->cache_limits_bytes / (1024 * 1024));
 }
 
 /* pick one pair from clock list */
@@ -506,35 +506,7 @@ int compaction_begin(struct dbcache *dbc)
  */
 int compaction_finish(struct dbcache *dbc)
 {
-	int r;
-	struct cpair *cur;
-	struct cpair *nxt;
-	struct tree *tree = dbc->cfile.tree;
-	struct tree_operations *t_op = tree->t_op;
-
-	/* write back dirty nodes to disk */
-	cur = dbc->clock->head;
-	while (cur) {
-		nxt = cur->list_next;
-		if (node_is_dirty(cur->v)) {
-			write_lock(&cur->disk_mtx);
-			r = t_op->flush_node(tree, cur->v);
-			write_unlock(&cur->disk_mtx);
-			if (r != NESS_OK) {
-				__PANIC("serialize node[%d] to disk error",
-						dbc->cfile.fd);
-			}
-			node_set_nondirty(cur->v);
-		}
-		cur = nxt;
-	}
-
-	r = t_op->flush_hdr(tree);
-	if (r != NESS_OK) {
-		__PANIC("serialize hdr[%d] to disk error",
-				dbc->cfile.fd);
-	}
-
+	(void)dbc;
 	return NESS_OK;
 }
 

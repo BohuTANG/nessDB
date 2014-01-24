@@ -1,9 +1,8 @@
 TODO list(5star urgent):
 
-a) memtable (*****)
-b) recovery (*****)
-c) compaction (*****)
-d) a large number of unit tests (*****)
+a) large number of unit tests (*****)
+b) batch updates (*****)
+c) snapshot isolation within MVCC for transactions (****)
 
 
 -- BohuTANG 2014/1/

@@ -10,7 +10,8 @@
 void _encode_kv(char *data,
 		struct msg *key,
 		struct msg *val,
-		msgtype_t type)
+		msgtype_t type,
+		TXID txid)
 {
 	int pos = 0;
 	uint32_t vsize = 0U;
@@ -20,10 +21,11 @@ void _encode_kv(char *data,
 	if (type != MSG_DEL)
 		vsize = val->size;
 
+	txid = ((txid << 8) | type);
 	fk = (struct fixkey*)(data);
 	fk->ksize = ksize;
 	fk->vsize = vsize;
-	fk->type = type;
+	fk->txid = txid;
 	pos += FIXKEY_SIZE;
 
 	memcpy(data + pos, key->data, key->size);
@@ -37,7 +39,8 @@ void _encode_kv(char *data,
 void _decode_kv(char *data,
 		struct msg *key,
 		struct msg *val,
-		msgtype_t *type)
+		msgtype_t *type,
+		TXID *txid)
 {
 	int pos = 0;
 	uint32_t ksize;
@@ -47,7 +50,9 @@ void _decode_kv(char *data,
 	fk = (struct fixkey*)data;
 	ksize = fk->ksize;
 	vsize = fk->vsize;
-	*type = fk->type;
+
+	*type = fk->txid & 0xff;
+	*txid = fk->txid >> 8;
 	pos += FIXKEY_SIZE;
 
 	key->size = ksize;
@@ -64,42 +69,41 @@ void _decode_kv(char *data,
 
 int _bsm_compare_fun(void *a, void *b)
 {
+	TXID atxid;
+	TXID btxid;
 	struct msg ma;
 	struct msg mb;
-	struct fixkey *fk;
+	register int r;
+	register struct fixkey *fk;
 
 	if (!a) return -1;
 	if (!b) return +1;
 	
 	fk = (struct fixkey*)a;
+	atxid = fk->txid;
 	ma.size = fk->ksize;
 	ma.data = ((char*)a + FIXKEY_SIZE);
 
 	fk = (struct fixkey*)b;
+	btxid = fk->txid;
 	mb.size = fk->ksize;
 	mb.data = ((char*)b + FIXKEY_SIZE);
 
-	return msgcmp(&ma, &mb);
+	r = msgcmp(&ma, &mb);
+	if (r == 0) {
+		if (atxid > btxid) return +1;
+		else if (atxid < btxid) return -1;
+	}
+
+	return r;
 }
 
 judgetype_t _bsm_judge_fun(void *a, void *b)
 {
-	struct msg ma;
-	struct msg mb;
-	struct fixkey *fk;
-
 	if ((!a) || (!b)) return J_PUT;
-	
-	fk = (struct fixkey*)a;
-	ma.size = fk->ksize;
-	ma.data = ((char*)a + FIXKEY_SIZE);
-
-	fk = (struct fixkey*)b;
-	mb.size = fk->ksize;
-	mb.data = ((char*)b + FIXKEY_SIZE);
 
 	/* if a == b, we just overwite it in skiplist */
-	if (msgcmp(&ma, &mb) == 0)
+	if (_bsm_compare_fun(a, b) == 0)
 		return J_OVERWRITE;
 
 	return J_PUT;
@@ -126,7 +130,8 @@ struct basement *basement_new()
 void basement_put(struct basement *bsm,
 		struct msg *key,
 		struct msg *val,
-		msgtype_t type)
+		msgtype_t type,
+		TXID txid)
 {
 	char *base;
 	uint32_t sizes = 0U;
@@ -137,10 +142,7 @@ void basement_put(struct basement *bsm,
 	}
 	base = mempool_alloc_aligned(bsm->mpool, sizes);
 
-	_encode_kv(base,
-			key,
-			val,
-			type);
+	_encode_kv(base, key, val, type, txid);
 	skiplist_put(bsm->list, base);
 	bsm->count++;
 }
@@ -180,7 +182,8 @@ void _iter_decode(const char *base,
 		_decode_kv((char*)base,
 				&bsm_iter->key,
 				&bsm_iter->val,
-				&bsm_iter->type);
+				&bsm_iter->type,
+				&bsm_iter->txid);
 		bsm_iter->valid = 1;
 	} else 
 		bsm_iter->valid = 0;
@@ -243,7 +246,6 @@ void basement_iter_seek(struct basement_iter *bsm_iter, struct msg *k)
 	fk = (struct fixkey*)(fixkey);
 	fk->ksize = k->size;
 	fk->vsize = 0U;
-	fk->type = MSG_PUT;
 	memcpy(fixkey + FIXKEY_SIZE, k->data, k->size);
 	skiplist_iter_seek(&bsm_iter->list_iter, fixkey);
 	xfree(fixkey);

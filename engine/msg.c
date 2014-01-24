@@ -30,13 +30,11 @@ void msgcpy(struct msg *dst, struct msg *src)
 
 int msgcmp(struct msg *a, struct msg *b)
 {
-	if (!a)
-		return -1;
-	if (!b)
-		return 1;
+	if (!a) return -1;
+	if (!b) return 1;
 
-	int r;
-	int minlen;
+	register int r;
+	register int minlen;
 
 	minlen = a->size < b->size ? a->size : b->size;
 	r = memcmp(a->data, b->data, minlen);

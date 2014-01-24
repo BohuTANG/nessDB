@@ -20,11 +20,13 @@
  *
  */
 
+typedef uint64_t TXID;
+
 #define FIXKEY_SIZE (sizeof(struct fixkey))
 struct fixkey {
 	uint32_t ksize;
 	uint32_t vsize;
-	uint16_t type;
+	TXID txid;
 } __attribute__((__packed__));
 
 struct basement_iter {
@@ -32,6 +34,7 @@ struct basement_iter {
 	struct msg key;
 	struct msg val;
 	msgtype_t type;
+	TXID txid;
 	struct basement *bsm;
 	struct skiplist_iter list_iter;
 };
@@ -47,7 +50,8 @@ struct basement *basement_new();
 void basement_put(struct basement *bsm,
 		struct msg *key,
 		struct msg *val,
-		msgtype_t type);
+		msgtype_t type,
+		TXID txid);
 
 uint32_t basement_memsize(struct basement *);
 uint32_t basement_count(struct basement *);

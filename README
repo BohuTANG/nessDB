@@ -11,9 +11,9 @@ _  / / /  __/(__  )_(__  )_  /_/ /_  /_/ /
 
   V3.0 FEATURES
   =============
-  a. Using Buffered-Tree as index data structure
-  b. Supporting Range-Query
-  c. Thread-Safe
+  a. Buffered-Tree index data structure
+  b. Range-Query
+  c. Transaction
 
   V3.0 is still cooking.
   For more work-in-process, please see TODO.
