@@ -58,7 +58,10 @@ int _serialize_blockpairs_to_disk(int fd,
 
 	uint32_t xsum;
 
-	if (!buf_xsum(wbuf->buf, wbuf->NUL, &xsum)) goto ERR;
+	if (!buf_xsum(wbuf->buf, wbuf->NUL, &xsum)) {
+		r = NESS_DO_XSUM_ERR;
+		goto ERR;
+	}
 	buf_putuint32(wbuf, xsum);
 
 	uint32_t real_size;
@@ -84,7 +87,7 @@ int _serialize_blockpairs_to_disk(int fd,
 
 ERR:
 	buf_free(wbuf);
-	return r;
+	return NESS_ERR;
 }
 
 int _deserialize_blockpairs_from_disk(int fd,
@@ -157,13 +160,13 @@ int _deserialize_blockpairs_from_disk(int fd,
 ERR:
 	buf_free(rbuf);
 
-	return r;
+	return NESS_ERR;
 
 ERR1:
 	buf_free(rbuf);
 	xfree(pairs);
 
-	return r;
+	return NESS_ERR;
 }
 
 /*
@@ -203,7 +206,10 @@ int write_hdr_to_disk(int fd,
 
 	uint32_t xsum;
 
-	if (!buf_xsum(wbuf->buf, wbuf->NUL, &xsum)) goto ERR;
+	if (!buf_xsum(wbuf->buf, wbuf->NUL, &xsum)) {
+		r = NESS_DO_XSUM_ERR;
+		goto ERR;
+	}
 	buf_putuint32(wbuf, xsum);
 
 	real_size = wbuf->NUL;
@@ -335,7 +341,7 @@ int read_hdr_from_disk(int fd,
 ERR:
 	buf_free(rbuf);
 	xfree(hdr);
-	return NESS_ERR;
+	return r;
 }
 
 int deserialize_hdr_from_disk(int fd, struct block *b, struct hdr **h)
