@@ -19,17 +19,6 @@
  *
  */
 
-typedef enum {
-	J_PUT = 1,
-	J_OVERWRITE = 2
-} judgetype_t;
-
-/*
- * to judge: create new or overwrite on the same key
- * in order to reduce memory pool usage
- */
-typedef judgetype_t (*SKIPLIST_JUDGE_CALLBACK)(void *a, void *b);
-
 /* compare function */
 typedef int (*SKIPLIST_COMPARE_CALLBACK)(void *a, void *b);
 
@@ -48,13 +37,10 @@ struct skiplist {
 	int height;
 	struct skipnode *header;
 	struct mempool *mpool;
-	SKIPLIST_JUDGE_CALLBACK judge_cb;
 	SKIPLIST_COMPARE_CALLBACK compare_cb;
 };
 
-struct skiplist *skiplist_new(struct mempool *mpool,
-		SKIPLIST_JUDGE_CALLBACK judge_cb,
-		SKIPLIST_COMPARE_CALLBACK compare_cb);
+struct skiplist *skiplist_new(struct mempool *mpool, SKIPLIST_COMPARE_CALLBACK compare_cb);
 
 void skiplist_put(struct skiplist *sl, void *key);
 struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key);

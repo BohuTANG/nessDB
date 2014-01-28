@@ -7,6 +7,7 @@
  */
 
 #include "basement.h"
+#include "compare.h"
 #include "ctest.h"
 
 CTEST(basement, empty)
@@ -56,7 +57,7 @@ CTEST(basement, insert_and_lookup)
 
 	_random_key(vbuf, VAL_SIZE);
 	for (i = 0; i < R; i++) {
-		_random_key(kbuf, KEY_SIZE);
+		snprintf(kbuf, KEY_SIZE, "key-%d", i);
 
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
@@ -74,7 +75,7 @@ CTEST(basement, insert_and_lookup)
 		basement_iter_seek(&iter, msgs[i]);
 		ret = basement_iter_valid(&iter);
 		ASSERT_EQUAL(1, ret);
-		ret = msgcmp(msgs[i], &iter.key);
+		ret = msg_key_compare(msgs[i], &iter.key);
 		ASSERT_EQUAL(0, ret);
 	}
 

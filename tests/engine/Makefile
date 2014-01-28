@@ -33,6 +33,7 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/serialize.o	\
 	$(top_builddir)/engine/skiplist.o		\
 	$(top_builddir)/engine/xmalloc.o		\
+	$(top_builddir)/engine/compare.o		\
 	$(top_builddir)/engine/atomic.o		\
 	$(top_builddir)/engine/mempool.o		\
 	$(top_builddir)/engine/basement.o		\

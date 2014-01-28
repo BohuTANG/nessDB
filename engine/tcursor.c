@@ -6,6 +6,7 @@
 
 #include "tcursor.h"
 #include "cache.h"
+#include "compare.h"
 
 /**
  * @file tcursor.c
@@ -452,7 +453,7 @@ void _tree_search_init(struct search *so,
 	memset(so, 0, sizeof(*so));
 	so->direction_compare_func = dcmp;
 	so->pivotbound_compare_func = pcmp;
-	so->key_compare_func = msgcmp;
+	so->key_compare_func = msg_key_compare;
 	so->direction = direction;
 	so->slip = slip;
 	if (key && key->data)
@@ -461,7 +462,7 @@ void _tree_search_init(struct search *so,
 
 int search_pivotbound_compare(struct search *so, struct msg *m)
 {
-	return msgcmp(so->pivot_bound, m);
+	return msg_key_compare(so->pivot_bound, m);
 }
 
 /*
@@ -521,7 +522,7 @@ void tree_cursor_last(struct cursor *cur)
  */
 int tree_cursor_compare_next(struct search *so, struct msg *b)
 {
-	return (msgcmp(so->key, b) < 0);
+	return (msg_key_compare(so->key, b) < 0);
 }
 
 void tree_cursor_next(struct cursor *cur)
@@ -544,7 +545,7 @@ void tree_cursor_next(struct cursor *cur)
  */
 int tree_cursor_compare_prev(struct search *so, struct msg *b)
 {
-	return (msgcmp(so->key, b) > 0);
+	return (msg_key_compare(so->key, b) > 0);
 }
 
 void tree_cursor_prev(struct cursor *cur)
@@ -567,7 +568,7 @@ void tree_cursor_prev(struct cursor *cur)
  */
 int tree_cursor_compare_current(struct search *so, struct msg *b)
 {
-	return (msgcmp(so->key, b) <= 0);
+	return (msg_key_compare(so->key, b) <= 0);
 }
 
 void tree_cursor_current(struct cursor *cur)

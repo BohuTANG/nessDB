@@ -11,6 +11,7 @@
 #include "node.h"
 #include "block.h"
 #include "serialize.h"
+#include "compare.h"
 #include "ctest.h"
 
 #define DUMMY_TXID (0UL)
@@ -185,9 +186,9 @@ CTEST(node_serial_test, node_2th_part_empty) {
 		basement_iter_seek(&iter, &k);
 		ret = basement_iter_valid(&iter);
 		ASSERT_EQUAL(1, ret);
-		cmp = msgcmp(&k, &iter.key);
+		cmp = msg_key_compare(&k, &iter.key);
 		ASSERT_EQUAL(0, cmp);
-		cmp = msgcmp(&v, &iter.val);
+		cmp = msg_key_compare(&v, &iter.val);
 		ASSERT_EQUAL(0, cmp);
 
 		mb_c = basement_count(dummy_node1->u.n.parts[1].buffer);

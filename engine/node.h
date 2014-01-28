@@ -49,6 +49,7 @@ struct node {
 	uint64_t nid;
 	struct timespec modified;
 	struct node_attr attr;
+	int (*pivot_compare_func)(struct msg *a, struct msg *b);
 
 	union un {
 		struct nonleaf {

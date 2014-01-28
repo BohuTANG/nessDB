@@ -243,7 +243,7 @@ CTEST(cursor, inner)
 
 	/* check leaf split*/
 	ASSERT_EQUAL(2, tree->hdr->height);
-	ASSERT_EQUAL(4, status->tree_leaf_split_nums);
+	ASSERT_EQUAL(5, status->tree_leaf_split_nums);
 
 	/* cursor */
 	struct cursor *cur;

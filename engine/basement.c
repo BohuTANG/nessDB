@@ -5,6 +5,7 @@
  */
 
 #include "buf.h"
+#include "compare.h"
 #include "basement.h"
 
 void _encode_kv(char *data,
@@ -67,58 +68,13 @@ void _decode_kv(char *data,
 	}
 }
 
-int _bsm_compare_fun(void *a, void *b)
-{
-	TXID atxid;
-	TXID btxid;
-	struct msg ma;
-	struct msg mb;
-	register int r;
-	register struct fixkey *fk;
-
-	if (!a) return -1;
-	if (!b) return +1;
-	
-	fk = (struct fixkey*)a;
-	atxid = fk->txid;
-	ma.size = fk->ksize;
-	ma.data = ((char*)a + FIXKEY_SIZE);
-
-	fk = (struct fixkey*)b;
-	btxid = fk->txid;
-	mb.size = fk->ksize;
-	mb.data = ((char*)b + FIXKEY_SIZE);
-
-	r = msgcmp(&ma, &mb);
-	if (r == 0) {
-		if (atxid > btxid) return +1;
-		else if (atxid < btxid) return -1;
-	}
-
-	return r;
-}
-
-judgetype_t _bsm_judge_fun(void *a, void *b)
-{
-	if ((!a) || (!b)) return J_PUT;
-
-	/* if a == b, we just overwite it in skiplist */
-	if (_bsm_compare_fun(a, b) == 0)
-		return J_OVERWRITE;
-
-	return J_PUT;
-}
-
 struct basement *basement_new()
 {
 	struct basement *bsm;
 
 	bsm = xcalloc(1, sizeof(*bsm));
 	bsm->mpool = mempool_new();
-	bsm->list = skiplist_new(bsm->mpool,
-			&_bsm_judge_fun,
-			&_bsm_compare_fun);
-
+	bsm->list = skiplist_new(bsm->mpool, internal_key_compare);
 	return bsm;
 }
 

@@ -30,19 +30,6 @@ int _compare_fun(void *a, void *b)
 		return 0;
 }
 
-judgetype_t _judge_fun(void *a, void *b)
-{
-	if (!a || !b)
-		return J_PUT;
-
-	int ia = *((int*)a);
-	int ib = *((int*)b);
-
-	if (ia == ib)
-		return J_OVERWRITE;
-
-	return J_PUT;
-}
 
 CTEST(skiplist, empty)
 {
@@ -51,7 +38,6 @@ CTEST(skiplist, empty)
 
 	struct mempool *mpool = mempool_new();
 	struct skiplist *list = skiplist_new(mpool,
-			&_judge_fun,
 			&_compare_fun);
 	struct skiplist_iter iter;
 
@@ -90,7 +76,6 @@ CTEST(skiplist, insert_and_lookup)
 	struct skiplist_iter iter;
 	struct mempool *mpool = mempool_new();
 	struct skiplist *list = skiplist_new(mpool,
-			&_judge_fun,
 			&_compare_fun);
 
 	for (i = 0; i < N; i++) {
@@ -128,7 +113,6 @@ CTEST(skiplist, insert_same_key)
 {
 	struct mempool *mpool = mempool_new();
 	struct skiplist *list = skiplist_new(mpool,
-			&_judge_fun,
 			&_compare_fun);
 
 	int ret;

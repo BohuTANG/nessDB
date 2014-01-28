@@ -24,7 +24,6 @@ struct msg {
 
 struct msg *msgdup(struct msg *src);
 void msgcpy(struct msg *dst, struct msg *src);
-int msgcmp(struct msg *a, struct msg *b);
 uint32_t msgsize(struct msg *msg);
 void msgfree(struct msg *msg);
 

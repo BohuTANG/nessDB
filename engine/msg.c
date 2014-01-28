@@ -28,22 +28,6 @@ void msgcpy(struct msg *dst, struct msg *src)
 	memcpy(dst->data, src->data, src->size);
 }
 
-int msgcmp(struct msg *a, struct msg *b)
-{
-	if (!a) return -1;
-	if (!b) return 1;
-
-	register int r;
-	register int minlen;
-
-	minlen = a->size < b->size ? a->size : b->size;
-	r = memcmp(a->data, b->data, minlen);
-	if (r == 0)
-		return (a->size - b->size);
-
-	return r;
-}
-
 uint32_t msgsize(struct msg *msg)
 {
 	return (sizeof(msg->size) + msg->size);

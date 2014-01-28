@@ -42,6 +42,7 @@
 #define FILE_NAME_MAXLEN (256)
 
 typedef uint64_t NID;
+typedef uint64_t TXID;
 typedef uint64_t DISKOFF;
 
 typedef enum {
@@ -73,6 +74,13 @@ typedef enum {
 	NESS_LOG_READ_XSUM_ERR = -702,
 	NESS_LOG_EOF = -703,
 } ness_errno_t;
+
+#define FIXKEY_SIZE (sizeof(struct fixkey))
+struct fixkey {
+	uint32_t ksize;
+	uint32_t vsize;
+	TXID txid;
+} __attribute__((__packed__));
 
 /*
  * align to ALIGNMENT for direct I/O

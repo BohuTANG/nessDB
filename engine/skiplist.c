@@ -101,16 +101,13 @@ struct skipnode *_new_node(struct skiplist *sl, int height)
 }
 
 
-struct skiplist *skiplist_new(struct mempool *mpool,
-		SKIPLIST_JUDGE_CALLBACK judge_cb,
-		SKIPLIST_COMPARE_CALLBACK compare_cb)
+struct skiplist *skiplist_new(struct mempool *mpool, SKIPLIST_COMPARE_CALLBACK compare_cb)
 {
 	struct skiplist *sl;
 
 	sl = xcalloc(1, sizeof(*sl));
 	sl->mpool = mpool;
 	sl->header = _new_node(sl, SKIPLIST_MAX_LEVEL);
-	sl->judge_cb = judge_cb;
 	sl->compare_cb = compare_cb;
 	sl->height = 1;
 
@@ -125,42 +122,29 @@ void skiplist_put(struct skiplist *sl, void *key)
 {
 	int i;
 	int height;
-	judgetype_t jtype = J_PUT;
 
 	struct skipnode *x;
 	struct skipnode *prev[SKIPLIST_MAX_LEVEL];
 
 	memset(prev, 0, sizeof(struct skipnode*) * SKIPLIST_MAX_LEVEL);
 	x = skiplist_find_greater_or_equal(sl, key, prev);
-	if (x)
-		jtype = sl->judge_cb(x->key, key);
+	height = _rand_height();
 
-	switch (jtype) {
-		case J_PUT:
-			height = _rand_height();
-
-			/* init prev arrays */
-			if (height > _get_height(sl)) {
-				for (i = _get_height(sl); i < height; i++)
-					prev[i] = sl->header;
-				_set_height(&sl->height, &height);
-			}
-
-			x = _new_node(sl, height);
-			x->key = key;
-
-			for (i = 0; i < height; i++) {
-				_set_next(&x->next[i], prev[i]->next[i]);
-				_set_next(&prev[i]->next[i], x);
-			}
-			sl->count++;
-			break;
-		case J_OVERWRITE:
-			    x->key = key;
-			    break;
-		default:
-			    break;
+	/* init prev arrays */
+	if (height > _get_height(sl)) {
+		for (i = _get_height(sl); i < height; i++)
+			prev[i] = sl->header;
+		_set_height(&sl->height, &height);
 	}
+
+	x = _new_node(sl, height);
+	x->key = key;
+
+	for (i = 0; i < height; i++) {
+		_set_next(&x->next[i], prev[i]->next[i]);
+		_set_next(&prev[i]->next[i], x);
+	}
+	sl->count++;
 }
 
 int skiplist_contains(struct skiplist *sl, void *key)

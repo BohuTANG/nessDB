@@ -14,8 +14,9 @@
 CTEST(file, directio) {
 	int r;
 	int fd;
-	char *datas = (char*)xmalloc_aligned(512, 1024);
 	const char *dbname = "file-test.brt";
+	char *datas = (char*)xmalloc_aligned(512, 1024);
+	memset(datas, 0, 512);
 
 	fd = ness_os_open_direct(dbname, O_CREAT|O_RDWR, 0777);
 	ASSERT_TRUE(fd > 0);

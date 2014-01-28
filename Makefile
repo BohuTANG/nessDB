@@ -31,6 +31,7 @@ LIB_OBJS =	 			\
 	./engine/serialize.o	\
 	./engine/skiplist.o		\
 	./engine/xmalloc.o		\
+	./engine/compare.o		\
 	./engine/atomic.o		\
 	./engine/mempool.o		\
 	./engine/basement.o		\

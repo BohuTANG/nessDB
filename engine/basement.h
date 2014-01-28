@@ -20,15 +20,6 @@
  *
  */
 
-typedef uint64_t TXID;
-
-#define FIXKEY_SIZE (sizeof(struct fixkey))
-struct fixkey {
-	uint32_t ksize;
-	uint32_t vsize;
-	TXID txid;
-} __attribute__((__packed__));
-
 struct basement_iter {
 	int valid;
 	struct msg key;
