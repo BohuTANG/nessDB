@@ -31,8 +31,8 @@ int _serialize_blockpairs_to_disk(int fd,
 		struct block *b,
 		struct hdr *hdr)
 {
-	int r;
 	uint32_t i;
+	int r = NESS_OK;
 	uint32_t used_count = 0;
 
 	DISKOFF address;
@@ -87,14 +87,14 @@ int _serialize_blockpairs_to_disk(int fd,
 
 ERR:
 	buf_free(wbuf);
-	return NESS_ERR;
+	return r;
 }
 
 int _deserialize_blockpairs_from_disk(int fd,
 		struct block *b,
 		struct hdr *hdr)
 {
-	int r = NESS_OK;
+	int r = NESS_ERR;
 	uint32_t read_size;
 	uint32_t align_size;
 	struct buffer *rbuf;
@@ -160,13 +160,13 @@ int _deserialize_blockpairs_from_disk(int fd,
 ERR:
 	buf_free(rbuf);
 
-	return NESS_ERR;
+	return r;
 
 ERR1:
 	buf_free(rbuf);
 	xfree(pairs);
 
-	return NESS_ERR;
+	return r;
 }
 
 /*
@@ -266,7 +266,7 @@ int read_hdr_from_disk(int fd,
 		struct hdr **h,
 		DISKOFF off)
 {
-	int r;
+	int r = NESS_ERR;
 	struct hdr *hdr= NULL;
 	struct buffer *rbuf = NULL;
 	uint32_t exp_xsum, act_xsum;
