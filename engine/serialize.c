@@ -532,6 +532,7 @@ int _deserialize_nonleaf_from_disk(int fd,
 				"read size [%" PRIu32 "], nid [%" PRIu64 "]",
 				exp_xsum, act_xsum,
 				real_size, bp->nid);
+		r = NESS_INNER_XSUM_ERR;
 		goto ERR;
 	}
 
