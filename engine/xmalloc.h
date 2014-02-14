@@ -24,7 +24,7 @@ void *xrealloc_aligned(void *p, size_t olds, size_t alignment, size_t s);
 void *xmemdup(void *p, size_t s);
 void *xmemmove(void *dst, void *src, size_t s);
 void xfree(void *p);
-void xcheck_all_free();
-void xreset();
+void xcheck_all_free(void);
+void xreset(void);
 
 #endif /* nessDB_XMALLOC_H_ */

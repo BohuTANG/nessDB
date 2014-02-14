@@ -30,7 +30,7 @@ struct cpair {
 	ness_rwlock_t value_lock;	/* barriers for value */
 };
 
-struct cpair *cpair_new();
+struct cpair *cpair_new(void);
 void cpair_init(struct cpair *cp, struct node *value);
 
 /*******************************
@@ -47,7 +47,7 @@ struct cpair_htable {
 	ness_mutex_aligned_t *mutexes;	/* array lock */
 };
 
-struct cpair_list *cpair_list_new();
+struct cpair_list *cpair_list_new(void);
 void cpair_list_free(struct cpair_list *list);
 void cpair_list_add(struct cpair_list *list, struct cpair *pair);
 void cpair_list_remove(struct cpair_list *list, struct cpair *pair);
@@ -56,7 +56,7 @@ void cpair_list_remove(struct cpair_list *list, struct cpair *pair);
 /*******************************
  * hashtable
  ******************************/
-struct cpair_htable *cpair_htable_new();
+struct cpair_htable *cpair_htable_new(void);
 void cpair_htable_free(struct cpair_htable *table);
 void cpair_htable_add(struct cpair_htable *table, struct cpair *pair);
 void cpair_htable_remove(struct cpair_htable *table, struct cpair *pair);

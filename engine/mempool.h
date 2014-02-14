@@ -33,7 +33,7 @@ struct mempool {
 	struct mempool_block *blocks;
 };
 
-struct mempool *mempool_new();
+struct mempool *mempool_new(void);
 char *mempool_alloc_aligned(struct mempool *pool, uint32_t bytes);
 void mempool_free(struct mempool *pool);
 
