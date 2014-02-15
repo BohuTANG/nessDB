@@ -500,7 +500,7 @@ int _deserialize_nonleaf_from_disk(int fd,
 		struct node **node,
 		int light)
 {
-	int r;
+	int r = NESS_ERR;
 	uint32_t read_size;
 	uint32_t real_size;
 	struct buffer *rbuf = NULL;
