@@ -29,7 +29,7 @@ struct options {
 	char *redo_path;
 };
 
-static inline struct options *options_new()
+static inline struct options *options_new(void)
 {
 	struct options *opts;
 

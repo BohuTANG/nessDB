@@ -113,12 +113,12 @@ void xfree(void *p)
 	}
 }
 
-void xreset()
+void xreset(void)
 {
 	_n_mallocs = 0;
 }
 
-void xcheck_all_free()
+void xcheck_all_free(void)
 {
 	if (_n_mallocs > 0)
 		printf("--oops, n_mallocs is [%" PRIu64 "]\n", _n_mallocs);
