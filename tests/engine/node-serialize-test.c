@@ -65,19 +65,21 @@ CTEST(node_serial_test, leaf_2_record) {
 	struct node *dummy_leaf = leaf_alloc_empty(nid);
 	leaf_alloc_bsm(dummy_leaf);
 
+	MSN msn = 0U;
+	struct xids xids;
 	struct msg k, v;
 	k.size = 6;
 	k.data = "hello";
 	v.size = 6;
 	v.data = "world";
-	basement_put(dummy_leaf->u.l.le->bsm, &k, &v, MSG_PUT, DUMMY_TXID);
+	basement_put(dummy_leaf->u.l.le->bsm, &k, &v, MSG_PUT, msn, &xids);
 
 	struct msg k1, v1;
 	k1.size = 6;
 	k1.data = "hellx";
 	v1.size = 6;
 	v1.data = "worlx";
-	basement_put(dummy_leaf->u.l.le->bsm, &k1, &v1, MSG_PUT, DUMMY_TXID);
+	basement_put(dummy_leaf->u.l.le->bsm, &k1, &v1, MSG_PUT, msn, &xids);
 
 	ret = serialize_node_to_disk(fd, b, dummy_leaf, hdr);
 	ASSERT_TRUE(ret > 0);
@@ -140,13 +142,15 @@ CTEST(node_serial_test, node_2th_part_empty) {
 	p1.data = "pivot1";
 	msgcpy(&dummy_node->u.n.pivots[1], &p1);
 
+	MSN msn = 0U;
+	struct xids xids;
 	struct msg k, v;
 	k.size = 5;
 	k.data = "hello";
 	v.size = 5;
 	v.data = "world";
-	basement_put(dummy_node->u.n.parts[0].buffer, &k, &v, MSG_PUT,
-			DUMMY_TXID);
+	basement_put(dummy_node->u.n.parts[0].buffer, &k, &v, MSG_PUT, msn,
+			&xids);
 
 	
 	hdr->method = NESS_QUICKLZ_METHOD;

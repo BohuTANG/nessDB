@@ -28,10 +28,10 @@ void _leaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 		 * we don't need to write to disk
 		 */
 		if (iter.type != MSG_DEL) {
-			TXID txid = iter.txid;
+			MSN msn = iter.msn;
 
-			txid = ((txid << 8) | iter.type);
-			buf_putuint64(buf, txid);
+			msn = ((msn << 8) | iter.type);
+			buf_putuint64(buf, msn);
 			buf_putuint32(buf, iter.key.size);
 			buf_putnstr(buf, iter.key.data, iter.key.size);
 
@@ -49,10 +49,10 @@ void _nonleaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 	basement_iter_init(&iter, bsm);
 	basement_iter_seektofirst(&iter);
 	while (basement_iter_valid(&iter)) {
-		TXID txid = iter.txid;
+		MSN msn = iter.msn;
 
-		txid = ((txid << 8) | iter.type);
-		buf_putuint64(buf, txid);
+		msn = ((msn << 8) | iter.type);
+		buf_putuint64(buf, msn);
 		buf_putuint32(buf, iter.key.size);
 		buf_putnstr(buf, iter.key.data, iter.key.size);
 
@@ -71,13 +71,14 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 	while (pos < size) {
 		struct msg k;
 		struct msg v;
-		char type;
-		TXID txid;
+		uint8_t type;
+		MSN msn;
+		struct xids idxs;
 
-		if(!buf_getuint64(rbuf, &txid)) goto ERR;
+		if(!buf_getuint64(rbuf, &msn)) goto ERR;
 		pos += sizeof(uint64_t);
-		type = (txid & 0xff);
-		txid = (txid >> 8);
+		type = (msn & 0xff);
+		msn = (msn >> 8);
 		if(!buf_getuint32(rbuf, &k.size)) goto ERR;
 		pos += sizeof(uint32_t);
 		if(!buf_getnstr(rbuf, k.size, (char**)&k.data)) goto ERR;
@@ -91,7 +92,7 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 			pos += v.size;
 		}
 
-		basement_put(bsm, &k, &v, type, txid);
+		basement_put(bsm, &k, &v, type, msn, &idxs);
 	}
 
 	return NESS_OK;

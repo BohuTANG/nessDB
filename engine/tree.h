@@ -30,6 +30,7 @@ struct hdr {
 	uint64_t lastseq;
 	NID last_nid;
 	NID root_nid;
+	MSN last_msn;
 	DISKOFF blockoff;
 	ness_compress_method_t method;
 };
@@ -62,8 +63,7 @@ struct tree *tree_new(const char *dbname,
 int tree_put(struct tree *t,
 		struct msg *k,
 		struct msg *v,
-		msgtype_t type,
-		TXID txid);
+		msgtype_t type);
 
 void tree_free(struct tree *t);
 

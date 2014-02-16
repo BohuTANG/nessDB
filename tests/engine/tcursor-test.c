@@ -90,7 +90,7 @@ CTEST(cursor, 1leaf)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
+		tree_put(tree, &k, &v, MSG_PUT);
 	}
 
 	/* cursor */
@@ -157,7 +157,7 @@ CTEST(cursor, onlyleaf)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
+		tree_put(tree, &k, &v, MSG_PUT);
 	}
 
 	/* check leaf split*/
@@ -238,7 +238,7 @@ CTEST(cursor, inner)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
+		tree_put(tree, &k, &v, MSG_PUT);
 	}
 
 	/* check leaf split*/
@@ -322,7 +322,7 @@ CTEST(cursor, inner_large)
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		tree_put(tree, &k, &v, MSG_PUT, DUMMY_TXID);
+		tree_put(tree, &k, &v, MSG_PUT);
 	}
 
 	/* cursor */

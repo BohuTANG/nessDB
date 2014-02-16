@@ -42,6 +42,7 @@
 #define FILE_NAME_MAXLEN (256)
 
 typedef uint64_t NID;
+typedef uint64_t MSN;
 typedef uint64_t TXID;
 typedef uint64_t DISKOFF;
 
@@ -80,6 +81,19 @@ struct fixkey {
 	uint32_t ksize;
 	uint32_t vsize;
 	TXID txid;
+} __attribute__((__packed__));
+
+struct xids {
+	uint8_t num_xids;
+	TXID ids[];
+} __attribute__((__packed__));
+
+struct append_entry {
+	uint32_t keylen;
+	uint32_t vallen;
+	uint8_t type;
+	MSN msn;
+	struct xids *xids;
 } __attribute__((__packed__));
 
 /*

@@ -8,26 +8,43 @@
 #include "compare.h"
 #include "basement.h"
 
-void _encode_kv(char *data,
+static inline uint32_t get_xidslen(struct xids *xids)
+{
+	return (sizeof(TXID) * xids->num_xids);
+}
+
+void _encode(char *data,
 		struct msg *key,
 		struct msg *val,
 		msgtype_t type,
-		TXID txid)
+		MSN msn,
+		struct xids *xids)
 {
 	int pos = 0;
-	uint32_t vsize = 0U;
-	uint32_t ksize = key->size;
-	struct fixkey *fk;
+	uint32_t xidslen;
+	uint32_t vlen = 0U;
+	uint32_t klen = key->size;
+	struct append_entry *entry = (struct append_entry*)data;
 
 	if (type != MSG_DEL)
-		vsize = val->size;
+		vlen = val->size;
 
-	txid = ((txid << 8) | type);
-	fk = (struct fixkey*)(data);
-	fk->ksize = ksize;
-	fk->vsize = vsize;
-	fk->txid = txid;
-	pos += FIXKEY_SIZE;
+	msn = ((msn << 8) | type);
+	entry->keylen = klen;
+	pos += sizeof(klen);
+
+	entry->vallen = vlen;
+	pos += sizeof(vlen);
+
+	entry->type = type;
+	pos += sizeof(type);
+
+	entry->msn = msn;
+	pos += sizeof(msn);
+
+	xidslen = get_xidslen(xids);
+	memcpy(data + pos, xids, xidslen);
+	pos += xidslen;
 
 	memcpy(data + pos, key->data, key->size);
 	pos += key->size;
@@ -37,31 +54,38 @@ void _encode_kv(char *data,
 	}
 }
 
-void _decode_kv(char *data,
+void _decode(char *data,
 		struct msg *key,
 		struct msg *val,
 		msgtype_t *type,
-		TXID *txid)
+		MSN *msn,
+		struct xids *xids)
 {
 	int pos = 0;
-	uint32_t ksize;
-	uint32_t vsize;
-	struct fixkey *fk;
-	
-	fk = (struct fixkey*)data;
-	ksize = fk->ksize;
-	vsize = fk->vsize;
+	uint32_t klen;
+	uint32_t vlen;
+	struct append_entry *entry;
 
-	*type = fk->txid & 0xff;
-	*txid = fk->txid >> 8;
-	pos += FIXKEY_SIZE;
+	entry = (struct append_entry*)data;
+	klen = entry->keylen;
+	pos += sizeof(klen);
 
-	key->size = ksize;
+	vlen = entry->vallen;
+	pos += sizeof(vlen);
+
+	*type = entry->msn & 0xff;
+	pos += sizeof(*type);
+
+	*msn = entry->msn >> 8;
+	pos += sizeof(*msn);
+	memcpy(data + pos, xids, get_xidslen(xids));
+
+	key->size = klen;
 	key->data = (data + pos);
-	pos += ksize;
+	pos += klen;
 
 	if (*type != MSG_DEL) {
-		val->size = vsize;
+		val->size = vlen;
 		val->data = (data + pos);
 	} else {
 		memset(val, 0, sizeof(*val));
@@ -87,18 +111,19 @@ void basement_put(struct basement *bsm,
 		struct msg *key,
 		struct msg *val,
 		msgtype_t type,
-		TXID txid)
+		MSN msn,
+		struct xids *xids)
 {
 	char *base;
 	uint32_t sizes = 0U;
 
-	sizes += (sizeof(struct fixkey) + key->size);
+	sizes += (sizeof(struct append_entry) + get_xidslen(xids) + key->size);
 	if (type != MSG_DEL) {
 		sizes += val->size;
 	}
 	base = mempool_alloc_aligned(bsm->mpool, sizes);
 
-	_encode_kv(base, key, val, type, txid);
+	_encode(base, key, val, type, msn, xids);
 	skiplist_put(bsm->list, base);
 	bsm->count++;
 }
@@ -135,13 +160,14 @@ void _iter_decode(const char *base,
 		struct basement_iter *bsm_iter)
 {
 	if (base) {
-		_decode_kv((char*)base,
+		_decode((char*)base,
 				&bsm_iter->key,
 				&bsm_iter->val,
 				&bsm_iter->type,
-				&bsm_iter->txid);
+				&bsm_iter->msn,
+				bsm_iter->xids);
 		bsm_iter->valid = 1;
-	} else 
+	} else
 		bsm_iter->valid = 0;
 }
 
@@ -190,21 +216,19 @@ void basement_iter_prev(struct basement_iter *bsm_iter)
 void basement_iter_seek(struct basement_iter *bsm_iter, struct msg *k)
 {
 	int size;
-	char *fixkey;
+	char *data;
 	void *base = NULL;
-	struct fixkey *fk;
+	struct append_entry *entry;
 
 	if (!k) return;
-
-	size = (FIXKEY_SIZE + k->size);
-	fixkey = xcalloc(1, size);
-
-	fk = (struct fixkey*)(fixkey);
-	fk->ksize = k->size;
-	fk->vsize = 0U;
-	memcpy(fixkey + FIXKEY_SIZE, k->data, k->size);
-	skiplist_iter_seek(&bsm_iter->list_iter, fixkey);
-	xfree(fixkey);
+	size = (sizeof(struct append_entry) + sizeof(struct xids) + k->size);
+	data = xcalloc(1, size);
+	entry = (struct append_entry*)(data);
+	entry->keylen = k->size;
+	entry->vallen = 0U;
+	memcpy(data + sizeof(struct append_entry), k->data, k->size);
+	skiplist_iter_seek(&bsm_iter->list_iter, data);
+	xfree(data);
 
 	if (bsm_iter->list_iter.node)
 		base = bsm_iter->list_iter.node->key;
