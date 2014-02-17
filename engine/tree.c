@@ -4,12 +4,13 @@
  *
  */
 
-#include "tree.h"
+#include "xtypes.h"
 #include "cache.h"
 #include "hdrserialize.h"
 #include "serialize.h"
 #include "atomic.h"
 #include "file.h"
+#include "tree.h"
 
 int fetch_node_callback(void *tree, NID nid, struct node **n)
 {
@@ -779,7 +780,7 @@ int tree_put(struct tree *t,
 		msgtype_t type)
 {
 	/* TODO(BohuTANG): xids from cmd */
-	struct xids xids;
+	struct xids xids = {.num_xids = 0};
 	MSN msn = hdr_next_msn(t);
 
 	return  _root_put_cmd(t, k, v, type, msn, &xids);

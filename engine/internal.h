@@ -76,26 +76,6 @@ typedef enum {
 	NESS_LOG_EOF = -703,
 } ness_errno_t;
 
-#define FIXKEY_SIZE (sizeof(struct fixkey))
-struct fixkey {
-	uint32_t ksize;
-	uint32_t vsize;
-	TXID txid;
-} __attribute__((__packed__));
-
-struct xids {
-	uint8_t num_xids;
-	TXID ids[];
-} __attribute__((__packed__));
-
-struct append_entry {
-	uint32_t keylen;
-	uint32_t vallen;
-	uint8_t type;
-	MSN msn;
-	struct xids *xids;
-} __attribute__((__packed__));
-
 /*
  * align to ALIGNMENT for direct I/O
  * but it is not always 512 bytes:

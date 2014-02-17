@@ -73,7 +73,6 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 		struct msg v;
 		uint8_t type;
 		MSN msn;
-		struct xids idxs;
 
 		if(!buf_getuint64(rbuf, &msn)) goto ERR;
 		pos += sizeof(uint64_t);
@@ -92,7 +91,7 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 			pos += v.size;
 		}
 
-		basement_put(bsm, &k, &v, type, msn, &idxs);
+		basement_put(bsm, &k, &v, type, msn, NULL);
 	}
 
 	return NESS_OK;

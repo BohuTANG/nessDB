@@ -5,13 +5,9 @@
  */
 
 #include "buf.h"
+#include "xtypes.h"
 #include "compare.h"
 #include "basement.h"
-
-static inline uint32_t get_xidslen(struct xids *xids)
-{
-	return (sizeof(TXID) * xids->num_xids);
-}
 
 void _encode(char *data,
 		struct msg *key,
@@ -21,7 +17,6 @@ void _encode(char *data,
 		struct xids *xids)
 {
 	int pos = 0;
-	uint32_t xidslen;
 	uint32_t vlen = 0U;
 	uint32_t klen = key->size;
 	struct append_entry *entry = (struct append_entry*)data;
@@ -29,29 +24,21 @@ void _encode(char *data,
 	if (type != MSG_DEL)
 		vlen = val->size;
 
-	msn = ((msn << 8) | type);
 	entry->keylen = klen;
-	pos += sizeof(klen);
-
 	entry->vallen = vlen;
-	pos += sizeof(vlen);
-
 	entry->type = type;
-	pos += sizeof(type);
-
 	entry->msn = msn;
-	pos += sizeof(msn);
-
-	xidslen = get_xidslen(xids);
-	memcpy(data + pos, xids, xidslen);
-	pos += xidslen;
+	pos += get_entrylen(entry);
 
 	memcpy(data + pos, key->data, key->size);
 	pos += key->size;
 
 	if (type != MSG_DEL) {
 		memcpy(data + pos, val->data, val->size);
+		pos += val->size;
 	}
+
+	memcpy(data + pos, xids, get_xidslen(xids));
 }
 
 void _decode(char *data,
@@ -59,8 +46,9 @@ void _decode(char *data,
 		struct msg *val,
 		msgtype_t *type,
 		MSN *msn,
-		struct xids *xids)
+		struct xids **xids)
 {
+	(void)xids;
 	int pos = 0;
 	uint32_t klen;
 	uint32_t vlen;
@@ -68,17 +56,10 @@ void _decode(char *data,
 
 	entry = (struct append_entry*)data;
 	klen = entry->keylen;
-	pos += sizeof(klen);
-
 	vlen = entry->vallen;
-	pos += sizeof(vlen);
-
-	*type = entry->msn & 0xff;
-	pos += sizeof(*type);
-
-	*msn = entry->msn >> 8;
-	pos += sizeof(*msn);
-	memcpy(data + pos, xids, get_xidslen(xids));
+	*type = entry->type;
+	*msn = entry->msn;
+	pos += get_entrylen(entry);
 
 	key->size = klen;
 	key->data = (data + pos);
@@ -87,9 +68,12 @@ void _decode(char *data,
 	if (*type != MSG_DEL) {
 		val->size = vlen;
 		val->data = (data + pos);
+		pos += vlen;
 	} else {
 		memset(val, 0, sizeof(*val));
 	}
+	
+	*xids = (struct xids*)(data + pos);
 }
 
 struct basement *basement_new()
@@ -117,10 +101,12 @@ void basement_put(struct basement *bsm,
 	char *base;
 	uint32_t sizes = 0U;
 
-	sizes += (sizeof(struct append_entry) + get_xidslen(xids) + key->size);
+	sizes += (sizeof(struct append_entry) + key->size);
 	if (type != MSG_DEL) {
 		sizes += val->size;
 	}
+	sizes += get_xidslen(xids);
+
 	base = mempool_alloc_aligned(bsm->mpool, sizes);
 
 	_encode(base, key, val, type, msn, xids);
@@ -165,7 +151,7 @@ void _iter_decode(const char *base,
 				&bsm_iter->val,
 				&bsm_iter->type,
 				&bsm_iter->msn,
-				bsm_iter->xids);
+				&bsm_iter->xids);
 		bsm_iter->valid = 1;
 	} else
 		bsm_iter->valid = 0;
