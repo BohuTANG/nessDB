@@ -1,3 +1,4 @@
+#include "xtypes.h"
 #include "compare.h"
 
 int msg_key_compare(struct msg *a, struct msg *b)
@@ -18,35 +19,39 @@ int msg_key_compare(struct msg *a, struct msg *b)
 
 int internal_key_compare(void *a, void *b)
 {
-	TXID atxid;
-	TXID btxid;
+	int pos;
+	MSN msna;
+	MSN msnb;
 	struct msg ma;
 	struct msg mb;
+
 	register int r;
-	register struct fixkey *fk;
+	register struct append_entry *entry;
 
 	if (!a) return -1;
 	if (!b) return +1;
 	
-	fk = (struct fixkey*)a;
-	atxid = fk->txid >> 8;
-	ma.size = fk->ksize;
-	ma.data = ((char*)a + FIXKEY_SIZE);
+	pos = 0;
+	entry = (struct append_entry*)a;
+	msna = entry->msn;
+	ma.size = entry->keylen;
+	pos += get_entrylen(entry);
+	ma.data = ((char*)a + pos);
 
-	fk = (struct fixkey*)b;
-	btxid = fk->txid >> 8;
-	mb.size = fk->ksize;
-	mb.data = ((char*)b + FIXKEY_SIZE);
+	pos = 0;
+	entry = (struct append_entry*)b;
+	msnb = entry->msn;
+	mb.size = entry->keylen;
+	pos += get_entrylen(entry);
+	mb.data = ((char*)b + pos);
 
 	r = msg_key_compare(&ma, &mb);
 	if (r == 0) {
-		if (atxid > btxid)
+		if (msna > msnb)
 			r = -1;
-		else if (atxid < btxid)
+		else if (msna < msnb)
 			r = +1;
 	}
 
 	return r;
 }
-
-

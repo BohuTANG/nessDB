@@ -4,12 +4,13 @@
  *
  */
 
-#include "tree.h"
+#include "xtypes.h"
 #include "cache.h"
 #include "hdrserialize.h"
 #include "serialize.h"
 #include "atomic.h"
 #include "file.h"
+#include "tree.h"
 
 int fetch_node_callback(void *tree, NID nid, struct node **n)
 {
@@ -169,11 +170,11 @@ void _leaf_split(struct tree *t,
 	basement_iter_seektofirst(&iter);
 	while (basement_iter_valid(&iter)) {
 		if (i <= mid) {
-			basement_put(bsma, &iter.key, &iter.val, iter.type, iter.txid);
+			basement_put(bsma, &iter.key, &iter.val, iter.type, iter.msn, iter.xids);
 			if (i == mid)
 				spk = msgdup(&iter.key);
 		} else {
-			basement_put(bsmb, &iter.key, &iter.val, iter.type, iter.txid);
+			basement_put(bsmb, &iter.key, &iter.val, iter.type, iter.msn, iter.xids);
 		}
 		basement_iter_next(&iter);
 		i++;
@@ -364,10 +365,11 @@ void _leaf_put_cmd(struct tree *t,
 		struct msg *k,
 		struct msg *v,
 		msgtype_t type,
-		TXID txid)
+		MSN msn,
+		struct xids *xids)
 {
 	write_lock(&leaf->u.l.le->rwlock);
-	basement_put(leaf->u.l.le->bsm, k, v, type, txid);
+	basement_put(leaf->u.l.le->bsm, k, v, type, msn, xids);
 	node_set_dirty(leaf);
 	write_unlock(&leaf->u.l.le->rwlock);
 
@@ -386,7 +388,8 @@ void _nonleaf_put_cmd(struct tree *t,
 		struct msg *k,
 		struct msg *v,
 		msgtype_t type,
-		TXID txid)
+		MSN msn,
+		struct xids *xids)
 {
 	uint32_t pidx;
 	struct partition *part;
@@ -399,7 +402,7 @@ void _nonleaf_put_cmd(struct tree *t,
 	}
 
 	write_lock(&part->rwlock);
-	basement_put(part->buffer, k, v, type, txid);
+	basement_put(part->buffer, k, v, type, msn, xids);
 	node_set_dirty(node);
 	write_unlock(&part->rwlock);
 
@@ -417,12 +420,13 @@ void _node_put_cmd(struct tree *t,
 		struct msg *k,
 		struct msg *v,
 		msgtype_t type,
-		TXID txid)
+		MSN msn,
+		struct xids *xids)
 {
 	if (node->height == 0)
-		_leaf_put_cmd(t, node, k, v, type, txid);
+		_leaf_put_cmd(t, node, k, v, type, msn, xids);
 	else
-		_nonleaf_put_cmd(t, node, k, v, type, txid);
+		_nonleaf_put_cmd(t, node, k, v, type, msn, xids);
 }
 
 /*
@@ -466,7 +470,8 @@ int _flush_some_child(struct tree *t, struct node *parent)
 				&iter.key,
 				&iter.val,
 				iter.type,
-				iter.txid);
+				iter.msn,
+				iter.xids);
 		basement_iter_next(&iter);
 	}
 
@@ -592,7 +597,8 @@ int _root_put_cmd(struct tree *t,
 		struct msg *k,
 		struct msg *v,
 		msgtype_t type,
-		TXID txid)
+		MSN msn,
+		struct xids *xids)
 {
 	struct node *root;
 	enum reactivity re;
@@ -654,7 +660,7 @@ CHANGE_LOCK_TYPE:
 	default : abort();
 	}
 
-	_node_put_cmd(t, root, k, v, type, txid);
+	_node_put_cmd(t, root, k, v, type, msn, xids);
 	c_op->cache_unpin(t->cache, root);
 
 	return NESS_OK;
@@ -666,6 +672,13 @@ NID hdr_next_nid(struct tree *t)
 	nassert(t->hdr->last_nid >= NID_START);
 
 	return t->hdr->last_nid;
+}
+
+MSN hdr_next_msn(struct tree *t)
+{
+	atomic64_increment(&t->hdr->last_msn);
+
+	return t->hdr->last_msn;
 }
 
 struct tree *tree_new(const char *dbname,
@@ -764,10 +777,13 @@ ERR:
 int tree_put(struct tree *t,
 		struct msg *k,
 		struct msg *v,
-		msgtype_t type,
-		TXID txid)
+		msgtype_t type)
 {
-	return  _root_put_cmd(t, k, v, type, txid);
+	/* TODO(BohuTANG): xids from cmd */
+	struct xids xids = {.num_xids = 0};
+	MSN msn = hdr_next_msn(t);
+
+	return  _root_put_cmd(t, k, v, type, msn, &xids);
 }
 
 void tree_free(struct tree *t)

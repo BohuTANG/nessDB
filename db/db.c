@@ -16,7 +16,6 @@
 #define DB_NAME ("ness.DB")
 
 struct nessdb {
-	TXID txid;
 	struct options *opts;
 	struct status *status;
 	struct cache *cache;
@@ -77,7 +76,7 @@ int db_set(struct nessdb *db, struct msg *k, struct msg *v)
 {
 	int r;
 
-	r = tree_put(db->tree, k, v, MSG_PUT, 0UL);
+	r = tree_put(db->tree, k, v, MSG_PUT);
 
 	return r;
 }
@@ -86,7 +85,7 @@ int db_del(struct nessdb *db, struct msg *k)
 {
 	int r;
 
-	r = tree_put(db->tree, k, NULL, MSG_DEL, 0UL);
+	r = tree_put(db->tree, k, NULL, MSG_DEL);
 
 	return r;
 }

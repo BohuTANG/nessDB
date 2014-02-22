@@ -55,6 +55,8 @@ CTEST(basement, insert_and_lookup)
 	struct basement *bsm = basement_new();
 	struct msg **msgs = xcalloc(R, sizeof(*msgs));
 
+	MSN msn = 0U;
+
 	_random_key(vbuf, VAL_SIZE);
 	for (i = 0; i < R; i++) {
 		snprintf(kbuf, KEY_SIZE, "key-%d", i);
@@ -63,7 +65,7 @@ CTEST(basement, insert_and_lookup)
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
 		msgs[i] = msgdup(&k);
-		basement_put(bsm, &k, &v, MSG_PUT, 0UL);
+		basement_put(bsm, &k, &v, MSG_PUT, msn++, NULL);
 	}
 
 	basement_iter_init(&iter, bsm);
