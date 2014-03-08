@@ -8,8 +8,9 @@
 #define nessDB_TCURSOR_H_
 
 #include "internal.h"
-#include "msg.h"
+#include "node.h"
 #include "tree.h"
+#include "msg.h"
 
 /**
  * @file cursor.h
@@ -46,14 +47,6 @@ enum {
 	CURSOR_TRY_AGAIN = -10002
 };
 
-struct ancestors {
-	int level;
-	int isbsm;
-	int childnum;
-	void *v;
-	struct ancestors *next;
-};
-
 /* internal search entry */
 struct search {
 	struct msg *key;
@@ -67,8 +60,10 @@ struct search {
 
 struct cursor {
 	int valid;
+	MSN msn;
 	struct msg key;		/* return key */
 	struct msg val;		/* return val */
+	msgtype_t msgtype;
 	struct tree *tree;	/* index */
 	void *extra;		/* extra(no-use) */
 

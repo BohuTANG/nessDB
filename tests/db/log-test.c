@@ -33,7 +33,7 @@ CTEST(log, write) {
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
-		logw_append(lgw, &k, &v, MSG_PUT, tbn);
+		logw_append(lgw, &k, &v, MSG_INSERT, tbn);
 	}
 
 	uint32_t all_size;

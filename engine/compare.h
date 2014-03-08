@@ -14,5 +14,3 @@ int internal_key_compare(void *a, void *b);
 int msg_key_compare(struct msg *a, struct msg *b);
 
 #endif /* _nessDB_COMPARE_H_ */
-
-

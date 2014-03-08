@@ -5,6 +5,7 @@
  */
 
 #include "internal.h"
+#include "xtypes.h"
 #include "options.h"
 #include "xmalloc.h"
 #include "status.h"
@@ -76,7 +77,7 @@ int db_set(struct nessdb *db, struct msg *k, struct msg *v)
 {
 	int r;
 
-	r = tree_put(db->tree, k, v, MSG_PUT);
+	r = tree_put(db->tree, k, v, MSG_INSERT);
 
 	return r;
 }
@@ -85,7 +86,7 @@ int db_del(struct nessdb *db, struct msg *k)
 {
 	int r;
 
-	r = tree_put(db->tree, k, NULL, MSG_DEL);
+	r = tree_put(db->tree, k, NULL, MSG_DELETE);
 
 	return r;
 }

@@ -108,7 +108,7 @@ int logr_read(struct logr *lgr,
 		getnstr(base + pos, k->size, (char**)&k->data);
 		pos += k->size;
 
-		if (*t != MSG_DEL) {
+		if (*t != MSG_DELETE) {
 			/* value */
 			getuint32(base + pos, &v->size);
 			pos += 4;

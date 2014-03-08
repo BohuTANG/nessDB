@@ -5,7 +5,14 @@
  */
 
 #include "node.h"
+#include "update.h"
 #include "compare.h"
+
+static struct node_operations nop = {
+	.update_func = msg_update,
+	.delete_all_func = NULL,
+	.pivot_compare_func = msg_key_compare
+};
 
 struct node *leaf_alloc_empty(NID nid)
 {
@@ -14,7 +21,7 @@ struct node *leaf_alloc_empty(NID nid)
 	node = xcalloc(1, sizeof(*node));
 	node->nid = nid;
 	node->height = 0;
-	node->pivot_compare_func = msg_key_compare;
+	node->node_op = &nop;
 
 	node->u.l.le = xcalloc(1, sizeof(struct leafentry));
 	rwlock_init(&node->u.l.le->rwlock);
@@ -40,7 +47,7 @@ struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children)
 	node = xcalloc(1, sizeof(*node));
 	node->nid = nid;
 	node->height = height;
-	node->pivot_compare_func = msg_key_compare;
+	node->node_op = &nop;
 	node->u.n.n_children = children;
 
 	node->u.n.pivots = xcalloc(children - 1, PIVOT_SIZE);
@@ -115,7 +122,7 @@ int node_partition_idx(struct node *node, struct msg *k)
 	while (lo <= hi) {
 		/* mi integer overflow never happens */
 		mi = (lo + hi) / 2;
-		cmp = node->pivot_compare_func(k, &node->u.n.pivots[mi]);
+		cmp = node->node_op->pivot_compare_func(k, &node->u.n.pivots[mi]);
 		if (cmp > 0)
 			lo = mi + 1;
 		else if (cmp < 0)

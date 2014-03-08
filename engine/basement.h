@@ -8,6 +8,7 @@
 #define nessDB_BASEMENT_H_
 
 #include "internal.h"
+#include "xtypes.h"
 #include "mempool.h"
 #include "skiplist.h"
 #include "msg.h"
@@ -22,10 +23,10 @@
 
 struct basement_iter {
 	int valid;
+	MSN msn;
 	struct msg key;
 	struct msg val;
 	msgtype_t type;
-	MSN msn;
 	struct xids *xids;
 	struct basement *bsm;
 	struct skiplist_iter list_iter;

@@ -9,12 +9,14 @@
 
 #include "internal.h"
 
-#define MSGTYPE_SIZE	(2)
-/* this enum type is short(uint16_t) */
+/* msg type */
 typedef enum {
 	MSG_NONE = 0,
-	MSG_PUT = 1,
-	MSG_DEL = 2
+	MSG_INSERT = 1,
+	MSG_DELETE = 2,
+	MSG_UPDATE = 3,
+	MSG_COMMIT = 4,
+	MSG_ABORT = 5
 } msgtype_t;
 
 struct msg {

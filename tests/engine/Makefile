@@ -44,6 +44,7 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/cpair.o		\
 	$(top_builddir)/engine/node.o		\
 	$(top_builddir)/engine/tree.o		\
+	$(top_builddir)/engine/leaf.o		\
 	$(top_builddir)/engine/tcursor.o		\
 	$(top_builddir)/engine/file.o		\
 	$(top_builddir)/engine/msg.o			\

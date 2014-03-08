@@ -27,7 +27,7 @@ void _leaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 		 * if type is MSG_DEL in leaf,
 		 * we don't need to write to disk
 		 */
-		if (iter.type != MSG_DEL) {
+		if (iter.type != MSG_DELETE) {
 			MSN msn = iter.msn;
 
 			msn = ((msn << 8) | iter.type);
@@ -56,7 +56,7 @@ void _nonleaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 		buf_putuint32(buf, iter.key.size);
 		buf_putnstr(buf, iter.key.data, iter.key.size);
 
-		if (iter.type != MSG_DEL) {
+		if (iter.type != MSG_DELETE) {
 			buf_putuint32(buf, iter.val.size);
 			buf_putnstr(buf, iter.val.data, iter.val.size);
 		}
@@ -83,7 +83,7 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 		if(!buf_getnstr(rbuf, k.size, (char**)&k.data)) goto ERR;
 		pos += k.size;
 
-		if (type != MSG_DEL) {
+		if (type != MSG_DELETE) {
 			if(!buf_getuint32(rbuf, &v.size)) goto ERR;
 			pos += sizeof(uint32_t);
 

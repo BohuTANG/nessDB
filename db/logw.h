@@ -8,6 +8,7 @@
 #define nessDB_LOGW_H_
 
 #include "internal.h"
+#include "xtypes.h"
 #include "options.h"
 #include "posix.h"
 #include "msg.h"

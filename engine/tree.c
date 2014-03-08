@@ -10,6 +10,7 @@
 #include "serialize.h"
 #include "atomic.h"
 #include "file.h"
+#include "leaf.h"
 #include "tree.h"
 
 int fetch_node_callback(void *tree, NID nid, struct node **n)
@@ -368,11 +369,7 @@ void _leaf_put_cmd(struct tree *t,
 		MSN msn,
 		struct xids *xids)
 {
-	write_lock(&leaf->u.l.le->rwlock);
-	basement_put(leaf->u.l.le->bsm, k, v, type, msn, xids);
-	node_set_dirty(leaf);
-	write_unlock(&leaf->u.l.le->rwlock);
-
+	leaf_apply_msg(leaf, k, v, type, msn, xids);
 	t->status->tree_leaf_put_nums++;
 }
 
@@ -403,6 +400,7 @@ void _nonleaf_put_cmd(struct tree *t,
 
 	write_lock(&part->rwlock);
 	basement_put(part->buffer, k, v, type, msn, xids);
+	node->msn = msn > node->msn ? msn : node->msn;
 	node_set_dirty(node);
 	write_unlock(&part->rwlock);
 
@@ -438,7 +436,9 @@ void _node_put_cmd(struct tree *t,
  */
 int _flush_some_child(struct tree *t, struct node *parent)
 {
+	MSN msn;
 	int childnum;
+	
 	struct node *child;
 	struct partition *part;
 	enum reactivity re_child;
@@ -461,10 +461,12 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	struct basement *bsm;
 	struct basement_iter iter;
 
+	msn = child->msn;
 	bsm = part->buffer;
 	basement_iter_init(&iter, bsm);
 	basement_iter_seektofirst(&iter);
 	while (basement_iter_valid(&iter)) {
+		if (msn >= iter.msn) continue;
 		_node_put_cmd(t,
 				child,
 				&iter.key,

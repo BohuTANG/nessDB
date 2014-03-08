@@ -9,6 +9,7 @@
 
 #include "internal.h"
 
+/* transaction id */
 struct xids {
 	uint8_t num_xids;
 	TXID ids[];

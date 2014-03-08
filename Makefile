@@ -27,8 +27,8 @@ CFLAGS = -Iengine -Idb $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PL
 LIB_OBJS =	 			\
 	./engine/compress/compress.o	\
 	./engine/compress/quicklz.o	\
-	./engine/hdrserialize.o	\
-	./engine/serialize.o	\
+	./engine/hdrserialize.o		\
+	./engine/serialize.o		\
 	./engine/skiplist.o		\
 	./engine/xmalloc.o		\
 	./engine/compare.o		\
@@ -37,8 +37,9 @@ LIB_OBJS =	 			\
 	./engine/basement.o		\
 	./engine/posix.o		\
 	./engine/crc32.o		\
-	./engine/node.o		\
-	./engine/tree.o		\
+	./engine/node.o			\
+	./engine/leaf.o			\
+	./engine/tree.o			\
 	./engine/tcursor.o		\
 	./engine/block.o		\
 	./engine/debug.o		\
@@ -56,7 +57,7 @@ BENCH_OBJS = \
 	./bench/random.o \
 	./bench/db-bench.o
 
-LIBRARY = libbrt.so
+LIBRARY = libnessdb.so
 
 all: $(LIBRARY)
 

@@ -21,7 +21,7 @@ void _encode(char *data,
 	uint32_t klen = key->size;
 	struct append_entry *entry = (struct append_entry*)data;
 
-	if (type != MSG_DEL)
+	if (type != MSG_DELETE)
 		vlen = val->size;
 
 	entry->keylen = klen;
@@ -33,7 +33,7 @@ void _encode(char *data,
 	memcpy(data + pos, key->data, key->size);
 	pos += key->size;
 
-	if (type != MSG_DEL) {
+	if (type != MSG_DELETE) {
 		memcpy(data + pos, val->data, val->size);
 		pos += val->size;
 	}
@@ -65,7 +65,7 @@ void _decode(char *data,
 	key->data = (data + pos);
 	pos += klen;
 
-	if (*type != MSG_DEL) {
+	if (*type != MSG_DELETE) {
 		val->size = vlen;
 		val->data = (data + pos);
 		pos += vlen;
@@ -102,7 +102,7 @@ void basement_put(struct basement *bsm,
 	uint32_t sizes = 0U;
 
 	sizes += (sizeof(struct append_entry) + key->size);
-	if (type != MSG_DEL) {
+	if (type != MSG_DELETE) {
 		sizes += val->size;
 	}
 	sizes += get_xidslen(xids);
