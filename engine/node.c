@@ -5,11 +5,10 @@
  */
 
 #include "node.h"
-#include "update.h"
 #include "compare.h"
 
 static struct node_operations nop = {
-	.update_func = msg_update,
+	.update_func = NULL,
 	.delete_all_func = NULL,
 	.pivot_compare_func = msg_key_compare
 };

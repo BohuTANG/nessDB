@@ -491,25 +491,6 @@ void dbcache_close(struct dbcache *dbc)
 	}
 }
 
-int compaction_begin(struct dbcache *dbc)
-{
-	(void)dbc;
-
-	return NESS_OK;
-}
-
-/*
- * PROCESSES:
- * a) wirte-back all dirty nodes to disk
- * b) write-back tree header to disk
- * c) to run-eviction if need_evict true
- */
-int compaction_finish(struct dbcache *dbc)
-{
-	(void)dbc;
-	return NESS_OK;
-}
-
 void dbcache_free(struct cache *c)
 {
 	struct dbcache *dbc = (struct dbcache*)c->extra;

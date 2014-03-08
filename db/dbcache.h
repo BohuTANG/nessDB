@@ -40,8 +40,6 @@ void (dbcache_file_register) (struct cache *c, struct cache_file *cfile);
 void (dbcache_file_unregister) (struct cache *c, struct cache_file *cfile);
 
 struct cache *dbcache_new(struct options *opts);
-int compaction_begin(struct dbcache *);
-int compaction_finish(struct dbcache *);
 void dbcache_free(struct cache *c);
 
 #endif /* nessDB_DBCACHE_H_ */
