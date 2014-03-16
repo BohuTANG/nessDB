@@ -5,7 +5,6 @@
  */
 
 #include "buf.h"
-#include "xtypes.h"
 #include "compare.h"
 #include "basement.h"
 

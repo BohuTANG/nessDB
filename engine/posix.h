@@ -7,6 +7,7 @@
 #ifndef nessDB_POSIX_H_
 #define nessDB_POSIX_H_
 
+#include "xtypes.h"
 #include "internal.h"
 #include "atomic.h"
 #include "debug.h"

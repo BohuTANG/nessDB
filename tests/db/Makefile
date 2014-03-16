@@ -50,13 +50,12 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/msg.o		\
 	$(top_builddir)/engine/buf.o		\
 	$(top_builddir)/db/dbcache.o		\
-	$(top_builddir)/db/logw.o		\
-	$(top_builddir)/db/logr.o		\
+	$(top_builddir)/engine/logw.o		\
+	$(top_builddir)/engine/logr.o		\
 	$(top_builddir)/db/db.o			
 
 
 TEST_OBJS = 				\
-	log-test.o			\
 	db-test.o			\
 	main.o			
 

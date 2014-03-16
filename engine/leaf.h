@@ -24,4 +24,4 @@ int leaf_apply_msg(struct node *leaf,
 		MSN msn,
 		struct xids *xids);
 
-#endif /* nessDB_LE_H_ */
+#endif /* nessDB_LEAF_H_ */

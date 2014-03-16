@@ -4,7 +4,6 @@
  *
  */
 
-#include "xtypes.h"
 #include "cache.h"
 #include "hdrserialize.h"
 #include "serialize.h"

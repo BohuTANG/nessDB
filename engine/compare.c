@@ -1,4 +1,4 @@
-#include "xtypes.h"
+#include "internal.h"
 #include "compare.h"
 
 int msg_key_compare(struct msg *a, struct msg *b)

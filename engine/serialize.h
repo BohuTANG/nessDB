@@ -7,6 +7,7 @@
 #ifndef nessDB_SERIALIZE_H_
 #define nessDB_SERIALIZE_H_
 
+#include "xtypes.h"
 #include "internal.h"
 #include "block.h"
 #include "tree.h"

@@ -7,6 +7,7 @@
 #ifndef nessDB_SKIPLIST_H_
 #define nessDB_SKIPLIST_H_
 
+#include "xtypes.h"
 #include "internal.h"
 #include "mempool.h"
 

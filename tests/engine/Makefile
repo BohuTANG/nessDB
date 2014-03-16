@@ -31,12 +31,12 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/compress/quicklz.o	\
 	$(top_builddir)/engine/hdrserialize.o	\
 	$(top_builddir)/engine/serialize.o	\
-	$(top_builddir)/engine/skiplist.o		\
-	$(top_builddir)/engine/xmalloc.o		\
-	$(top_builddir)/engine/compare.o		\
+	$(top_builddir)/engine/skiplist.o	\
+	$(top_builddir)/engine/xmalloc.o	\
+	$(top_builddir)/engine/compare.o	\
 	$(top_builddir)/engine/atomic.o		\
-	$(top_builddir)/engine/mempool.o		\
-	$(top_builddir)/engine/basement.o		\
+	$(top_builddir)/engine/mempool.o	\
+	$(top_builddir)/engine/basement.o	\
 	$(top_builddir)/engine/posix.o		\
 	$(top_builddir)/engine/crc32.o		\
 	$(top_builddir)/engine/block.o		\
@@ -45,10 +45,12 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/node.o		\
 	$(top_builddir)/engine/tree.o		\
 	$(top_builddir)/engine/leaf.o		\
-	$(top_builddir)/engine/tcursor.o		\
+	$(top_builddir)/engine/tcursor.o	\
 	$(top_builddir)/engine/file.o		\
-	$(top_builddir)/engine/msg.o			\
-	$(top_builddir)/engine/buf.o			\
+	$(top_builddir)/engine/msg.o		\
+	$(top_builddir)/engine/buf.o		\
+	$(top_builddir)/engine/logw.o		\
+	$(top_builddir)/engine/logr.o		\
 	$(top_builddir)/db/dbcache.o			
 
 
@@ -57,6 +59,7 @@ TEST_OBJS = 				\
 	file-test.o			\
 	block-test.o			\
 	buf-test.o			\
+	log-test.o			\
 	compress-test.o			\
 	skiplist-test.o			\
 	basement-test.o			\

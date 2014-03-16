@@ -47,9 +47,10 @@ LIB_OBJS =	 			\
 	./engine/file.o			\
 	./engine/msg.o			\
 	./engine/buf.o			\
+	./engine/logw.o			\
+	./engine/logr.o			\
+	./engine/txn.o			\
 	./db/dbcache.o			\
-	./db/logw.o			\
-	./db/logr.o			\
 	./db/db.o			
 
 

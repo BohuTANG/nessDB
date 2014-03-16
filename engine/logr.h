@@ -7,8 +7,8 @@
 #ifndef nessDB_LOGR_H_
 #define nessDB_LOGR_H_
 
-#include "internal.h"
 #include "xtypes.h"
+#include "internal.h"
 #include "options.h"
 #include "msg.h"
 

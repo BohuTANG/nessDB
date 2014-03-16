@@ -51,31 +51,29 @@ typedef enum {
 	NESS_QUICKLZ_METHOD
 } ness_compress_method_t;
 
-/* error no from -30800 to -30999 */
-typedef enum {
-	NESS_ERR = 0,
-	NESS_OK = 1,
-	NESS_INNER_XSUM_ERR = -30999,
-	NESS_LEAF_XSUM_ERR = -30998,
-	NESS_PART_XSUM_ERR = -30997,
-	NESS_HDR_XSUM_ERR = -30996,
-	NESS_DO_XSUM_ERR = -30995,
-	NESS_READ_ERR = -30994,
-	NESS_WRITE_ERR = -30993,
-	NESS_FSYNC_ERR = -30992,
-	NESS_SERIAL_BLOCKPAIR_ERR = -30991,
-	NESS_DESERIAL_BLOCKPAIR_ERR = -30990,
-	NESS_BLOCK_NULL_ERR = -30989,
-	NESS_BUF_TO_BSM_ERR = -30988,
-	NESS_BSM_TO_BUF_ERR = -30987,
-	NESS_SERIAL_NONLEAF_FROM_BUF_ERR = -30986,
-	NESS_DESERIAL_NONLEAF_FROM_BUF_ERR = -30985,
-	NESS_LAYOUT_VERSION_OLDER_ERR = -30984,
-	NESS_LOG_READ_SIZE_ERR = -30983,
-	NESS_LOG_READ_DATA_ERR = -30982,
-	NESS_LOG_READ_XSUM_ERR = -30981,
-	NESS_LOG_EOF = -30980,
-} ness_errno_t;
+/* transaction id */
+struct xids {
+	uint8_t num_xids;
+	TXID ids[];
+} __attribute__((__packed__));
+
+struct append_entry {
+	uint32_t keylen;
+	uint32_t vallen;
+	uint8_t type;
+	MSN msn;
+} __attribute__((__packed__));
+
+static inline uint32_t get_xidslen(struct xids *xids)
+{
+	if (!xids) return 0;
+	return (sizeof(*xids) + sizeof(TXID) * xids->num_xids);
+}
+
+static inline uint32_t get_entrylen(struct append_entry *entry)
+{
+	return sizeof(*entry);
+}
 
 /*
  * align to ALIGNMENT for direct I/O

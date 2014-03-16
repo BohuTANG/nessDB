@@ -8,7 +8,6 @@
 #define nessDB_BASEMENT_H_
 
 #include "internal.h"
-#include "xtypes.h"
 #include "mempool.h"
 #include "skiplist.h"
 #include "msg.h"
