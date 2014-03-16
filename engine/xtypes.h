@@ -7,6 +7,8 @@
 #ifndef nessDB_XTYPES_H_
 #define nessDB_XTYPES_H_
 
+#include <stdint.h>
+
 /* error no from -30800 to -30999 */
 #define	 NESS_ERR		(0)
 #define	 NESS_OK		(1)
@@ -39,5 +41,10 @@ typedef enum {
 } TXN_ISO;
 
 typedef struct txn TXN;
+
+struct msg {
+	uint32_t size;
+	void *data;
+};
 
 #endif

@@ -7,7 +7,7 @@
 #ifndef nessDB_COMPARE_H_
 #define nessDB_COMPARE_H_
 
-#include "msg.h"
+#include "xtypes.h"
 
 int internal_key_compare(void *a, void *b);
 int msg_key_compare(struct msg *a, struct msg *b);

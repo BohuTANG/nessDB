@@ -7,6 +7,7 @@
 #ifndef nessDB_MSG_H_
 #define nessDB_MSG_H_
 
+#include "xtypes.h"
 #include "internal.h"
 
 /* msg type */
@@ -18,11 +19,6 @@ typedef enum {
 	MSG_COMMIT = 4,
 	MSG_ABORT = 5
 } msgtype_t;
-
-struct msg {
-	uint32_t size;
-	void *data;
-};
 
 struct msg *msgdup(struct msg *src);
 void msgcpy(struct msg *dst, struct msg *src);

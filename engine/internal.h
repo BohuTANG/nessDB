@@ -6,13 +6,8 @@
 
 #ifndef nessDB_INTERNAL_H_
 #define nessDB_INTERNAL_H_
-#if defined(__linux__)
-#define _GNU_SOURCE
-#endif
 
-#define _LARGEFILE_SOURCE
 #define _FILE_OFFSET_BITS 64
-
 #ifndef O_BINARY
 #define O_BINARY (0)
 #endif

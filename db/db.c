@@ -5,7 +5,6 @@
  */
 
 #include "internal.h"
-#include "xtypes.h"
 #include "options.h"
 #include "xmalloc.h"
 #include "status.h"

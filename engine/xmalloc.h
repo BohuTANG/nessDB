@@ -7,8 +7,6 @@
 #ifndef nessDB_XMALLOC_H_
 #define nessDB_XMALLOC_H_
 
-#define _GNU_SOURCE
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

@@ -3,7 +3,7 @@ TARGET_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 PLATFORM_FLAGS=
 PLATFORM_SHARED_CFLAGS=-fPIC
-PLATFORM_SHARED_LDFLAGS=-c -std=c99 -pedantic -W -Wall -Werror
+PLATFORM_SHARED_LDFLAGS=-c -std=c99 -pedantic -W -Wall -Werror -D_GNU_SOURCE
 
 ifeq ($(TARGET_OS), Linux)
 	PLATFORM_FLAGS=-DOS_LINUX
