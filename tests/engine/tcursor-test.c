@@ -8,7 +8,7 @@
 
 #include "tree.h"
 #include "tcursor.h"
-#include "dbcache.h"
+#include "cache.h"
 #include "ctest.h"
 
 #define DUMMY_TXID (0UL)
@@ -24,8 +24,8 @@ CTEST(cursor, empty)
 	/* create */
 	opts = options_new();
 	status = status_new();
-	cache = dbcache_new(opts);
-	tree = tree_new(DBPATH0, opts, status, cache, 1);
+	cache = cache_new(opts);
+	tree = tree_open(DBPATH0, opts, status, cache, 1);
 
 
 	/* cursor */
@@ -51,7 +51,7 @@ CTEST(cursor, empty)
 	cursor_free(cur);
 
 	/* free */
-	dbcache_free(cache);
+	cache_free(cache);
 	tree_free(tree);
 	options_free(opts);
 	status_free(status);
@@ -77,8 +77,8 @@ CTEST(cursor, 1leaf)
 	/* create */
 	opts = options_new();
 	status = status_new();
-	cache = dbcache_new(opts);
-	tree = tree_new(DBPATH1, opts, status, cache, 1);
+	cache = cache_new(opts);
+	tree = tree_open(DBPATH1, opts, status, cache, 1);
 
 	/* insert to tree */
 	for (i = 0; i < R; i++) {
@@ -119,7 +119,7 @@ CTEST(cursor, 1leaf)
 	cursor_free(cur);
 
 	/* free */
-	dbcache_free(cache);
+	cache_free(cache);
 	tree_free(tree);
 	options_free(opts);
 	status_free(status);
@@ -144,8 +144,8 @@ CTEST(cursor, onlyleaf)
 	opts->inner_node_page_count = 6;
 
 	status = status_new();
-	cache = dbcache_new(opts);
-	tree = tree_new(DBPATH2, opts, status, cache, 2);
+	cache = cache_new(opts);
+	tree = tree_open(DBPATH2, opts, status, cache, 2);
 
 	/* insert to tree */
 	for (i = 0; i < R; i++) {
@@ -199,7 +199,7 @@ CTEST(cursor, onlyleaf)
 	cursor_free(cur);
 
 	/* free */
-	dbcache_free(cache);
+	cache_free(cache);
 	tree_free(tree);
 	options_free(opts);
 	status_free(status);
@@ -225,8 +225,8 @@ CTEST(cursor, inner)
 	opts->inner_node_fanout = 4;
 
 	status = status_new();
-	cache = dbcache_new(opts);
-	tree = tree_new(DBPATH3, opts, status, cache, 1);
+	cache = cache_new(opts);
+	tree = tree_open(DBPATH3, opts, status, cache, 1);
 
 	/* insert to tree */
 	for (i = 0; i < R; i++) {
@@ -283,7 +283,7 @@ CTEST(cursor, inner)
 	cursor_free(cur);
 
 	/* free */
-	dbcache_free(cache);
+	cache_free(cache);
 	tree_free(tree);
 	options_free(opts);
 	status_free(status);
@@ -309,8 +309,8 @@ CTEST(cursor, inner_large)
 	opts->inner_node_fanout = 4;
 
 	status = status_new();
-	cache = dbcache_new(opts);
-	tree = tree_new(DBPATH4, opts, status, cache, 1);
+	cache = cache_new(opts);
+	tree = tree_open(DBPATH4, opts, status, cache, 1);
 
 	/* insert to tree */
 	for (i = 0; i < R; i++) {
@@ -350,7 +350,7 @@ CTEST(cursor, inner_large)
 	cursor_free(cur);
 
 	/* free */
-	dbcache_free(cache);
+	cache_free(cache);
 	tree_free(tree);
 	options_free(opts);
 	status_free(status);

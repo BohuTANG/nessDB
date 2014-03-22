@@ -290,17 +290,13 @@ int _search_child(struct cursor *cur,
 	int child_to_search;
 	NID child_nid;
 	struct node *child;
-	struct cache_operations *c_op = cur->tree->cache->c_op;
 
 	nassert(n->height > 0);
 	/* add basement to ances */
 	ancestors_append(cur, n->u.n.parts[childnum].buffer);
 
 	child_nid = n->u.n.parts[childnum].child_nid;
-	if (c_op->cache_get_and_pin(cur->tree->cache,
-				child_nid,
-				&child,
-				L_READ) < 0) {
+	if (cache_get_and_pin(cur->tree->cf, child_nid, &child, L_READ) < 0) {
 		__ERROR("cache get node error, nid [%" PRIu64 "]",
 				child_nid);
 
@@ -314,7 +310,7 @@ int _search_child(struct cursor *cur,
 			child_to_search);
 
 	/* unpin */
-	c_op->cache_unpin_readonly(cur->tree->cache, child);
+	cache_unpin_readonly(cur->tree->cf, child);
 
 	return ret;
 }
@@ -374,16 +370,12 @@ void _tree_search(struct cursor *cur, struct search *so)
 	int child_to_search;
 	struct tree *t;
 	struct node *root;
-	struct cache_operations *c_op = cur->tree->cache->c_op;
 
 	t = cur->tree;
 
 try_again:
 	root_nid = t->hdr->root_nid;
-	if (c_op->cache_get_and_pin(t->cache,
-				root_nid,
-				&root,
-				L_READ) < 0) {
+	if (cache_get_and_pin(t->cf, root_nid, &root, L_READ) < 0) {
 		__ERROR("cache get root node error, nid [%" PRIu64 "]",
 				root_nid);
 
@@ -397,7 +389,7 @@ try_again:
 			child_to_search);
 
 	/* unpin */
-	c_op->cache_unpin_readonly(t->cache, root);
+	cache_unpin_readonly(t->cf, root);
 
 	switch (r) {
 	case CURSOR_CONTINUE:

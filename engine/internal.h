@@ -41,10 +41,17 @@ typedef uint64_t MSN;
 typedef uint64_t TXID;
 typedef uint64_t DISKOFF;
 
+/* compress method */
 typedef enum {
 	NESS_NO_COMPRESS,
 	NESS_QUICKLZ_METHOD
 } ness_compress_method_t;
+
+/* lock type */
+enum lock_type {
+	L_READ,
+	L_WRITE
+};
 
 /* transaction id */
 struct xids {

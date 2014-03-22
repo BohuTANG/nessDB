@@ -157,7 +157,6 @@ void _leaf_split(struct tree *t,
 	struct node *leafa;
 	struct node *leafb;
 	struct basement_iter iter;
-	struct cache_operations *c_op = t->cache->c_op;
 
 	leafa = leaf;
 	old_bsm = leafa->u.l.le->bsm;
@@ -183,10 +182,7 @@ void _leaf_split(struct tree *t,
 	leafa->u.l.le->bsm = bsma;
 
 	/* new leafb */
-	c_op->cache_create_node_and_pin(t->cache,
-			0,
-			0,
-			&leafb);
+	cache_create_node_and_pin(t->cf, 0, 0, &leafb);
 
 	leafb->u.l.le->bsm = bsmb;
 	node_set_dirty(leafa);
@@ -233,10 +229,8 @@ void _nonleaf_split(struct tree *t,
 	struct node *nodea;
 	struct node *nodeb;
 	struct msg *spk;
-	struct cache_operations *c_op = t->cache->c_op;
 
 	nodea = node;
-
 	pivots_old = node->u.n.n_children - 1;
 	nassert(pivots_old > 2);
 
@@ -247,7 +241,7 @@ void _nonleaf_split(struct tree *t,
 	nodea->u.n.n_children = pivots_in_a + 1;
 
 	/* node b */
-	c_op->cache_create_node_and_pin(t->cache,
+	cache_create_node_and_pin(t->cf,
 			1,			/* height */
 			pivots_in_b + 1,	/* children */
 			&nodeb);
@@ -292,33 +286,19 @@ void _node_split_child(struct tree *t,
 	struct node *a;
 	struct node *b;
 	struct msg *split_key;
-	struct cache_operations *c_op = t->cache->c_op;
 
 	if (child->height == 0) {
-		_leaf_split(t,
-				child,
-				&a,
-				&b,
-				&split_key);
+		_leaf_split(t, child, &a, &b, &split_key);
 	} else {
-		_nonleaf_split(t,
-				child,
-				&a,
-				&b,
-				&split_key);
+		_nonleaf_split(t, child, &a, &b, &split_key);
 	}
 
 	child_num = node_partition_idx(parent, split_key);
 
 	/* add pivot to parent */
-	_add_pivot_to_parent(t,
-			parent,
-			child_num,
-			a,
-			b,
-			split_key);
+	_add_pivot_to_parent(t, parent, child_num, a, b, split_key);
 	msgfree(split_key);
-	c_op->cache_unpin(t->cache, b);
+	cache_unpin(t->cf, b);
 
 	t->status->tree_nonleaf_split_nums++;
 }
@@ -441,13 +421,12 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	struct node *child;
 	struct partition *part;
 	enum reactivity re_child;
-	struct cache_operations *c_op = t->cache->c_op;
 
 	childnum = node_find_heaviest_idx(parent);
 	nassert(childnum < (int)parent->u.n.n_children);
 
 	part = &parent->u.n.parts[childnum];
-	if (c_op->cache_get_and_pin(t->cache,
+	if (cache_get_and_pin(t->cf,
 				part->child_nid,
 				&child,
 				L_WRITE) != NESS_OK) {
@@ -492,17 +471,17 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	re_child = _get_reactivity(t, child);
 	switch (re_child) {
 	case STABLE:
-		c_op->cache_unpin(t->cache, child);
-		c_op->cache_unpin(t->cache, parent);
+		cache_unpin(t->cf, child);
+		cache_unpin(t->cf, parent);
 		break;
 	case FISSIBLE:
 		_node_split_child(t, parent, child);
-		c_op->cache_unpin(t->cache, child);
-		c_op->cache_unpin(t->cache, parent);
+		cache_unpin(t->cf, child);
+		cache_unpin(t->cf, parent);
 		break;
 	case FLUSHBLE:
 		nassert(child->height > 0);
-		c_op->cache_unpin(t->cache, parent);
+		cache_unpin(t->cf, parent);
 		_flush_some_child(t, child);
 		break;
 	default:
@@ -526,12 +505,11 @@ void _root_swap(struct tree *t,
 {
 	NID old_nid;
 	NID new_nid;
-	struct cache_operations *c_op = t->cache->c_op;
 
 	old_nid = old_root->nid;
 	new_nid = new_root->nid;
 
-	c_op->cache_cpair_value_swap(t->cache, new_root, old_root);
+	cache_cpair_value_swap(t->cf, new_root, old_root);
 
 	/* swap nid */
 	old_root->nid = new_nid;
@@ -549,20 +527,11 @@ void _root_split(struct tree *t,
 	struct node *a;
 	struct node *b;
 	struct msg *split_key;
-	struct cache_operations *c_op = t->cache->c_op;
 
 	if (old_root->height == 0) {
-		_leaf_split(t,
-				old_root,
-				&a,
-				&b,
-				&split_key);
+		_leaf_split(t, old_root, &a, &b, &split_key);
 	} else {
-		_nonleaf_split(t,
-				old_root,
-				&a,
-				&b,
-				&split_key);
+		_nonleaf_split(t, old_root, &a, &b, &split_key);
 	}
 
 	/* swap two roots */
@@ -577,7 +546,7 @@ void _root_split(struct tree *t,
 	msgfree(split_key);
 
 	node_set_dirty(b);
-	c_op->cache_unpin(t->cache, b);
+	cache_unpin(t->cf, b);
 
 	node_set_dirty(old_root);
 	node_set_dirty(new_root);
@@ -604,14 +573,11 @@ int _root_put_cmd(struct tree *t,
 	struct node *root;
 	enum reactivity re;
 	enum lock_type locktype = L_READ;
-	struct cache_operations *c_op = t->cache->c_op;
 
 CHANGE_LOCK_TYPE:
-	if (!c_op->cache_get_and_pin(t->cache,
-				t->hdr->root_nid,
-				&root,
-				locktype))
+	if (cache_get_and_pin(t->cf, t->hdr->root_nid, &root, locktype)) {
 		return NESS_ERR;
+	}
 
 	re = _get_reactivity(t, root);
 	switch (re) {
@@ -619,17 +585,19 @@ CHANGE_LOCK_TYPE:
 		break;
 	case FISSIBLE: {
 		if (locktype == L_READ) {
-			c_op->cache_unpin(t->cache, root);
+			cache_unpin(t->cf, root);
 
 			locktype = L_WRITE;
 			goto CHANGE_LOCK_TYPE;
 		}
 
 		struct node *new_root;
+		uint32_t new_root_height = 1;
+		uint32_t new_root_children = 2;
 
-		c_op->cache_create_node_and_pin(t->cache,
-				1,
-				2,
+		cache_create_node_and_pin(t->cf,
+				new_root_height,
+				new_root_children,
 				&new_root);
 		/*
 		 * split root node,
@@ -638,8 +606,8 @@ CHANGE_LOCK_TYPE:
 		 */
 		_root_split(t, new_root, root);
 
-		c_op->cache_unpin(t->cache, root);
-		c_op->cache_unpin(t->cache, new_root);
+		cache_unpin(t->cf, root);
+		cache_unpin(t->cf, new_root);
 
 		locktype = L_READ;
 		goto CHANGE_LOCK_TYPE;
@@ -647,7 +615,7 @@ CHANGE_LOCK_TYPE:
 		break;
 	case FLUSHBLE:
 		if (locktype == L_READ) {
-			c_op->cache_unpin(t->cache, root);
+			cache_unpin(t->cf, root);
 			locktype = L_WRITE;
 			goto CHANGE_LOCK_TYPE;
 		}
@@ -662,7 +630,7 @@ CHANGE_LOCK_TYPE:
 	}
 
 	_node_put_cmd(t, root, k, v, type, msn, xids);
-	c_op->cache_unpin(t->cache, root);
+	cache_unpin(t->cf, root);
 
 	return NESS_OK;
 }
@@ -682,7 +650,7 @@ MSN hdr_next_msn(struct tree *t)
 	return t->hdr->last_msn;
 }
 
-struct tree *tree_new(const char *dbname,
+struct tree *tree_open(const char *dbname,
 		struct options *opts,
 		struct status *status,
 		struct cache *cache,
@@ -693,8 +661,8 @@ struct tree *tree_new(const char *dbname,
 	mode_t mode;
 	struct tree *t;
 	struct node *root;
-	struct cache_operations *c_op = cache->c_op;
-	static struct tree_operations t_op = {
+	struct cache_file *cf;
+	static struct tree_callback tcb = {
 		.fetch_node = fetch_node_callback,
 		.flush_node = flush_node_callback,
 		.fetch_hdr = fetch_hdr_callback,
@@ -702,10 +670,8 @@ struct tree *tree_new(const char *dbname,
 	};
 
 	t = xcalloc(1, sizeof(*t));
-	t->t_op = &t_op;
 	t->opts = opts;
 	t->status = status;
-	t->cache = cache;
 	
 	mode = S_IRWXU|S_IRWXG|S_IRWXO;
 	flag = O_RDWR | O_BINARY;
@@ -735,37 +701,27 @@ struct tree *tree_new(const char *dbname,
 	} else
 		fetch_hdr_callback(t);
 
-	/* regiest this tree to cache */
-	struct cache_file cfile = {
-		.fd = t->fd,
-		.tree = t,
-	};
-
-	/* register cfile to cache */
-	c_op->cache_file_register(t->cache, &cfile);
+	/* create cache file */
+	cf = cache_file_create(cache, &tcb, t);
+	t->cf = cf;
 
 	/* tree root node */
 	if (iscreate) {
-		c_op->cache_create_node_and_pin(t->cache,
-				0U,
-				0U,
-				&root);
+		cache_create_node_and_pin(cf, 0U, 0U, &root);
 		leaf_alloc_bsm(root);
 		root->isroot = 1;
+		node_set_dirty(root);
 
-		c_op->cache_unpin(t->cache, root);
+		cache_unpin(cf, root);
 		t->hdr->root_nid = root->nid;
 	} else {
 		/* get the root node */
-		if (c_op->cache_get_and_pin(t->cache,
-					t->hdr->root_nid,
-					&root,
-					L_READ) != NESS_OK) {
+		if (cache_get_and_pin(cf, t->hdr->root_nid, &root, L_READ) != NESS_OK) {
 			__PANIC("get root from cache error [%" PRIu64 "]",
 					t->hdr->root_nid);
 		}
 		root->isroot = 1;
-		c_op->cache_unpin(t->cache, root);
+		cache_unpin(cf, root);
 	}
 
 	return t;

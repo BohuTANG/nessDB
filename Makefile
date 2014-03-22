@@ -40,6 +40,7 @@ LIB_OBJS =	 			\
 	./engine/node.o			\
 	./engine/leaf.o			\
 	./engine/tree.o			\
+	./engine/cache.o		\
 	./engine/tcursor.o		\
 	./engine/block.o		\
 	./engine/debug.o		\
@@ -50,7 +51,6 @@ LIB_OBJS =	 			\
 	./engine/logw.o			\
 	./engine/logr.o			\
 	./engine/txn.o			\
-	./db/dbcache.o			\
 	./db/db.o			
 
 

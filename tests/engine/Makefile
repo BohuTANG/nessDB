@@ -4,7 +4,7 @@ TARGET_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 top_builddir = ../..
 PLATFORM_FLAGS=
 PLATFORM_SHARED_CFLAGS=-fPIC
-PLATFORM_SHARED_LDFLAGS=-c -std=c99 -Wall -Wno-unused-parameter
+PLATFORM_SHARED_LDFLAGS=-c -std=c99 -pedantic -W -Wall -Werror -D_GNU_SOURCE
 
 
 ifeq ($(TARGET_OS), Linux)
@@ -43,6 +43,7 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/debug.o		\
 	$(top_builddir)/engine/cpair.o		\
 	$(top_builddir)/engine/node.o		\
+	$(top_builddir)/engine/cache.o		\
 	$(top_builddir)/engine/tree.o		\
 	$(top_builddir)/engine/leaf.o		\
 	$(top_builddir)/engine/tcursor.o	\
@@ -51,7 +52,6 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/buf.o		\
 	$(top_builddir)/engine/logw.o		\
 	$(top_builddir)/engine/logr.o		\
-	$(top_builddir)/db/dbcache.o			
 
 
 TEST_OBJS = 				\

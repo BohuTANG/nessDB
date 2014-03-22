@@ -44,6 +44,10 @@ int _serialize_blockpairs_to_disk(int fd,
 		used_count++;
 	}
 
+	__DEBUG(" block pairs count [%d], used count [%d]",
+			b->pairs_used,
+			used_count);
+
 	buf_putnstr(wbuf, "blkpairs", 8);
 	buf_putuint32(wbuf, used_count);
 	for (i = 0; i < b->pairs_used; i++) {
@@ -284,11 +288,10 @@ int read_hdr_from_disk(int fd,
 
 	align_size = ALIGN(read_size);
 	rbuf = buf_new(align_size);
-	if (ness_os_pread(	fd,
-			rbuf->buf,
-			align_size,
-			off) != (ssize_t)align_size) {
-		__ERROR("ness pread error, read size [%" PRIu32 "], offset [%" PRIu64 "]",
+	if (ness_os_pread(fd, rbuf->buf, align_size, off) !=
+			(ssize_t)align_size) {
+		__ERROR("ness pread error, read size [%" PRIu32 "], "
+				"offset [%" PRIu64 "]",
 				align_size,
 				0UL);
 		r = NESS_READ_ERR;

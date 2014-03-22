@@ -114,7 +114,7 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	uint32_t uncompress_size;
 
 	buf = buf_new(1<<20);	/* 1MB */
-	_leaf_basement_to_buf( node->u.l.le->bsm, buf);
+	_leaf_basement_to_buf(node->u.l.le->bsm, buf);
 	uncompress_size = buf->NUL;
 	uncompress_ptr = buf->buf;
 

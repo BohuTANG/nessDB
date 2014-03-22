@@ -8,19 +8,16 @@
 #define nessDB_CPAIR_H_
 
 #include "internal.h"
+#include "cache.h"
 #include "posix.h"
 #include "node.h"
 
 #define PAIR_LIST_SIZE (1<<20)
 
-enum lock_type {
-	L_READ,
-	L_WRITE
-};
-
 struct cpair {
 	NID k;
 	struct node *v;
+	struct cache_file *cf;
 	struct cpair *list_next;
 	struct cpair *list_prev;
 	struct cpair *hash_next;
@@ -31,7 +28,7 @@ struct cpair {
 };
 
 struct cpair *cpair_new(void);
-void cpair_init(struct cpair *cp, struct node *value);
+void cpair_init(struct cpair *cp, struct node *value, struct cache_file *cf);
 
 /*******************************
  * list

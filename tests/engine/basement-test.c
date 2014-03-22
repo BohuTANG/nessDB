@@ -8,6 +8,7 @@
 
 #include "basement.h"
 #include "compare.h"
+#include "debug.h"
 #include "ctest.h"
 
 CTEST(basement, empty)

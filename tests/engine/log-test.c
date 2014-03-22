@@ -39,7 +39,6 @@ CTEST(log, write) {
 	uint32_t all_size;
 	uint32_t one_size = 4	/* first length */
 		+ 4		/* tid */
-		+ 2		/* type */
 		+ 4		/* key length */
 		+ KEY_SIZE	/* key */
 		+ 4		/*val length */

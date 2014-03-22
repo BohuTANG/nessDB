@@ -8,8 +8,8 @@
 #include "options.h"
 #include "xmalloc.h"
 #include "status.h"
+#include "cache.h"
 #include "tcursor.h"
-#include "dbcache.h"
 #include "tree.h"
 #include "db.h"
 
@@ -29,7 +29,7 @@ struct nessdb *db_open(const char *basedir)
 	struct nessdb *db;
 	struct options *opts;
 	struct status *status;
-	struct cache *dbcache;
+	struct cache *cache;
 	struct tree *tree;
 
 	ness_check_dir(basedir);
@@ -45,17 +45,17 @@ struct nessdb *db_open(const char *basedir)
 	opts = options_new();
 	status = status_new();
 
-	dbcache = dbcache_new(opts);
-	if (!dbcache) {
+	cache = cache_new(opts);
+	if (!cache) {
 		__PANIC("%s",
 			"create dbcache error, will exit...");
 	}
 	__WARN("%s", "create dbcache OK");
 
 	if (exist)
-		tree = tree_new(dbpath, opts, status, dbcache, 0);
+		tree = tree_open(dbpath, opts, status, cache, 0);
 	else
-		tree = tree_new(dbpath, opts, status, dbcache, 1);
+		tree = tree_open(dbpath, opts, status, cache, 1);
 	if (!tree) {
 		__PANIC("%s",
 			"create tree error, will exit...");
@@ -65,7 +65,7 @@ struct nessdb *db_open(const char *basedir)
 	db = xcalloc(1, sizeof(*db));
 	db->opts = opts;
 	db->status = status;
-	db->cache = dbcache;
+	db->cache = cache;
 	db->tree = tree;
 	__WARN("%s", "open database OK");
 
@@ -190,7 +190,7 @@ void db_c_prev(struct db_cursor *cursor)
 
 int db_close(struct nessdb *db)
 {
-	dbcache_free(db->cache);
+	cache_free(db->cache);
 	tree_free(db->tree);
 	options_free(db->opts);
 	status_free(db->status);

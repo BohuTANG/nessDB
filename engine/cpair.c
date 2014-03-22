@@ -18,9 +18,10 @@ struct cpair *cpair_new()
 	return cp;
 }
 
-void cpair_init(struct cpair *cp, struct node *value)
+void cpair_init(struct cpair *cp, struct node *value, struct cache_file *cf)
 {
 	cp->k = value->nid;
+	cp->cf = cf;
 	cp->v = value;
 }
 

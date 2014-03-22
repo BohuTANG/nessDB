@@ -46,11 +46,17 @@ int internal_key_compare(void *a, void *b)
 	mb.data = ((char*)b + pos);
 
 	r = msg_key_compare(&ma, &mb);
+
+	/* TODO: (BohuTANG) compare msn */
 	if (r == 0) {
+		/*
 		if (msna > msnb)
 			r = -1;
 		else if (msna < msnb)
 			r = +1;
+		*/
+		(void)msna;
+		(void)msnb;
 	}
 
 	return r;
