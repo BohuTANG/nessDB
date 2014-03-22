@@ -5,8 +5,8 @@
  */
 
 #include "atomic.h"
-#include "debug.h"
 #include "skiplist.h"
+#include "debug.h"
 
 /**
  * @file skiplist.c
@@ -101,12 +101,12 @@ struct skipnode *_new_node(struct skiplist *sl, int height)
 }
 
 
-struct skiplist *skiplist_new(struct mempool *mpool, SKIPLIST_COMPARE_CALLBACK compare_cb)
+struct skiplist *skiplist_new(SKIPLIST_COMPARE_CALLBACK compare_cb)
 {
 	struct skiplist *sl;
 
 	sl = xcalloc(1, sizeof(*sl));
-	sl->mpool = mpool;
+	sl->mpool = mempool_new();
 	sl->header = _new_node(sl, SKIPLIST_MAX_LEVEL);
 	sl->compare_cb = compare_cb;
 	sl->height = 1;
@@ -203,6 +203,7 @@ struct skipnode *skiplist_find_last(struct skiplist *sl)
 
 void skiplist_free(struct skiplist *sl)
 {
+	mempool_free(sl->mpool);
 	xfree(sl);
 }
 

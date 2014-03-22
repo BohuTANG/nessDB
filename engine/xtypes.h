@@ -34,14 +34,30 @@
 #define	NESS_LOG_EOF		 (-30980)
 
 typedef enum {
-	SERIALIZABLE,
-	REPEATABLE,
-	READCOMMITTED,
-	READUNCOMMITTED,
-} TXN_ISO;
+	TXN_ISO_SERIALIZABLE = 0,
+	TXN_ISO_REPEATABLE = 1,
+	TXN_ISO_READ_COMMITTED = 2,
+	TXN_ISO_READ_UNCOMMITTED = 3
+} TXN_ISOLATION_TYPE;
+
+/*
+types of snapshots that can be taken by a txn
+   - TXN_SNAPSHOT_NONE: means that there is no snapshot. Reads do not use snapshot reads.
+			used for SERIALIZABLE and READ UNCOMMITTED
+   - TXN_SNAPSHOT_ROOT: means that all txns use their root transaction's snapshot
+			used for REPEATABLE READ
+   - TXN_SNAPSHOT_CHILD: means that each child txn creates its own snapshot
+			used for READ COMMITTED
+*/
+typedef enum {
+	TXN_SNAPSHOT_NONE = 0,
+	TXN_SNAPSHOT_ROOT = 1,
+	TXN_SNAPSHOT_CHILD = 2
+} TXN_SNAPSHOT_TYPE;
 
 typedef struct txn TXN;
-
+typedef struct logger LOGGER;
+typedef struct {uint32_t fileid;} FILENUM;
 struct msg {
 	uint32_t size;
 	void *data;

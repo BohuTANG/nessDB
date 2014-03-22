@@ -81,7 +81,7 @@ struct basement *basement_new()
 
 	bsm = xcalloc(1, sizeof(*bsm));
 	bsm->mpool = mempool_new();
-	bsm->list = skiplist_new(bsm->mpool, internal_key_compare);
+	bsm->list = skiplist_new(internal_key_compare);
 	return bsm;
 }
 

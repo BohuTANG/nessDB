@@ -11,6 +11,8 @@
 #include "cache.h"
 #include "tcursor.h"
 #include "tree.h"
+#include "txnmgr.h"
+#include "logger.h"
 #include "db.h"
 
 #define DB_NAME ("ness.DB")
@@ -20,6 +22,8 @@ struct nessdb {
 	struct status *status;
 	struct cache *cache;
 	struct tree *tree;
+	struct txnmgr *txnmgr;
+	struct logger *logger;
 };
 
 struct nessdb *db_open(const char *basedir)
@@ -31,6 +35,8 @@ struct nessdb *db_open(const char *basedir)
 	struct status *status;
 	struct cache *cache;
 	struct tree *tree;
+	struct txnmgr *txnmgr;
+	struct logger *logger;
 
 	ness_check_dir(basedir);
 	memset(dbpath, 0, FILE_NAME_MAXLEN);
@@ -61,12 +67,16 @@ struct nessdb *db_open(const char *basedir)
 			"create tree error, will exit...");
 	}
 	__WARN("%s", "create tree OK");
+	txnmgr = txnmgr_new();
+	logger = logger_new(cache, txnmgr);
 
 	db = xcalloc(1, sizeof(*db));
 	db->opts = opts;
 	db->status = status;
 	db->cache = cache;
 	db->tree = tree;
+	db->txnmgr = txnmgr;
+	db->logger = logger;
 	__WARN("%s", "open database OK");
 
 	return db;
@@ -194,6 +204,8 @@ int db_close(struct nessdb *db)
 	tree_free(db->tree);
 	options_free(db->opts);
 	status_free(db->status);
+	txnmgr_free(db->txnmgr);
+	logger_free(db->logger);
 	xfree(db);
 
 	return 1;

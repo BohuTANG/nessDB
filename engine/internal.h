@@ -38,25 +38,33 @@
 
 typedef uint64_t NID;
 typedef uint64_t MSN;
-typedef uint64_t TXID;
+typedef uint64_t TXNID;
 typedef uint64_t DISKOFF;
 
 /* compress method */
 typedef enum {
 	NESS_NO_COMPRESS,
-	NESS_QUICKLZ_METHOD
+	NESS_QUICKLZ_METHOD,
 } ness_compress_method_t;
 
 /* lock type */
 enum lock_type {
 	L_READ,
-	L_WRITE
+	L_WRITE,
 };
+
+/* transaction state */
+typedef enum txn_state {
+	TX_LIVE,
+	TX_PREPARING,
+	TX_COMMITTING,
+	TX_ABORTINT,
+} TXNSTATE;
 
 /* transaction id */
 struct xids {
 	uint8_t num_xids;
-	TXID ids[];
+	TXNID ids[];
 } __attribute__((__packed__));
 
 struct append_entry {
@@ -69,7 +77,7 @@ struct append_entry {
 static inline uint32_t get_xidslen(struct xids *xids)
 {
 	if (!xids) return 0;
-	return (sizeof(*xids) + sizeof(TXID) * xids->num_xids);
+	return (sizeof(*xids) + sizeof(TXNID) * xids->num_xids);
 }
 
 static inline uint32_t get_entrylen(struct append_entry *entry)

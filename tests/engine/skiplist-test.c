@@ -7,7 +7,6 @@
  */
 
 #include "posix.h"
-#include "mempool.h"
 #include "debug.h"
 #include "skiplist.h"
 #include "ctest.h"
@@ -36,9 +35,7 @@ CTEST(skiplist, empty)
 	int ret;
 	int k = 10;
 
-	struct mempool *mpool = mempool_new();
-	struct skiplist *list = skiplist_new(mpool,
-			&_compare_fun);
+	struct skiplist *list = skiplist_new(&_compare_fun);
 	struct skiplist_iter iter;
 
 	skiplist_iter_init(&iter, list);
@@ -60,7 +57,6 @@ CTEST(skiplist, empty)
 	ret = skiplist_iter_valid(&iter);
 	ASSERT_EQUAL(0, ret);
 
-	mempool_free(mpool);
 	skiplist_free(list);
 	xcheck_all_free();
 }
@@ -74,9 +70,7 @@ CTEST(skiplist, insert_and_lookup)
 	int holes[N];
 
 	struct skiplist_iter iter;
-	struct mempool *mpool = mempool_new();
-	struct skiplist *list = skiplist_new(mpool,
-			&_compare_fun);
+	struct skiplist *list = skiplist_new(&_compare_fun);
 
 	for (i = 0; i < N; i++) {
 		keys[i] = i;
@@ -104,16 +98,13 @@ CTEST(skiplist, insert_and_lookup)
 	
 	ASSERT_EQUAL(i, (int)*(int*)iter.node->key);
 
-	mempool_free(mpool);
 	skiplist_free(list);
 	xcheck_all_free();
 }
 
 CTEST(skiplist, insert_same_key)
 {
-	struct mempool *mpool = mempool_new();
-	struct skiplist *list = skiplist_new(mpool,
-			&_compare_fun);
+	struct skiplist *list = skiplist_new(&_compare_fun);
 
 	int ret;
 	int k = 2014;
@@ -129,7 +120,6 @@ CTEST(skiplist, insert_same_key)
 	/* same key put test */
 	skiplist_put(list, &k);
 
-	mempool_free(mpool);
 	skiplist_free(list);
 	xcheck_all_free();
 }

@@ -20,6 +20,7 @@ void *xmalloc_aligned(size_t alignment, size_t s);
 void *xrealloc(void *p, size_t s);
 void *xrealloc_aligned(void *p, size_t olds, size_t alignment, size_t s);
 void *xmemdup(void *p, size_t s);
+void *xmemcpy(void *dst, void *src, size_t s);
 void *xmemmove(void *dst, void *src, size_t s);
 void xfree(void *p);
 void xcheck_all_free(void);

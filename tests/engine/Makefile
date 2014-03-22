@@ -52,6 +52,9 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/buf.o		\
 	$(top_builddir)/engine/logw.o		\
 	$(top_builddir)/engine/logr.o		\
+	$(top_builddir)/engine/txnmgr.o		\
+	$(top_builddir)/engine/logger.o		\
+	$(top_builddir)/engine/txn.o		\
 
 
 TEST_OBJS = 				\

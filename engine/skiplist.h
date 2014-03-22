@@ -41,7 +41,7 @@ struct skiplist {
 	SKIPLIST_COMPARE_CALLBACK compare_cb;
 };
 
-struct skiplist *skiplist_new(struct mempool *mpool, SKIPLIST_COMPARE_CALLBACK compare_cb);
+struct skiplist *skiplist_new(SKIPLIST_COMPARE_CALLBACK compare_cb);
 
 void skiplist_put(struct skiplist *sl, void *key);
 struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key);

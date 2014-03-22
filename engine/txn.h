@@ -8,7 +8,8 @@
 #define nessDB_TXN_H_
 
 #include "xtypes.h"
-#include "internal.h"
+#include "logger.h"
+#include "rollback.h"
 
 /**
  *
@@ -17,7 +18,19 @@
  *
  */
 
-int txn_begin(TXN *parent, int flags, TXN **txn);
+struct txn {
+	TXNID txnid;
+	TXNSTATE state;
+	LOGGER *logger;
+	struct txn *parent;
+	struct txn *child;
+	struct roll_entry *rollentry;
+	struct txnid_snapshot *txnid_clone;
+	TXN_ISOLATION_TYPE iso_type;
+	TXN_SNAPSHOT_TYPE snapshot_type;
+};
+
+int txn_begin(TXN *parent, LOGGER *logger, TXN_ISOLATION_TYPE iso, TXN **txn);
 int txn_commit(TXN *txn);
 int txn_abort(TXN *txn);
 

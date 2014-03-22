@@ -104,6 +104,16 @@ void *xmemmove(void *dst, void *src, size_t s)
 	return new_p;
 }
 
+void *xmemcpy(void *dst, void *src, size_t s)
+{
+	void *new_p;
+
+	new_p = memcpy(dst, src, s);
+	_check_memory(new_p);
+
+	return new_p;
+}
+
 void xfree(void *p)
 {
 	if (p) {

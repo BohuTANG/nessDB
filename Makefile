@@ -37,19 +37,21 @@ LIB_OBJS =	 			\
 	./engine/basement.o		\
 	./engine/posix.o		\
 	./engine/crc32.o		\
-	./engine/node.o			\
-	./engine/leaf.o			\
-	./engine/tree.o			\
-	./engine/cache.o		\
-	./engine/tcursor.o		\
 	./engine/block.o		\
 	./engine/debug.o		\
 	./engine/cpair.o		\
+	./engine/node.o			\
+	./engine/cache.o		\
+	./engine/tree.o			\
+	./engine/leaf.o			\
+	./engine/tcursor.o		\
 	./engine/file.o			\
 	./engine/msg.o			\
 	./engine/buf.o			\
 	./engine/logw.o			\
 	./engine/logr.o			\
+	./engine/txnmgr.o		\
+	./engine/logger.o		\
 	./engine/txn.o			\
 	./db/db.o			
 
