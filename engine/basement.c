@@ -5,7 +5,7 @@
  */
 
 #include "buf.h"
-#include "compare.h"
+#include "compare-func.h"
 #include "basement.h"
 
 void _encode(char *data,

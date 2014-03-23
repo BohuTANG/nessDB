@@ -123,6 +123,9 @@ void txnmgr_child_txn_start(struct txnmgr* tm, TXN *parent, TXN *child)
 	} else {
 		_txnid_snapshot_clone(parent->txnid_clone, &child->txnid_clone);
 	}
+	parent->child = child;
+	child->parent = parent;
+
 	mutex_unlock(&tm->mtx);
 }
 

@@ -5,75 +5,12 @@
  */
 
 #include "cache.h"
-#include "hdrserialize.h"
-#include "serialize.h"
+#include "hdrse.h"
+#include "se.h"
 #include "atomic.h"
 #include "file.h"
 #include "leaf.h"
 #include "tree.h"
-
-int fetch_node_callback(void *tree, NID nid, struct node **n)
-{
-	int r;
-	struct tree *t = (struct tree*)tree;
-
-	r = deserialize_node_from_disk(t->fd,
-			t->block,
-			nid,
-			n,
-			0);
-
-	if (r != NESS_OK)
-		__PANIC("fetch node from disk error, errno [%d]", r);
-
-	return r;
-}
-
-int flush_node_callback(void *tree, struct node *n)
-{
-	int r;
-	struct tree *t = (struct tree*)tree;
-
-	r = serialize_node_to_disk(t->fd,
-			t->block,
-			n,
-			t->hdr);
-
-	if (r != NESS_OK)
-		__PANIC("flush node to disk error, errno [%d]", r);
-
-	return r;
-}
-
-int fetch_hdr_callback(void *tree)
-{
-	int r;
-	struct tree *t = (struct tree*)tree;
-
-	r = deserialize_hdr_from_disk(t->fd,
-			t->block,
-			&t->hdr);
-
-	if (r != NESS_OK)
-		__PANIC("fetch tree header from disk error, errno [%d]", r);
-
-	return r;
-}
-
-int flush_hdr_callback(void *tree)
-{
-	int r;
-	struct tree *t = (struct tree*)tree;
-
-	r = serialize_hdr_to_disk(t->fd,
-			t->block,
-			t->hdr);
-
-	if (r != NESS_OK)
-		__PANIC("flush tree header to disk error, errno [%d]", r);
-
-	return r;
-}
 
 /*
  *
@@ -654,21 +591,17 @@ struct tree *tree_open(const char *dbname,
 		struct options *opts,
 		struct status *status,
 		struct cache *cache,
-		int iscreate)
+		struct tree_callback *tcb)
 {
 	int fd;
 	int flag;
+	int is_create = 0;
 	mode_t mode;
 	struct tree *t;
 	struct node *root;
 	struct cache_file *cf;
-	static struct tree_callback tcb = {
-		.fetch_node = fetch_node_callback,
-		.flush_node = flush_node_callback,
-		.fetch_hdr = fetch_hdr_callback,
-		.flush_hdr = flush_hdr_callback,
-	};
 
+	if (!tcb) goto ERR;
 	t = xcalloc(1, sizeof(*t));
 	t->opts = opts;
 	t->status = status;
@@ -687,26 +620,27 @@ struct tree *tree_open(const char *dbname,
 			fd = ness_os_open_direct(dbname, flag | O_CREAT, mode);
 		if (fd == -1)
 			goto ERR;
+		is_create = 1;
 	}
 
 	t->fd = fd;
 	t->block = block_new();
 
 	/* tree header */
-	if (iscreate) {
+	if (is_create) {
 		t->hdr = xcalloc(1, sizeof(*t->hdr));
 		t->hdr->height = 0U;
 		t->hdr->last_nid = NID_START;
 		t->hdr->method = opts->compress_method;
 	} else
-		fetch_hdr_callback(t);
+		tcb->fetch_hdr(t);
 
 	/* create cache file */
-	cf = cache_file_create(cache, &tcb, t);
+	cf = cache_file_create(cache, tcb, t);
 	t->cf = cf;
 
 	/* tree root node */
-	if (iscreate) {
+	if (is_create) {
 		cache_create_node_and_pin(cf, 0U, 0U, &root);
 		leaf_alloc_bsm(root);
 		root->isroot = 1;

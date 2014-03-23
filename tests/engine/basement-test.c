@@ -7,7 +7,7 @@
  */
 
 #include "basement.h"
-#include "compare.h"
+#include "compare-func.h"
 #include "debug.h"
 #include "ctest.h"
 

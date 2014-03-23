@@ -56,7 +56,7 @@ struct tree *tree_open(const char *dbname,
 		struct options *opts,
 		struct status *status,
 		struct cache *cache,
-		int iscreate);
+		struct tree_callback *tcb);
 
 int tree_put(struct tree *t,
 		struct msg *k,

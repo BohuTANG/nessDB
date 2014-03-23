@@ -5,7 +5,7 @@
  */
 
 #include "node.h"
-#include "compare.h"
+#include "compare-func.h"
 
 static struct node_operations nop = {
 	.update_func = NULL,

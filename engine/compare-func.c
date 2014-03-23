@@ -1,5 +1,10 @@
-#include "internal.h"
-#include "compare.h"
+/*
+ * Copyright (c) 2012-2014 The nessDB Project Developers. All rights reserved.
+ * Code is licensed with GPL. See COPYING.GPL file.
+ *
+ */
+
+#include "compare-func.h"
 
 int msg_key_compare(struct msg *a, struct msg *b)
 {

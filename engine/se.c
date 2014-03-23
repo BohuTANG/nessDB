@@ -7,7 +7,7 @@
 #include "buf.h"
 #include "file.h"
 #include "basement.h"
-#include "serialize.h"
+#include "se.h"
 #include "compress/compress.h"
 
 /**********************************************************************

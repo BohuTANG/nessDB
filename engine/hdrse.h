@@ -4,8 +4,8 @@
  *
  */
 
-#ifndef nessDB_HDRSERIALIZE_H_
-#define nessDB_HDRSERIALIZE_H_
+#ifndef nessDB_HDRSE_H_
+#define nessDB_HDRSE_H_
 
 #include "internal.h"
 #include "block.h"
@@ -14,7 +14,7 @@
 #include "file.h"
 
 /**
- * @file hdrserialize.h
+ * @file hdrse.h
  * @brief
  *	layout of the buffered-tree header
  *	serializer and deserializer
@@ -24,4 +24,4 @@
 int serialize_hdr_to_disk(int fd, struct block *b, struct hdr *hdr);
 int deserialize_hdr_from_disk(int fd, struct block *b, struct hdr **hdr);
 
-#endif /* nessDB_HDRSERIALIZE_H_ */
+#endif /* nessDB_HDRSE_H_ */

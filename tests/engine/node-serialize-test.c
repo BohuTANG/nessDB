@@ -10,8 +10,8 @@
 #include "tree.h"
 #include "node.h"
 #include "block.h"
-#include "serialize.h"
-#include "compare.h"
+#include "se.h"
+#include "compare-func.h"
 #include "ctest.h"
 
 #define DUMMY_TXID (0UL)

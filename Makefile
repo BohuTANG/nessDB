@@ -9,8 +9,7 @@ ifeq ($(TARGET_OS), Linux)
 	PLATFORM_FLAGS=-DOS_LINUX
 else ifeq ($(TARGET_OS), Darwin)
 	PLATFORM_FLAGS=-DOS_MACOSX
-else ifeq ($(TARGET_OS), OS_ANDROID_CROSSCOMPILE)
-	PLATFORM_FLAGS=-DOS_ANDROID
+else ifeq ($(TARGET_OS), OS_ANDROID_CROSSCOMPILE) PLATFORM_FLAGS=-DOS_ANDROID
 else
 	echo "Unknown platform!" >&2
 	exit 1
@@ -27,11 +26,12 @@ CFLAGS = -Iengine -Idb $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PL
 LIB_OBJS =	 			\
 	./engine/compress/compress.o	\
 	./engine/compress/quicklz.o	\
-	./engine/hdrserialize.o		\
-	./engine/serialize.o		\
+	./engine/compare-func.o		\
+	./engine/tree-func.o		\
+	./engine/hdrse.o		\
+	./engine/se.o			\
 	./engine/skiplist.o		\
 	./engine/xmalloc.o		\
-	./engine/compare.o		\
 	./engine/atomic.o		\
 	./engine/mempool.o		\
 	./engine/basement.o		\

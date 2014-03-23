@@ -4,12 +4,13 @@
  *
  */
 
-#ifndef nessDB_COMPARE_H_
-#define nessDB_COMPARE_H_
+#ifndef nessDB_COMPARE_FUNC_H_
+#define nessDB_COMPARE_FUNC_H_
 
 #include "xtypes.h"
+#include "internal.h"
 
 int internal_key_compare(void *a, void *b);
 int msg_key_compare(struct msg *a, struct msg *b);
 
-#endif /* _nessDB_COMPARE_H_ */
+#endif /* _nessDB_COMPARE_FUNC_H_ */

@@ -10,7 +10,7 @@
 #include "tree.h"
 #include "node.h"
 #include "block.h"
-#include "hdrserialize.h"
+#include "hdrse.h"
 #include "ctest.h"
 
 #define BRT_FILE ("hdr-test.brt")

@@ -7,7 +7,7 @@
 #include "buf.h"
 #include "file.h"
 #include "version.h"
-#include "serialize.h"
+#include "hdrse.h"
 #include "compress/compress.h"
 
 

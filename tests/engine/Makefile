@@ -27,13 +27,14 @@ OPT ?= -g2 -DINFO -DASSERT # (B) Debug mode, w/ full line-level debugging symbol
 CFLAGS = -I$(top_builddir)/engine -I$(top_builddir)/db $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PLATFORM_FLAGS) $(OPT)
 
 LIB_OBJS =	 			\
-	$(top_builddir)/engine/compress/compress.o	\
-	$(top_builddir)/engine/compress/quicklz.o	\
-	$(top_builddir)/engine/hdrserialize.o	\
-	$(top_builddir)/engine/serialize.o	\
+	$(top_builddir)/engine/compress/compress.o\
+	$(top_builddir)/engine/compress/quicklz.o\
+	$(top_builddir)/engine/compare-func.o	\
+	$(top_builddir)/engine/tree-func.o	\
+	$(top_builddir)/engine/hdrse.o		\
+	$(top_builddir)/engine/se.o		\
 	$(top_builddir)/engine/skiplist.o	\
 	$(top_builddir)/engine/xmalloc.o	\
-	$(top_builddir)/engine/compare.o	\
 	$(top_builddir)/engine/atomic.o		\
 	$(top_builddir)/engine/mempool.o	\
 	$(top_builddir)/engine/basement.o	\
@@ -66,7 +67,6 @@ TEST_OBJS = 				\
 	compress-test.o			\
 	skiplist-test.o			\
 	basement-test.o			\
-	tcursor-test.o			\
 	hdr-serialize-test.o		\
 	node-serialize-test.o		\
 	main.o			

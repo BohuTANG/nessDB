@@ -6,7 +6,7 @@
 
 #include "tcursor.h"
 #include "cache.h"
-#include "compare.h"
+#include "compare-func.h"
 
 /**
  * @file tcursor.c

@@ -11,6 +11,7 @@
 #include "cache.h"
 #include "tcursor.h"
 #include "tree.h"
+#include "tree-func.h"
 #include "txnmgr.h"
 #include "logger.h"
 #include "db.h"
@@ -28,7 +29,6 @@ struct nessdb {
 
 struct nessdb *db_open(const char *basedir)
 {
-	int exist;
 	char dbpath[FILE_NAME_MAXLEN];
 	struct nessdb *db;
 	struct options *opts;
@@ -46,7 +46,7 @@ struct nessdb *db_open(const char *basedir)
 			basedir,
 			DB_NAME);
 
-	exist = ness_file_exist(dbpath);
+	ness_file_exist(dbpath);
 
 	opts = options_new();
 	status = status_new();
@@ -58,10 +58,13 @@ struct nessdb *db_open(const char *basedir)
 	}
 	__WARN("%s", "create dbcache OK");
 
-	if (exist)
-		tree = tree_open(dbpath, opts, status, cache, 0);
-	else
-		tree = tree_open(dbpath, opts, status, cache, 1);
+	static struct tree_callback tree_cb = {
+		.fetch_node = fetch_node_callback,
+		.flush_node = flush_node_callback,
+		.fetch_hdr = fetch_hdr_callback,
+		.flush_hdr = flush_hdr_callback
+	};
+	tree = tree_open(dbpath, opts, status, cache, &tree_cb);
 	if (!tree) {
 		__PANIC("%s",
 			"create tree error, will exit...");
