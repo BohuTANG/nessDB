@@ -69,6 +69,7 @@ TEST_OBJS = 				\
 	basement-test.o			\
 	hdr-serialize-test.o		\
 	node-serialize-test.o		\
+	txn-test.o		\
 	main.o			
 
 

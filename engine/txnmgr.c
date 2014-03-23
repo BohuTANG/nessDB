@@ -85,8 +85,11 @@ static inline int _txn_needs_snapshot(TXN *parent,
 	 *	- when snapshot type is NONE
 	 *	- when it is ROOT and we have a parent
 	 */
-	return ((snapshot_type != TXN_SNAPSHOT_NONE) &&
-			(parent == NULL || snapshot_type == TXN_SNAPSHOT_CHILD));
+	if ((snapshot_type != TXN_SNAPSHOT_NONE) &&
+			(parent == NULL || snapshot_type == TXN_SNAPSHOT_CHILD))
+		return 1;
+	else
+		return 0;
 }
 
 
@@ -115,10 +118,10 @@ void txnmgr_child_txn_start(struct txnmgr* tm, TXN *parent, TXN *child)
 	mutex_lock(&tm->mtx);
 	child->txnid = tm->last_txnid++;
 	_txnmgr_live_root_txnid_add(tm, child->txnid);
-	 needs_snapshot = _txn_needs_snapshot(child->parent,
+	 needs_snapshot = _txn_needs_snapshot(parent,
 			 child->snapshot_type);
-	if (needs_snapshot) {
-		_txnid_snapshot_clone(tm->live_root_txnids,
+	 if (needs_snapshot) {
+		 _txnid_snapshot_clone(tm->live_root_txnids,
 				&child->txnid_clone);
 	} else {
 		_txnid_snapshot_clone(parent->txnid_clone, &child->txnid_clone);
