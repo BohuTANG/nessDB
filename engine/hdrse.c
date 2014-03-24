@@ -28,8 +28,8 @@
  *               ...
  */
 int _serialize_blockpairs_to_disk(int fd,
-		struct block *b,
-		struct hdr *hdr)
+                                  struct block *b,
+                                  struct hdr *hdr)
 {
 	uint32_t i;
 	int r = NESS_OK;
@@ -38,15 +38,15 @@ int _serialize_blockpairs_to_disk(int fd,
 	DISKOFF address;
 	struct buffer *wbuf;
 
-	wbuf = buf_new(1<<20);
+	wbuf = buf_new(1 << 20);
 	for (i = 0; i < b->pairs_used; i++) {
 		if (!b->pairs[i].used) continue;
 		used_count++;
 	}
 
 	__DEBUG(" block pairs count [%d], used count [%d]",
-			b->pairs_used,
-			used_count);
+	        b->pairs_used,
+	        used_count);
 
 	buf_putnstr(wbuf, "blkpairs", 8);
 	buf_putuint32(wbuf, used_count);
@@ -78,9 +78,9 @@ int _serialize_blockpairs_to_disk(int fd,
 
 	address = block_alloc_off(b, 0, real_size, 0, 0);
 	if (ness_os_pwrite(fd,
-					wbuf->buf,
-					align_size,
-					address) != 0) {
+	                   wbuf->buf,
+	                   align_size,
+	                   address) != 0) {
 		r = NESS_WRITE_ERR;
 		goto ERR;
 	}
@@ -95,8 +95,8 @@ ERR:
 }
 
 int _deserialize_blockpairs_from_disk(int fd,
-		struct block *b,
-		struct hdr *hdr)
+                                      struct block *b,
+                                      struct hdr *hdr)
 {
 	int r = NESS_ERR;
 	uint32_t read_size;
@@ -109,9 +109,9 @@ int _deserialize_blockpairs_from_disk(int fd,
 
 	rbuf = buf_new(align_size);
 	if (ness_os_pread(fd,
-			rbuf->buf,
-			align_size,
-			hdr->blockoff) != (ssize_t)align_size) {
+	                  rbuf->buf,
+	                  align_size,
+	                  hdr->blockoff) != (ssize_t)align_size) {
 		r = NESS_READ_ERR;
 		goto ERR;
 	}
@@ -125,10 +125,10 @@ int _deserialize_blockpairs_from_disk(int fd,
 	if (!buf_xsum(rbuf->buf, hdr->blocksize - CRC_SIZE, &act_xsum)) goto ERR;
 	if (exp_xsum != act_xsum) {
 		__ERROR("blockpairs xsum check error,"
-				"exp_xsum: [%" PRIu32 "],"
-				"act_xsum: [%" PRIu32 "]",
-				exp_xsum,
-				act_xsum);
+		        "exp_xsum: [%" PRIu32 "],"
+		        "act_xsum: [%" PRIu32 "]",
+		        exp_xsum,
+		        act_xsum);
 		goto ERR;
 	}
 
@@ -190,8 +190,8 @@ ERR1:
  *  +----------------------+
  */
 int write_hdr_to_disk(int fd,
-		struct hdr *hdr,
-		DISKOFF off)
+                      struct hdr *hdr,
+                      DISKOFF off)
 {
 	int r;
 	uint32_t real_size;
@@ -200,7 +200,7 @@ int write_hdr_to_disk(int fd,
 
 	nassert(hdr->root_nid >= NID_START);
 
-	wbuf = buf_new(1<<20);
+	wbuf = buf_new(1 << 20);
 	buf_putnstr(wbuf, "nesshdr*", 8);
 	buf_putuint32(wbuf, LAYOUT_VERSION);
 	buf_putuint64(wbuf, hdr->last_nid);
@@ -221,9 +221,9 @@ int write_hdr_to_disk(int fd,
 	buf_putnull(wbuf, align_size - real_size);
 
 	if (ness_os_pwrite(fd,
-				wbuf->buf,
-				align_size,
-				off) != 0) {
+	                   wbuf->buf,
+	                   align_size,
+	                   off) != 0) {
 		r = NESS_WRITE_ERR;
 		goto ERR;
 	}
@@ -240,8 +240,8 @@ ERR:
  * double-write for header
  */
 int serialize_hdr_to_disk(int fd,
-		struct block *b,
-		struct hdr *hdr)
+                          struct block *b,
+                          struct hdr *hdr)
 {
 	int r;
 
@@ -266,34 +266,34 @@ ERR:
 
 
 int read_hdr_from_disk(int fd,
-		struct block *b,
-		struct hdr **h,
-		DISKOFF off)
+                       struct block *b,
+                       struct hdr **h,
+                       DISKOFF off)
 {
 	int r = NESS_ERR;
-	struct hdr *hdr= NULL;
+	struct hdr *hdr = NULL;
 	struct buffer *rbuf = NULL;
 	uint32_t exp_xsum, act_xsum;
 	uint32_t read_size, align_size;
 
 	hdr = xcalloc(1, sizeof(*hdr));
 	read_size = (
-			+ 8		/* magic        */
-			+ 8		/* last nid     */
-			+ 8		/* root nid     */
-			+ 4		/* version      */
-			+ 4		/* block size   */
-			+ 8		/* block offset */
-			+ CRC_SIZE);	/* checksum     */
+	                    + 8		/* magic        */
+	                    + 8		/* last nid     */
+	                    + 8		/* root nid     */
+	                    + 4		/* version      */
+	                    + 4		/* block size   */
+	                    + 8		/* block offset */
+	                    + CRC_SIZE);	/* checksum     */
 
 	align_size = ALIGN(read_size);
 	rbuf = buf_new(align_size);
 	if (ness_os_pread(fd, rbuf->buf, align_size, off) !=
-			(ssize_t)align_size) {
+	    (ssize_t)align_size) {
 		__ERROR("ness pread error, read size [%" PRIu32 "], "
-				"offset [%" PRIu64 "]",
-				align_size,
-				0UL);
+		        "offset [%" PRIu64 "]",
+		        align_size,
+		        0UL);
 		r = NESS_READ_ERR;
 		goto ERR;
 	}
@@ -303,10 +303,10 @@ int read_hdr_from_disk(int fd,
 	if (!buf_xsum(rbuf->buf, read_size - CRC_SIZE, &act_xsum)) goto ERR;
 	if (exp_xsum != act_xsum) {
 		__ERROR("header xsum check error, "
-				"exp_xsum: [%" PRIu32 "], "
-				"act_xsum: [%" PRIu32 "], ",
-				exp_xsum,
-				act_xsum);
+		        "exp_xsum: [%" PRIu32 "], "
+		        "act_xsum: [%" PRIu32 "], ",
+		        exp_xsum,
+		        act_xsum);
 		r = NESS_HDR_XSUM_ERR;
 		goto ERR;
 	}
@@ -324,9 +324,9 @@ int read_hdr_from_disk(int fd,
 	if (hdr->version < LAYOUT_MIN_SUPPORTED_VERSION) {
 		r = NESS_LAYOUT_VERSION_OLDER_ERR;
 		__ERROR("tree layout too older [%d], "
-				"min_support_version [%d]",
-				hdr->version,
-				LAYOUT_MIN_SUPPORTED_VERSION);
+		        "min_support_version [%d]",
+		        hdr->version,
+		        LAYOUT_MIN_SUPPORTED_VERSION);
 		goto ERR;
 	}
 
@@ -356,8 +356,8 @@ int deserialize_hdr_from_disk(int fd, struct block *b, struct hdr **h)
 	r = read_hdr_from_disk(fd, b, h, v0_read_off);
 	if (r != NESS_OK) {
 		__ERROR("1st header broken, "
-				"try to read next, nxt-off[%"PRIu64"]",
-				v1_read_off);
+		        "try to read next, nxt-off[%"PRIu64"]",
+		        v1_read_off);
 		r = read_hdr_from_disk(fd, b, h, v1_read_off);
 	}
 

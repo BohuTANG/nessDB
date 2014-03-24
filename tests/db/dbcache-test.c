@@ -10,5 +10,6 @@
 #include "ctest.h"
 
 /* TODO */
-CTEST(dbcache, get_pin) {
+CTEST(dbcache, get_pin)
+{
 }

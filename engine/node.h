@@ -40,7 +40,7 @@ struct partition {
 	uint32_t inner_offset;		/* the postion start from the block start in disk */
 	uint64_t child_nid;		/* child node id of this partition */
 	struct basement *buffer;
-	int fetched:2;			/* if 0, we need to fetch from disk */
+	int fetched: 2;			/* if 0, we need to fetch from disk */
 	ness_rwlock_t rwlock;
 };
 

@@ -1,15 +1,15 @@
 #include "random.h"
 
-void _random_buffer(char *key,int length) {
+void _random_buffer(char *key, int length)
+{
 	int i;
-	char salt[36]= "abcdefghijklmnopqrstuvwxyz123456789";
+	char salt[36] = "abcdefghijklmnopqrstuvwxyz123456789";
 
 	for (i = 0; i < length; i++)
 		key[i] = salt[rand() % 36];
 }
 
-struct random *rnd_new()
-{
+struct random *rnd_new() {
 	struct random *rnd = xcalloc(1, sizeof(*rnd));
 
 	rnd->seed = 301;

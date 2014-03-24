@@ -36,8 +36,7 @@ void _buf_extendby(struct buffer *b, uint32_t len)
 	b->buflen = new_size;
 }
 
-struct buffer *buf_new(uint32_t size)
-{
+struct buffer *buf_new(uint32_t size) {
 	struct buffer *b;
 
 	b = xcalloc(1, sizeof(*b));
@@ -114,9 +113,9 @@ void putuint32(char *data, uint32_t val)
 void getuint32(char *data, uint32_t *val)
 {
 	*val = ((uint32_t)((unsigned char)data[0])
-			| ((uint32_t)((unsigned char)data[1]) << 8)
-			| ((uint32_t)((unsigned char)data[2]) << 16)
-			| ((uint32_t)((unsigned char)data[3]) << 24));
+	        | ((uint32_t)((unsigned char)data[1]) << 8)
+	        | ((uint32_t)((unsigned char)data[2]) << 16)
+	        | ((uint32_t)((unsigned char)data[3]) << 24));
 }
 
 void putuint64(char *data, uint64_t val)

@@ -14,7 +14,8 @@
 #define KEY_SIZE (16)
 #define VAL_SIZE (100)
 
-CTEST(log, write) {
+CTEST(log, write)
+{
 	int i;
 	char kbuf[KEY_SIZE];
 	char vbuf[VAL_SIZE];
@@ -38,12 +39,12 @@ CTEST(log, write) {
 
 	uint32_t all_size;
 	uint32_t one_size = 4	/* first length */
-		+ 4		/* tid */
-		+ 4		/* key length */
-		+ KEY_SIZE	/* key */
-		+ 4		/*val length */
-		+ VAL_SIZE	/* val */
-		+ 4;		/* crc */
+	                    + 4		/* tid */
+	                    + 4		/* key length */
+	                    + KEY_SIZE	/* key */
+	                    + 4		/*val length */
+	                    + VAL_SIZE	/* val */
+	                    + 4;		/* crc */
 
 	all_size = R * one_size;
 	ASSERT_EQUAL(all_size, lgw->size);
@@ -52,7 +53,8 @@ CTEST(log, write) {
 	options_free(opts);
 }
 
-CTEST(log, read) {
+CTEST(log, read)
+{
 	uint64_t lsn = 112;
 	struct options *opts = options_new();
 	struct logr *lgr = logr_open(opts, lsn);

@@ -63,24 +63,29 @@ typedef struct {
 	pthread_condattr_t  attr;
 } ness_cond_t;
 
-static inline void cond_init(ness_cond_t *cond) {
-    pthread_mutex_init(&cond->mtx, NULL);
-    pthread_call(pthread_cond_init(&cond->cond, &cond->attr), "cond init");
+static inline void cond_init(ness_cond_t *cond)
+{
+	pthread_mutex_init(&cond->mtx, NULL);
+	pthread_call(pthread_cond_init(&cond->cond, &cond->attr), "cond init");
 }
 
-static inline void cond_wait(ness_cond_t *cond) {
+static inline void cond_wait(ness_cond_t *cond)
+{
 	pthread_call(pthread_cond_wait(&cond->cond, &cond->mtx), "cond wait");
 }
 
-static inline void cond_signal(ness_cond_t *cond) {
+static inline void cond_signal(ness_cond_t *cond)
+{
 	pthread_call(pthread_cond_signal(&cond->cond), "cond signal");
 }
 
-static inline void cond_signalall(ness_cond_t *cond) {
+static inline void cond_signalall(ness_cond_t *cond)
+{
 	pthread_call(pthread_cond_broadcast(&cond->cond), "cond broadcast");
 }
 
-static inline void cond_destroy(ness_cond_t *cond) {
+static inline void cond_destroy(ness_cond_t *cond)
+{
 	pthread_call(pthread_cond_destroy(&cond->cond), "cond destroy");
 }
 
@@ -185,7 +190,7 @@ void cron_free(struct cron *cron);
 /*******************************
  * time
  ******************************/
-void gettime (struct timespec *a);
+void gettime(struct timespec *a);
 long long time_diff_ms(struct timespec start, struct timespec end);
 
 #endif /* nessDB_POSIX_H_ */

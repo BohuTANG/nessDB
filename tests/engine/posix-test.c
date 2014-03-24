@@ -18,7 +18,8 @@ static void *run_100ms(void *arg)
 	return NULL;
 }
 
-CTEST(cron_test, start) {
+CTEST(cron_test, start)
+{
 	uint32_t c = 0;
 	struct cron *cron = cron_new(run_100ms, 100);
 
@@ -40,7 +41,8 @@ static void *run_0sec(void *arg)
 	return NULL;
 }
 
-CTEST(cron_test, change_period) {
+CTEST(cron_test, change_period)
+{
 	uint32_t c = 0;
 	struct cron *cron = cron_new(run_0sec, 1000000);
 
@@ -56,7 +58,8 @@ CTEST(cron_test, change_period) {
 	xcheck_all_free();
 }
 
-CTEST(cron_test, signal) {
+CTEST(cron_test, signal)
+{
 	uint32_t c = 0;
 	struct cron *cron = cron_new(run_0sec, 100000000);
 

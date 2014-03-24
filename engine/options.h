@@ -29,8 +29,7 @@ struct options {
 	char *redo_path;
 };
 
-static inline struct options *options_new(void)
-{
+static inline struct options *options_new(void) {
 	struct options *opts;
 
 	opts = xcalloc(1, sizeof(*opts));

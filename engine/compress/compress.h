@@ -12,15 +12,15 @@
 uint32_t ness_compress_bound(ness_compress_method_t m, uint32_t size);
 
 void ness_compress(ness_compress_method_t m,
-		const char *src,
-		uint32_t src_size,
-		char *dst,
-		uint32_t *dst_size);
+                   const char *src,
+                   uint32_t src_size,
+                   char *dst,
+                   uint32_t *dst_size);
 
 void ness_decompress(const char *src,
-		uint32_t src_size,
-		char *dst,
-		uint32_t dst_size);
+                     uint32_t src_size,
+                     char *dst,
+                     uint32_t dst_size);
 
 #endif /* nessDB_COMPRESS_H_ */
 

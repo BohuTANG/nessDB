@@ -24,7 +24,7 @@ void do_bench(struct nessdb *db, struct random *rnd, uint32_t loop)
 		done++;
 
 		if (done >= next_report) {
-			if      (next_report < 1000)   next_report += 100;
+			if (next_report < 1000)   next_report += 100;
 			else if (next_report < 5000)   next_report += 500;
 			else if (next_report < 10000)  next_report += 1000;
 			else if (next_report < 50000)  next_report += 5000;
@@ -32,9 +32,9 @@ void do_bench(struct nessdb *db, struct random *rnd, uint32_t loop)
 			else if (next_report < 500000) next_report += 50000;
 			else                            next_report += 100000;
 			fprintf(stderr,
-					"random write finished %d ops%30s\r",
-					done,
-					"");
+			        "random write finished %d ops%30s\r",
+			        done,
+			        "");
 
 			fflush(stderr);
 		}
@@ -66,10 +66,10 @@ int main(int argc, char *argv[])
 	uint64_t bytes = loop * (KEY_SIZE + VAL_SIZE);
 	long long cost_ms = time_diff_ms(start, end) + 1;
 	printf("--------loop:%d, cost:%d(ms), %.f ops/sec, %6.1f MB/sec\n",
-			loop,
-			(int)cost_ms,
-			(double)(loop/cost_ms)*1000,
-			(double)((bytes/cost_ms/1048576.0) * 1000));
+	       loop,
+	       (int)cost_ms,
+	       (double)(loop / cost_ms) * 1000,
+	       (double)((bytes / cost_ms / 1048576.0) * 1000));
 
 
 	db_close(db);

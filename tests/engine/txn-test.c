@@ -12,7 +12,8 @@
 #include "logger.h"
 #include "ctest.h"
 
-CTEST(txn, begin_with_no_parent) {
+CTEST(txn, begin_with_no_parent)
+{
 	int r;
 	struct txn *tx1;
 	struct txn *tx2;
@@ -44,7 +45,8 @@ CTEST(txn, begin_with_no_parent) {
 	txnmgr_free(tm);
 }
 
-CTEST(txn, begin_with_parent) {
+CTEST(txn, begin_with_parent)
+{
 	int r;
 	struct txn *tx1;
 	struct txn *tx2;

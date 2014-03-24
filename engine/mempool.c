@@ -10,11 +10,10 @@
 /* 4KB per block */
 #define MEMPOOL_BLOCKSIZE	(4096)
 
-struct mempool_block *_new_block(struct mempool *pool, uint32_t bytes)
-{
+struct mempool_block *_new_block(struct mempool *pool, uint32_t bytes) {
 	uint32_t sizes;
 	struct mempool_block *blk;
-	
+
 	sizes = (bytes > MEMPOOL_BLOCKSIZE ? bytes : MEMPOOL_BLOCKSIZE);
 	blk = xcalloc(1, sizeof(*blk));
 	blk->memory = xmalloc(sizes * sizeof(char));
@@ -26,8 +25,7 @@ struct mempool_block *_new_block(struct mempool *pool, uint32_t bytes)
 	return blk;
 }
 
-struct mempool *mempool_new()
-{
+struct mempool *mempool_new() {
 	struct mempool *pool;
 
 	pool = xcalloc(1, sizeof(*pool));

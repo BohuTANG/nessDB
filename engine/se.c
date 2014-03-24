@@ -74,20 +74,20 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 		uint8_t type;
 		MSN msn;
 
-		if(!buf_getuint64(rbuf, &msn)) goto ERR;
+		if (!buf_getuint64(rbuf, &msn)) goto ERR;
 		pos += sizeof(uint64_t);
 		type = (msn & 0xff);
 		msn = (msn >> 8);
-		if(!buf_getuint32(rbuf, &k.size)) goto ERR;
+		if (!buf_getuint32(rbuf, &k.size)) goto ERR;
 		pos += sizeof(uint32_t);
-		if(!buf_getnstr(rbuf, k.size, (char**)&k.data)) goto ERR;
+		if (!buf_getnstr(rbuf, k.size, (char**)&k.data)) goto ERR;
 		pos += k.size;
 
 		if (type != MSG_DELETE) {
-			if(!buf_getuint32(rbuf, &v.size)) goto ERR;
+			if (!buf_getuint32(rbuf, &v.size)) goto ERR;
 			pos += sizeof(uint32_t);
 
-			if(!buf_getnstr(rbuf, v.size, (char**)&v.data)) goto ERR;
+			if (!buf_getnstr(rbuf, v.size, (char**)&v.data)) goto ERR;
 			pos += v.size;
 		}
 
@@ -104,8 +104,8 @@ ERR:
  * serialize the leaf to buf
  */
 void _serialize_leaf_to_buf(struct buffer *wbuf,
-		struct node *node,
-		struct hdr *hdr)
+                            struct node *node,
+                            struct hdr *hdr)
 {
 	struct buffer *buf;
 	char *compress_ptr = NULL;
@@ -113,7 +113,7 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	uint32_t compress_size = 0U;
 	uint32_t uncompress_size;
 
-	buf = buf_new(1<<20);	/* 1MB */
+	buf = buf_new(1 << 20);	/* 1MB */
 	_leaf_basement_to_buf(node->u.l.le->bsm, buf);
 	uncompress_size = buf->NUL;
 	uncompress_ptr = buf->buf;
@@ -125,11 +125,11 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	if (uncompress_size > 0) {
 		uint32_t bound = ness_compress_bound(hdr->method, uncompress_size);
 		compress_ptr =  xcalloc(1, bound);
-		ness_compress(	hdr->method,
-				uncompress_ptr,
-				uncompress_size,
-				compress_ptr,
-				&compress_size);
+		ness_compress(hdr->method,
+		              uncompress_ptr,
+		              uncompress_size,
+		              compress_ptr,
+		              &compress_size);
 
 		/*
 		 * b) |compress_size|uncompress_size|compress datas|
@@ -156,10 +156,10 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	buf_putuint32(wbuf, xsum);
 }
 
-void _serialize_nonleaf_to_buf(	struct buffer *wbuf,
-		struct node *node,
-		struct hdr *hdr,
-		uint32_t *skeleton_size)
+void _serialize_nonleaf_to_buf(struct buffer *wbuf,
+                               struct node *node,
+                               struct hdr *hdr,
+                               uint32_t *skeleton_size)
 {
 	uint32_t i;
 	uint32_t part_off = 0U;
@@ -176,9 +176,9 @@ void _serialize_nonleaf_to_buf(	struct buffer *wbuf,
 	nchildren = node->u.n.n_children;
 	if (nchildren == 0) return;
 
-	pivots_wbuf = buf_new(1<<10);
-	parts_wbuf = buf_new(1<<20);
-	part_wbuf = buf_new(1<<20);
+	pivots_wbuf = buf_new(1 << 10);
+	parts_wbuf = buf_new(1 << 20);
+	part_wbuf = buf_new(1 << 20);
 
 	for (i = 0; i < nchildren; i++) {
 		/*
@@ -201,8 +201,8 @@ void _serialize_nonleaf_to_buf(	struct buffer *wbuf,
 			uint32_t bound = ness_compress_bound(hdr->method, uncompress_size);
 			compress_ptr =  xcalloc(1, bound);
 			ness_compress(hdr->method,
-					uncompress_ptr, uncompress_size,
-					compress_ptr, &compress_size);
+			              uncompress_ptr, uncompress_size,
+			              compress_ptr, &compress_size);
 
 			buf_putuint32(part_wbuf, compress_size);
 			buf_putuint32(part_wbuf, uncompress_size);
@@ -268,8 +268,8 @@ void _serialize_nonleaf_to_buf(	struct buffer *wbuf,
 	uint32_t bound = ness_compress_bound(hdr->method, uncompress_size);
 	compress_ptr =  xcalloc(1, bound);
 	ness_compress(hdr->method,
-			uncompress_ptr, uncompress_size,
-			compress_ptr, &compress_size);
+	              uncompress_ptr, uncompress_size,
+	              compress_ptr, &compress_size);
 	buf_clear(pivots_wbuf);
 	buf_putuint32(pivots_wbuf, compress_size);
 	buf_putuint32(pivots_wbuf, uncompress_size);
@@ -309,9 +309,9 @@ int _deserialize_leaf_from_disk(int fd, struct block_pair *bp, struct node **nod
 	read_size = ALIGN(bp->real_size);
 	rbuf = buf_new(read_size);
 	if (ness_os_pread(fd,
-				rbuf->buf,
-				read_size,
-				bp->offset) != (ssize_t)read_size) {
+	                  rbuf->buf,
+	                  read_size,
+	                  bp->offset) != (ssize_t)read_size) {
 		r = NESS_READ_ERR;
 		goto RET;
 	}
@@ -329,19 +329,19 @@ int _deserialize_leaf_from_disk(int fd, struct block_pair *bp, struct node **nod
 	if (!buf_getnstr(rbuf, compress_size, &datas)) goto RET;
 	if (!buf_getuint32(rbuf, &exp_xsum)) goto RET;
 	if (!buf_xsum(rbuf->buf,
-				+ 8
-				+ sizeof(compress_size)
-				+ sizeof(uncompress_size)
-				+ compress_size,
-				&act_xsum))
+	              + 8
+	              + sizeof(compress_size)
+	              + sizeof(uncompress_size)
+	              + compress_size,
+	              &act_xsum))
 		goto RET;
 
 	if (exp_xsum != act_xsum) {
 		__ERROR("leaf xsum check error, "
-				"exp_xsum: [%" PRIu32 "], "
-				"act_xsum:[%" PRIu32 "]",
-				exp_xsum,
-				act_xsum);
+		        "exp_xsum: [%" PRIu32 "], "
+		        "act_xsum:[%" PRIu32 "]",
+		        exp_xsum,
+		        act_xsum);
 		r = NESS_LEAF_XSUM_ERR;
 		goto RET;
 	}
@@ -352,9 +352,9 @@ int _deserialize_leaf_from_disk(int fd, struct block_pair *bp, struct node **nod
 	lbuf = buf_new(uncompress_size);
 	if (uncompress_size > 0) {
 		ness_decompress(datas,
-				compress_size,
-				lbuf->buf,
-				uncompress_size);
+		                compress_size,
+		                lbuf->buf,
+		                uncompress_size);
 	}
 
 	/* alloc leaf node */
@@ -362,12 +362,12 @@ int _deserialize_leaf_from_disk(int fd, struct block_pair *bp, struct node **nod
 	leaf_alloc_bsm(n);
 
 	r = _buf_to_basement(lbuf,
-			uncompress_size,
-			n->u.l.le->bsm);
+	                     uncompress_size,
+	                     n->u.l.le->bsm);
 	if (r != NESS_OK) {
 		__ERROR("buf to dmt error, "
-				"buf raw_size [%" PRIu32 "]",
-				uncompress_size);
+		        "buf raw_size [%" PRIu32 "]",
+		        uncompress_size);
 	}
 	buf_free(lbuf);
 
@@ -378,9 +378,9 @@ RET:
 }
 
 int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
-		struct block_pair *bp,
-		struct node **n,
-		int light)
+                                  struct block_pair *bp,
+                                  struct node **n,
+                                  int light)
 {
 	int r = NESS_OK;
 	uint32_t i;
@@ -408,9 +408,9 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 
 	struct buffer *pivots_rbuf = buf_new(uncompress_size);
 	ness_decompress(compress_ptr,
-			compress_size,
-			pivots_rbuf->buf,
-			uncompress_size);
+	                compress_size,
+	                pivots_rbuf->buf,
+	                uncompress_size);
 
 	for (i = 0; i < node->u.n.n_children; i++) {
 		if (i < (node->u.n.n_children - 1)) {
@@ -421,7 +421,7 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 		node->u.n.parts[i].inner_offset += bp->skeleton_size;
 	}
 
-	 /* c) unpack part */
+	/* c) unpack part */
 	if (!buf_seek(rbuf, bp->skeleton_size)) goto ERR1;
 	if (!light) {
 		for (i = 0; i < node->u.n.n_children; i++) {
@@ -438,19 +438,19 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 			if (!buf_getnstr(rbuf, part_size, (char**)&part_datas)) goto ERR1;
 			if (!buf_getuint32(rbuf, &exp_xsum)) goto ERR1;
 			if (!buf_xsum(part_start,
-						+ sizeof(part_size)
-						+ sizeof(part_raw_size)
-						+ part_size,
-						&act_xsum))
+			              + sizeof(part_size)
+			              + sizeof(part_raw_size)
+			              + part_size,
+			              &act_xsum))
 				goto ERR1;
 
 			if (exp_xsum != act_xsum) {
 				__ERROR("partition[%d], xsum check error ,"
-						"exp_xsum [%" PRIu32 "], act_xsum, [%" PRIu32 "] ,"
-						"size: [%" PRIu32 "], raw_size:[%" PRIu32 "]",
-						i,
-						exp_xsum, act_xsum,
-						part_size, part_raw_size);
+				        "exp_xsum [%" PRIu32 "], act_xsum, [%" PRIu32 "] ,"
+				        "size: [%" PRIu32 "], raw_size:[%" PRIu32 "]",
+				        i,
+				        exp_xsum, act_xsum,
+				        part_size, part_raw_size);
 				r = NESS_PART_XSUM_ERR;
 				goto ERR1;
 			}
@@ -460,12 +460,12 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 
 				part_rbuf = buf_new(part_raw_size);
 				ness_decompress(part_datas,
-						part_size,
-						part_rbuf->buf,
-						part_raw_size);
+				                part_size,
+				                part_rbuf->buf,
+				                part_raw_size);
 				r = _buf_to_basement(part_rbuf,
-						part_raw_size,
-						node->u.n.parts[i].buffer);
+				                     part_raw_size,
+				                     node->u.n.parts[i].buffer);
 				buf_free(part_rbuf);
 
 				if (r != NESS_OK) {
@@ -496,9 +496,9 @@ ERR1:
 }
 
 int _deserialize_nonleaf_from_disk(int fd,
-		struct block_pair *bp,
-		struct node **node,
-		int light)
+                                   struct block_pair *bp,
+                                   struct node **node,
+                                   int light)
 {
 	int r = NESS_ERR;
 	uint32_t read_size;
@@ -509,9 +509,9 @@ int _deserialize_nonleaf_from_disk(int fd,
 	read_size = ALIGN(real_size);
 	rbuf = buf_new(read_size);
 	if (ness_os_pread(fd,
-				rbuf->buf,
-				read_size,
-				bp->offset) != (ssize_t)read_size) {
+	                  rbuf->buf,
+	                  read_size,
+	                  bp->offset) != (ssize_t)read_size) {
 		r = NESS_READ_ERR;
 		goto ERR;
 	}
@@ -519,7 +519,7 @@ int _deserialize_nonleaf_from_disk(int fd,
 	/*
 	 * check the checksum
 	 */
-	if(!buf_skip(rbuf, real_size - CRC_SIZE)) goto ERR;
+	if (!buf_skip(rbuf, real_size - CRC_SIZE)) goto ERR;
 
 	uint32_t exp_xsum;
 	uint32_t act_xsum;
@@ -528,18 +528,18 @@ int _deserialize_nonleaf_from_disk(int fd,
 	if (!buf_xsum(rbuf->buf, real_size - CRC_SIZE, &act_xsum)) goto ERR;
 	if (exp_xsum != act_xsum) {
 		__ERROR("nonleaf xsum check error, "
-				"exp_xsum [%" PRIu32 "], act_xsum [%" PRIu32 "], "
-				"read size [%" PRIu32 "], nid [%" PRIu64 "]",
-				exp_xsum, act_xsum,
-				real_size, bp->nid);
+		        "exp_xsum [%" PRIu32 "], act_xsum [%" PRIu32 "], "
+		        "read size [%" PRIu32 "], nid [%" PRIu64 "]",
+		        exp_xsum, act_xsum,
+		        real_size, bp->nid);
 		r = NESS_INNER_XSUM_ERR;
 		goto ERR;
 	}
 
 	r = _deserialize_nonleaf_from_buf(rbuf,
-				bp,
-				node,
-				light);
+	                                  bp,
+	                                  node,
+	                                  light);
 	buf_free(rbuf);
 
 	return r;
@@ -551,9 +551,9 @@ ERR:
 }
 
 int serialize_node_to_disk(int fd,
-		struct block *block,
-		struct node *node,
-		struct hdr *hdr)
+                           struct block *block,
+                           struct node *node,
+                           struct hdr *hdr)
 {
 	int r;
 	DISKOFF address;
@@ -561,7 +561,7 @@ int serialize_node_to_disk(int fd,
 	uint32_t real_size;
 	uint32_t skeleton_size = 0;
 
-	wbuf = buf_new(1<<20);
+	wbuf = buf_new(1 << 20);
 	if (node->height == 0)
 		_serialize_leaf_to_buf(wbuf, node, hdr);
 	else
@@ -569,24 +569,24 @@ int serialize_node_to_disk(int fd,
 
 	real_size = wbuf->NUL;
 	address = block_alloc_off(block,
-			node->nid,
-			real_size,
-			skeleton_size,
-			node->height);
+	                          node->nid,
+	                          real_size,
+	                          skeleton_size,
+	                          node->height);
 
 	buf_putnull(wbuf, ALIGN(real_size) - real_size);
 	if (ness_os_pwrite(fd,
-			wbuf->buf,
-			ALIGN(real_size),
-			address) != 0) {
+	                   wbuf->buf,
+	                   ALIGN(real_size),
+	                   address) != 0) {
 		r = NESS_WRITE_ERR;
 		__ERROR("--write node to disk error, fd %d, "
-				"align size [%" PRIu32 "]",
-				fd,
-				ALIGN(real_size));
+		        "align size [%" PRIu32 "]",
+		        fd,
+		        ALIGN(real_size));
 		goto ERR;
 	}
-	
+
 	buf_free(wbuf);
 
 	return NESS_OK;
@@ -598,10 +598,10 @@ ERR:
 }
 
 int deserialize_node_from_disk(int fd,
-		struct block *block,
-		NID nid,
-		struct node **node,
-		int light)
+                               struct block *block,
+                               NID nid,
+                               struct node **node,
+                               int light)
 {
 	int r;
 	struct block_pair *bp;
@@ -619,19 +619,19 @@ int deserialize_node_from_disk(int fd,
 		 * others, we need to read the whole innernode from disk
 		 */
 		r = _deserialize_nonleaf_from_disk(fd,
-				bp,
-				node,
-				light);
+		                                   bp,
+		                                   node,
+		                                   light);
 	}
 
 	return r;
 }
 
 int deserialize_part_from_disk(int fd,
-		struct block *block,
-		NID nid,
-		struct node *node,
-		int idx)
+                               struct block *block,
+                               NID nid,
+                               struct node *node,
+                               int idx)
 {
 	int r;
 	DISKOFF read_offset;
@@ -654,12 +654,12 @@ int deserialize_part_from_disk(int fd,
 
 	rbuf = buf_new(try_read_size);
 	if (ness_os_pread(fd,
-			rbuf->buf,
-			try_read_size,
-			read_offset) != (ssize_t)try_read_size) {
+	                  rbuf->buf,
+	                  try_read_size,
+	                  read_offset) != (ssize_t)try_read_size) {
 		__ERROR("read part[%d] data error, errno:%d",
-				idx,
-				r);
+		        idx,
+		        r);
 		r = NESS_READ_ERR;
 		goto ERR;
 	}
@@ -680,9 +680,9 @@ int deserialize_part_from_disk(int fd,
 		rbuf = buf_new(try_read_size);
 
 		if (ness_os_pread(fd,
-				rbuf->buf,
-				try_read_size,
-				read_offset) != (ssize_t)try_read_size) {
+		                  rbuf->buf,
+		                  try_read_size,
+		                  read_offset) != (ssize_t)try_read_size) {
 			r = NESS_READ_ERR;
 			goto ERR;
 		}
@@ -694,19 +694,19 @@ int deserialize_part_from_disk(int fd,
 	if (!buf_getnstr(rbuf, compress_size, (char**)&part_datas)) goto ERR;
 	if (!buf_getuint32(rbuf, &exp_xsum)) goto ERR;
 	if (!buf_xsum(rbuf->buf,
-				sizeof(compress_size)
-				+ sizeof(uncompress_size)
-				+ compress_size,
-				&act_xsum))
+	              sizeof(compress_size)
+	              + sizeof(uncompress_size)
+	              + compress_size,
+	              &act_xsum))
 		goto ERR;
 
 	if (exp_xsum != act_xsum) {
 		__ERROR("partition[%d], xsum check error, "
-				"exp_xsum [%" PRIu32 "], act_xsum, [%" PRIu32 "], "
-				"size:[%" PRIu32 "] , raw_size: [%" PRIu32 "]",
-				idx,
-				exp_xsum, act_xsum,
-				compress_size, uncompress_size);
+		        "exp_xsum [%" PRIu32 "], act_xsum, [%" PRIu32 "], "
+		        "size:[%" PRIu32 "] , raw_size: [%" PRIu32 "]",
+		        idx,
+		        exp_xsum, act_xsum,
+		        compress_size, uncompress_size);
 		r = NESS_PART_XSUM_ERR;
 		goto ERR;
 	}
@@ -716,19 +716,19 @@ int deserialize_part_from_disk(int fd,
 
 		part_rbuf = buf_new(uncompress_size);
 		ness_decompress(part_datas,
-				compress_size,
-				part_rbuf->buf,
-				uncompress_size);
+		                compress_size,
+		                part_rbuf->buf,
+		                uncompress_size);
 		r = _buf_to_basement(part_rbuf,
-				uncompress_size,
-				node->u.n.parts[idx].buffer);
+		                     uncompress_size,
+		                     node->u.n.parts[idx].buffer);
 		buf_free(part_rbuf);
 
 		if (r != NESS_OK) {
 			__ERROR("buffer to fifo error when load part, idx %d, "
-					"nid [%" PRIu64 "]",
-					idx,
-					nid);
+			        "nid [%" PRIu64 "]",
+			        idx,
+			        nid);
 			r = NESS_BUF_TO_BSM_ERR;
 			goto ERR;
 		}

@@ -40,11 +40,11 @@ struct basement {
 struct basement *basement_new();
 
 void basement_put(struct basement *bsm,
-		struct msg *key,
-		struct msg *val,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids);
+                  struct msg *key,
+                  struct msg *val,
+                  msgtype_t type,
+                  MSN msn,
+                  struct xids *xids);
 
 uint32_t basement_memsize(struct basement *);
 uint32_t basement_count(struct basement *);

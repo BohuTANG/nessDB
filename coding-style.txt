@@ -1,0 +1,5 @@
+The nessDB project follows Linux coding style:
+(http://www.kernel.org/doc/Documentation/CodingStyle) with C-style
+You can use `astyle' to indent the source files:
+
+    astyle --style=linux --indent=tab -p -U -K -H --suffix=none

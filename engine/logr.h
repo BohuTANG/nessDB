@@ -22,10 +22,10 @@ struct logr {
 
 struct logr *logr_open(struct options *opts, uint64_t logsn);
 int logr_read(struct logr *lgr,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t *t,
-		uint32_t *tbn);
+              struct msg *k,
+              struct msg *v,
+              msgtype_t *t,
+              uint32_t *tbn);
 void logr_close(struct logr *lgr);
 
 #endif /* nessDB_LOGR_H_ */

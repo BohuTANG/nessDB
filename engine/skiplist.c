@@ -20,8 +20,7 @@
 
 #define SKIPLIST_MAX_LEVEL	(12)
 
-static inline struct skipnode *_get_next(struct skipnode *x, int height)
-{
+static inline struct skipnode *_get_next(struct skipnode *x, int height) {
 	struct skipnode *next;
 
 	next = x->next[height];
@@ -52,9 +51,8 @@ static inline void _set_height(int *a, int *b)
 }
 
 struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
-		void *key,
-		struct skipnode **prev)
-{
+                void *key,
+                struct skipnode **prev) {
 	int level;
 	register struct skipnode *x;
 	register struct skipnode *next;
@@ -82,14 +80,13 @@ int _rand_height()
 	int height = 1;
 	int branching = 4;
 
-	while(((rand() % branching) == 0) && (height < SKIPLIST_MAX_LEVEL))
+	while (((rand() % branching) == 0) && (height < SKIPLIST_MAX_LEVEL))
 		height++;
 
 	return height;
 }
 
-struct skipnode *_new_node(struct skiplist *sl, int height)
-{
+struct skipnode *_new_node(struct skiplist *sl, int height) {
 	uint32_t sizes;
 	struct skipnode *n;
 
@@ -101,8 +98,7 @@ struct skipnode *_new_node(struct skiplist *sl, int height)
 }
 
 
-struct skiplist *skiplist_new(SKIPLIST_COMPARE_CALLBACK compare_cb)
-{
+struct skiplist *skiplist_new(SKIPLIST_COMPARE_CALLBACK compare_cb) {
 	struct skiplist *sl;
 
 	sl = xcalloc(1, sizeof(*sl));
@@ -158,11 +154,10 @@ int skiplist_contains(struct skiplist *sl, void *key)
 		return NESS_ERR;
 }
 
-struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key)
-{
+struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key) {
 	int height;
 	struct skipnode *x;
-	
+
 	height = _get_height(sl) - 1;
 	x = sl->header;
 	while (1) {
@@ -179,8 +174,7 @@ struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key)
 	}
 }
 
-struct skipnode *skiplist_find_last(struct skiplist *sl)
-{
+struct skipnode *skiplist_find_last(struct skiplist *sl) {
 	int level;
 	struct skipnode *x;
 

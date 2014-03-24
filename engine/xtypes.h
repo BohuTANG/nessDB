@@ -57,7 +57,9 @@ typedef enum {
 
 typedef struct txn TXN;
 typedef struct logger LOGGER;
-typedef struct {uint32_t fileid;} FILENUM;
+typedef struct {
+	uint32_t fileid;
+} FILENUM;
 struct msg {
 	uint32_t size;
 	void *data;

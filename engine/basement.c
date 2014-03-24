@@ -9,11 +9,11 @@
 #include "basement.h"
 
 void _encode(char *data,
-		struct msg *key,
-		struct msg *val,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids)
+             struct msg *key,
+             struct msg *val,
+             msgtype_t type,
+             MSN msn,
+             struct xids *xids)
 {
 	int pos = 0;
 	uint32_t vlen = 0U;
@@ -41,11 +41,11 @@ void _encode(char *data,
 }
 
 void _decode(char *data,
-		struct msg *key,
-		struct msg *val,
-		msgtype_t *type,
-		MSN *msn,
-		struct xids **xids)
+             struct msg *key,
+             struct msg *val,
+             msgtype_t *type,
+             MSN *msn,
+             struct xids **xids)
 {
 	(void)xids;
 	int pos = 0;
@@ -71,12 +71,11 @@ void _decode(char *data,
 	} else {
 		memset(val, 0, sizeof(*val));
 	}
-	
+
 	*xids = (struct xids*)(data + pos);
 }
 
-struct basement *basement_new()
-{
+struct basement *basement_new() {
 	struct basement *bsm;
 
 	bsm = xcalloc(1, sizeof(*bsm));
@@ -91,11 +90,11 @@ struct basement *basement_new()
  *	so should to do some hacks on memeory useage
  */
 void basement_put(struct basement *bsm,
-		struct msg *key,
-		struct msg *val,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids)
+                  struct msg *key,
+                  struct msg *val,
+                  msgtype_t type,
+                  MSN msn,
+                  struct xids *xids)
 {
 	char *base;
 	uint32_t sizes = 0U;
@@ -142,22 +141,23 @@ void basement_free(struct basement *bsm)
 *******************************************************/
 
 void _iter_decode(const char *base,
-		struct basement_iter *bsm_iter)
+                  struct basement_iter *bsm_iter)
 {
 	if (base) {
 		_decode((char*)base,
-				&bsm_iter->key,
-				&bsm_iter->val,
-				&bsm_iter->type,
-				&bsm_iter->msn,
-				&bsm_iter->xids);
+		        &bsm_iter->key,
+		        &bsm_iter->val,
+		        &bsm_iter->type,
+		        &bsm_iter->msn,
+		        &bsm_iter->xids);
 		bsm_iter->valid = 1;
 	} else
 		bsm_iter->valid = 0;
 }
 
 /* init */
-void basement_iter_init(struct basement_iter *bsm_iter, struct basement *bsm){
+void basement_iter_init(struct basement_iter *bsm_iter, struct basement *bsm)
+{
 	bsm_iter->valid = 0;
 	bsm_iter->bsm = bsm;
 	skiplist_iter_init(&bsm_iter->list_iter, bsm->list);
@@ -185,7 +185,7 @@ void basement_iter_next(struct basement_iter *bsm_iter)
 void basement_iter_prev(struct basement_iter *bsm_iter)
 {
 	void *base = NULL;
-	
+
 	skiplist_iter_prev(&bsm_iter->list_iter);
 	if (bsm_iter->list_iter.node)
 		base = bsm_iter->list_iter.node->key;
@@ -225,7 +225,7 @@ void basement_iter_seek(struct basement_iter *bsm_iter, struct msg *k)
 void basement_iter_seektofirst(struct basement_iter *bsm_iter)
 {
 	void *base = NULL;
-	
+
 	skiplist_iter_seektofirst(&bsm_iter->list_iter);
 	if (bsm_iter->list_iter.node)
 		base = bsm_iter->list_iter.node->key;
@@ -237,7 +237,7 @@ void basement_iter_seektofirst(struct basement_iter *bsm_iter)
 void basement_iter_seektolast(struct basement_iter *bsm_iter)
 {
 	void *base = NULL;
-	
+
 	skiplist_iter_seektolast(&bsm_iter->list_iter);
 	if (bsm_iter->list_iter.node)
 		base = bsm_iter->list_iter.node->key;

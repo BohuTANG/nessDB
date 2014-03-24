@@ -10,7 +10,8 @@
 #include "block.h"
 #include "ctest.h"
 
-CTEST(block_test, block_get) {
+CTEST(block_test, block_get)
+{
 	struct block *b = block_new();
 
 	uint32_t height = 0;

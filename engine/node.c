@@ -13,8 +13,7 @@ static struct node_operations nop = {
 	.pivot_compare_func = msg_key_compare
 };
 
-struct node *leaf_alloc_empty(NID nid)
-{
+struct node *leaf_alloc_empty(NID nid) {
 	struct node *node;
 
 	node = xcalloc(1, sizeof(*node));
@@ -35,8 +34,7 @@ void leaf_alloc_bsm(struct node *node)
 	node->u.l.le->bsm = basement_new();
 }
 
-struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children)
-{
+struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children) {
 	int i;
 	struct node *node;
 

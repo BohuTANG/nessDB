@@ -17,9 +17,10 @@
 #define DUMMY_TXID (0UL)
 #define BRT_FILE ("node-test.brt")
 
-CTEST(node_serial_test, leaf_empty) {
+CTEST(node_serial_test, leaf_empty)
+{
 	int ret = 0;
-	int fd = ness_os_open(BRT_FILE, O_RDWR|O_CREAT, 0777);
+	int fd = ness_os_open(BRT_FILE, O_RDWR | O_CREAT, 0777);
 	struct block *b = block_new();
 	struct hdr *hdr = (struct hdr*)xcalloc(1, sizeof(*hdr));
 	struct options *opts = options_new();
@@ -50,9 +51,10 @@ CTEST(node_serial_test, leaf_empty) {
 	xcheck_all_free();
 }
 
-CTEST(node_serial_test, leaf_2_record) {
+CTEST(node_serial_test, leaf_2_record)
+{
 	int ret = 0;
-	int fd = ness_os_open(BRT_FILE, O_RDWR|O_CREAT, 0777);
+	int fd = ness_os_open(BRT_FILE, O_RDWR | O_CREAT, 0777);
 	struct block *b = block_new();
 	struct hdr *hdr = (struct hdr*)xcalloc(1, sizeof(*hdr));
 	struct options *opts = options_new();
@@ -113,11 +115,12 @@ CTEST(node_serial_test, leaf_2_record) {
 	xcheck_all_free();
 }
 
-CTEST(node_serial_test, node_2th_part_empty) {
+CTEST(node_serial_test, node_2th_part_empty)
+{
 	int ret = 0;
 	NID nid;
 	uint32_t n_children = 3;
-	int fd = ness_os_open(BRT_FILE, O_RDWR|O_CREAT, 0777);
+	int fd = ness_os_open(BRT_FILE, O_RDWR | O_CREAT, 0777);
 	struct block *b = block_new();
 	struct hdr *hdr = (struct hdr*)xcalloc(1, sizeof(*hdr));
 	struct options *opts = options_new();
@@ -150,9 +153,9 @@ CTEST(node_serial_test, node_2th_part_empty) {
 	v.size = 5;
 	v.data = "world";
 	basement_put(dummy_node->u.n.parts[0].buffer, &k, &v, MSG_INSERT, msn,
-			xids);
+	             xids);
 
-	
+
 	hdr->method = NESS_QUICKLZ_METHOD;
 	ret = serialize_node_to_disk(fd, b, dummy_node, hdr);
 	ASSERT_TRUE(ret > 0);
@@ -167,14 +170,14 @@ CTEST(node_serial_test, node_2th_part_empty) {
 	ASSERT_EQUAL(1, dummy_node1->height);
 	ASSERT_EQUAL(3, dummy_node1->u.n.n_children);
 	ASSERT_DATA((const unsigned char*)"pivot0",
-			6,
-			(const unsigned char*)dummy_node1->u.n.pivots[0].data,
-			dummy_node1->u.n.pivots[0].size);
+	            6,
+	            (const unsigned char*)dummy_node1->u.n.pivots[0].data,
+	            dummy_node1->u.n.pivots[0].size);
 
 	ASSERT_DATA((const unsigned char*)"pivot1",
-			6,
-			(const unsigned char*)dummy_node1->u.n.pivots[1].data,
-			dummy_node1->u.n.pivots[1].size);
+	            6,
+	            (const unsigned char*)dummy_node1->u.n.pivots[1].data,
+	            dummy_node1->u.n.pivots[1].size);
 	ASSERT_EQUAL(3, dummy_node1->u.n.n_children);
 
 	if (!light) {

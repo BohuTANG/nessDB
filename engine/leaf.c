@@ -15,19 +15,19 @@
  *
  */
 int leaf_apply_msg(struct node *leaf,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids)
+                   struct msg *k,
+                   struct msg *v,
+                   msgtype_t type,
+                   MSN msn,
+                   struct xids *xids)
 {
 	write_lock(&leaf->u.l.le->rwlock);
 	switch (type & 0xff) {
 	case MSG_INSERT:
 	case MSG_DELETE:
 	case MSG_UPDATE: {
-		/* TODO: do msg update, node->node_op->update */
-	}
+			/* TODO: do msg update, node->node_op->update */
+		}
 	case MSG_COMMIT:
 	case MSG_ABORT:
 	default:

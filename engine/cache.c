@@ -45,7 +45,7 @@ void _free_cpair(struct cache *c, struct cpair *cp)
 static inline int _must_evict(struct cache *c)
 {
 	int must;
-	
+
 	mutex_lock(&c->mtx);
 	must = ((c->cache_size > c->opts->cache_limits_bytes));
 	mutex_unlock(&c->mtx);
@@ -59,7 +59,7 @@ static inline int _need_evict(struct cache *c)
 
 	mutex_lock(&c->mtx);
 	need = (c->cache_size > (c->opts->cache_limits_bytes *
-				c->opts->cache_high_watermark / 100));
+	                         c->opts->cache_high_watermark / 100));
 	mutex_unlock(&c->mtx);
 
 	return need;
@@ -102,21 +102,21 @@ void _cache_dump(struct cache *c, const char *msg)
 
 	cur = c->clock->head;
 	printf("----%s: cache dump:\n", msg);
-	while(cur) {
+	while (cur) {
 		printf("\t nid[%" PRIu64 "],\tnodesz[%d]MB,\tdirty[%d],"
-				"\tnum_readers[%d],\tnum_writers[%d]\n",
-				cur->v->nid,
-				(int)(cur->v->attr.newsz/ (1024 * 1024)),
-				node_is_dirty(cur->v),
-				cur->value_lock.num_readers,
-				cur->value_lock.num_writers
+		       "\tnum_readers[%d],\tnum_writers[%d]\n",
+		       cur->v->nid,
+		       (int)(cur->v->attr.newsz / (1024 * 1024)),
+		       node_is_dirty(cur->v),
+		       cur->value_lock.num_readers,
+		       cur->value_lock.num_writers
 		      );
 		all_size += (cur->v->attr.newsz);
 		cur = cur->list_next;
 	}
 	printf("---all size\t[%" PRIu64 "]MB\n", all_size / (1024 * 1024));
 	printf("---limit size\t[%" PRIu64 "]MB\n\n",
-			c->opts->cache_limits_bytes / (1024 * 1024));
+	       c->opts->cache_limits_bytes / (1024 * 1024));
 }
 
 /* pick one pair from clock list */
@@ -144,8 +144,8 @@ void _run_eviction(struct cache *c)
 		read_unlock(&c->clock_lock);
 
 		if ((num_readers == 0)
-				&&(num_writers == 0)
-				&& (isroot == 0)) {
+		    && (num_writers == 0)
+		    && (isroot == 0)) {
 			_try_evict_pair(c, cur);
 			cond_signalall(&c->condvar);
 		}
@@ -163,10 +163,9 @@ static void *flusher_cb(void *arg)
 	return NULL;
 }
 
-struct cache *cache_new(struct options *opts)
-{
+struct cache *cache_new(struct options *opts) {
 	struct cache *c;
-	
+
 	c = xcalloc(1, sizeof(*c));
 	rwlock_init(&c->clock_lock);
 	mutex_init(&c->mtx);
@@ -180,7 +179,7 @@ struct cache *cache_new(struct options *opts)
 	c->flusher = cron_new(flusher_cb, opts->cache_flush_period_ms);
 	if (cron_start(c->flusher, (void*)c) != 1) {
 		__PANIC("%s",
-			"flushe cron start error, will exit");
+		        "flushe cron start error, will exit");
 		goto ERR;
 	}
 
@@ -213,7 +212,7 @@ void _make_room(struct cache *c)
 
 		if (must) {
 			__WARN("must evict, waiting..., cache limits [%" PRIu64 "]MB",
-				c->cache_size / 1048576);
+			       c->cache_size / 1048576);
 			cond_wait(&c->condvar);
 		} else if (allow_delay && need) {
 			/*
@@ -251,9 +250,9 @@ void _make_room(struct cache *c)
  *	d6) disk-mtx unlock
  */
 int cache_get_and_pin(struct cache_file *cf,
-		NID k,
-		struct node **n,
-		enum lock_type locktype)
+                      NID k,
+                      struct node **n,
+                      enum lock_type locktype)
 {
 	struct cpair *p;
 	struct cache *c = cf->cache;
@@ -294,8 +293,8 @@ TRY_PIN:
 	int r = tcb->fetch_node(tree, k, n);
 	if (r != NESS_OK) {
 		__PANIC("fetch node from disk error, nid [%" PRIu64 "], errno %d",
-				k,
-				r);
+		        k,
+		        r);
 		goto ERR;
 	}
 
@@ -322,9 +321,9 @@ ERR:
 }
 
 int cache_create_node_and_pin(struct cache_file *cf,
-		uint32_t height,
-		uint32_t children,
-		struct node **n)
+                              uint32_t height,
+                              uint32_t children,
+                              struct node **n)
 {
 	NID next_nid;
 	struct cpair *p;
@@ -417,9 +416,8 @@ void cache_cpair_value_swap(struct cache_file *cf, struct node *a, struct node *
 
 
 struct cache_file *cache_file_create(struct cache *c,
-		struct tree_callback *tcb,
-		void *args)
-{
+                                     struct tree_callback *tcb,
+                                     void *args) {
 	struct cache_file *cf;
 
 	cf = xcalloc(1, sizeof(*cf));
@@ -473,7 +471,7 @@ void cache_close(struct cache *c)
 			write_unlock(&cur->disk_mtx);
 			if (r != NESS_OK) {
 				__PANIC("serialize node to disk error, fd [%d]",
-						tree->fd);
+				        tree->fd);
 			}
 			node_set_nondirty(cur->v);
 		}
@@ -489,7 +487,7 @@ void cache_close(struct cache *c)
 	while (cf_cur) {
 		struct tree *tree;
 		struct tree_callback *tcb;
-		
+
 		tree = (struct tree*)cf_cur->args;
 		tcb = cf_cur->tcb;
 		cf_nxt = cf_cur->next;
@@ -497,12 +495,12 @@ void cache_close(struct cache *c)
 		r = tcb->flush_hdr(tree);
 		if (r != NESS_OK) {
 			__PANIC("serialize hdr[%d] to disk error",
-					tree->fd);
+			        tree->fd);
 		}
 		xfree(cf_cur);
 		cf_cur = cf_nxt;
 	}
-	
+
 }
 
 void cache_free(struct cache *c)

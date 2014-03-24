@@ -93,7 +93,7 @@ static inline uint32_t get_entrylen(struct append_entry *entry)
 #define ALIGNMENT (512)
 static inline uint64_t ALIGN(uint64_t v)
 {
-	return  (v + ALIGNMENT - 1)&~(ALIGNMENT - 1);
+	return (v + ALIGNMENT - 1)&~(ALIGNMENT - 1);
 }
 
 #endif /* nessDB_INTERNAL_H_ */

@@ -15,9 +15,10 @@
 
 #define BRT_FILE ("hdr-test.brt")
 
-CTEST(hdr_serial_test, serial_deserial) {
+CTEST(hdr_serial_test, serial_deserial)
+{
 	int ret;
-	int fd = ness_os_open(BRT_FILE, O_RDWR|O_CREAT, 0777);
+	int fd = ness_os_open(BRT_FILE, O_RDWR | O_CREAT, 0777);
 	struct block *b = block_new();
 	struct hdr *hdr = (struct hdr*)xcalloc(1, sizeof(*hdr));
 	struct block_pair *pairs = xcalloc(3, sizeof(*pairs));

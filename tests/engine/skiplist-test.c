@@ -95,8 +95,8 @@ CTEST(skiplist, insert_and_lookup)
 		if (holes[i])
 			break;
 	}
-	
-	ASSERT_EQUAL(i, (int)*(int*)iter.node->key);
+
+	ASSERT_EQUAL(i, (int) * (int*)iter.node->key);
 
 	skiplist_free(list);
 	xcheck_all_free();

@@ -15,17 +15,18 @@ uint32_t ness_compress_bound(ness_compress_method_t m, uint32_t size)
 		return size + 1;
 	case NESS_QUICKLZ_METHOD:
 		return size + 400 + 1;
-	default: break;
+	default:
+		break;
 	}
 
 	return 0;
 }
 
 void ness_compress(ness_compress_method_t m,
-		const char *src,
-		uint32_t src_size,
-		char *dst,
-		uint32_t *dst_size)
+                   const char *src,
+                   uint32_t src_size,
+                   char *dst,
+                   uint32_t *dst_size)
 {
 	switch (m) {
 	case NESS_NO_COMPRESS:
@@ -56,9 +57,9 @@ void ness_compress(ness_compress_method_t m,
 }
 
 void ness_decompress(const char *src,
-		uint32_t src_size,
-		char *dst,
-		uint32_t dst_size)
+                     uint32_t src_size,
+                     char *dst,
+                     uint32_t dst_size)
 {
 	switch (src[0] & 0xF) {
 	case NESS_NO_COMPRESS:
@@ -66,17 +67,17 @@ void ness_decompress(const char *src,
 		break;
 
 	case NESS_QUICKLZ_METHOD: {
-		uint32_t raw_size;
-		qlz_state_decompress *qsd;
+			uint32_t raw_size;
+			qlz_state_decompress *qsd;
 
-		qsd = xcalloc(1, sizeof(*qsd));
-		raw_size = qlz_decompress(src + 1, dst, qsd);
-		nassert(raw_size == dst_size);
-		(void)raw_size;
-		(void)dst_size;
-      
-		xfree(qsd);
-	}
+			qsd = xcalloc(1, sizeof(*qsd));
+			raw_size = qlz_decompress(src + 1, dst, qsd);
+			nassert(raw_size == dst_size);
+			(void)raw_size;
+			(void)dst_size;
+
+			xfree(qsd);
+		}
 		break;
 	default:
 		printf("no decompress support!\n");

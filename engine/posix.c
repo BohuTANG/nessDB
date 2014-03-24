@@ -6,8 +6,7 @@
 
 #include "posix.h"
 
-struct cron *cron_new(func f, uint32_t period_ms)
-{
+struct cron *cron_new(func f, uint32_t period_ms) {
 	struct cron *cron;
 
 	cron = xcalloc(1, sizeof(*cron));
@@ -117,7 +116,7 @@ void cron_free(struct cron *cron)
 	xfree(cron);
 }
 
-void gettime (struct timespec *a)
+void gettime(struct timespec *a)
 {
 	struct timeval tv;
 
@@ -126,21 +125,19 @@ void gettime (struct timespec *a)
 	a->tv_nsec = tv.tv_usec * 1000LL;
 }
 
-struct timespec diff_timespec(struct timespec start, struct timespec end)
-{
+struct timespec diff_timespec(struct timespec start, struct timespec end) {
 	struct timespec result;
 
 	if (end.tv_nsec < start.tv_nsec) {
 		result.tv_nsec = 1000000000 + end.tv_nsec -
-			start.tv_nsec;
+		                 start.tv_nsec;
 		result.tv_sec = end.tv_sec - 1 -
-			start.tv_sec;
-	}
-	else {
+		                start.tv_sec;
+	} else {
 		result.tv_nsec = end.tv_nsec -
-			start.tv_nsec;
+		                 start.tv_nsec;
 		result.tv_sec = end.tv_sec -
-			start.tv_sec;
+		                start.tv_sec;
 	}
 
 	return result;

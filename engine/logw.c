@@ -15,20 +15,19 @@
  *
  */
 
-struct logw *logw_open(struct options *opts, uint64_t logsn)
-{
+struct logw *logw_open(struct options *opts, uint64_t logsn) {
 	int flag;
 	mode_t mode;
 	struct logw *lgw;
 	char name[FILE_NAME_MAXLEN];
 
-	mode = S_IRWXU|S_IRWXG|S_IRWXO;
+	mode = S_IRWXU | S_IRWXG | S_IRWXO;
 	flag = O_CREAT | O_WRONLY | O_BINARY;
 
 	ness_check_dir(opts->redo_path);
 	memset(name, 0, FILE_NAME_MAXLEN);
 	snprintf(name, FILE_NAME_MAXLEN, "%s/ness.redo.%" PRIu64,
-			opts->redo_path, logsn);
+	         opts->redo_path, logsn);
 	lgw = xcalloc(1, sizeof(*lgw));
 	lgw->base_size = (1 << 20);
 	lgw->base = xcalloc(lgw->base_size, sizeof(char*));
@@ -56,17 +55,17 @@ static inline void _check_space(struct logw *lgw, uint32_t bytes_need)
 }
 
 int logw_append(struct logw *lgw,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t t,
-		int tbn)
+                struct msg *k,
+                struct msg *v,
+                msgtype_t t,
+                int tbn)
 {
 	int r = NESS_OK;
 	char *base;
 	uint32_t pos = 0;
 	uint32_t size = + 4	/* length of beginning */
-		+ 4		/* table number */
-		+ CRC_SIZE;
+	                + 4		/* table number */
+	                + CRC_SIZE;
 
 	size += sizeof(k->size);
 	size += k->size;

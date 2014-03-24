@@ -35,9 +35,10 @@ CTEST(basement, empty)
 	xcheck_all_free();
 }
 
-void _random_key(char *key,int length) {
+void _random_key(char *key, int length)
+{
 	int i;
-	char salt[36]= "abcdefghijklmnopqrstuvwxyz123456789";
+	char salt[36] = "abcdefghijklmnopqrstuvwxyz123456789";
 
 	for (i = 0; i < length; i++)
 		key[i] = salt[rand() % 36];

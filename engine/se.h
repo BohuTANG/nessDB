@@ -20,20 +20,20 @@
  *
  */
 int serialize_node_to_disk(int fd,
-		struct block *b,
-		struct node *node,
-		struct hdr *hdr);
+                           struct block *b,
+                           struct node *node,
+                           struct hdr *hdr);
 
 int deserialize_node_from_disk(int fd,
-		struct block *block,
-		NID nid,
-		struct node **node,
-		int light);
+                               struct block *block,
+                               NID nid,
+                               struct node **node,
+                               int light);
 
 int deserialize_part_from_disk(int fd,
-		struct block *block,
-		NID nid,
-		struct node *node,
-		int idx);
+                               struct block *block,
+                               NID nid,
+                               struct node *node,
+                               int idx);
 
 #endif /* nessDB_SERIALIZE_H_ */

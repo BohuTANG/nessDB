@@ -13,20 +13,24 @@
 #include "internal.h"
 #include "buf.h"
 
-CTEST_DATA(buf_test) {
+CTEST_DATA(buf_test)
+{
 	struct buffer *b;
 };
 
-CTEST_SETUP(buf_test) {
-	data->b = buf_new(1<<20);
+CTEST_SETUP(buf_test)
+{
+	data->b = buf_new(1 << 20);
 	ASSERT_NOT_NULL(data->b);
 }
 
-CTEST_TEARDOWN(buf_test) {
+CTEST_TEARDOWN(buf_test)
+{
 	buf_free(data->b);
 }
 
-CTEST2(buf_test, mix) {
+CTEST2(buf_test, mix)
+{
 	uint64_t v1 = 123456789101112, v2;
 	buf_putnstr(data->b, "nessdata", 8);
 	buf_putuint32(data->b, 0);
@@ -46,7 +50,8 @@ CTEST2(buf_test, mix) {
 	ASSERT_EQUAL(v1, v2);
 }
 
-CTEST2(buf_test, checksum) {
+CTEST2(buf_test, checksum)
+{
 
 	buf_clear(data->b);
 

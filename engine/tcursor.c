@@ -43,8 +43,8 @@ int _search_in_which_child(struct search *so, struct node *node)
 		mi = (lo + hi) / 2;
 		c = so->direction_compare_func(so, &node->u.n.pivots[mi]);
 		if (((so->direction == SEARCH_FORWARD) && c) ||
-				((so->direction == SEARCH_BACKWARD) && !c))
-				hi = mi;
+		    ((so->direction == SEARCH_BACKWARD) && !c))
+			hi = mi;
 		else
 			lo = mi + 1;
 	}
@@ -57,15 +57,15 @@ int _search_in_which_child(struct search *so, struct node *node)
 	switch (so->direction) {
 	case SEARCH_FORWARD:
 		while (childnum < (children - 1) &&
-				so->pivotbound_compare_func(so,
-					&node->u.n.pivots[childnum]) >= 0) {
+		       so->pivotbound_compare_func(so,
+		                                   &node->u.n.pivots[childnum]) >= 0) {
 			childnum++;
 		}
 		break;
 	case SEARCH_BACKWARD:
 		while (childnum > 0 &&
-				so->pivotbound_compare_func(so,
-					&node->u.n.pivots[childnum - 1]) <= 0) {
+		       so->pivotbound_compare_func(so,
+		                                   &node->u.n.pivots[childnum - 1]) <= 0) {
 			childnum--;
 		}
 		break;
@@ -84,7 +84,7 @@ void _save_pivot_bound(struct search *so, struct node *n, int child_searched)
 	nassert(n->height > 0);
 
 	int p = (so->direction == SEARCH_FORWARD) ?
-		child_searched : child_searched - 1;
+	        child_searched : child_searched - 1;
 	if (p >= 0 && p < (int)(n->u.n.n_children - 1)) {
 		if (so->pivot_bound)
 			msgfree(so->pivot_bound);
@@ -93,21 +93,21 @@ void _save_pivot_bound(struct search *so, struct node *n, int child_searched)
 }
 
 int _findsmallest(struct basement **bsms,
-		int bsms_size,
-		struct cursor *cur,
-		struct search *so)
+                  int bsms_size,
+                  struct cursor *cur,
+                  struct search *so)
 {
 	int i;
 	int ret;
 	int end;
 	struct basement_iter *smallest = NULL;
 	struct basement_iter iters[bsms_size];
-	
+
 	/* seek each level */
 	for (i = (bsms_size - 1); i >= 0; i--) {
 		struct basement *bsm;
 		struct basement_iter *iter;
-		
+
 		bsm = bsms[i];
 		iter = &iters[i];
 		basement_iter_init(iter, bsm);
@@ -119,7 +119,7 @@ int _findsmallest(struct basement **bsms,
 			basement_iter_seek(iter, so->key);
 			if (so->slip != SLIP_ZERO) {
 				if (basement_iter_valid(iter) &&
-						(so->key_compare_func(&iter->key, so->key) == 0))
+				    (so->key_compare_func(&iter->key, so->key) == 0))
 					basement_iter_next(iter);
 			}
 		} else {
@@ -161,21 +161,21 @@ int _findsmallest(struct basement **bsms,
 }
 
 int _findlargest(struct basement **bsms,
-		int bsms_size,
-		struct cursor *cur,
-		struct search *so)
+                 int bsms_size,
+                 struct cursor *cur,
+                 struct search *so)
 {
 	int i;
 	int ret;
 	int end;
 	struct basement_iter *largest = NULL;
 	struct basement_iter iters[bsms_size];
-	
+
 	/* seek each level */
 	for (i = (bsms_size - 1); i >= 0; i--) {
 		struct basement *bsm;
 		struct basement_iter *iter;
-		
+
 		bsm = bsms[i];
 		iter = &iters[i];
 		basement_iter_init(iter, bsm);
@@ -260,15 +260,15 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 	switch (so->direction) {
 	case SEARCH_FORWARD:
 		return _findsmallest(bsms,
-				bsms_size,
-				cur,
-				so);
+		                     bsms_size,
+		                     cur,
+		                     so);
 		break;
 	case SEARCH_BACKWARD:
 		return _findlargest(bsms,
-				bsms_size,
-				cur,
-				so);
+		                    bsms_size,
+		                    cur,
+		                    so);
 		break;
 	default:
 		__PANIC("unsupport direction %u", so->direction);
@@ -276,15 +276,15 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 }
 
 int _search_node(struct cursor *cur,
-		struct search *so,
-		struct node *n,
-		int child_to_search);
+                 struct search *so,
+                 struct node *n,
+                 int child_to_search);
 
 /* search in a node's child */
 int _search_child(struct cursor *cur,
-		struct search *so,
-		struct node *n,
-		int childnum)
+                  struct search *so,
+                  struct node *n,
+                  int childnum)
 {
 	int ret;
 	int child_to_search;
@@ -298,16 +298,16 @@ int _search_child(struct cursor *cur,
 	child_nid = n->u.n.parts[childnum].child_nid;
 	if (cache_get_and_pin(cur->tree->cf, child_nid, &child, L_READ) < 0) {
 		__ERROR("cache get node error, nid [%" PRIu64 "]",
-				child_nid);
+		        child_nid);
 
 		return NESS_ERR;
 	}
 
 	child_to_search = _search_in_which_child(so, child);
 	ret = _search_node(cur,
-			so,
-			child,
-			child_to_search);
+	                   so,
+	                   child,
+	                   child_to_search);
 
 	/* unpin */
 	cache_unpin_readonly(cur->tree->cf, child);
@@ -316,9 +316,9 @@ int _search_child(struct cursor *cur,
 }
 
 int _search_node(struct cursor *cur,
-		struct search *so,
-		struct node *n,
-		int child_to_search)
+                 struct search *so,
+                 struct node *n,
+                 int child_to_search)
 {
 	int r;
 
@@ -336,7 +336,8 @@ int _search_node(struct cursor *cur,
 				if (child_to_search > 0)
 					r = CURSOR_TRY_AGAIN;
 				break;
-			default:break;
+			default:
+				break;
 			}
 		}
 	} else
@@ -377,16 +378,16 @@ try_again:
 	root_nid = t->hdr->root_nid;
 	if (cache_get_and_pin(t->cf, root_nid, &root, L_READ) < 0) {
 		__ERROR("cache get root node error, nid [%" PRIu64 "]",
-				root_nid);
+		        root_nid);
 
 		return;
 	}
 
 	child_to_search = _search_in_which_child(so, root);
 	r = _search_node(cur,
-			so,
-			root,
-			child_to_search);
+	                 so,
+	                 root,
+	                 child_to_search);
 
 	/* unpin */
 	cache_unpin_readonly(t->cf, root);
@@ -399,7 +400,8 @@ try_again:
 		break;
 	case CURSOR_EOF:
 		break;
-	default: break;
+	default:
+		break;
 	}
 }
 
@@ -408,8 +410,7 @@ void _tree_search_finish(struct search *so)
 	msgfree(so->pivot_bound);
 }
 
-struct cursor *cursor_new(struct tree *t)
-{
+struct cursor *cursor_new(struct tree *t) {
 	struct cursor *cur;
 
 	cur = xcalloc(1, sizeof(*cur));
@@ -436,11 +437,11 @@ void cursor_free(struct cursor *cur)
 }
 
 void _tree_search_init(struct search *so,
-		search_direction_compare_func dcmp,
-		search_pivotbound_compare_func pcmp,
-		direction_t direction,
-		slip_t slip,
-		struct msg *key)
+                       search_direction_compare_func dcmp,
+                       search_pivotbound_compare_func pcmp,
+                       direction_t direction,
+                       slip_t slip,
+                       struct msg *key)
 {
 	memset(so, 0, sizeof(*so));
 	so->direction_compare_func = dcmp;
@@ -461,7 +462,7 @@ int search_pivotbound_compare(struct search *so, struct msg *m)
  * tree cursor first
  */
 int tree_cursor_compare_first(struct search *so __attribute__((__unused__)),
-			struct msg *b __attribute__((__unused__)))
+                              struct msg *b __attribute__((__unused__)))
 {
 	return -1;
 }
@@ -476,11 +477,11 @@ void tree_cursor_first(struct cursor *cur)
 	struct search search;
 
 	_tree_search_init(&search,
-			&tree_cursor_compare_first,
-			&search_pivotbound_compare,
-			SEARCH_FORWARD,
-			SLIP_NEGA,
-			NULL);
+	                  &tree_cursor_compare_first,
+	                  &search_pivotbound_compare,
+	                  SEARCH_FORWARD,
+	                  SLIP_NEGA,
+	                  NULL);
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
 }
@@ -489,7 +490,7 @@ void tree_cursor_first(struct cursor *cur)
  * tree cursor last
  */
 int tree_cursor_compare_last(struct search *so __attribute__((__unused__)),
-			struct msg *b __attribute__((__unused__)))
+                             struct msg *b __attribute__((__unused__)))
 {
 	return 1;
 }
@@ -499,11 +500,11 @@ void tree_cursor_last(struct cursor *cur)
 	struct search search;
 
 	_tree_search_init(&search,
-			&tree_cursor_compare_last,
-			&search_pivotbound_compare,
-			SEARCH_BACKWARD,
-			SLIP_NEGA,
-			NULL);
+	                  &tree_cursor_compare_last,
+	                  &search_pivotbound_compare,
+	                  SEARCH_BACKWARD,
+	                  SLIP_NEGA,
+	                  NULL);
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
@@ -522,11 +523,11 @@ void tree_cursor_next(struct cursor *cur)
 	struct search search;
 
 	_tree_search_init(&search,
-			&tree_cursor_compare_next,
-			&search_pivotbound_compare,
-			SEARCH_FORWARD,
-			SLIP_POSI,
-			&cur->key);
+	                  &tree_cursor_compare_next,
+	                  &search_pivotbound_compare,
+	                  SEARCH_FORWARD,
+	                  SLIP_POSI,
+	                  &cur->key);
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
@@ -545,11 +546,11 @@ void tree_cursor_prev(struct cursor *cur)
 	struct search search;
 
 	_tree_search_init(&search,
-			&tree_cursor_compare_prev,
-			&search_pivotbound_compare,
-			SEARCH_BACKWARD,
-			SLIP_NEGA,
-			&cur->key);
+	                  &tree_cursor_compare_prev,
+	                  &search_pivotbound_compare,
+	                  SEARCH_BACKWARD,
+	                  SLIP_NEGA,
+	                  &cur->key);
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
@@ -568,11 +569,11 @@ void tree_cursor_current(struct cursor *cur)
 	struct search search;
 
 	_tree_search_init(&search,
-			&tree_cursor_compare_current,
-			&search_pivotbound_compare,
-			SEARCH_FORWARD,
-			SLIP_ZERO,
-			&cur->key);
+	                  &tree_cursor_compare_current,
+	                  &search_pivotbound_compare,
+	                  SEARCH_FORWARD,
+	                  SLIP_ZERO,
+	                  &cur->key);
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);

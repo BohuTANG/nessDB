@@ -32,24 +32,24 @@ struct cache *cache_new(struct options *opts);
 void cache_free(struct cache *c);
 
 int cache_get_and_pin(struct cache_file *cf,
-		NID k,
-		struct node **n,
-		enum lock_type locktype);
+                      NID k,
+                      struct node **n,
+                      enum lock_type locktype);
 int cache_create_node_and_pin(struct cache_file *cf,
-		uint32_t height,
-		uint32_t children,
-		struct node **n);
+                              uint32_t height,
+                              uint32_t children,
+                              struct node **n);
 
 void cache_unpin(struct cache_file *cf, struct node *n);
 void cache_unpin_readonly(struct cache_file *cf, struct node *n);
 
 void cache_cpair_value_swap(struct cache_file *cf,
-		struct node *a,
-		struct node *b);
+                            struct node *a,
+                            struct node *b);
 
 struct cache_file *cache_file_create(struct cache *c,
-		struct tree_callback *tcb,
-		void *args);
+                                     struct tree_callback *tcb,
+                                     void *args);
 int cache_file_remove(struct cache *c, int filenum);
 
 struct cache {

@@ -34,8 +34,7 @@ static int _pair_compare_fun(const void *a, const void *b)
 	return 0;
 }
 
-struct block *block_new()
-{
+struct block *block_new() {
 	struct block *b;
 
 	b = xcalloc(1, sizeof(*b));
@@ -47,8 +46,8 @@ struct block *block_new()
 
 
 void block_init(struct block *b,
-		struct block_pair *pairs,
-		uint32_t n)
+                struct block_pair *pairs,
+                uint32_t n)
 {
 	uint32_t i;
 
@@ -69,10 +68,10 @@ void block_init(struct block *b,
 }
 
 DISKOFF block_alloc_off(struct block *b,
-		uint64_t nid,
-		uint32_t real_size,
-		uint32_t skeleton_size,
-		uint32_t height)
+                        uint64_t nid,
+                        uint32_t real_size,
+                        uint32_t skeleton_size,
+                        uint32_t height)
 {
 	DISKOFF r;
 	uint32_t i;
@@ -107,8 +106,8 @@ DISKOFF block_alloc_off(struct block *b,
 			if ((off_aligned + ALIGN(real_size)) <= nxtp->offset) {
 				r = off_aligned;
 				memmove(&b->pairs[pos + 1 + 1],
-						&b->pairs[pos + 1],
-						sizeof(*b->pairs) * (b->pairs_used - pos - 1));
+				        &b->pairs[pos + 1],
+				        sizeof(*b->pairs) * (b->pairs_used - pos - 1));
 				found = 1;
 				break;
 			}
@@ -137,8 +136,8 @@ DISKOFF block_alloc_off(struct block *b,
 }
 
 int block_get_off_bynid(struct block *b,
-		uint64_t nid,
-		struct block_pair **bpair)
+                        uint64_t nid,
+                        struct block_pair **bpair)
 {
 	uint32_t i;
 	int rval = NESS_ERR;

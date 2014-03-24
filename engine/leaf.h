@@ -18,10 +18,10 @@
  */
 
 int leaf_apply_msg(struct node *leaf,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids);
+                   struct msg *k,
+                   struct msg *v,
+                   msgtype_t type,
+                   MSN msn,
+                   struct xids *xids);
 
 #endif /* nessDB_LEAF_H_ */

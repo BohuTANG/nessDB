@@ -15,12 +15,12 @@ struct rolltype_cmdinsert {
 	struct msg *key;
 };
 
-struct rolltype_cmddelete{
+struct rolltype_cmddelete {
 	FILENUM filenum;
 	struct msg *key;
 };
 
-struct rolltype_cmdupdate{
+struct rolltype_cmdupdate {
 	FILENUM filenum;
 	struct msg *key;
 };

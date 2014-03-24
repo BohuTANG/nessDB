@@ -23,10 +23,10 @@ struct logw {
 struct logw *logw_open(struct options *opts, uint64_t logsn);
 
 int logw_append(struct logw *lgw,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t t,
-		int tbn);
+                struct msg *k,
+                struct msg *v,
+                msgtype_t t,
+                int tbn);
 
 void logw_close(struct logw *lgw);
 

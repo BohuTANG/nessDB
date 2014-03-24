@@ -7,8 +7,7 @@
 #include "logger.h"
 
 
-struct logger *logger_new(struct cache *cache, struct txnmgr *txnmgr)
-{
+struct logger *logger_new(struct cache *cache, struct txnmgr *txnmgr) {
 	struct logger *lger;
 
 	lger = xcalloc(1, sizeof(*lger));

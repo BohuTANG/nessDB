@@ -23,7 +23,8 @@
  *
  * TODO(BohuTANG): for more platforms
  */
-void memory_barrier() {
+void memory_barrier()
+{
 
 	/* linux */
 #ifdef OS_LINUX

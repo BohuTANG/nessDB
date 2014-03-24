@@ -6,8 +6,7 @@
 
 #include "cpair.h"
 
-struct cpair *cpair_new()
-{
+struct cpair *cpair_new() {
 	struct cpair *cp;
 
 	cp = xcalloc(1, sizeof(*cp));
@@ -28,8 +27,7 @@ void cpair_init(struct cpair *cp, struct node *value, struct cache_file *cf)
 /*******************************
  * list (in clock order)
  ******************************/
-struct cpair_list *cpair_list_new()
-{
+struct cpair_list *cpair_list_new() {
 	struct cpair_list *list;
 
 	list = xcalloc(1, sizeof(*list));
@@ -71,8 +69,7 @@ void cpair_list_remove(struct cpair_list *list, struct cpair *pair)
 /*******************************
  * hashtable
  ******************************/
-struct cpair_htable *cpair_htable_new()
-{
+struct cpair_htable *cpair_htable_new() {
 	int i;
 	struct cpair_htable *table;
 
@@ -118,8 +115,7 @@ void cpair_htable_remove(struct cpair_htable *table, struct cpair *pair)
 	}
 }
 
-struct cpair *cpair_htable_find(struct cpair_htable *table, NID key)
-{
+struct cpair *cpair_htable_find(struct cpair_htable *table, NID key) {
 	int hash;
 	struct cpair *curr;
 

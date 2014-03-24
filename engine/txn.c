@@ -12,7 +12,7 @@ int txn_begin(TXN *parent, LOGGER *logger, TXN_ISOLATION_TYPE iso, TXN **txn)
 {
 	struct txn *tx;
 	struct txnmgr *txnmgr = logger->txnmgr;
-	
+
 	tx = xcalloc(1, sizeof(*tx));
 	tx->logger = logger;
 	tx->iso_type = iso;

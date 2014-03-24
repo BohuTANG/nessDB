@@ -19,19 +19,18 @@ size_t _file_size(char *filename)
 	return st.st_size;
 }
 
-struct logr *logr_open(struct options *opts, uint64_t logsn)
-{
+struct logr *logr_open(struct options *opts, uint64_t logsn) {
 	int flag;
 	mode_t mode;
 	struct logr *lgr;
 	char name[FILE_NAME_MAXLEN];
 
-	mode = S_IRWXU|S_IRWXG|S_IRWXO;
+	mode = S_IRWXU | S_IRWXG | S_IRWXO;
 	flag = O_RDONLY | O_BINARY;
 
 	memset(name, 0, FILE_NAME_MAXLEN);
 	snprintf(name, FILE_NAME_MAXLEN, "%s/ness.redo.%" PRIu64,
-			opts->redo_path, logsn);
+	         opts->redo_path, logsn);
 	lgr = xcalloc(1, sizeof(*lgr));
 	lgr->fd = ness_os_open(name, flag, mode);
 	lgr->fsize = _file_size(name);
@@ -42,10 +41,10 @@ struct logr *logr_open(struct options *opts, uint64_t logsn)
 }
 
 int logr_read(struct logr *lgr,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t *t,
-		uint32_t *tbn)
+              struct msg *k,
+              struct msg *v,
+              msgtype_t *t,
+              uint32_t *tbn)
 {
 	int r;
 	uint32_t size = 0U;
@@ -86,8 +85,8 @@ int logr_read(struct logr *lgr,
 		if (exp_xsum != act_xsum) {
 			r = NESS_LOG_READ_XSUM_ERR;
 			__ERROR("log read xsum error, exp_xsum [%" PRIu32 "],act_xsum [%" PRIu32 "]",
-					exp_xsum,
-					act_xsum);
+			        exp_xsum,
+			        act_xsum);
 			goto ERR;
 		}
 

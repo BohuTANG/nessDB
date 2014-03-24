@@ -21,12 +21,13 @@ enum DEBUG_LEVEL {
 	LEVEL_DEBUG = 0,
 	LEVEL_INFO,
 	LEVEL_WARNING,
-	LEVEL_ERROR};
+	LEVEL_ERROR
+};
 
 void __debug(char *file,
-		int line,
-		enum DEBUG_LEVEL level,
-		const char *fmt, ...);
+             int line,
+             enum DEBUG_LEVEL level,
+             const char *fmt, ...);
 
 void _assert(void *expr, void *filename, unsigned lineno);
 

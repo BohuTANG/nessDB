@@ -36,21 +36,21 @@
  * c) node b locked(L_WRITE)
  */
 void _add_pivot_to_parent(struct tree *t,
-		struct node *parent,
-		int child_num,
-		struct node *a,
-		struct node *b,
-		struct msg *spk)
+                          struct node *parent,
+                          int child_num,
+                          struct node *a,
+                          struct node *b,
+                          struct msg *spk)
 {
 	int i;
 	int pidx;
 
 	pidx = child_num;
 	parent->u.n.pivots = xrealloc(parent->u.n.pivots,
-			parent->u.n.n_children * PIVOT_SIZE);
+	                              parent->u.n.n_children * PIVOT_SIZE);
 
 	parent->u.n.parts = xrealloc(parent->u.n.parts,
-			(parent->u.n.n_children + 1) * PART_SIZE);
+	                             (parent->u.n.n_children + 1) * PART_SIZE);
 
 	/* slide pivots */
 	for (i = parent->u.n.n_children - 1; i > pidx; i--) {
@@ -80,10 +80,10 @@ void _add_pivot_to_parent(struct tree *t,
  * a) leaf lock (L_WRITE)
  */
 void _leaf_split(struct tree *t,
-		struct node *leaf,
-		struct node **a,
-		struct node **b,
-		struct msg **split_key)
+                 struct node *leaf,
+                 struct node **a,
+                 struct node **b,
+                 struct msg **split_key)
 {
 	int i;
 	int mid;
@@ -154,10 +154,10 @@ void _leaf_split(struct tree *t,
  * a) node lock(L_WRITE)
  */
 void _nonleaf_split(struct tree *t,
-		struct node *node,
-		struct node **a,
-		struct node **b,
-		struct msg **split_key)
+                    struct node *node,
+                    struct node **a,
+                    struct node **b,
+                    struct msg **split_key)
 {
 	int i;
 	int pivots_old;
@@ -179,9 +179,9 @@ void _nonleaf_split(struct tree *t,
 
 	/* node b */
 	cache_create_node_and_pin(t->cf,
-			1,			/* height */
-			pivots_in_b + 1,	/* children */
-			&nodeb);
+	                          1,			/* height */
+	                          pivots_in_b + 1,	/* children */
+	                          &nodeb);
 
 	for (i = 0; i < (pivots_in_b); i++) {
 		nodeb->u.n.pivots[i] = node->u.n.pivots[pivots_in_a + i];
@@ -216,8 +216,8 @@ void _nonleaf_split(struct tree *t,
  * b) child lock(L_WRITE)
  */
 void _node_split_child(struct tree *t,
-		struct node *parent,
-		struct node *child)
+                       struct node *parent,
+                       struct node *child)
 {
 	int child_num;
 	struct node *a;
@@ -244,7 +244,7 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
 {
 	if (node->height == 0) {
 		if ((node_size(node) >= t->opts->leaf_node_page_size && node_count(node) > 1) ||
-				node_count(node) >= t->opts->leaf_node_page_count)
+		    node_count(node) >= t->opts->leaf_node_page_count)
 			return FISSIBLE;
 	} else {
 		uint32_t children = node->u.n.n_children;
@@ -263,7 +263,7 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
 		}
 
 		if (((node_size(node) > t->opts->inner_node_page_size) && !haszero) ||
-				node_count(node) >= t->opts->inner_node_page_count)
+		    node_count(node) >= t->opts->inner_node_page_count)
 			return FLUSHBLE;
 	}
 
@@ -278,12 +278,12 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
  * b) leaf dmt write lock
  */
 void _leaf_put_cmd(struct tree *t,
-		struct node *leaf,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids)
+                   struct node *leaf,
+                   struct msg *k,
+                   struct msg *v,
+                   msgtype_t type,
+                   MSN msn,
+                   struct xids *xids)
 {
 	leaf_apply_msg(leaf, k, v, type, msn, xids);
 	t->status->tree_leaf_put_nums++;
@@ -297,12 +297,12 @@ void _leaf_put_cmd(struct tree *t,
  * b) partition write lock
  */
 void _nonleaf_put_cmd(struct tree *t,
-		struct node *node,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids)
+                      struct node *node,
+                      struct msg *k,
+                      struct msg *v,
+                      msgtype_t type,
+                      MSN msn,
+                      struct xids *xids)
 {
 	uint32_t pidx;
 	struct partition *part;
@@ -330,12 +330,12 @@ void _nonleaf_put_cmd(struct tree *t,
  * a) node lock(L_WRITE)
  */
 void _node_put_cmd(struct tree *t,
-		struct node *node,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids)
+                   struct node *node,
+                   struct msg *k,
+                   struct msg *v,
+                   msgtype_t type,
+                   MSN msn,
+                   struct xids *xids)
 {
 	if (node->height == 0)
 		_leaf_put_cmd(t, node, k, v, type, msn, xids);
@@ -354,7 +354,7 @@ int _flush_some_child(struct tree *t, struct node *parent)
 {
 	MSN msn;
 	int childnum;
-	
+
 	struct node *child;
 	struct partition *part;
 	enum reactivity re_child;
@@ -364,11 +364,11 @@ int _flush_some_child(struct tree *t, struct node *parent)
 
 	part = &parent->u.n.parts[childnum];
 	if (cache_get_and_pin(t->cf,
-				part->child_nid,
-				&child,
-				L_WRITE) != NESS_OK) {
+	                      part->child_nid,
+	                      &child,
+	                      L_WRITE) != NESS_OK) {
 		__ERROR("cache get node error, nid [%" PRIu64 "]",
-				part->child_nid);
+		        part->child_nid);
 
 		return NESS_ERR;
 	}
@@ -383,12 +383,12 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	while (basement_iter_valid(&iter)) {
 		if (msn >= iter.msn) continue;
 		_node_put_cmd(t,
-				child,
-				&iter.key,
-				&iter.val,
-				iter.type,
-				iter.msn,
-				iter.xids);
+		              child,
+		              &iter.key,
+		              &iter.val,
+		              iter.type,
+		              iter.msn,
+		              iter.xids);
 		basement_iter_next(&iter);
 	}
 
@@ -437,8 +437,8 @@ int _flush_some_child(struct tree *t, struct node *parent)
  * b) old_root lock(L_WRITE)
  */
 void _root_swap(struct tree *t,
-		struct node *new_root,
-		struct node *old_root)
+                struct node *new_root,
+                struct node *old_root)
 {
 	NID old_nid;
 	NID new_nid;
@@ -458,8 +458,8 @@ void _root_swap(struct tree *t,
 }
 
 void _root_split(struct tree *t,
-		struct node *new_root,
-		struct node *old_root)
+                 struct node *new_root,
+                 struct node *old_root)
 {
 	struct node *a;
 	struct node *b;
@@ -501,11 +501,11 @@ void _root_split(struct tree *t,
  *    a1) if not stable, relock from L_READ to L_WRITE
  */
 int _root_put_cmd(struct tree *t,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type,
-		MSN msn,
-		struct xids *xids)
+                  struct msg *k,
+                  struct msg *v,
+                  msgtype_t type,
+                  MSN msn,
+                  struct xids *xids)
 {
 	struct node *root;
 	enum reactivity re;
@@ -521,34 +521,34 @@ CHANGE_LOCK_TYPE:
 	case STABLE:
 		break;
 	case FISSIBLE: {
-		if (locktype == L_READ) {
-			cache_unpin(t->cf, root);
+			if (locktype == L_READ) {
+				cache_unpin(t->cf, root);
 
-			locktype = L_WRITE;
+				locktype = L_WRITE;
+				goto CHANGE_LOCK_TYPE;
+			}
+
+			struct node *new_root;
+			uint32_t new_root_height = 1;
+			uint32_t new_root_children = 2;
+
+			cache_create_node_and_pin(t->cf,
+			                          new_root_height,
+			                          new_root_children,
+			                          &new_root);
+			/*
+			 * split root node,
+			 * now new_root is real root node with same NID
+			 * after root swap
+			 */
+			_root_split(t, new_root, root);
+
+			cache_unpin(t->cf, root);
+			cache_unpin(t->cf, new_root);
+
+			locktype = L_READ;
 			goto CHANGE_LOCK_TYPE;
 		}
-
-		struct node *new_root;
-		uint32_t new_root_height = 1;
-		uint32_t new_root_children = 2;
-
-		cache_create_node_and_pin(t->cf,
-				new_root_height,
-				new_root_children,
-				&new_root);
-		/*
-		 * split root node,
-		 * now new_root is real root node with same NID
-		 * after root swap
-		 */
-		_root_split(t, new_root, root);
-
-		cache_unpin(t->cf, root);
-		cache_unpin(t->cf, new_root);
-
-		locktype = L_READ;
-		goto CHANGE_LOCK_TYPE;
-	}
 		break;
 	case FLUSHBLE:
 		if (locktype == L_READ) {
@@ -563,7 +563,8 @@ CHANGE_LOCK_TYPE:
 		goto CHANGE_LOCK_TYPE;
 
 		break;
-	default : abort();
+	default :
+		abort();
 	}
 
 	_node_put_cmd(t, root, k, v, type, msn, xids);
@@ -588,11 +589,10 @@ MSN hdr_next_msn(struct tree *t)
 }
 
 struct tree *tree_open(const char *dbname,
-		struct options *opts,
-		struct status *status,
-		struct cache *cache,
-		struct tree_callback *tcb)
-{
+                       struct options *opts,
+                       struct status *status,
+                       struct cache *cache,
+                       struct tree_callback *tcb) {
 	int fd;
 	int flag;
 	int is_create = 0;
@@ -605,8 +605,8 @@ struct tree *tree_open(const char *dbname,
 	t = xcalloc(1, sizeof(*t));
 	t->opts = opts;
 	t->status = status;
-	
-	mode = S_IRWXU|S_IRWXG|S_IRWXO;
+
+	mode = S_IRWXU | S_IRWXG | S_IRWXO;
 	flag = O_RDWR | O_BINARY;
 	if (opts->use_directio)
 		fd = ness_os_open_direct(dbname, flag, mode);
@@ -652,7 +652,7 @@ struct tree *tree_open(const char *dbname,
 		/* get the root node */
 		if (cache_get_and_pin(cf, t->hdr->root_nid, &root, L_READ) != NESS_OK) {
 			__PANIC("get root from cache error [%" PRIu64 "]",
-					t->hdr->root_nid);
+			        t->hdr->root_nid);
 		}
 		root->isroot = 1;
 		cache_unpin(cf, root);
@@ -666,9 +666,9 @@ ERR:
 }
 
 int tree_put(struct tree *t,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type)
+             struct msg *k,
+             struct msg *v,
+             msgtype_t type)
 {
 	/* TODO(BohuTANG): xids from cmd */
 	struct xids xids = {.num_xids = 0};

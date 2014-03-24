@@ -35,7 +35,7 @@ struct hdr {
 	ness_compress_method_t method;
 };
 
-struct tree_callback{
+struct tree_callback {
 	int (*fetch_node)(void *tree, NID nid, struct node **n);
 	int (*flush_node)(void *tree, struct node *n);
 	int (*fetch_hdr)(void *tree);
@@ -53,15 +53,15 @@ struct tree {
 
 struct cache;
 struct tree *tree_open(const char *dbname,
-		struct options *opts,
-		struct status *status,
-		struct cache *cache,
-		struct tree_callback *tcb);
+                       struct options *opts,
+                       struct status *status,
+                       struct cache *cache,
+                       struct tree_callback *tcb);
 
 int tree_put(struct tree *t,
-		struct msg *k,
-		struct msg *v,
-		msgtype_t type);
+             struct msg *k,
+             struct msg *v,
+             msgtype_t type);
 
 void tree_free(struct tree *t);
 

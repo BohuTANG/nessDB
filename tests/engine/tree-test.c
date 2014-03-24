@@ -10,5 +10,6 @@
 #include "ctest.h"
 
 /* TODO */
-CTEST(tree, open) {
+CTEST(tree, open)
+{
 }

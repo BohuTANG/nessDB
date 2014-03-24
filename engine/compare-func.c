@@ -35,7 +35,7 @@ int internal_key_compare(void *a, void *b)
 
 	if (!a) return -1;
 	if (!b) return +1;
-	
+
 	pos = 0;
 	entry = (struct append_entry*)a;
 	msna = entry->msn;

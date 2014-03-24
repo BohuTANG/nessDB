@@ -11,7 +11,8 @@
 
 const char *data = "i am nessDB, BohuTANG eggs me....";
 
-CTEST(compress, compressed) {
+CTEST(compress, compressed)
+{
 	const uint32_t data_size = strlen(data);
 	uint32_t bound_size = ness_compress_bound(NESS_NO_COMPRESS, data_size);
 

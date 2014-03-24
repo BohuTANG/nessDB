@@ -67,9 +67,9 @@ int ness_os_open_direct(const char *path, int oflag, int mode)
 	int r;
 
 #if defined (__linux__)
-	#if ! defined(O_DIRECT)
-		#define O_DIRECT O_SYNC
-	#endif
+#if ! defined(O_DIRECT)
+#define O_DIRECT O_SYNC
+#endif
 	r = ness_os_open(path, oflag | O_DIRECT, mode);
 #else
 	r = ness_os_open(path, oflag, mode);
@@ -82,28 +82,28 @@ static void _write_error_handler(int fd, size_t len)
 {
 	switch (errno) {
 	case EINTR: { /* interrupted by a signal before any data was written; see signal(7) */
-		/* 64 bit is 20 chars, 32 bit is 10 chars */
-		char err_msg[sizeof("Write of [] bytes to fd=[] interrupted.  Retrying.") + 20 + 10];
-		snprintf(err_msg,
-				sizeof(err_msg),
-				"Write of [%" PRIu64 "] bytes to fd=[%d] interrupted.  Retrying.",
-				(uint64_t)len,
-				fd);
-		perror(err_msg);
-		fflush(stderr);
-		break;
-	}
+			/* 64 bit is 20 chars, 32 bit is 10 chars */
+			char err_msg[sizeof("Write of [] bytes to fd=[] interrupted.  Retrying.") + 20 + 10];
+			snprintf(err_msg,
+			         sizeof(err_msg),
+			         "Write of [%" PRIu64 "] bytes to fd=[%d] interrupted.  Retrying.",
+			         (uint64_t)len,
+			         fd);
+			perror(err_msg);
+			fflush(stderr);
+			break;
+		}
 	case ENOSPC: {
-		char err_msg[sizeof("Failed write of [] bytes to fd=[].") + 20 + 10];
-		snprintf(err_msg,
-				sizeof(err_msg),
-				"Failed write of [%" PRIu64 "] bytes to fd=[%d].",
-				(uint64_t)len,
-				fd);
-		perror(err_msg);
-		fflush(stderr);
-		break;
-	}
+			char err_msg[sizeof("Failed write of [] bytes to fd=[].") + 20 + 10];
+			snprintf(err_msg,
+			         sizeof(err_msg),
+			         "Failed write of [%" PRIu64 "] bytes to fd=[%d].",
+			         (uint64_t)len,
+			         fd);
+			perror(err_msg);
+			fflush(stderr);
+			break;
+		}
 	}
 }
 
@@ -215,14 +215,14 @@ ssize_t ness_os_write(int fd, const void *buf, size_t len)
  */
 ssize_t ness_os_read(int fd, void *buf, size_t count)
 {
-    ssize_t reads;
+	ssize_t reads;
 
-    if (n_read)
-        reads = n_read(fd, buf, count);
-    else
-        reads = read(fd, buf, count);
+	if (n_read)
+		reads = n_read(fd, buf, count);
+	else
+		reads = read(fd, buf, count);
 
-    return reads;
+	return reads;
 }
 
 int ness_os_fsync(int fd)
@@ -260,7 +260,7 @@ void ness_check_dir(const char *pathname)
 	i = strlen(dirname);
 	len = i;
 
-	if (dirname[len-1] != '/')
+	if (dirname[len - 1] != '/')
 		strcat(dirname,  "/");
 
 	len = strlen(dirname);
@@ -278,7 +278,7 @@ void ness_check_dir(const char *pathname)
 
 int ness_file_exist(const char *filename)
 {
-	if(access(filename, F_OK) != -1)
+	if (access(filename, F_OK) != -1)
 		return 1;
 	else
 		return 0;

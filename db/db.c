@@ -27,8 +27,7 @@ struct nessdb {
 	struct logger *logger;
 };
 
-struct nessdb *db_open(const char *basedir)
-{
+struct nessdb *db_open(const char *basedir) {
 	char dbpath[FILE_NAME_MAXLEN];
 	struct nessdb *db;
 	struct options *opts;
@@ -41,10 +40,10 @@ struct nessdb *db_open(const char *basedir)
 	ness_check_dir(basedir);
 	memset(dbpath, 0, FILE_NAME_MAXLEN);
 	snprintf(dbpath,
-			FILE_NAME_MAXLEN,
-			"%s/%s",
-			basedir,
-			DB_NAME);
+	         FILE_NAME_MAXLEN,
+	         "%s/%s",
+	         basedir,
+	         DB_NAME);
 
 	ness_file_exist(dbpath);
 
@@ -54,7 +53,7 @@ struct nessdb *db_open(const char *basedir)
 	cache = cache_new(opts);
 	if (!cache) {
 		__PANIC("%s",
-			"create dbcache error, will exit...");
+		        "create dbcache error, will exit...");
 	}
 	__WARN("%s", "create dbcache OK");
 
@@ -67,7 +66,7 @@ struct nessdb *db_open(const char *basedir)
 	tree = tree_open(dbpath, opts, status, cache, &tree_cb);
 	if (!tree) {
 		__PANIC("%s",
-			"create tree error, will exit...");
+		        "create tree error, will exit...");
 	}
 	__WARN("%s", "create tree OK");
 	txnmgr = txnmgr_new();
@@ -112,8 +111,7 @@ int db_get(struct nessdb *db, struct msg *k, struct msg *v)
 	return -1;
 }
 
-struct db_cursor *db_cursor_new(struct nessdb *db)
-{
+struct db_cursor *db_cursor_new(struct nessdb *db) {
 	struct db_cursor *cursor;
 
 	cursor = xcalloc(1, sizeof(*cursor));
@@ -136,7 +134,7 @@ int db_c_valid(struct db_cursor *cursor)
 void db_c_first(struct db_cursor *cursor)
 {
 	struct cursor *tree_cursor;
-	
+
 	assert(cursor->db == NULL);
 
 	tree_cursor = cursor_new(cursor->db->tree);
@@ -153,7 +151,7 @@ void db_c_first(struct db_cursor *cursor)
 void db_c_last(struct db_cursor *cursor)
 {
 	struct cursor *tree_cursor;
-	
+
 	assert(cursor->db == NULL);
 
 	tree_cursor = cursor_new(cursor->db->tree);
@@ -170,7 +168,7 @@ void db_c_last(struct db_cursor *cursor)
 void db_c_next(struct db_cursor *cursor)
 {
 	struct cursor *tree_cursor;
-	
+
 	assert(cursor->db == NULL);
 
 	tree_cursor = cursor_new(cursor->db->tree);
@@ -187,7 +185,7 @@ void db_c_next(struct db_cursor *cursor)
 void db_c_prev(struct db_cursor *cursor)
 {
 	struct cursor *tree_cursor;
-	
+
 	assert(cursor->db == NULL);
 
 	tree_cursor = cursor_new(cursor->db->tree);

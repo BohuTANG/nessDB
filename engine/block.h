@@ -39,24 +39,24 @@ struct block {
 
 struct block *block_new();
 void block_init(struct block *b,
-		struct block_pair *pairs,
-		uint32_t size);
+                struct block_pair *pairs,
+                uint32_t size);
 
 DISKOFF block_alloc_off(struct block *b,
-		NID nid,
-		uint32_t real_size,
-		uint32_t skeleton_size,
-		uint32_t height);
+                        NID nid,
+                        uint32_t real_size,
+                        uint32_t skeleton_size,
+                        uint32_t height);
 
 DISKOFF block_realloc_off(struct block *b,
-		NID nid,
-		uint32_t real_size,
-		uint32_t skeleton_size,
-		uint32_t height);
+                          NID nid,
+                          uint32_t real_size,
+                          uint32_t skeleton_size,
+                          uint32_t height);
 
 int block_get_off_bynid(struct block *b,
-		NID nid,
-		struct block_pair **pair);
+                        NID nid,
+                        struct block_pair **pair);
 
 void block_shrink(struct block *b);
 void block_free(struct block *b);

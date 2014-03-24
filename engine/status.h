@@ -23,8 +23,7 @@ struct status {
 	uint64_t tree_flush_child_nums;
 };
 
-static inline struct status *status_new()
-{
+static inline struct status *status_new() {
 	struct status *status;
 
 	status = xcalloc(1, sizeof(*status));
