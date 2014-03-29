@@ -32,6 +32,8 @@ void _leaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 
 			msn = ((msn << 8) | iter.type);
 			buf_putuint64(buf, msn);
+			buf_putuint64(buf, iter.xidpair.child_xid);
+			buf_putuint64(buf, iter.xidpair.parent_xid);
 			buf_putuint32(buf, iter.key.size);
 			buf_putnstr(buf, iter.key.data, iter.key.size);
 
@@ -53,6 +55,8 @@ void _nonleaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 
 		msn = ((msn << 8) | iter.type);
 		buf_putuint64(buf, msn);
+		buf_putuint64(buf, iter.xidpair.child_xid);
+		buf_putuint64(buf, iter.xidpair.parent_xid);
 		buf_putuint32(buf, iter.key.size);
 		buf_putnstr(buf, iter.key.data, iter.key.size);
 
@@ -69,17 +73,25 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 	uint32_t pos = 0;
 
 	while (pos < size) {
+		MSN msn;
+		uint8_t type;
+		struct txnid_pair xidpair;
 		struct msg k;
 		struct msg v;
-		uint8_t type;
-		MSN msn;
 
 		if (!buf_getuint64(rbuf, &msn)) goto ERR;
 		pos += sizeof(uint64_t);
 		type = (msn & 0xff);
 		msn = (msn >> 8);
+		if (!buf_getuint64(rbuf, &xidpair.child_xid)) goto ERR;
+		pos += sizeof(uint64_t);
+
+		if (!buf_getuint64(rbuf, &xidpair.parent_xid)) goto ERR;
+		pos += sizeof(uint64_t);
+
 		if (!buf_getuint32(rbuf, &k.size)) goto ERR;
 		pos += sizeof(uint32_t);
+
 		if (!buf_getnstr(rbuf, k.size, (char**)&k.data)) goto ERR;
 		pos += k.size;
 
@@ -91,7 +103,7 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 			pos += v.size;
 		}
 
-		basement_put(bsm, &k, &v, type, msn, NULL);
+		basement_put(bsm, msn, type, &k, &v, &xidpair);
 	}
 
 	return NESS_OK;
@@ -123,7 +135,9 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	 */
 	buf_putnstr(wbuf, "nodeleaf", 8);
 	if (uncompress_size > 0) {
-		uint32_t bound = ness_compress_bound(hdr->method, uncompress_size);
+		uint32_t bound;
+
+		bound = ness_compress_bound(hdr->method, uncompress_size);
 		compress_ptr =  xcalloc(1, bound);
 		ness_compress(hdr->method,
 		              uncompress_ptr,
@@ -191,18 +205,23 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 		 */
 		buf_clear(part_wbuf);
 		if (node->u.n.parts[i].buffer)
-			_nonleaf_basement_to_buf(node->u.n.parts[i].buffer, part_wbuf);
+			_nonleaf_basement_to_buf(node->u.n.parts[i].buffer,
+			                         part_wbuf);
 
 		uncompress_size = part_wbuf->NUL;
 		uncompress_ptr = part_wbuf->buf;
 
 		buf_clear(part_wbuf);
 		if (uncompress_size > 0) {
-			uint32_t bound = ness_compress_bound(hdr->method, uncompress_size);
+			uint32_t bound;
+
+			bound = ness_compress_bound(hdr->method, uncompress_size);
 			compress_ptr =  xcalloc(1, bound);
 			ness_compress(hdr->method,
-			              uncompress_ptr, uncompress_size,
-			              compress_ptr, &compress_size);
+			              uncompress_ptr,
+			              uncompress_size,
+			              compress_ptr,
+			              &compress_size);
 
 			buf_putuint32(part_wbuf, compress_size);
 			buf_putuint32(part_wbuf, uncompress_size);
@@ -265,7 +284,9 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 	compress_ptr = NULL;
 	uncompress_ptr = pivots_wbuf->buf;
 
-	uint32_t bound = ness_compress_bound(hdr->method, uncompress_size);
+	uint32_t bound;
+
+	bound = ness_compress_bound(hdr->method, uncompress_size);
 	compress_ptr =  xcalloc(1, bound);
 	ness_compress(hdr->method,
 	              uncompress_ptr, uncompress_size,
@@ -299,10 +320,11 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 	buf_putuint32(wbuf, xsum);
 }
 
-int _deserialize_leaf_from_disk(int fd, struct block_pair *bp, struct node **node)
+int _deserialize_leaf_from_disk(int fd,
+                                struct block_pair *bp,
+                                struct node **node)
 {
 	int r = NESS_OK;
-
 	uint32_t read_size;
 	struct buffer *rbuf;
 
@@ -382,8 +404,8 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
                                   struct node **n,
                                   int light)
 {
-	int r = NESS_OK;
 	uint32_t i;
+	int r = NESS_OK;
 	uint32_t height;
 	uint32_t children;
 	struct node *node = NULL;
@@ -414,10 +436,13 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 
 	for (i = 0; i < node->u.n.n_children; i++) {
 		if (i < (node->u.n.n_children - 1)) {
-			if (!buf_getmsg(pivots_rbuf, &node->u.n.pivots[i])) goto ERR1;
+			if (!buf_getmsg(pivots_rbuf, &node->u.n.pivots[i]))
+				goto ERR1;
 		}
-		if (!buf_getuint64(pivots_rbuf, &node->u.n.parts[i].child_nid)) goto ERR1;
-		if (!buf_getuint32(pivots_rbuf, &node->u.n.parts[i].inner_offset)) goto ERR1;
+		if (!buf_getuint64(pivots_rbuf, &node->u.n.parts[i].child_nid))
+			goto ERR1;
+		if (!buf_getuint32(pivots_rbuf, &node->u.n.parts[i].inner_offset))
+			goto ERR1;
 		node->u.n.parts[i].inner_offset += bp->skeleton_size;
 	}
 
@@ -536,10 +561,7 @@ int _deserialize_nonleaf_from_disk(int fd,
 		goto ERR;
 	}
 
-	r = _deserialize_nonleaf_from_buf(rbuf,
-	                                  bp,
-	                                  node,
-	                                  light);
+	r = _deserialize_nonleaf_from_buf(rbuf, bp, node, light);
 	buf_free(rbuf);
 
 	return r;
@@ -618,10 +640,7 @@ int deserialize_node_from_disk(int fd,
 		 * if light is 1, we just need to read nonleaf info,
 		 * others, we need to read the whole innernode from disk
 		 */
-		r = _deserialize_nonleaf_from_disk(fd,
-		                                   bp,
-		                                   node,
-		                                   light);
+		r = _deserialize_nonleaf_from_disk(fd, bp, node, light);
 	}
 
 	return r;

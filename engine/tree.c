@@ -106,11 +106,21 @@ void _leaf_split(struct tree *t,
 	basement_iter_seektofirst(&iter);
 	while (basement_iter_valid(&iter)) {
 		if (i <= mid) {
-			basement_put(bsma, &iter.key, &iter.val, iter.type, iter.msn, iter.xids);
+			basement_put(bsma,
+			             iter.msn,
+			             iter.type,
+			             &iter.key,
+			             &iter.val,
+			             &iter.xidpair);
 			if (i == mid)
 				spk = msgdup(&iter.key);
 		} else {
-			basement_put(bsmb, &iter.key, &iter.val, iter.type, iter.msn, iter.xids);
+			basement_put(bsmb,
+			             iter.msn,
+			             iter.type,
+			             &iter.key,
+			             &iter.val,
+			             &iter.xidpair);
 		}
 		basement_iter_next(&iter);
 		i++;
@@ -277,15 +287,9 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
  * a) leaf lock (L_WRITE)
  * b) leaf dmt write lock
  */
-void _leaf_put_cmd(struct tree *t,
-                   struct node *leaf,
-                   struct msg *k,
-                   struct msg *v,
-                   msgtype_t type,
-                   MSN msn,
-                   struct xids *xids)
+void _leaf_put_cmd(struct tree *t, struct node *leaf, struct bt_cmd *cmd)
 {
-	leaf_apply_msg(leaf, k, v, type, msn, xids);
+	leaf_apply_msg(leaf, cmd);
 	t->status->tree_leaf_put_nums++;
 }
 
@@ -296,27 +300,25 @@ void _leaf_put_cmd(struct tree *t,
  * a) node lock (L_READ)
  * b) partition write lock
  */
-void _nonleaf_put_cmd(struct tree *t,
-                      struct node *node,
-                      struct msg *k,
-                      struct msg *v,
-                      msgtype_t type,
-                      MSN msn,
-                      struct xids *xids)
+void _nonleaf_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
 {
 	uint32_t pidx;
 	struct partition *part;
 
-	pidx = node_partition_idx(node, k);
+	pidx = node_partition_idx(node, cmd->key);
 	part = &node->u.n.parts[pidx];
 
-	if (!part->buffer) {
+	if (!part->buffer)
 		__PANIC("partiton buffer is null, index %d", pidx);
-	}
 
 	write_lock(&part->rwlock);
-	basement_put(part->buffer, k, v, type, msn, xids);
-	node->msn = msn > node->msn ? msn : node->msn;
+	basement_put(part->buffer,
+	             cmd-> msn,
+	             cmd->type,
+	             cmd->key,
+	             cmd->val,
+	             &cmd->xidpair);
+	node->msn = cmd->msn > node->msn ? cmd->msn : node->msn;
 	node_set_dirty(node);
 	write_unlock(&part->rwlock);
 
@@ -329,18 +331,12 @@ void _nonleaf_put_cmd(struct tree *t,
  * REQUIRES:
  * a) node lock(L_WRITE)
  */
-void _node_put_cmd(struct tree *t,
-                   struct node *node,
-                   struct msg *k,
-                   struct msg *v,
-                   msgtype_t type,
-                   MSN msn,
-                   struct xids *xids)
+void _node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
 {
 	if (node->height == 0)
-		_leaf_put_cmd(t, node, k, v, type, msn, xids);
+		_leaf_put_cmd(t, node, cmd);
 	else
-		_nonleaf_put_cmd(t, node, k, v, type, msn, xids);
+		_nonleaf_put_cmd(t, node, cmd);
 }
 
 /*
@@ -358,6 +354,8 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	struct node *child;
 	struct partition *part;
 	enum reactivity re_child;
+	struct basement *bsm;
+	struct basement_iter iter;
 
 	childnum = node_find_heaviest_idx(parent);
 	nassert(childnum < (int)parent->u.n.n_children);
@@ -373,22 +371,21 @@ int _flush_some_child(struct tree *t, struct node *parent)
 		return NESS_ERR;
 	}
 
-	struct basement *bsm;
-	struct basement_iter iter;
-
 	msn = child->msn;
 	bsm = part->buffer;
 	basement_iter_init(&iter, bsm);
 	basement_iter_seektofirst(&iter);
 	while (basement_iter_valid(&iter)) {
 		if (msn >= iter.msn) continue;
-		_node_put_cmd(t,
-		              child,
-		              &iter.key,
-		              &iter.val,
-		              iter.type,
-		              iter.msn,
-		              iter.xids);
+
+		struct bt_cmd cmd = {
+			.msn = iter.msn,
+			.type = iter.type,
+			.key = &iter.key,
+			.val = &iter.val,
+			.xidpair = iter.xidpair
+		};
+		_node_put_cmd(t, child, &cmd);
 		basement_iter_next(&iter);
 	}
 
@@ -500,12 +497,7 @@ void _root_split(struct tree *t,
  * a) to check root reactivity
  *    a1) if not stable, relock from L_READ to L_WRITE
  */
-int _root_put_cmd(struct tree *t,
-                  struct msg *k,
-                  struct msg *v,
-                  msgtype_t type,
-                  MSN msn,
-                  struct xids *xids)
+int _root_put_cmd(struct tree *t, struct bt_cmd *cmd)
 {
 	struct node *root;
 	enum reactivity re;
@@ -567,7 +559,7 @@ CHANGE_LOCK_TYPE:
 		abort();
 	}
 
-	_node_put_cmd(t, root, k, v, type, msn, xids);
+	_node_put_cmd(t, root, cmd);
 	cache_unpin(t->cf, root);
 
 	return NESS_OK;
@@ -601,7 +593,6 @@ struct tree *tree_open(const char *dbname,
 	struct node *root;
 	struct cache_file *cf;
 
-	if (!tcb) goto ERR;
 	t = xcalloc(1, sizeof(*t));
 	t->opts = opts;
 	t->status = status;
@@ -650,7 +641,8 @@ struct tree *tree_open(const char *dbname,
 		t->hdr->root_nid = root->nid;
 	} else {
 		/* get the root node */
-		if (cache_get_and_pin(cf, t->hdr->root_nid, &root, L_READ) != NESS_OK) {
+		if (cache_get_and_pin(cf, t->hdr->root_nid, &root, L_READ) !=
+		    NESS_OK) {
 			__PANIC("get root from cache error [%" PRIu64 "]",
 			        t->hdr->root_nid);
 		}
@@ -665,16 +657,18 @@ ERR:
 	return NESS_ERR;
 }
 
-int tree_put(struct tree *t,
-             struct msg *k,
-             struct msg *v,
-             msgtype_t type)
+int tree_put(struct tree *t, struct msg *k, struct msg *v, msgtype_t type)
 {
-	/* TODO(BohuTANG): xids from cmd */
-	struct xids xids = {.num_xids = 0};
 	MSN msn = hdr_next_msn(t);
+	struct bt_cmd cmd = {
+		.msn = msn,
+		.type = type,
+		.key = k,
+		.val = v,
+		.xidpair = {.child_xid = TXNID_NONE, .parent_xid = TXNID_NONE}
+	};
 
-	return  _root_put_cmd(t, k, v, type, msn, &xids);
+	return  _root_put_cmd(t, &cmd);
 }
 
 void tree_free(struct tree *t)

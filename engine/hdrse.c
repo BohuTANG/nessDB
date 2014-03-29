@@ -27,9 +27,7 @@
  *  +----------+------+-----------+---------------+--------+
  *               ...
  */
-int _serialize_blockpairs_to_disk(int fd,
-                                  struct block *b,
-                                  struct hdr *hdr)
+int _serialize_blockpairs_to_disk(int fd, struct block *b, struct hdr *hdr)
 {
 	uint32_t i;
 	int r = NESS_OK;
@@ -37,16 +35,13 @@ int _serialize_blockpairs_to_disk(int fd,
 
 	DISKOFF address;
 	struct buffer *wbuf;
+	uint32_t xsum;
 
 	wbuf = buf_new(1 << 20);
 	for (i = 0; i < b->pairs_used; i++) {
 		if (!b->pairs[i].used) continue;
 		used_count++;
 	}
-
-	__DEBUG(" block pairs count [%d], used count [%d]",
-	        b->pairs_used,
-	        used_count);
 
 	buf_putnstr(wbuf, "blkpairs", 8);
 	buf_putuint32(wbuf, used_count);
@@ -59,8 +54,6 @@ int _serialize_blockpairs_to_disk(int fd,
 		buf_putuint32(wbuf, b->pairs[i].skeleton_size);
 		buf_putuint32(wbuf, b->pairs[i].height);
 	}
-
-	uint32_t xsum;
 
 	if (!buf_xsum(wbuf->buf, wbuf->NUL, &xsum)) {
 		r = NESS_DO_XSUM_ERR;
@@ -94,9 +87,7 @@ ERR:
 	return r;
 }
 
-int _deserialize_blockpairs_from_disk(int fd,
-                                      struct block *b,
-                                      struct hdr *hdr)
+int _deserialize_blockpairs_from_disk(int fd, struct block *b, struct hdr *hdr)
 {
 	int r = NESS_ERR;
 	uint32_t read_size;
@@ -189,9 +180,7 @@ ERR1:
  *  |      blockoff        |
  *  +----------------------+
  */
-int write_hdr_to_disk(int fd,
-                      struct hdr *hdr,
-                      DISKOFF off)
+int write_hdr_to_disk(int fd, struct hdr *hdr, DISKOFF off)
 {
 	int r;
 	uint32_t real_size;
@@ -239,9 +228,7 @@ ERR:
 /*
  * double-write for header
  */
-int serialize_hdr_to_disk(int fd,
-                          struct block *b,
-                          struct hdr *hdr)
+int serialize_hdr_to_disk(int fd, struct block *b, struct hdr *hdr)
 {
 	int r;
 
@@ -265,10 +252,7 @@ ERR:
 }
 
 
-int read_hdr_from_disk(int fd,
-                       struct block *b,
-                       struct hdr **h,
-                       DISKOFF off)
+int read_hdr_from_disk(int fd, struct block *b, struct hdr **h, DISKOFF off)
 {
 	int r = NESS_ERR;
 	struct hdr *hdr = NULL;

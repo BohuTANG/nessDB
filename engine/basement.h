@@ -23,10 +23,10 @@
 struct basement_iter {
 	int valid;
 	MSN msn;
+	msgtype_t type;
 	struct msg key;
 	struct msg val;
-	msgtype_t type;
-	struct xids *xids;
+	struct txnid_pair xidpair;
 	struct basement *bsm;
 	struct skiplist_iter list_iter;
 };
@@ -40,11 +40,11 @@ struct basement {
 struct basement *basement_new();
 
 void basement_put(struct basement *bsm,
+                  MSN msn,
+                  msgtype_t type,
                   struct msg *key,
                   struct msg *val,
-                  msgtype_t type,
-                  MSN msn,
-                  struct xids *xids);
+                  struct txnid_pair *idpair);
 
 uint32_t basement_memsize(struct basement *);
 uint32_t basement_count(struct basement *);

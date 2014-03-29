@@ -14,15 +14,10 @@
  * the difference between LE_CLEAN and LE_MVCC is gc affects.
  *
  */
-int leaf_apply_msg(struct node *leaf,
-                   struct msg *k,
-                   struct msg *v,
-                   msgtype_t type,
-                   MSN msn,
-                   struct xids *xids)
+int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 {
 	write_lock(&leaf->u.l.le->rwlock);
-	switch (type & 0xff) {
+	switch (cmd->type & 0xff) {
 	case MSG_INSERT:
 	case MSG_DELETE:
 	case MSG_UPDATE: {
@@ -31,9 +26,14 @@ int leaf_apply_msg(struct node *leaf,
 	case MSG_COMMIT:
 	case MSG_ABORT:
 	default:
-		basement_put(leaf->u.l.le->bsm, k, v, type, msn, xids);
+		basement_put(leaf->u.l.le->bsm,
+		             cmd->msn,
+		             cmd->type,
+		             cmd->key,
+		             cmd->val,
+		             &cmd->xidpair);
 	}
-	leaf->msn = msn > leaf->msn ? msn : leaf->msn;
+	leaf->msn = cmd->msn > leaf->msn ? cmd->msn : leaf->msn;
 	node_set_dirty(leaf);
 	write_unlock(&leaf->u.l.le->rwlock);
 

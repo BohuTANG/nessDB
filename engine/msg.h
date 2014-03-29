@@ -20,6 +20,15 @@ typedef enum {
 	MSG_ABORT = 5
 } msgtype_t;
 
+/* buffer tree cmd */
+struct bt_cmd {
+	MSN msn;
+	msgtype_t type;
+	struct msg *key;
+	struct msg *val;
+	struct txnid_pair xidpair;
+};
+
 struct msg *msgdup(struct msg *src);
 void msgcpy(struct msg *dst, struct msg *src);
 uint32_t msgsize(struct msg *msg);

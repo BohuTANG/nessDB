@@ -40,6 +40,8 @@ typedef enum {
 	TXN_ISO_READ_UNCOMMITTED = 3
 } TXN_ISOLATION_TYPE;
 
+#define TXNID_NONE (0)
+
 /*
 types of snapshots that can be taken by a txn
    - TXN_SNAPSHOT_NONE: means that there is no snapshot. Reads do not use snapshot reads.
@@ -60,6 +62,7 @@ typedef struct logger LOGGER;
 typedef struct {
 	uint32_t fileid;
 } FILENUM;
+
 struct msg {
 	uint32_t size;
 	void *data;

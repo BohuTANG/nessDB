@@ -9,6 +9,7 @@
 
 #include "internal.h"
 #include "node.h"
+#include "msg.h"
 
 /**
  *
@@ -17,11 +18,6 @@
  *
  */
 
-int leaf_apply_msg(struct node *leaf,
-                   struct msg *k,
-                   struct msg *v,
-                   msgtype_t type,
-                   MSN msn,
-                   struct xids *xids);
+int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd);
 
 #endif /* nessDB_LEAF_H_ */

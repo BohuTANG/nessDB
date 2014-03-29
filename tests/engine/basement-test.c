@@ -56,6 +56,10 @@ CTEST(basement, insert_and_lookup)
 	struct basement_iter iter;
 	struct basement *bsm = basement_new();
 	struct msg **msgs = xcalloc(R, sizeof(*msgs));
+	struct txnid_pair xidpair =  {
+		.child_xid = TXNID_NONE,
+		.parent_xid = TXNID_NONE
+	};
 
 	MSN msn = 0U;
 
@@ -67,7 +71,13 @@ CTEST(basement, insert_and_lookup)
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
 		msgs[i] = msgdup(&k);
-		basement_put(bsm, &k, &v, MSG_INSERT, msn++, NULL);
+		basement_put(bsm,
+		             msn++,
+		             MSG_INSERT,
+		             &k,
+		             &v,
+		             &xidpair
+		            );
 	}
 
 	basement_iter_init(&iter, bsm);
