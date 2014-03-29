@@ -52,6 +52,8 @@ struct cache_file *cache_file_create(struct cache *c,
                                      void *args);
 int cache_file_remove(struct cache *c, int filenum);
 
+struct tree *cache_get_tree_by_filenum(struct cache *c, FILENUM fn);
+
 struct cache {
 	int filenum;
 	uint32_t cp_count;

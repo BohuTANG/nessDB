@@ -6,14 +6,20 @@
 
 #include "txn.h"
 #include "txnmgr.h"
+#include "tree.h"
 #include "debug.h"
 
-int txn_begin(TXN *parent, LOGGER *logger, TXN_ISOLATION_TYPE iso, TXN **txn)
+int txn_begin(TXN *parent,
+              LOGGER *logger,
+              TXN_ISOLATION_TYPE iso,
+              int readonly,
+              TXN **txn)
 {
 	struct txn *tx;
 	struct txnmgr *txnmgr = logger->txnmgr;
 
 	tx = xcalloc(1, sizeof(*tx));
+	tx->readonly = readonly;
 	tx->logger = logger;
 	tx->iso_type = iso;
 
@@ -45,23 +51,102 @@ int txn_begin(TXN *parent, LOGGER *logger, TXN_ISOLATION_TYPE iso, TXN **txn)
 
 int txn_commit(TXN *txn)
 {
-	(void)txn;
+	/* if txn has parent, just copy rollback entry to parent */
+	if (txn->parent) {
+		TXN *parent = txn->parent;
+		struct roll_entry *re = txn->rollentry;
 
-	/* TODO:(BohuTANG)
-	 * 1) commit rollentry
-	 * 2) free rollentry
-	 */
+		if (re)
+			re->prev = parent->rollentry;
+
+		while (re) {
+			re->isref = 1;
+			re = re->prev;
+		}
+		txn->parent = parent->child = NULL;
+	}
 
 	return NESS_OK;
 }
 
 int txn_abort(TXN *txn)
 {
-	(void)txn;
+	FILENUM fn;
+	struct tree *t;
+	struct msg *rollkey;
+	struct roll_entry *re = txn->rollentry;
+	struct cache *c = txn->logger->cache;
 
-	/* TODO:(BohuTANG)
-	 * 1) free rollentry
-	 */
+	while (re) {
+		switch (re->type) {
+		case RT_CMDINSERT:
+			fn = re->u.cmdinsert.filenum;
+			t = cache_get_tree_by_filenum(c, fn);
+			rollkey = re->u.cmdinsert.key;
+			break;
+
+		case RT_CMDDELETE:
+			fn = re->u.cmddelete.filenum;
+			t = cache_get_tree_by_filenum(c, fn);
+			rollkey = re->u.cmddelete.key;
+			break;
+		case RT_CMDUPDATE:
+			fn = re->u.cmdupdate.filenum;
+			rollkey = re->u.cmdupdate.key;
+			t = cache_get_tree_by_filenum(c, fn);
+			break;
+		}
+		if (t) {
+			struct bt_cmd cmd = {
+				.type = MSG_ABORT,
+				.msn = ZERO_MSN,
+				.key = rollkey,
+				.val = NULL
+			};
+			root_put_cmd(t, &cmd);
+		}
+
+		re = re->prev;
+	}
+
+	if (txn->parent) {
+		TXN *parent = txn->parent;
+		txn->parent = parent->child = NULL;
+	}
 
 	return NESS_OK;
+}
+
+void txn_finish(TXN *txn)
+{
+	struct roll_entry *prev;
+	struct roll_entry *re = txn->rollentry;
+	struct txnmgr *txnmgr = txn->logger->txnmgr;
+
+	if (!txn->parent) {
+		if (txn->rollentry) {
+
+			/* make sure that all children are committed */
+			nassert(txn->child == NULL);
+			if (!txn->readonly)
+				txnmgr_live_root_txnid_del(txnmgr, txn->txnid);
+
+			while (re) {
+				prev = re->prev;
+				rollentry_free(re);
+				re = prev;
+			}
+		}
+
+	} else {
+		if (txn->rollentry && txn->rollentry->isref == 0) {
+			while (re) {
+				prev = re->prev;
+				rollentry_free(re);
+				re = prev;
+			}
+		}
+	}
+
+	xfree(txn);
 }

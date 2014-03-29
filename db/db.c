@@ -88,7 +88,7 @@ int db_set(struct nessdb *db, struct msg *k, struct msg *v)
 {
 	int r;
 
-	r = tree_put(db->tree, k, v, MSG_INSERT);
+	r = tree_put(db->tree, k, v, MSG_INSERT, NULL);
 
 	return r;
 }
@@ -97,7 +97,7 @@ int db_del(struct nessdb *db, struct msg *k)
 {
 	int r;
 
-	r = tree_put(db->tree, k, NULL, MSG_DELETE);
+	r = tree_put(db->tree, k, NULL, MSG_DELETE, NULL);
 
 	return r;
 }

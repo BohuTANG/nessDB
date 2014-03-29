@@ -19,6 +19,7 @@
  */
 
 struct txn {
+	int readonly;
 	TXNID txnid;
 	TXNSTATE state;
 	LOGGER *logger;
@@ -30,8 +31,13 @@ struct txn {
 	TXN_SNAPSHOT_TYPE snapshot_type;
 };
 
-int txn_begin(TXN *parent, LOGGER *logger, TXN_ISOLATION_TYPE iso, TXN **txn);
+int txn_begin(TXN *parent,
+              LOGGER *logger,
+              TXN_ISOLATION_TYPE iso,
+              int readonly,
+              TXN **txn);
 int txn_commit(TXN *txn);
 int txn_abort(TXN *txn);
+void txn_finish(TXN *txn);
 
 #endif /* nessDB_TXN_H_ */

@@ -35,6 +35,7 @@
 /* reserved NID for block-self using */
 #define NID_START (3)
 #define FILE_NAME_MAXLEN (256)
+#define ZERO_MSN (0)
 
 typedef uint64_t NID;
 typedef uint64_t MSN;

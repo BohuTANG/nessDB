@@ -55,6 +55,7 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/logr.o		\
 	$(top_builddir)/engine/txnmgr.o		\
 	$(top_builddir)/engine/logger.o		\
+	$(top_builddir)/engine/rollback.o	\
 	$(top_builddir)/engine/txn.o		\
 
 

@@ -10,6 +10,7 @@
 #include "atomic.h"
 #include "file.h"
 #include "leaf.h"
+#include "txn.h"
 #include "tree.h"
 
 /*
@@ -497,14 +498,14 @@ void _root_split(struct tree *t,
  * a) to check root reactivity
  *    a1) if not stable, relock from L_READ to L_WRITE
  */
-int _root_put_cmd(struct tree *t, struct bt_cmd *cmd)
+int root_put_cmd(struct tree *t, struct bt_cmd *cmd)
 {
 	struct node *root;
 	enum reactivity re;
 	enum lock_type locktype = L_READ;
 
 CHANGE_LOCK_TYPE:
-	if (cache_get_and_pin(t->cf, t->hdr->root_nid, &root, locktype)) {
+	if (!cache_get_and_pin(t->cf, t->hdr->root_nid, &root, locktype)) {
 		return NESS_ERR;
 	}
 
@@ -657,18 +658,44 @@ ERR:
 	return NESS_ERR;
 }
 
-int tree_put(struct tree *t, struct msg *k, struct msg *v, msgtype_t type)
+int tree_put(struct tree *t,
+             struct msg *k,
+             struct msg *v,
+             msgtype_t type,
+             TXN *txn)
 {
-	MSN msn = hdr_next_msn(t);
+	TXNID child_xid = TXNID_NONE;
+	TXNID parent_xid = TXNID_NONE;
+
+	if (txn) {
+		FILENUM fn = {.fileid = t->cf->filenum};
+		child_xid = txn->txnid;
+		if (txn->parent)
+			parent_xid = txn->parent->txnid;
+
+		switch (type) {
+		case MSG_INSERT:
+			rollback_save_cmdinsert(txn, fn, k);
+			break;
+		case MSG_DELETE:
+			rollback_save_cmddelete(txn, fn, k);
+			break;
+		case MSG_UPDATE:
+			rollback_save_cmdupdate(txn, fn, k);
+			break;
+		default: break;
+		}
+	}
+
 	struct bt_cmd cmd = {
-		.msn = msn,
+		.msn = hdr_next_msn(t),
 		.type = type,
 		.key = k,
 		.val = v,
-		.xidpair = {.child_xid = TXNID_NONE, .parent_xid = TXNID_NONE}
+		.xidpair = {.child_xid = child_xid, .parent_xid = parent_xid}
 	};
 
-	return  _root_put_cmd(t, &cmd);
+	return  root_put_cmd(t, &cmd);
 }
 
 void tree_free(struct tree *t)

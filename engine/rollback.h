@@ -9,6 +9,8 @@
 
 #include "xtypes.h"
 #include "internal.h"
+#include "msg.h"
+#include "xmalloc.h"
 
 struct rolltype_cmdinsert {
 	FILENUM filenum;
@@ -25,7 +27,15 @@ struct rolltype_cmdupdate {
 	struct msg *key;
 };
 
+enum rollback_type {
+	RT_CMDINSERT = 'i',
+	RT_CMDDELETE = 'd',
+	RT_CMDUPDATE = 'u'
+};
+
 struct roll_entry {
+	int isref;
+	enum rollback_type type;
 	struct roll_entry *prev;
 	union {
 		struct rolltype_cmdinsert cmdinsert;
@@ -34,5 +44,10 @@ struct roll_entry {
 	} u;
 };
 
+void rollentry_free(struct roll_entry *re);
+
+void rollback_save_cmdinsert(TXN *txn, FILENUM fn, struct msg *key);
+void rollback_save_cmddelete(TXN *txn, FILENUM fn, struct msg *key);
+void rollback_save_cmdupdate(TXN *txn, FILENUM fn, struct msg *key);
 
 #endif /* nessDB_ROLLBACK_H_*/

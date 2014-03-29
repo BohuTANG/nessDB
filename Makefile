@@ -20,8 +20,8 @@ CC = gcc
 OPT ?= -g2 -DINFO -DASSERT # (B) Debug mode, w/ full line-level debugging symbols
 # OPT ?= -O2 -g2 -DERROR # (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
-
-CFLAGS = -Iengine -Idb $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PLATFORM_FLAGS) $(OPT)
+INCLUDES = -Iengine -Idb
+CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PLATFORM_FLAGS) $(OPT)
 
 LIB_OBJS =	 			\
 	./engine/compress/compress.o	\
@@ -53,6 +53,7 @@ LIB_OBJS =	 			\
 	./engine/txnmgr.o		\
 	./engine/logger.o		\
 	./engine/txn.o			\
+	./engine/rollback.o		\
 	./db/db.o			
 
 

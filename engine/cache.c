@@ -447,6 +447,20 @@ int cache_file_remove(struct cache *c, int filenum)
 	return (-1);
 }
 
+
+struct tree *cache_get_tree_by_filenum(struct cache *c, FILENUM fn)
+{
+	struct cache_file *cf = c->cf_first;
+
+	while (cf) {
+		if (cf->filenum == (int)fn.fileid)
+			return (struct tree*)cf->args;
+		cf = cf->next;
+	}
+
+	return NULL;
+}
+
 void cache_close(struct cache *c)
 {
 	int r;

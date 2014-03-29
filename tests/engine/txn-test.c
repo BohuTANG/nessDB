@@ -15,6 +15,7 @@
 CTEST(txn, begin_with_no_parent)
 {
 	int r;
+	int readonly = 0;
 	struct txn *tx1;
 	struct txn *tx2;
 	struct txn *tx3;
@@ -22,21 +23,21 @@ CTEST(txn, begin_with_no_parent)
 	LOGGER *logger = logger_new(NULL, tm);
 
 	/* transaction 1 */
-	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, &tx1);
+	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, readonly, &tx1);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(0, tx1->txnid);
 	ASSERT_EQUAL(1, tm->live_root_txnids->used);
 	ASSERT_EQUAL(tx1->txnid, tm->live_root_txnids->txnids[0]);
 
 	/* transaction 2 */
-	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, &tx2);
+	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, readonly, &tx2);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(1, tx2->txnid);
 	ASSERT_EQUAL(tx1->txnid, tx2->txnid_clone->txnids[0]);
 	ASSERT_EQUAL(tx2->txnid, tx2->txnid_clone->txnids[1]);
 
 	/* transaction 3 */
-	r = txn_begin(NULL, logger, TXN_ISO_SERIALIZABLE, &tx3);
+	r = txn_begin(NULL, logger, TXN_ISO_SERIALIZABLE, readonly, &tx3);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(2, tx3->txnid);
 	ASSERT_NULL(tx3->txnid_clone);
@@ -48,6 +49,7 @@ CTEST(txn, begin_with_no_parent)
 CTEST(txn, begin_with_parent)
 {
 	int r;
+	int readonly = 0;
 	struct txn *tx1;
 	struct txn *tx2;
 	struct txn *tx3;
@@ -56,7 +58,7 @@ CTEST(txn, begin_with_parent)
 	LOGGER *logger = logger_new(NULL, tm);
 
 	/* tx1: snapshot */
-	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, &tx1);
+	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, readonly, &tx1);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(0, tx1->txnid);
 	ASSERT_EQUAL(1, tm->live_root_txnids->used);
@@ -64,7 +66,7 @@ CTEST(txn, begin_with_parent)
 	ASSERT_EQUAL(tx1->txnid, tm->live_root_txnids->txnids[0]);
 
 	/* tx2: snapshot */
-	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, &tx2);
+	r = txn_begin(NULL, logger, TXN_ISO_REPEATABLE, readonly, &tx2);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(1, tx2->txnid);
 	ASSERT_EQUAL(2, tx2->txnid_clone->used);
@@ -72,13 +74,13 @@ CTEST(txn, begin_with_parent)
 	ASSERT_EQUAL(tx2->txnid, tx2->txnid_clone->txnids[1]);
 
 	/* tx3: not snapshot */
-	r = txn_begin(NULL, logger, TXN_ISO_SERIALIZABLE, &tx3);
+	r = txn_begin(NULL, logger, TXN_ISO_SERIALIZABLE, readonly, &tx3);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(2, tx3->txnid);
 	ASSERT_NULL(tx3->txnid_clone);
 
 	/* tx4: not snapshot with parent tx2 */
-	r = txn_begin(tx2, logger, TXN_ISO_REPEATABLE, &tx4);
+	r = txn_begin(tx2, logger, TXN_ISO_REPEATABLE, readonly, &tx4);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(3, tx4->txnid);
 	ASSERT_EQUAL(2, tx4->txnid_clone->used);
