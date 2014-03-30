@@ -1,8 +1,9 @@
 TODO list(5star urgent):
 
-a) large number of unit tests (*****)
-b) batch updates (*****)
-c) snapshot isolation within MVCC for transactions (****)
+a) large number of unit tests (****)
+b) buffered-tree root-to-leaf message applied (*****)
+c) gc on MVCC (*****)
+d) sharp checkpoint (*****)
 
 
--- BohuTANG 2014/1/
+-- BohuTANG 2014/3/
