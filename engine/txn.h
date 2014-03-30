@@ -21,6 +21,7 @@
 struct txn {
 	int readonly;
 	TXNID txnid;
+	TXNID root_parent_txnid;
 	TXNSTATE state;
 	LOGGER *logger;
 	struct txn *parent;

@@ -670,8 +670,7 @@ int tree_put(struct tree *t,
 	if (txn) {
 		FILENUM fn = {.fileid = t->cf->filenum};
 		child_xid = txn->txnid;
-		if (txn->parent)
-			parent_xid = txn->parent->txnid;
+		parent_xid = txn->root_parent_txnid;
 
 		switch (type) {
 		case MSG_INSERT:
@@ -683,7 +682,8 @@ int tree_put(struct tree *t,
 		case MSG_UPDATE:
 			rollback_save_cmdupdate(txn, fn, k);
 			break;
-		default: break;
+		default:
+			break;
 		}
 	}
 

@@ -97,8 +97,10 @@ void txnmgr_txn_start(struct txnmgr* tm, TXN *txn)
 {
 	int needs_snapshot;
 
+	assert(txn->parent == NULL);
 	mutex_lock(&tm->mtx);
 	txn->txnid = tm->last_txnid++;
+	txn->root_parent_txnid = txn->txnid;
 	if (!txn->readonly)
 		_txnmgr_live_root_txnid_add(tm, txn->txnid);
 
@@ -114,6 +116,7 @@ void txnmgr_child_txn_start(struct txnmgr* tm, TXN *parent, TXN *child)
 
 	mutex_lock(&tm->mtx);
 	child->txnid = tm->last_txnid++;
+	child->root_parent_txnid = parent->root_parent_txnid;
 	if (!child->readonly)
 		_txnmgr_live_root_txnid_add(tm, child->txnid);
 
