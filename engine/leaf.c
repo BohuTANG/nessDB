@@ -52,12 +52,53 @@ int leaf_do_gc(struct node *leaf)
 }
 
 /*
- * apply msgs from ances to leaf basement which are between left and right
+ * apply parent's [leaf, right] messages to child node
+ */
+void _apply_msg_to_child(struct node *parent,
+                         int child_num,
+                         struct node *child,
+                         struct msg *left,
+                         struct msg *right)
+{
+	int height;
+	struct basement *bsm;
+	struct basement_iter iter;
+
+	nassert(child != NULL);
+	nassert(parent->height > 0);
+
+	height = child->height;
+	if (height == 0)
+		bsm = child->u.l.le->bsm;
+	else
+		bsm = child->u.n.parts[child_num].buffer;
+
+	basement_iter_init(&iter, bsm);
+	basement_iter_seek(&iter, left);
+
+	while (basement_iter_valid_lessorequal(&iter, right)) {
+		struct bt_cmd cmd = {
+			.msn = iter.msn,
+			.type = iter.type,
+			.key = &iter.key,
+			.val = &iter.val,
+			.xidpair = iter.xidpair
+		};
+
+		if (nessunlikely(height == 0))
+			leaf_put_cmd(child, &cmd);
+		else
+			nonleaf_put_cmd(child, &cmd);
+	}
+}
+
+/*
+ * apply msgs from ances to leaf basement which are between(include) left and right
  * REQUIRES:
  *  1) leaf write-lock
  *  2) ances all write-lock
  */
-int leaf_apply_ancestor_msg(struct node *leaf, struct ancestors *ances)
+int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances)
 {
 	struct ancestors *ance;
 	struct msg *left = NULL;
@@ -75,8 +116,13 @@ int leaf_apply_ancestor_msg(struct node *leaf, struct ancestors *ances)
 		right = msgdup(&iter.key);
 
 	ance = ances;
-	while (ance) {
-		/* TODO: (BohuTANG) apply [leaf, right] to leaf */
+	while (ance && ance->next) {
+		/* apply [leaf, right] to leaf */
+		_apply_msg_to_child(ance->v,
+		                    ance->childnum,
+		                    ance->next->v,
+		                    left,
+		                    right);
 		ance = ances->next;
 	}
 

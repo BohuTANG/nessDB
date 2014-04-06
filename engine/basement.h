@@ -53,6 +53,7 @@ void basement_free(struct basement *);
 /* basement iterator */
 void basement_iter_init(struct basement_iter *, struct basement *);
 int basement_iter_valid(struct basement_iter *);
+int basement_iter_valid_lessorequal(struct basement_iter *, struct msg *key);
 void basement_iter_next(struct basement_iter *);
 void basement_iter_prev(struct basement_iter *);
 void basement_iter_seek(struct basement_iter *, struct msg *);

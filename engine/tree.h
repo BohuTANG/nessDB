@@ -63,10 +63,12 @@ int tree_put(struct tree *t,
              struct msg *v,
              msgtype_t type,
              TXN *txn);
-
-int root_put_cmd(struct tree *t, struct bt_cmd *cmd);
 void tree_free(struct tree *t);
 
 NID hdr_next_nid(struct tree *t);
+
+int root_put_cmd(struct tree *t, struct bt_cmd *cmd);
+void leaf_put_cmd(struct node *node, struct bt_cmd *cmd);
+void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd);
 
 #endif /* nessDB_TREE_H_ */

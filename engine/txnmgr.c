@@ -85,7 +85,7 @@ static inline int _txn_needs_snapshot(TXN *parent,
 	 *	- when it is ROOT and we have a parent
 	 */
 	return ((snapshot_type != TXN_SNAPSHOT_NONE) &&
-	    (parent == NULL || snapshot_type == TXN_SNAPSHOT_CHILD));
+	        (parent == NULL || snapshot_type == TXN_SNAPSHOT_CHILD));
 }
 
 

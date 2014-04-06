@@ -448,8 +448,7 @@ int cache_file_remove(struct cache *c, int filenum)
 }
 
 
-struct tree *cache_get_tree_by_filenum(struct cache *c, FILENUM fn)
-{
+struct tree *cache_get_tree_by_filenum(struct cache *c, FILENUM fn) {
 	struct cache_file *cf = c->cf_first;
 
 	while (cf) {

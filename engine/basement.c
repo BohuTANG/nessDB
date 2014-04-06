@@ -161,6 +161,13 @@ int basement_iter_valid(struct basement_iter *bsm_iter)
 	return skiplist_iter_valid(&bsm_iter->list_iter);
 }
 
+/* valid and less or equal */
+int basement_iter_valid_lessorequal(struct basement_iter *iter, struct msg *key)
+{
+	return (skiplist_iter_valid(&iter->list_iter) &&
+	        (msg_key_compare(&iter->key, key) <= 0));
+}
+
 /* next */
 void basement_iter_next(struct basement_iter *bsm_iter)
 {

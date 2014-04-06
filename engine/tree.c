@@ -288,10 +288,9 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
  * a) leaf lock (L_WRITE)
  * b) leaf dmt write lock
  */
-void _leaf_put_cmd(struct tree *t, struct node *leaf, struct bt_cmd *cmd)
+void leaf_put_cmd(struct node *leaf, struct bt_cmd *cmd)
 {
 	leaf_apply_msg(leaf, cmd);
-	t->status->tree_leaf_put_nums++;
 }
 
 /*
@@ -301,7 +300,7 @@ void _leaf_put_cmd(struct tree *t, struct node *leaf, struct bt_cmd *cmd)
  * a) node lock (L_READ)
  * b) partition write lock
  */
-void _nonleaf_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
+void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
 {
 	uint32_t pidx;
 	struct partition *part;
@@ -323,7 +322,6 @@ void _nonleaf_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
 	node_set_dirty(node);
 	write_unlock(&part->rwlock);
 
-	t->status->tree_nonleaf_put_nums++;
 }
 
 /*
@@ -334,10 +332,13 @@ void _nonleaf_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
  */
 void _node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
 {
-	if (node->height == 0)
-		_leaf_put_cmd(t, node, cmd);
-	else
-		_nonleaf_put_cmd(t, node, cmd);
+	if (node->height == 0) {
+		leaf_put_cmd(node, cmd);
+		t->status->tree_leaf_put_nums++;
+	} else {
+		nonleaf_put_cmd(node, cmd);
+		t->status->tree_nonleaf_put_nums++;
+	}
 }
 
 /*
