@@ -52,16 +52,14 @@ int internal_key_compare(void *a, void *b)
 
 	r = msg_key_compare(&ma, &mb);
 
-	/* TODO: (BohuTANG) compare msn */
+	/*
+	 * msn comparing:
+	 *  1) if msna >= msnb, we seek the last postion
+	 *  2) if msna < msnb, we seek the first postion
+	 */
 	if (r == 0) {
-		/*
-		if (msna > msnb)
+		if (nessunlikely(msna < msnb))
 			r = -1;
-		else if (msna < msnb)
-			r = +1;
-		*/
-		(void)msna;
-		(void)msnb;
 	}
 
 	return r;

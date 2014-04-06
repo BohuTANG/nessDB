@@ -65,6 +65,7 @@ CTEST(basement, insert_and_lookup)
 
 	_random_key(vbuf, VAL_SIZE);
 	for (i = 0; i < R; i++) {
+		memset(kbuf, 0, KEY_SIZE);
 		snprintf(kbuf, KEY_SIZE, "key-%d", i);
 
 		struct msg k = {.data = kbuf, .size = KEY_SIZE};
@@ -99,6 +100,129 @@ CTEST(basement, insert_and_lookup)
 		xfree(msgs[i]);
 	}
 	xfree(msgs);
+
+	basement_free(bsm);
+	xcheck_all_free();
+}
+
+CTEST(basement, multiversion)
+{
+	int i;
+	int ret;
+	int R = 123;
+	char kbuf[KEY_SIZE];
+	char vbuf[VAL_SIZE];
+	struct basement_iter iter;
+	struct basement *bsm = basement_new();
+	struct txnid_pair xidpair =  {
+		.child_xid = TXNID_NONE,
+		.parent_xid = TXNID_NONE
+	};
+
+	_random_key(vbuf, VAL_SIZE);
+
+	MSN msn = 0U;
+	for (i = 0; i < R; i++) {
+		memset(kbuf, 0, KEY_SIZE);
+		snprintf(kbuf, KEY_SIZE, "key-%d", i);
+
+		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg v = {.data = vbuf, .size = VAL_SIZE};
+
+		basement_put(bsm,
+		             msn++,
+		             MSG_INSERT,
+		             &k,
+		             &v,
+		             &xidpair
+		            );
+	}
+
+	/* 3 versions of key-66 */
+	R = 3;
+	for (i = 0; i < R; i++) {
+		memset(kbuf, 0, KEY_SIZE);
+		snprintf(kbuf, KEY_SIZE, "key-66");
+
+		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg v = {.data = vbuf, .size = VAL_SIZE};
+
+		basement_put(bsm,
+		             msn++,
+		             MSG_INSERT,
+		             &k,
+		             &v,
+		             &xidpair
+		            );
+	}
+
+	/* 4 versions of key-88 */
+	R = 4;
+	for (i = 0; i < R; i++) {
+		memset(kbuf, 0, KEY_SIZE);
+		snprintf(kbuf, KEY_SIZE, "key-88");
+
+		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg v = {.data = vbuf, .size = VAL_SIZE};
+
+		basement_put(bsm,
+		             msn++,
+		             MSG_INSERT,
+		             &k,
+		             &v,
+		             &xidpair
+		            );
+	}
+
+	/* key-66 */
+	memset(kbuf, 0, KEY_SIZE);
+	snprintf(kbuf, KEY_SIZE, "key-66");
+
+	struct msg k1 = {.data = kbuf, .size = KEY_SIZE};
+	basement_iter_init(&iter, bsm);
+	basement_iter_seek(&iter, &k1);
+	ret = basement_iter_valid(&iter);
+	ASSERT_EQUAL(1, ret);
+	ASSERT_EQUAL(66, iter.msn);
+
+	basement_iter_next(&iter);
+	ret = basement_iter_valid(&iter);
+	ASSERT_EQUAL(1, ret);
+	ASSERT_EQUAL(123, iter.msn);
+
+	/* less than valid */
+	ret = basement_iter_valid_lessorequal(&iter, &k1);
+	ASSERT_EQUAL(1, ret);
+
+	memset(kbuf, 0, KEY_SIZE);
+	snprintf(kbuf, KEY_SIZE, "key-67");
+	k1.size = KEY_SIZE;
+	k1.data = kbuf;
+	ret = basement_iter_valid_lessorequal(&iter, &k1);
+	ASSERT_EQUAL(1, ret);
+
+	memset(kbuf, 0, KEY_SIZE);
+	snprintf(kbuf, KEY_SIZE, "key-65");
+	k1.size = KEY_SIZE;
+	k1.data = kbuf;
+	ret = basement_iter_valid_lessorequal(&iter, &k1);
+	ASSERT_EQUAL(0, ret);
+
+	/* key-88 */
+	memset(kbuf, 0, KEY_SIZE);
+	snprintf(kbuf, KEY_SIZE, "key-88");
+
+	struct msg k2 = {.data = kbuf, .size = KEY_SIZE};
+	basement_iter_seek(&iter, &k2);
+	ret = basement_iter_valid(&iter);
+	ASSERT_EQUAL(1, ret);
+	ASSERT_EQUAL(88, iter.msn);
+
+	basement_iter_next(&iter);
+	basement_iter_next(&iter);
+	ret = basement_iter_valid(&iter);
+	ASSERT_EQUAL(1, ret);
+	ASSERT_EQUAL(127, iter.msn);
 
 	basement_free(bsm);
 	xcheck_all_free();
