@@ -156,8 +156,8 @@ CTEST(basement, multiversion)
 		            );
 	}
 
-	/* 4 versions of key-88 */
-	R = 4;
+	/* 5 versions of key-88 */
+	R = 5;
 	for (i = 0; i < R; i++) {
 		memset(kbuf, 0, KEY_SIZE);
 		snprintf(kbuf, KEY_SIZE, "key-88");
@@ -223,6 +223,33 @@ CTEST(basement, multiversion)
 	ret = basement_iter_valid(&iter);
 	ASSERT_EQUAL(1, ret);
 	ASSERT_EQUAL(127, iter.msn);
+
+	/* next&prev diff key */
+	/* key-87 */
+	memset(kbuf, 0, KEY_SIZE);
+	snprintf(kbuf, KEY_SIZE, "key-87");
+
+	struct msg k3 = {.data = kbuf, .size = KEY_SIZE};
+	basement_iter_prev_diff_key(&iter);
+	ret = msg_key_compare(&k3, &iter.key);
+	ASSERT_EQUAL(0, ret);
+
+	/* key-88 */
+	basement_iter_next(&iter);
+	memset(kbuf, 0, KEY_SIZE);
+	snprintf(kbuf, KEY_SIZE, "key-88");
+	struct msg k22 = {.data = kbuf, .size = KEY_SIZE};
+	ret = msg_key_compare(&k22, &iter.key);
+	ASSERT_EQUAL(0, ret);
+
+	/* key-89 */
+	memset(kbuf, 0, KEY_SIZE);
+	snprintf(kbuf, KEY_SIZE, "key-89");
+
+	struct msg k4 = {.data = kbuf, .size = KEY_SIZE};
+	basement_iter_next_diff_key(&iter);
+	ret = msg_key_compare(&k4, &iter.key);
+	ASSERT_EQUAL(0, ret);
 
 	basement_free(bsm);
 	xcheck_all_free();

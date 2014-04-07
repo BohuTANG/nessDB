@@ -180,6 +180,20 @@ void basement_iter_next(struct basement_iter *bsm_iter)
 	_iter_decode(base, bsm_iter);
 }
 
+/* next difference key (skip all versions) */
+void basement_iter_next_diff_key(struct basement_iter *bsm_iter)
+{
+	struct msg cur = {
+		.size = bsm_iter->key.size,
+		.data = bsm_iter->key.data
+	};
+
+	while (basement_iter_valid(bsm_iter) &&
+			msg_key_compare(&bsm_iter->key, &cur) == 0) {
+		basement_iter_next(bsm_iter);
+	}
+}
+
 /* prev */
 void basement_iter_prev(struct basement_iter *bsm_iter)
 {
@@ -190,6 +204,20 @@ void basement_iter_prev(struct basement_iter *bsm_iter)
 		base = bsm_iter->list_iter.node->key;
 
 	_iter_decode(base, bsm_iter);
+}
+
+/* prev  difference key (skip all versions) */
+void basement_iter_prev_diff_key(struct basement_iter *bsm_iter)
+{
+	struct msg cur = {
+		.size = bsm_iter->key.size,
+		.data = bsm_iter->key.data
+	};
+
+	while (basement_iter_valid(bsm_iter) &&
+			msg_key_compare(&bsm_iter->key, &cur) == 0) {
+		basement_iter_prev(bsm_iter);
+	}
 }
 
 /*
