@@ -6,6 +6,8 @@
 
 #include "tcursor.h"
 #include "cache.h"
+#include "leaf.h"
+#include "basement.h"
 #include "compare-func.h"
 
 /**
@@ -92,140 +94,6 @@ void _save_pivot_bound(struct search *so, struct node *n, int child_searched)
 	}
 }
 
-int _findsmallest(struct basement **bsms,
-                  int bsms_size,
-                  struct cursor *cur,
-                  struct search *so)
-{
-	int i;
-	int ret;
-	int end;
-	struct basement_iter *smallest = NULL;
-	struct basement_iter iters[bsms_size];
-
-	/* seek each level */
-	for (i = (bsms_size - 1); i >= 0; i--) {
-		struct basement *bsm;
-		struct basement_iter *iter;
-
-		bsm = bsms[i];
-		iter = &iters[i];
-		basement_iter_init(iter, bsm);
-		if (so->key) {
-			/*
-			 * sought position is >= position(so->key)
-			 * so we should ensure that all sought iters positioned after so->key
-			 */
-			basement_iter_seek(iter, so->key);
-			if (so->slip != SLIP_ZERO) {
-				if (basement_iter_valid(iter) &&
-				    (so->key_compare_func(&iter->key, so->key) == 0))
-					basement_iter_next(iter);
-			}
-		} else {
-			basement_iter_seektofirst(iter);
-		}
-	}
-
-	for (i = (bsms_size - 1); i >= 0; i--) {
-		struct basement_iter *iter = &iters[i];
-
-		if (basement_iter_valid(iter)) {
-			if (smallest == NULL) {
-				smallest = iter;
-			} else if (so->key_compare_func(&iter->key, &smallest->key) < 0) {
-				smallest = iter;
-			}
-		}
-	}
-
-	end = (basement_iter_valid(&iters[0]) == 0);
-	if (end) {
-		if (smallest) {
-			cur->valid = 1;
-			cur->key = smallest->key;
-			cur->val = smallest->val;
-		} else {
-			cur->valid = 0;
-		}
-
-		ret = CURSOR_EOF;
-	} else {
-		cur->valid = 1;
-		cur->key = smallest->key;
-		cur->val = smallest->val;
-		ret = CURSOR_CONTINUE;
-	}
-
-	return ret;
-}
-
-int _findlargest(struct basement **bsms,
-                 int bsms_size,
-                 struct cursor *cur,
-                 struct search *so)
-{
-	int i;
-	int ret;
-	int end;
-	struct basement_iter *largest = NULL;
-	struct basement_iter iters[bsms_size];
-
-	/* seek each level */
-	for (i = (bsms_size - 1); i >= 0; i--) {
-		struct basement *bsm;
-		struct basement_iter *iter;
-
-		bsm = bsms[i];
-		iter = &iters[i];
-		basement_iter_init(iter, bsm);
-		if (so->key) {
-			/*
-			 * since basement_iter_seek is >=so->key,
-			 * we should ensure that all sought iters positioned before so->key
-			 */
-			basement_iter_seek(iter, so->key);
-			if (basement_iter_valid(iter))
-				basement_iter_prev(iter);
-			else
-				basement_iter_seektolast(iter);
-		} else {
-			basement_iter_seektolast(iter);
-		}
-	}
-
-	for (i = (bsms_size - 1); i >= 0; i--) {
-		struct basement_iter *iter = &iters[i];
-
-		if (basement_iter_valid(iter)) {
-			if (largest == NULL) {
-				largest = iter;
-			} else if (so->key_compare_func(&iter->key, &largest->key) > 0) {
-				largest = iter;
-			}
-		}
-	}
-
-	end = (basement_iter_valid(&iters[0]) == 0);
-	if (end) {
-		if (largest) {
-			cur->valid = 1;
-			cur->key = largest->key;
-			cur->val = largest->val;
-		} else
-			cur->valid = 0;
-
-		ret = CURSOR_EOF;
-	} else {
-		cur->valid = 1;
-		cur->key = largest->key;
-		cur->val = largest->val;
-		ret = CURSOR_CONTINUE;
-	}
-
-	return ret;
-}
-
 void ancestors_append(struct cursor *cur, struct basement *bsm)
 {
 	struct ancestors *next_ance;
@@ -239,51 +107,65 @@ void ancestors_append(struct cursor *cur, struct basement *bsm)
 
 int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 {
-	int i = 0;
-	int bsms_size;
-	struct ancestors *ances;
+	int ret = CURSOR_EOF;
+	struct basement *bsm = n->u.l.le->bsm;
 
-	ancestors_append(cur, n->u.l.le->bsm);
-	ances = cur->ances;
-	bsms_size = cur->ances_size;
+	/* first to apply all msgs to leaf bsm */
+	leaf_apply_ancestors(n, cur->ances);
 
-	struct basement *bsms[bsms_size];
-	/*
-	 * bsms[0 - 1] is memtable basement
-	 * the last one is root's
-	 */
-	while (ances) {
-		bsms[i++] = (struct basement*) ances->v;
-		ances = ances->next;
-	}
-
+	/* TODO: (BohuTANG) txn visibility checking */
 	switch (so->direction) {
-	case SEARCH_FORWARD:
-		return _findsmallest(bsms,
-		                     bsms_size,
-		                     cur,
-		                     so);
-		break;
-	case SEARCH_BACKWARD:
-		return _findlargest(bsms,
-		                    bsms_size,
-		                    cur,
-		                    so);
-		break;
+	case SEARCH_FORWARD: {
+			struct basement_iter iter;
+
+			basement_iter_init(&iter, bsm);
+			iter.key = cur->key;
+
+			basement_iter_next_diff_key(&iter);
+			if (basement_iter_valid(&iter)) {
+				cur->valid = 1;
+				cur->key = iter.key;
+				cur->val = iter.val;
+				ret = CURSOR_CONTINUE;
+			} else {
+				cur->valid = 0;
+				ret = CURSOR_EOF;
+			}
+			break;
+		}
+	case SEARCH_BACKWARD: {
+			struct basement_iter iter;
+
+			basement_iter_init(&iter, bsm);
+			iter.key = cur->key;
+			basement_iter_prev_diff_key(&iter);
+			if (basement_iter_valid(&iter)) {
+				cur->valid = 1;
+				cur->key = iter.key;
+				cur->val = iter.val;
+				ret = CURSOR_CONTINUE;
+			} else {
+				cur->valid = 0;
+				ret = CURSOR_EOF;
+			}
+			break;
+		}
 	default:
 		__PANIC("unsupport direction %u", so->direction);
 	}
+
+	return ret;
 }
 
-int _search_node(struct cursor *cur,
-                 struct search *so,
-                 struct node *n,
+int _search_node(struct cursor * cur,
+                 struct search * so,
+                 struct node * n,
                  int child_to_search);
 
 /* search in a node's child */
-int _search_child(struct cursor *cur,
-                  struct search *so,
-                  struct node *n,
+int _search_child(struct cursor * cur,
+                  struct search * so,
+                  struct node * n,
                   int childnum)
 {
 	int ret;
@@ -315,9 +197,9 @@ int _search_child(struct cursor *cur,
 	return ret;
 }
 
-int _search_node(struct cursor *cur,
-                 struct search *so,
-                 struct node *n,
+int _search_node(struct cursor * cur,
+                 struct search * so,
+                 struct node * n,
                  int child_to_search)
 {
 	int r;
@@ -364,7 +246,7 @@ int _search_node(struct cursor *cur,
  * the root-to-leaf path(restart with a jump) will be:
  * key44 -> key10 -> basement1
  */
-void _tree_search(struct cursor *cur, struct search *so)
+void _tree_search(struct cursor * cur, struct search * so)
 {
 	int r;
 	NID root_nid;
@@ -405,12 +287,12 @@ try_again:
 	}
 }
 
-void _tree_search_finish(struct search *so)
+void _tree_search_finish(struct search * so)
 {
 	msgfree(so->pivot_bound);
 }
 
-struct cursor *cursor_new(struct tree *t) {
+struct cursor *cursor_new(struct tree * t) {
 	struct cursor *cur;
 
 	cur = xcalloc(1, sizeof(*cur));
@@ -419,7 +301,7 @@ struct cursor *cursor_new(struct tree *t) {
 	return cur;
 }
 
-void cursor_free(struct cursor *cur)
+void cursor_free(struct cursor * cur)
 {
 	struct ancestors *next;
 	struct ancestors *ances = cur->ances;
@@ -436,12 +318,12 @@ void cursor_free(struct cursor *cur)
 	xfree(cur);
 }
 
-void _tree_search_init(struct search *so,
+void _tree_search_init(struct search * so,
                        search_direction_compare_func dcmp,
                        search_pivotbound_compare_func pcmp,
                        direction_t direction,
                        slip_t slip,
-                       struct msg *key)
+                       struct msg * key)
 {
 	memset(so, 0, sizeof(*so));
 	so->direction_compare_func = dcmp;
@@ -453,7 +335,7 @@ void _tree_search_init(struct search *so,
 		so->key = key;
 }
 
-int search_pivotbound_compare(struct search *so, struct msg *m)
+int search_pivotbound_compare(struct search * so, struct msg * m)
 {
 	return msg_key_compare(so->pivot_bound, m);
 }
@@ -461,18 +343,18 @@ int search_pivotbound_compare(struct search *so, struct msg *m)
 /*
  * tree cursor first
  */
-int tree_cursor_compare_first(struct search *so __attribute__((__unused__)),
-                              struct msg *b __attribute__((__unused__)))
+int tree_cursor_compare_first(struct search * so __attribute__((__unused__)),
+                              struct msg * b __attribute__((__unused__)))
 {
 	return -1;
 }
 
-int tree_cursor_valid(struct cursor *cur)
+int tree_cursor_valid(struct cursor * cur)
 {
 	return cur->valid == 1;
 }
 
-void tree_cursor_first(struct cursor *cur)
+void tree_cursor_first(struct cursor * cur)
 {
 	struct search search;
 
@@ -489,13 +371,13 @@ void tree_cursor_first(struct cursor *cur)
 /*
  * tree cursor last
  */
-int tree_cursor_compare_last(struct search *so __attribute__((__unused__)),
-                             struct msg *b __attribute__((__unused__)))
+int tree_cursor_compare_last(struct search * so __attribute__((__unused__)),
+                             struct msg * b __attribute__((__unused__)))
 {
 	return 1;
 }
 
-void tree_cursor_last(struct cursor *cur)
+void tree_cursor_last(struct cursor * cur)
 {
 	struct search search;
 
@@ -513,12 +395,12 @@ void tree_cursor_last(struct cursor *cur)
 /*
  * tree cursor next
  */
-int tree_cursor_compare_next(struct search *so, struct msg *b)
+int tree_cursor_compare_next(struct search * so, struct msg * b)
 {
 	return (msg_key_compare(so->key, b) < 0);
 }
 
-void tree_cursor_next(struct cursor *cur)
+void tree_cursor_next(struct cursor * cur)
 {
 	struct search search;
 
@@ -536,12 +418,12 @@ void tree_cursor_next(struct cursor *cur)
 /*
  * tree cursor prev
  */
-int tree_cursor_compare_prev(struct search *so, struct msg *b)
+int tree_cursor_compare_prev(struct search * so, struct msg * b)
 {
 	return (msg_key_compare(so->key, b) > 0);
 }
 
-void tree_cursor_prev(struct cursor *cur)
+void tree_cursor_prev(struct cursor * cur)
 {
 	struct search search;
 
@@ -559,12 +441,12 @@ void tree_cursor_prev(struct cursor *cur)
 /*
  * tree cursor current
  */
-int tree_cursor_compare_current(struct search *so, struct msg *b)
+int tree_cursor_compare_current(struct search * so, struct msg * b)
 {
 	return (msg_key_compare(so->key, b) <= 0);
 }
 
-void tree_cursor_current(struct cursor *cur)
+void tree_cursor_current(struct cursor * cur)
 {
 	struct search search;
 

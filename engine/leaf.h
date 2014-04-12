@@ -19,5 +19,6 @@
  */
 
 int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd);
+int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances);
 
 #endif /* nessDB_LEAF_H_ */
