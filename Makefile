@@ -33,6 +33,7 @@ LIB_OBJS =	 			\
 	./engine/skiplist.o		\
 	./engine/xmalloc.o		\
 	./engine/atomic.o		\
+	./engine/mb.o			\
 	./engine/mempool.o		\
 	./engine/basement.o		\
 	./engine/posix.o		\

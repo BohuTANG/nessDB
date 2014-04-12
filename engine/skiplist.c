@@ -161,7 +161,7 @@ struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key) {
 	height = _get_height(sl) - 1;
 	x = sl->header;
 	while (1) {
-		struct skipnode *next = _get_next(x, height);;
+		struct skipnode *next = _get_next(x, height);
 
 		if (next == NULL || sl->compare_cb(next->key, key) >= 0) {
 			if (height == 0)

@@ -28,6 +28,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include "xmalloc.h"
+#include "atomic.h"
+#include "mb.h"
+
 
 #define nesslikely(EXPR) __builtin_expect(!! (EXPR), 1)
 #define nessunlikely(EXPR) __builtin_expect(!! (EXPR), 0)

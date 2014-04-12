@@ -7,12 +7,7 @@
 #ifndef nessDB_ATOMIC_H_
 #define nessDB_ATOMIC_H_
 
-#include "internal.h"
-
-/* memory barrier */
-void memory_barrier();
-void *acquire_load(void *rep);
-void release_store(void **from, void *to);
+#include <stdint.h>
 
 /* atomic */
 int atomic32_increment(int *dest);
