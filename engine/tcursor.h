@@ -10,6 +10,7 @@
 #include "internal.h"
 #include "node.h"
 #include "tree.h"
+#include "txn.h"
 #include "msg.h"
 
 /**
@@ -31,12 +32,6 @@ typedef int (*search_pivotbound_compare_func)(struct search *, struct msg *);
 typedef int (*search_key_compare_func)(struct msg *, struct msg *);
 
 typedef enum {
-	SLIP_POSI = +1,	/* goto next if equal */
-	SLIP_ZERO = 0,	/* stay origin if equal */
-	SLIP_NEGA = -1	/* goto prev if equal */
-} slip_t;
-
-typedef enum {
 	SEARCH_FORWARD = 1,
 	SEARCH_BACKWARD = -1
 } direction_t;
@@ -51,7 +46,6 @@ enum {
 struct search {
 	struct msg *key;
 	struct msg *pivot_bound;
-	slip_t slip;
 	direction_t direction;
 	search_direction_compare_func direction_compare_func;
 	search_pivotbound_compare_func pivotbound_compare_func;
@@ -59,11 +53,12 @@ struct search {
 };
 
 struct cursor {
-	int valid;
+	TXN *txn;
 	MSN msn;
+	int valid;
+	msgtype_t msgtype;
 	struct msg key;		/* return key */
 	struct msg val;		/* return val */
-	msgtype_t msgtype;
 	struct tree *tree;	/* index */
 	void *extra;		/* extra(no-use) */
 

@@ -168,6 +168,22 @@ int basement_iter_valid_lessorequal(struct basement_iter *iter, struct msg *key)
 	        (msg_key_compare(&iter->key, key) <= 0));
 }
 
+/* the freshest value with the same key */
+void basement_iter_fresh_internal_key(struct basement_iter *iter)
+{
+	struct msg key = iter->key;
+	struct basement_iter cur, nxt;
+
+	basement_iter_init(&cur, iter->bsm);
+	cur.key = iter->key;
+	nxt = cur;
+
+	while (basement_iter_valid_lessorequal(&cur, &key)) {
+		nxt = cur;
+	}
+	*iter = nxt;
+}
+
 /* next */
 void basement_iter_next(struct basement_iter *bsm_iter)
 {
@@ -189,9 +205,28 @@ void basement_iter_next_diff_key(struct basement_iter *bsm_iter)
 	};
 
 	while (basement_iter_valid(bsm_iter) &&
-			msg_key_compare(&bsm_iter->key, &cur) == 0) {
+	       msg_key_compare(&bsm_iter->key, &cur) == 0) {
 		basement_iter_next(bsm_iter);
 	}
+}
+
+/* same key iterator */
+int basement_iter_next_internal_key(struct basement_iter *iter)
+{
+	if (!basement_iter_valid(iter)) return 0;
+
+	struct msg cur = {
+		.size = iter->key.size,
+		.data = iter->key.data
+	};
+
+	basement_iter_next(iter);
+	if (basement_iter_valid(iter) &&
+	    msg_key_compare(&iter->key, &cur) == 0) {
+		return 1;
+	}
+
+	return 0;
 }
 
 /* prev */
@@ -206,7 +241,7 @@ void basement_iter_prev(struct basement_iter *bsm_iter)
 	_iter_decode(base, bsm_iter);
 }
 
-/* prev  difference key (skip all versions) */
+/* prev difference key (skip all versions) */
 void basement_iter_prev_diff_key(struct basement_iter *bsm_iter)
 {
 	struct msg cur = {
@@ -215,10 +250,30 @@ void basement_iter_prev_diff_key(struct basement_iter *bsm_iter)
 	};
 
 	while (basement_iter_valid(bsm_iter) &&
-			msg_key_compare(&bsm_iter->key, &cur) == 0) {
+	       msg_key_compare(&bsm_iter->key, &cur) == 0) {
 		basement_iter_prev(bsm_iter);
 	}
 }
+
+/* same key iterator */
+int basement_iter_prev_internal_key(struct basement_iter *iter)
+{
+	if (!basement_iter_valid(iter)) return 0;
+
+	struct msg cur = {
+		.size = iter->key.size,
+		.data = iter->key.data
+	};
+
+	basement_iter_prev(iter);
+	if (basement_iter_valid(iter) &&
+	    msg_key_compare(&iter->key, &cur) == 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
 
 /*
  * seek

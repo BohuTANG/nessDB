@@ -105,8 +105,17 @@ void ancestors_append(struct cursor *cur, struct basement *bsm)
 	cur->ances_size++;
 }
 
+int _visibility(TXN *txn, struct basement_iter *iter)
+{
+	(void)txn;
+	(void)iter;
+
+	return 1;
+}
+
 int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 {
+	TXN *txn = cur->txn;
 	int ret = CURSOR_EOF;
 	struct basement *bsm = n->u.l.le->bsm;
 
@@ -120,9 +129,25 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 
 			basement_iter_init(&iter, bsm);
 			iter.key = cur->key;
-
 			basement_iter_next_diff_key(&iter);
+
+C1:
 			if (basement_iter_valid(&iter)) {
+				if (!txn) {
+					basement_iter_fresh_internal_key(&iter);
+				} else {
+					int found = 0;
+
+					while (basement_iter_next_internal_key(&iter)) {
+						if (_visibility(txn, &iter)) {
+							found = 1;
+							break;
+						}
+					}
+
+					if (!found)
+						goto C1;
+				}
 				cur->valid = 1;
 				cur->key = iter.key;
 				cur->val = iter.val;
@@ -139,7 +164,25 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 			basement_iter_init(&iter, bsm);
 			iter.key = cur->key;
 			basement_iter_prev_diff_key(&iter);
+
+C2:
 			if (basement_iter_valid(&iter)) {
+				if (!txn) {
+					/* the fresh one */
+					basement_iter_fresh_internal_key(&iter);
+				} else {
+					int found = 0;
+
+					while (basement_iter_prev_internal_key(&iter)) {
+						if (_visibility(txn, &iter)) {
+							found = 1;
+							break;
+						}
+					}
+
+					if (!found)
+						goto C2;
+				}
 				cur->valid = 1;
 				cur->key = iter.key;
 				cur->val = iter.val;
@@ -222,8 +265,9 @@ int _search_node(struct cursor * cur,
 				break;
 			}
 		}
-	} else
+	} else {
 		r = _search_leaf(cur, so, n);
+	}
 
 	return r;
 }
@@ -322,7 +366,6 @@ void _tree_search_init(struct search * so,
                        search_direction_compare_func dcmp,
                        search_pivotbound_compare_func pcmp,
                        direction_t direction,
-                       slip_t slip,
                        struct msg * key)
 {
 	memset(so, 0, sizeof(*so));
@@ -330,7 +373,6 @@ void _tree_search_init(struct search * so,
 	so->pivotbound_compare_func = pcmp;
 	so->key_compare_func = msg_key_compare;
 	so->direction = direction;
-	so->slip = slip;
 	if (key && key->data)
 		so->key = key;
 }
@@ -362,7 +404,6 @@ void tree_cursor_first(struct cursor * cur)
 	                  &tree_cursor_compare_first,
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
-	                  SLIP_NEGA,
 	                  NULL);
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
@@ -385,7 +426,6 @@ void tree_cursor_last(struct cursor * cur)
 	                  &tree_cursor_compare_last,
 	                  &search_pivotbound_compare,
 	                  SEARCH_BACKWARD,
-	                  SLIP_NEGA,
 	                  NULL);
 
 	_tree_search(cur, &search);
@@ -408,7 +448,6 @@ void tree_cursor_next(struct cursor * cur)
 	                  &tree_cursor_compare_next,
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
-	                  SLIP_POSI,
 	                  &cur->key);
 
 	_tree_search(cur, &search);
@@ -431,7 +470,6 @@ void tree_cursor_prev(struct cursor * cur)
 	                  &tree_cursor_compare_prev,
 	                  &search_pivotbound_compare,
 	                  SEARCH_BACKWARD,
-	                  SLIP_NEGA,
 	                  &cur->key);
 
 	_tree_search(cur, &search);
@@ -454,7 +492,6 @@ void tree_cursor_current(struct cursor * cur)
 	                  &tree_cursor_compare_current,
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
-	                  SLIP_ZERO,
 	                  &cur->key);
 
 	_tree_search(cur, &search);
