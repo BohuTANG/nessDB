@@ -65,7 +65,7 @@ void _add_pivot_to_parent(struct tree *t,
 
 	msgcpy(&parent->u.n.pivots[pidx], spk);
 	parent->u.n.parts[pidx].child_nid = a->nid;
-	parent->u.n.parts[pidx].buffer = basement_new();
+	parent->u.n.parts[pidx].buffer = msgbuf_new();
 
 	parent->u.n.parts[pidx + 1].child_nid = b->nid;
 	parent->u.n.n_children += 1;
@@ -89,44 +89,44 @@ void _leaf_split(struct tree *t,
 	int i;
 	int mid;
 	struct msg *spk = NULL;
-	struct basement *bsma;
-	struct basement *bsmb;
-	struct basement *old_bsm;
+	struct msgbuf *bsma;
+	struct msgbuf *bsmb;
+	struct msgbuf *old_bsm;
 	struct node *leafa;
 	struct node *leafb;
-	struct basement_iter iter;
+	struct msgbuf_iter iter;
 
 	leafa = leaf;
 	old_bsm = leafa->u.l.le->bsm;
-	bsma = basement_new();
-	bsmb = basement_new();
+	bsma = msgbuf_new();
+	bsmb = msgbuf_new();
 
 	i = 0;
 	mid = old_bsm->count / 2;
-	basement_iter_init(&iter, old_bsm);
-	basement_iter_seektofirst(&iter);
-	while (basement_iter_valid(&iter)) {
+	msgbuf_iter_init(&iter, old_bsm);
+	msgbuf_iter_seektofirst(&iter);
+	while (msgbuf_iter_valid(&iter)) {
 		if (i <= mid) {
-			basement_put(bsma,
-			             iter.msn,
-			             iter.type,
-			             &iter.key,
-			             &iter.val,
-			             &iter.xidpair);
+			msgbuf_put(bsma,
+			           iter.msn,
+			           iter.type,
+			           &iter.key,
+			           &iter.val,
+			           &iter.xidpair);
 			if (i == mid)
 				spk = msgdup(&iter.key);
 		} else {
-			basement_put(bsmb,
-			             iter.msn,
-			             iter.type,
-			             &iter.key,
-			             &iter.val,
-			             &iter.xidpair);
+			msgbuf_put(bsmb,
+			           iter.msn,
+			           iter.type,
+			           &iter.key,
+			           &iter.val,
+			           &iter.xidpair);
 		}
-		basement_iter_next(&iter);
+		msgbuf_iter_next(&iter);
 		i++;
 	}
-	basement_free(old_bsm);
+	msgbuf_free(old_bsm);
 	leafa->u.l.le->bsm = bsma;
 
 	/* new leafb */
@@ -203,7 +203,7 @@ void _nonleaf_split(struct tree *t,
 	}
 
 	/* the rightest partition of nodea */
-	nodea->u.n.parts[pivots_in_a].buffer = basement_new();
+	nodea->u.n.parts[pivots_in_a].buffer = msgbuf_new();
 
 	/* split key */
 	spk = msgdup(&node->u.n.pivots[pivots_in_a - 1]);
@@ -267,7 +267,7 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
 		int haszero = 0;
 
 		for (i = 0; i < children; i++) {
-			if (basement_memsize(node->u.n.parts[i].buffer) == 0) {
+			if (msgbuf_memsize(node->u.n.parts[i].buffer) == 0) {
 				haszero = 1;
 				break;
 			}
@@ -312,12 +312,12 @@ void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
 		__PANIC("partiton buffer is null, index %d", pidx);
 
 	write_lock(&part->rwlock);
-	basement_put(part->buffer,
-	             cmd-> msn,
-	             cmd->type,
-	             cmd->key,
-	             cmd->val,
-	             &cmd->xidpair);
+	msgbuf_put(part->buffer,
+	           cmd-> msn,
+	           cmd->type,
+	           cmd->key,
+	           cmd->val,
+	           &cmd->xidpair);
 	node->msn = cmd->msn > node->msn ? cmd->msn : node->msn;
 	node_set_dirty(node);
 	write_unlock(&part->rwlock);
@@ -356,8 +356,8 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	struct node *child;
 	struct partition *part;
 	enum reactivity re_child;
-	struct basement *bsm;
-	struct basement_iter iter;
+	struct msgbuf *bsm;
+	struct msgbuf_iter iter;
 
 	childnum = node_find_heaviest_idx(parent);
 	nassert(childnum < (int)parent->u.n.n_children);
@@ -375,9 +375,9 @@ int _flush_some_child(struct tree *t, struct node *parent)
 
 	msn = child->msn;
 	bsm = part->buffer;
-	basement_iter_init(&iter, bsm);
-	basement_iter_seektofirst(&iter);
-	while (basement_iter_valid(&iter)) {
+	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_seektofirst(&iter);
+	while (msgbuf_iter_valid(&iter)) {
 		if (msn >= iter.msn) continue;
 
 		struct bt_cmd cmd = {
@@ -388,12 +388,12 @@ int _flush_some_child(struct tree *t, struct node *parent)
 			.xidpair = iter.xidpair
 		};
 		_node_put_cmd(t, child, &cmd);
-		basement_iter_next(&iter);
+		msgbuf_iter_next(&iter);
 	}
 
 	/* free flushed msgbuffer */
-	basement_free(part->buffer);
-	part->buffer = basement_new();
+	msgbuf_free(part->buffer);
+	part->buffer = msgbuf_new();
 	node_set_dirty(parent);
 	node_set_dirty(child);
 
@@ -475,10 +475,10 @@ void _root_split(struct tree *t,
 
 	msgcpy(&new_root->u.n.pivots[0], split_key);
 	new_root->u.n.parts[0].child_nid = a->nid;
-	new_root->u.n.parts[0].buffer = basement_new();
+	new_root->u.n.parts[0].buffer = msgbuf_new();
 
 	new_root->u.n.parts[1].child_nid = b->nid;
-	new_root->u.n.parts[1].buffer = basement_new();
+	new_root->u.n.parts[1].buffer = msgbuf_new();
 	msgfree(split_key);
 
 	node_set_dirty(b);

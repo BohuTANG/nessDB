@@ -38,7 +38,7 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/atomic.o		\
 	$(top_builddir)/engine/mb.o		\
 	$(top_builddir)/engine/mempool.o	\
-	$(top_builddir)/engine/basement.o	\
+	$(top_builddir)/engine/msgbuf.o	\
 	$(top_builddir)/engine/posix.o		\
 	$(top_builddir)/engine/crc32.o		\
 	$(top_builddir)/engine/block.o		\
@@ -68,7 +68,7 @@ TEST_OBJS = 				\
 	log-test.o			\
 	compress-test.o			\
 	skiplist-test.o			\
-	basement-test.o			\
+	msgbuf-test.o			\
 	hdr-serialize-test.o		\
 	node-serialize-test.o		\
 	txn-test.o		\

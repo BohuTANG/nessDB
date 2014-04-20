@@ -16,7 +16,7 @@
  * @brief skiplist definitions
  *
  * skiplist is the fundamental sort-structure with iterator(thread-safe).
- * it's used in innernode's msgbuf and leafnode's basement.
+ * it's used in innernode's msgbuf and leafnode's msgbuf.
  *
  */
 

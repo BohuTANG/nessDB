@@ -7,7 +7,7 @@
 #include "tcursor.h"
 #include "cache.h"
 #include "leaf.h"
-#include "basement.h"
+#include "msgbuf.h"
 #include "compare-func.h"
 
 /**
@@ -94,7 +94,7 @@ void _save_pivot_bound(struct search *so, struct node *n, int child_searched)
 	}
 }
 
-void ancestors_append(struct cursor *cur, struct basement *bsm)
+void ancestors_append(struct cursor *cur, struct msgbuf *bsm)
 {
 	struct ancestors *next_ance;
 
@@ -105,19 +105,9 @@ void ancestors_append(struct cursor *cur, struct basement *bsm)
 	cur->ances_size++;
 }
 
-int _visibility(TXN *txn, struct basement_iter *iter)
-{
-	(void)txn;
-	(void)iter;
-
-	return 1;
-}
-
 int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 {
-	TXN *txn = cur->txn;
 	int ret = CURSOR_EOF;
-	struct basement *bsm = n->u.l.le->bsm;
 
 	/* first to apply all msgs to leaf bsm */
 	leaf_apply_ancestors(n, cur->ances);
@@ -125,72 +115,9 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 	/* TODO: (BohuTANG) txn visibility checking */
 	switch (so->direction) {
 	case SEARCH_FORWARD: {
-			struct basement_iter iter;
-
-			basement_iter_init(&iter, bsm);
-			iter.key = cur->key;
-			basement_iter_next_diff_key(&iter);
-
-C1:
-			if (basement_iter_valid(&iter)) {
-				if (!txn) {
-					basement_iter_fresh_internal_key(&iter);
-				} else {
-					int found = 0;
-
-					while (basement_iter_next_internal_key(&iter)) {
-						if (_visibility(txn, &iter)) {
-							found = 1;
-							break;
-						}
-					}
-
-					if (!found)
-						goto C1;
-				}
-				cur->valid = 1;
-				cur->key = iter.key;
-				cur->val = iter.val;
-				ret = CURSOR_CONTINUE;
-			} else {
-				cur->valid = 0;
-				ret = CURSOR_EOF;
-			}
 			break;
 		}
 	case SEARCH_BACKWARD: {
-			struct basement_iter iter;
-
-			basement_iter_init(&iter, bsm);
-			iter.key = cur->key;
-			basement_iter_prev_diff_key(&iter);
-
-C2:
-			if (basement_iter_valid(&iter)) {
-				if (!txn) {
-					/* the fresh one */
-					basement_iter_fresh_internal_key(&iter);
-				} else {
-					int found = 0;
-
-					while (basement_iter_prev_internal_key(&iter)) {
-						if (_visibility(txn, &iter)) {
-							found = 1;
-							break;
-						}
-					}
-
-					if (!found)
-						goto C2;
-				}
-				cur->valid = 1;
-				cur->key = iter.key;
-				cur->val = iter.val;
-				ret = CURSOR_CONTINUE;
-			} else {
-				cur->valid = 0;
-				ret = CURSOR_EOF;
-			}
 			break;
 		}
 	default:
@@ -217,7 +144,7 @@ int _search_child(struct cursor * cur,
 	struct node *child;
 
 	nassert(n->height > 0);
-	/* add basement to ances */
+	/* add msgbuf to ances */
 	ancestors_append(cur, n->u.n.parts[childnum].buffer);
 
 	child_nid = n->u.n.parts[childnum].child_nid;
@@ -277,18 +204,18 @@ int _search_node(struct cursor * cur,
  *			/		\
  *		  |key10, key20|	|key90|
  *	       /	|	 \	      \
- * |basement0|	   |basement1| |basement2|    |basement3|
+ * |msgbuf0|	   |msgbuf1| |msgbuf2|    |msgbuf3|
  *
  *		      (a tree with height 2)
  *
  * cursor search is very similar to depth-first-search algorithm.
  * for cursor_seektofirst operation, the root-to-leaf path is:
- * key44 -> key10 -> basement0
- * and do the inner sliding along with the basement.
+ * key44 -> key10 -> msgbuf0
+ * and do the inner sliding along with the msgbuf.
  * if we get the end of one leaf, CURSOR_EOF will be returned to upper on,
  * and we also set search->pivot_bound = key10, for the next time,
  * the root-to-leaf path(restart with a jump) will be:
- * key44 -> key10 -> basement1
+ * key44 -> key10 -> msgbuf1
  */
 void _tree_search(struct cursor * cur, struct search * so)
 {

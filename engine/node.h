@@ -10,7 +10,7 @@
 #include "internal.h"
 #include "options.h"
 #include "posix.h"
-#include "basement.h"
+#include "msgbuf.h"
 
 #define PART_SIZE (sizeof(struct partition))
 #define PIVOT_SIZE (sizeof(struct msg))
@@ -39,7 +39,7 @@ struct node_operations {
 struct partition {
 	uint32_t inner_offset;		/* the postion start from the block start in disk */
 	uint64_t child_nid;		/* child node id of this partition */
-	struct basement *buffer;
+	struct msgbuf *buffer;
 	int fetched: 2;			/* if 0, we need to fetch from disk */
 	ness_rwlock_t rwlock;
 };
@@ -48,7 +48,7 @@ enum {LE_CLEAN = 0, LE_MVCC = 1};
 
 struct leafentry {
 	uint8_t type;	/* LE_CLEAN or LE_MVCC */
-	struct basement *bsm;	/* leaf basement */
+	struct msgbuf *bsm;	/* leaf msgbuf(basement) */
 	ness_rwlock_t rwlock;
 };
 

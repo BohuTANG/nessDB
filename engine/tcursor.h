@@ -76,6 +76,6 @@ void tree_cursor_next(struct cursor *cur);
 void tree_cursor_prev(struct cursor *cur);
 void tree_cursor_current(struct cursor *cur);
 
-void ancestors_append(struct cursor *cur, struct basement *bsm);
+void ancestors_append(struct cursor *cur, struct msgbuf *bsm);
 
 #endif /* _nessDB_TCURSOR_H_ */

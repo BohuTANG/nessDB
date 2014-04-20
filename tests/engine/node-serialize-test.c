@@ -40,7 +40,7 @@ CTEST(node_serial_test, leaf_empty)
 	struct node *dummy_leaf1;
 	ret = deserialize_node_from_disk(fd, b, nid, &dummy_leaf1, 0);
 	ASSERT_TRUE(ret > 0);
-	ASSERT_EQUAL(0, basement_count(dummy_leaf1->u.l.le->bsm));
+	ASSERT_EQUAL(0, msgbuf_count(dummy_leaf1->u.l.le->bsm));
 	//free
 	node_free(dummy_leaf1);
 
@@ -78,14 +78,14 @@ CTEST(node_serial_test, leaf_2_record)
 	k.data = "hello";
 	v.size = 6;
 	v.data = "world";
-	basement_put(dummy_leaf->u.l.le->bsm, MSG_INSERT, msn, &k, &v, &xidpair);
+	msgbuf_put(dummy_leaf->u.l.le->bsm, MSG_INSERT, msn, &k, &v, &xidpair);
 
 	struct msg k1, v1;
 	k1.size = 6;
 	k1.data = "hellx";
 	v1.size = 6;
 	v1.data = "worlx";
-	basement_put(dummy_leaf->u.l.le->bsm, MSG_INSERT, msn, &k1, &v1, &xidpair);
+	msgbuf_put(dummy_leaf->u.l.le->bsm, MSG_INSERT, msn, &k1, &v1, &xidpair);
 
 	ret = serialize_node_to_disk(fd, b, dummy_leaf, hdr);
 	ASSERT_TRUE(ret > 0);
@@ -97,15 +97,15 @@ CTEST(node_serial_test, leaf_2_record)
 	ret = deserialize_node_from_disk(fd, b, nid, &dummy_leaf1, 0);
 	ASSERT_TRUE(ret > 0);
 
-	ASSERT_EQUAL(2, basement_count(dummy_leaf1->u.l.le->bsm));
+	ASSERT_EQUAL(2, msgbuf_count(dummy_leaf1->u.l.le->bsm));
 
-	struct basement_iter iter;
-	basement_iter_init(&iter, dummy_leaf1->u.l.le->bsm);
-	basement_iter_seek(&iter, &k);
+	struct msgbuf_iter iter;
+	msgbuf_iter_init(&iter, dummy_leaf1->u.l.le->bsm);
+	msgbuf_iter_seek(&iter, &k);
 	ASSERT_EQUAL(1, iter.valid);
 	ASSERT_STR("world", iter.val.data);
 
-	basement_iter_seek(&iter, &k1);
+	msgbuf_iter_seek(&iter, &k1);
 	ASSERT_EQUAL(1, iter.valid);
 	ASSERT_STR("worlx", iter.val.data);
 
@@ -160,7 +160,7 @@ CTEST(node_serial_test, node_2th_part_empty)
 	k.data = "hello";
 	v.size = 5;
 	v.data = "world";
-	basement_put(dummy_node->u.n.parts[0].buffer, msn, MSG_INSERT, &k, &v, &xidpair);
+	msgbuf_put(dummy_node->u.n.parts[0].buffer, msn, MSG_INSERT, &k, &v, &xidpair);
 
 	hdr->method = NESS_QUICKLZ_METHOD;
 	ret = serialize_node_to_disk(fd, b, dummy_node, hdr);
@@ -188,23 +188,23 @@ CTEST(node_serial_test, node_2th_part_empty)
 
 	if (!light) {
 		int cmp;
-		struct basement_iter iter;
-		struct basement *bsm;
+		struct msgbuf_iter iter;
+		struct msgbuf *bsm;
 
 		bsm = dummy_node1->u.n.parts[0].buffer;
-		basement_iter_init(&iter, bsm);
+		msgbuf_iter_init(&iter, bsm);
 
-		int mb_c = basement_count(dummy_node1->u.n.parts[0].buffer);
+		int mb_c = msgbuf_count(dummy_node1->u.n.parts[0].buffer);
 		ASSERT_EQUAL(1, mb_c);
-		basement_iter_seek(&iter, &k);
-		ret = basement_iter_valid(&iter);
+		msgbuf_iter_seek(&iter, &k);
+		ret = msgbuf_iter_valid(&iter);
 		ASSERT_EQUAL(1, ret);
 		cmp = msg_key_compare(&k, &iter.key);
 		ASSERT_EQUAL(0, cmp);
 		cmp = msg_key_compare(&v, &iter.val);
 		ASSERT_EQUAL(0, cmp);
 
-		mb_c = basement_count(dummy_node1->u.n.parts[1].buffer);
+		mb_c = msgbuf_count(dummy_node1->u.n.parts[1].buffer);
 		ASSERT_EQUAL(0, mb_c);
 	}
 	node_free(dummy_node1);

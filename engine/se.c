@@ -6,7 +6,7 @@
 
 #include "buf.h"
 #include "file.h"
-#include "basement.h"
+#include "msgbuf.h"
 #include "se.h"
 #include "compress/compress.h"
 
@@ -16,13 +16,13 @@
  *
  **********************************************************************/
 
-void _leaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
+void _leaf_msgbuf_to_buf(struct msgbuf *bsm, struct buffer *buf)
 {
-	struct basement_iter iter;
+	struct msgbuf_iter iter;
 
-	basement_iter_init(&iter, bsm);
-	basement_iter_seektofirst(&iter);
-	while (basement_iter_valid(&iter)) {
+	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_seektofirst(&iter);
+	while (msgbuf_iter_valid(&iter)) {
 		/*
 		 * if type is MSG_DEL in leaf,
 		 * we don't need to write to disk
@@ -40,17 +40,17 @@ void _leaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 			buf_putuint32(buf, iter.val.size);
 			buf_putnstr(buf, iter.val.data, iter.val.size);
 		}
-		basement_iter_next(&iter);
+		msgbuf_iter_next(&iter);
 	}
 }
 
-void _nonleaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
+void _nonleaf_msgbuf_to_buf(struct msgbuf *bsm, struct buffer *buf)
 {
-	struct basement_iter iter;
+	struct msgbuf_iter iter;
 
-	basement_iter_init(&iter, bsm);
-	basement_iter_seektofirst(&iter);
-	while (basement_iter_valid(&iter)) {
+	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_seektofirst(&iter);
+	while (msgbuf_iter_valid(&iter)) {
 		MSN msn = iter.msn;
 
 		msn = ((msn << 8) | iter.type);
@@ -64,11 +64,11 @@ void _nonleaf_basement_to_buf(struct basement *bsm, struct buffer *buf)
 			buf_putuint32(buf, iter.val.size);
 			buf_putnstr(buf, iter.val.data, iter.val.size);
 		}
-		basement_iter_next(&iter);
+		msgbuf_iter_next(&iter);
 	}
 }
 
-int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
+int _buf_to_msgbuf(struct buffer *rbuf, uint32_t size, struct msgbuf *bsm)
 {
 	uint32_t pos = 0;
 
@@ -103,7 +103,7 @@ int _buf_to_basement(struct buffer *rbuf, uint32_t size, struct basement *bsm)
 			pos += v.size;
 		}
 
-		basement_put(bsm, msn, type, &k, &v, &xidpair);
+		msgbuf_put(bsm, msn, type, &k, &v, &xidpair);
 	}
 
 	return NESS_OK;
@@ -126,7 +126,7 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	uint32_t uncompress_size;
 
 	buf = buf_new(1 << 20);	/* 1MB */
-	_leaf_basement_to_buf(node->u.l.le->bsm, buf);
+	_leaf_msgbuf_to_buf(node->u.l.le->bsm, buf);
 	uncompress_size = buf->NUL;
 	uncompress_ptr = buf->buf;
 
@@ -205,8 +205,8 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 		 */
 		buf_clear(part_wbuf);
 		if (node->u.n.parts[i].buffer)
-			_nonleaf_basement_to_buf(node->u.n.parts[i].buffer,
-			                         part_wbuf);
+			_nonleaf_msgbuf_to_buf(node->u.n.parts[i].buffer,
+			                       part_wbuf);
 
 		uncompress_size = part_wbuf->NUL;
 		uncompress_ptr = part_wbuf->buf;
@@ -383,9 +383,9 @@ int _deserialize_leaf_from_disk(int fd,
 	n = leaf_alloc_empty(bp->nid);
 	leaf_alloc_bsm(n);
 
-	r = _buf_to_basement(lbuf,
-	                     uncompress_size,
-	                     n->u.l.le->bsm);
+	r = _buf_to_msgbuf(lbuf,
+	                   uncompress_size,
+	                   n->u.l.le->bsm);
 	if (r != NESS_OK) {
 		__ERROR("buf to dmt error, "
 		        "buf raw_size [%" PRIu32 "]",
@@ -488,9 +488,9 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 				                part_size,
 				                part_rbuf->buf,
 				                part_raw_size);
-				r = _buf_to_basement(part_rbuf,
-				                     part_raw_size,
-				                     node->u.n.parts[i].buffer);
+				r = _buf_to_msgbuf(part_rbuf,
+				                   part_raw_size,
+				                   node->u.n.parts[i].buffer);
 				buf_free(part_rbuf);
 
 				if (r != NESS_OK) {
@@ -738,9 +738,9 @@ int deserialize_part_from_disk(int fd,
 		                compress_size,
 		                part_rbuf->buf,
 		                uncompress_size);
-		r = _buf_to_basement(part_rbuf,
-		                     uncompress_size,
-		                     node->u.n.parts[idx].buffer);
+		r = _buf_to_msgbuf(part_rbuf,
+		                   uncompress_size,
+		                   node->u.n.parts[idx].buffer);
 		buf_free(part_rbuf);
 
 		if (r != NESS_OK) {

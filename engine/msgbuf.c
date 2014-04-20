@@ -6,7 +6,7 @@
 
 #include "buf.h"
 #include "compare-func.h"
-#include "basement.h"
+#include "msgbuf.h"
 
 void _encode(char *data,
              MSN msn,
@@ -72,8 +72,8 @@ void _decode(char *data,
 	}
 }
 
-struct basement *basement_new() {
-	struct basement *bsm;
+struct msgbuf *msgbuf_new() {
+	struct msgbuf *bsm;
 
 	bsm = xcalloc(1, sizeof(*bsm));
 	bsm->mpool = mempool_new();
@@ -86,12 +86,12 @@ struct basement *basement_new() {
  *	if a key is exists, we will hit a mempool waste,
  *	so should to do some hacks on memeory useage
  */
-void basement_put(struct basement *bsm,
-                  MSN msn,
-                  msgtype_t type,
-                  struct msg *key,
-                  struct msg *val,
-                  struct txnid_pair *xidpair)
+void msgbuf_put(struct msgbuf *bsm,
+                MSN msn,
+                msgtype_t type,
+                struct msg *key,
+                struct msg *val,
+                struct txnid_pair *xidpair)
 {
 	char *base;
 	uint32_t sizes = 0U;
@@ -109,17 +109,17 @@ void basement_put(struct basement *bsm,
 /*
  * it's all alloced size, not used size
  */
-uint32_t basement_memsize(struct basement *bsm)
+uint32_t msgbuf_memsize(struct msgbuf *bsm)
 {
 	return bsm->mpool->memory_used;
 }
 
-uint32_t basement_count(struct basement *bsm)
+uint32_t msgbuf_count(struct msgbuf *bsm)
 {
 	return bsm->count;
 }
 
-void basement_free(struct basement *bsm)
+void msgbuf_free(struct msgbuf *bsm)
 {
 	if (!bsm) return;
 
@@ -129,10 +129,10 @@ void basement_free(struct basement *bsm)
 }
 
 /*******************************************************
- * basement iterator (thread-safe)
+ * msgbuf iterator (thread-safe)
 *******************************************************/
 
-void _iter_decode(const char *base, struct basement_iter *bsm_iter)
+void _iter_decode(const char *base, struct msgbuf_iter *bsm_iter)
 {
 	if (base) {
 		_decode((char*)base,
@@ -148,7 +148,7 @@ void _iter_decode(const char *base, struct basement_iter *bsm_iter)
 }
 
 /* init */
-void basement_iter_init(struct basement_iter *bsm_iter, struct basement *bsm)
+void msgbuf_iter_init(struct msgbuf_iter *bsm_iter, struct msgbuf *bsm)
 {
 	bsm_iter->valid = 0;
 	bsm_iter->bsm = bsm;
@@ -156,36 +156,20 @@ void basement_iter_init(struct basement_iter *bsm_iter, struct basement *bsm)
 }
 
 /* valid */
-int basement_iter_valid(struct basement_iter *bsm_iter)
+int msgbuf_iter_valid(struct msgbuf_iter *bsm_iter)
 {
 	return skiplist_iter_valid(&bsm_iter->list_iter);
 }
 
 /* valid and less or equal */
-int basement_iter_valid_lessorequal(struct basement_iter *iter, struct msg *key)
+int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *iter, struct msg *key)
 {
 	return (skiplist_iter_valid(&iter->list_iter) &&
 	        (msg_key_compare(&iter->key, key) <= 0));
 }
 
-/* the freshest value with the same key */
-void basement_iter_fresh_internal_key(struct basement_iter *iter)
-{
-	struct msg key = iter->key;
-	struct basement_iter cur, nxt;
-
-	basement_iter_init(&cur, iter->bsm);
-	cur.key = iter->key;
-	nxt = cur;
-
-	while (basement_iter_valid_lessorequal(&cur, &key)) {
-		nxt = cur;
-	}
-	*iter = nxt;
-}
-
 /* next */
-void basement_iter_next(struct basement_iter *bsm_iter)
+void msgbuf_iter_next(struct msgbuf_iter *bsm_iter)
 {
 	void *base = NULL;
 
@@ -196,41 +180,8 @@ void basement_iter_next(struct basement_iter *bsm_iter)
 	_iter_decode(base, bsm_iter);
 }
 
-/* next difference key (skip all versions) */
-void basement_iter_next_diff_key(struct basement_iter *bsm_iter)
-{
-	struct msg cur = {
-		.size = bsm_iter->key.size,
-		.data = bsm_iter->key.data
-	};
-
-	while (basement_iter_valid(bsm_iter) &&
-	       msg_key_compare(&bsm_iter->key, &cur) == 0) {
-		basement_iter_next(bsm_iter);
-	}
-}
-
-/* same key iterator */
-int basement_iter_next_internal_key(struct basement_iter *iter)
-{
-	if (!basement_iter_valid(iter)) return 0;
-
-	struct msg cur = {
-		.size = iter->key.size,
-		.data = iter->key.data
-	};
-
-	basement_iter_next(iter);
-	if (basement_iter_valid(iter) &&
-	    msg_key_compare(&iter->key, &cur) == 0) {
-		return 1;
-	}
-
-	return 0;
-}
-
 /* prev */
-void basement_iter_prev(struct basement_iter *bsm_iter)
+void msgbuf_iter_prev(struct msgbuf_iter *bsm_iter)
 {
 	void *base = NULL;
 
@@ -241,46 +192,12 @@ void basement_iter_prev(struct basement_iter *bsm_iter)
 	_iter_decode(base, bsm_iter);
 }
 
-/* prev difference key (skip all versions) */
-void basement_iter_prev_diff_key(struct basement_iter *bsm_iter)
-{
-	struct msg cur = {
-		.size = bsm_iter->key.size,
-		.data = bsm_iter->key.data
-	};
-
-	while (basement_iter_valid(bsm_iter) &&
-	       msg_key_compare(&bsm_iter->key, &cur) == 0) {
-		basement_iter_prev(bsm_iter);
-	}
-}
-
-/* same key iterator */
-int basement_iter_prev_internal_key(struct basement_iter *iter)
-{
-	if (!basement_iter_valid(iter)) return 0;
-
-	struct msg cur = {
-		.size = iter->key.size,
-		.data = iter->key.data
-	};
-
-	basement_iter_prev(iter);
-	if (basement_iter_valid(iter) &&
-	    msg_key_compare(&iter->key, &cur) == 0) {
-		return 1;
-	}
-
-	return 0;
-}
-
-
 /*
  * seek
- * when we do basement_iter_seek('key1')
- * the postion in basement is >= postion('key1')
+ * when we do msgbuf_iter_seek('key1')
+ * the postion in msgbuf is >= postion('key1')
  */
-void basement_iter_seek(struct basement_iter *bsm_iter, struct msg *k)
+void msgbuf_iter_seek(struct msgbuf_iter *bsm_iter, struct msg *k)
 {
 	int size;
 	char *data;
@@ -304,7 +221,7 @@ void basement_iter_seek(struct basement_iter *bsm_iter, struct msg *k)
 }
 
 /* seek to first */
-void basement_iter_seektofirst(struct basement_iter *bsm_iter)
+void msgbuf_iter_seektofirst(struct msgbuf_iter *bsm_iter)
 {
 	void *base = NULL;
 
@@ -316,7 +233,7 @@ void basement_iter_seektofirst(struct basement_iter *bsm_iter)
 }
 
 /* seek to last */
-void basement_iter_seektolast(struct basement_iter *bsm_iter)
+void msgbuf_iter_seektolast(struct msgbuf_iter *bsm_iter)
 {
 	void *base = NULL;
 

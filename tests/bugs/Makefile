@@ -35,7 +35,7 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/xmalloc.o		\
 	$(top_builddir)/engine/atomic.o		\
 	$(top_builddir)/engine/mempool.o		\
-	$(top_builddir)/engine/basement.o		\
+	$(top_builddir)/engine/msgbuf.o		\
 	$(top_builddir)/engine/posix.o		\
 	$(top_builddir)/engine/crc32.o		\
 	$(top_builddir)/engine/cache.o		\

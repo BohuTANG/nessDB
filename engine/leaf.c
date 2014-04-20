@@ -8,9 +8,9 @@
 #include "node.h"
 
 /*
- * apply a msg to leaf basement
+ * apply a msg to leaf msgbuf
  * neither the leaf type is LE_CLEAN or LE_MVCC
- * basement will always keep multi-snapshot
+ * msgbuf will always keep multi-snapshot
  * the difference between LE_CLEAN and LE_MVCC is gc affects.
  *
  */
@@ -26,12 +26,12 @@ int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 	case MSG_COMMIT:
 	case MSG_ABORT:
 	default:
-		basement_put(leaf->u.l.le->bsm,
-		             cmd->msn,
-		             cmd->type,
-		             cmd->key,
-		             cmd->val,
-		             &cmd->xidpair);
+		msgbuf_put(leaf->u.l.le->bsm,
+		           cmd->msn,
+		           cmd->type,
+		           cmd->key,
+		           cmd->val,
+		           &cmd->xidpair);
 	}
 	leaf->msn = cmd->msn > leaf->msn ? cmd->msn : leaf->msn;
 	node_set_dirty(leaf);
@@ -61,8 +61,8 @@ void _apply_msg_to_child(struct node *parent,
                          struct msg *right)
 {
 	int height;
-	struct basement *bsm;
-	struct basement_iter iter;
+	struct msgbuf *bsm;
+	struct msgbuf_iter iter;
 
 	nassert(child != NULL);
 	nassert(parent->height > 0);
@@ -73,10 +73,10 @@ void _apply_msg_to_child(struct node *parent,
 	else
 		bsm = child->u.n.parts[child_num].buffer;
 
-	basement_iter_init(&iter, bsm);
-	basement_iter_seek(&iter, left);
+	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_seek(&iter, left);
 
-	while (basement_iter_valid_lessorequal(&iter, right)) {
+	while (msgbuf_iter_valid_lessorequal(&iter, right)) {
 		struct bt_cmd cmd = {
 			.msn = iter.msn,
 			.type = iter.type,
@@ -93,7 +93,7 @@ void _apply_msg_to_child(struct node *parent,
 }
 
 /*
- * apply msgs from ances to leaf basement which are between(include) left and right
+ * apply msgs from ances to leaf msgbuf which are between(include) left and right
  * REQUIRES:
  *  1) leaf write-lock
  *  2) ances all write-lock
@@ -103,16 +103,16 @@ int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances)
 	struct ancestors *ance;
 	struct msg *left = NULL;
 	struct msg *right = NULL;
-	struct basement_iter iter;
-	struct basement *bsm = leaf->u.l.le->bsm;
+	struct msgbuf_iter iter;
+	struct msgbuf *bsm = leaf->u.l.le->bsm;
 
-	basement_iter_init(&iter, bsm);
-	basement_iter_seektofirst(&iter);
-	if (basement_iter_valid(&iter))
+	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_seektofirst(&iter);
+	if (msgbuf_iter_valid(&iter))
 		left = msgdup(&iter.key);
 
-	basement_iter_seektolast(&iter);
-	if (basement_iter_valid(&iter))
+	msgbuf_iter_seektolast(&iter);
+	if (msgbuf_iter_valid(&iter))
 		right = msgdup(&iter.key);
 
 	ance = ances;

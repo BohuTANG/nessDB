@@ -35,7 +35,7 @@ LIB_OBJS =	 			\
 	./engine/atomic.o		\
 	./engine/mb.o			\
 	./engine/mempool.o		\
-	./engine/basement.o		\
+	./engine/msgbuf.o		\
 	./engine/posix.o		\
 	./engine/crc32.o		\
 	./engine/block.o		\
