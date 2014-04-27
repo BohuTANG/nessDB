@@ -23,7 +23,6 @@ enum reactivity {
 
 struct ancestors {
 	int level;
-	int isbsm;
 	int childnum;
 	void *v;
 	struct ancestors *next;
@@ -45,12 +44,6 @@ struct partition {
 };
 
 enum {LE_CLEAN = 0, LE_MVCC = 1};
-
-struct leafentry {
-	uint8_t type;	/* LE_CLEAN or LE_MVCC */
-	struct msgbuf *bsm;	/* leaf msgbuf(basement) */
-	ness_rwlock_t rwlock;
-};
 
 struct node_attr {
 	uint64_t newsz;
@@ -77,13 +70,15 @@ struct node {
 			struct partition *parts;
 		} n;
 		struct leaf {
-			struct leafentry *le;
+			uint8_t type;	/* LE_CLEAN or LE_MVCC */
+			struct msgbuf *buffer;
+			ness_rwlock_t rwlock;
 		} l;
 	} u;
 };
 
 struct node *leaf_alloc_empty(NID nid);
-void leaf_alloc_bsm(struct node *node);
+void leaf_alloc_msgbuf(struct node *node);
 
 struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children);
 void nonleaf_alloc_buffer(struct node *node);

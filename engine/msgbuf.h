@@ -27,7 +27,7 @@ struct msgbuf_iter {
 	struct msg key;
 	struct msg val;
 	struct txnid_pair xidpair;
-	struct msgbuf *bsm;
+	struct msgbuf *mb;
 	struct skiplist_iter list_iter;
 };
 
@@ -37,14 +37,14 @@ struct msgbuf {
 	struct skiplist *list;
 };
 
-struct msgbuf *msgbuf_new();
+struct msgbuf *msgbuf_new(void);
 
-void msgbuf_put(struct msgbuf *bsm,
-                MSN msn,
-                msgtype_t type,
-                struct msg *key,
-                struct msg *val,
-                struct txnid_pair *idpair);
+void msgbuf_put(struct msgbuf *,
+                MSN,
+                msgtype_t,
+                struct msg *,
+                struct msg *,
+                struct txnid_pair *);
 
 uint32_t msgbuf_memsize(struct msgbuf *);
 uint32_t msgbuf_count(struct msgbuf *);
@@ -53,7 +53,7 @@ void msgbuf_free(struct msgbuf *);
 /* msgbuf iterator */
 void msgbuf_iter_init(struct msgbuf_iter *, struct msgbuf *);
 int msgbuf_iter_valid(struct msgbuf_iter *);
-int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *, struct msg *key);
+int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *, struct msg *);
 void msgbuf_iter_next(struct msgbuf_iter *);
 void msgbuf_iter_next_diff_key(struct msgbuf_iter *);
 void msgbuf_iter_prev(struct msgbuf_iter *);

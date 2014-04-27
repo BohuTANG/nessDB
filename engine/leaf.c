@@ -16,7 +16,7 @@
  */
 int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 {
-	write_lock(&leaf->u.l.le->rwlock);
+	write_lock(&leaf->u.l.rwlock);
 	switch (cmd->type & 0xff) {
 	case MSG_INSERT:
 	case MSG_DELETE:
@@ -26,7 +26,7 @@ int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 	case MSG_COMMIT:
 	case MSG_ABORT:
 	default:
-		msgbuf_put(leaf->u.l.le->bsm,
+		msgbuf_put(leaf->u.l.buffer,
 		           cmd->msn,
 		           cmd->type,
 		           cmd->key,
@@ -35,7 +35,7 @@ int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 	}
 	leaf->msn = cmd->msn > leaf->msn ? cmd->msn : leaf->msn;
 	node_set_dirty(leaf);
-	write_unlock(&leaf->u.l.le->rwlock);
+	write_unlock(&leaf->u.l.rwlock);
 
 	return NESS_OK;
 }
@@ -61,7 +61,7 @@ void _apply_msg_to_child(struct node *parent,
                          struct msg *right)
 {
 	int height;
-	struct msgbuf *bsm;
+	struct msgbuf *mb;
 	struct msgbuf_iter iter;
 
 	nassert(child != NULL);
@@ -69,11 +69,11 @@ void _apply_msg_to_child(struct node *parent,
 
 	height = child->height;
 	if (height == 0)
-		bsm = child->u.l.le->bsm;
+		mb = child->u.l.buffer;
 	else
-		bsm = child->u.n.parts[child_num].buffer;
+		mb = child->u.n.parts[child_num].buffer;
 
-	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seek(&iter, left);
 
 	while (msgbuf_iter_valid_lessorequal(&iter, right)) {
@@ -104,9 +104,9 @@ int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances)
 	struct msg *left = NULL;
 	struct msg *right = NULL;
 	struct msgbuf_iter iter;
-	struct msgbuf *bsm = leaf->u.l.le->bsm;
+	struct msgbuf *mb = leaf->u.l.buffer;
 
-	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seektofirst(&iter);
 	if (msgbuf_iter_valid(&iter))
 		left = msgdup(&iter.key);

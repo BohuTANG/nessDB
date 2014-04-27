@@ -16,11 +16,11 @@
  *
  **********************************************************************/
 
-void _leaf_msgbuf_to_buf(struct msgbuf *bsm, struct buffer *buf)
+void _leaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 {
 	struct msgbuf_iter iter;
 
-	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
 		/*
@@ -44,11 +44,11 @@ void _leaf_msgbuf_to_buf(struct msgbuf *bsm, struct buffer *buf)
 	}
 }
 
-void _nonleaf_msgbuf_to_buf(struct msgbuf *bsm, struct buffer *buf)
+void _nonleaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 {
 	struct msgbuf_iter iter;
 
-	msgbuf_iter_init(&iter, bsm);
+	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
 		MSN msn = iter.msn;
@@ -68,7 +68,7 @@ void _nonleaf_msgbuf_to_buf(struct msgbuf *bsm, struct buffer *buf)
 	}
 }
 
-int _buf_to_msgbuf(struct buffer *rbuf, uint32_t size, struct msgbuf *bsm)
+int _buf_to_msgbuf(struct buffer *rbuf, uint32_t size, struct msgbuf *mb)
 {
 	uint32_t pos = 0;
 
@@ -103,7 +103,7 @@ int _buf_to_msgbuf(struct buffer *rbuf, uint32_t size, struct msgbuf *bsm)
 			pos += v.size;
 		}
 
-		msgbuf_put(bsm, msn, type, &k, &v, &xidpair);
+		msgbuf_put(mb, msn, type, &k, &v, &xidpair);
 	}
 
 	return NESS_OK;
@@ -126,7 +126,7 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	uint32_t uncompress_size;
 
 	buf = buf_new(1 << 20);	/* 1MB */
-	_leaf_msgbuf_to_buf(node->u.l.le->bsm, buf);
+	_leaf_msgbuf_to_buf(node->u.l.buffer, buf);
 	uncompress_size = buf->NUL;
 	uncompress_ptr = buf->buf;
 
@@ -381,11 +381,11 @@ int _deserialize_leaf_from_disk(int fd,
 
 	/* alloc leaf node */
 	n = leaf_alloc_empty(bp->nid);
-	leaf_alloc_bsm(n);
+	leaf_alloc_msgbuf(n);
 
 	r = _buf_to_msgbuf(lbuf,
 	                   uncompress_size,
-	                   n->u.l.le->bsm);
+	                   n->u.l.buffer);
 	if (r != NESS_OK) {
 		__ERROR("buf to dmt error, "
 		        "buf raw_size [%" PRIu32 "]",
@@ -494,7 +494,7 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 				buf_free(part_rbuf);
 
 				if (r != NESS_OK) {
-					r = NESS_BUF_TO_BSM_ERR;
+					r = NESS_BUF_TO_MSGBUF_ERR;
 					goto ERR;
 				}
 				node->u.n.parts[i].fetched = 1;
@@ -748,7 +748,7 @@ int deserialize_part_from_disk(int fd,
 			        "nid [%" PRIu64 "]",
 			        idx,
 			        nid);
-			r = NESS_BUF_TO_BSM_ERR;
+			r = NESS_BUF_TO_MSGBUF_ERR;
 			goto ERR;
 		}
 

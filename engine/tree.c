@@ -89,25 +89,25 @@ void _leaf_split(struct tree *t,
 	int i;
 	int mid;
 	struct msg *spk = NULL;
-	struct msgbuf *bsma;
-	struct msgbuf *bsmb;
-	struct msgbuf *old_bsm;
+	struct msgbuf *buffa;
+	struct msgbuf *buffb;
+	struct msgbuf *old_buff;
 	struct node *leafa;
 	struct node *leafb;
 	struct msgbuf_iter iter;
 
 	leafa = leaf;
-	old_bsm = leafa->u.l.le->bsm;
-	bsma = msgbuf_new();
-	bsmb = msgbuf_new();
+	old_buff = leafa->u.l.buffer;
+	buffa = msgbuf_new();
+	buffb = msgbuf_new();
 
 	i = 0;
-	mid = old_bsm->count / 2;
-	msgbuf_iter_init(&iter, old_bsm);
+	mid = old_buff->count / 2;
+	msgbuf_iter_init(&iter, old_buff);
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
 		if (i <= mid) {
-			msgbuf_put(bsma,
+			msgbuf_put(buffa,
 			           iter.msn,
 			           iter.type,
 			           &iter.key,
@@ -116,7 +116,7 @@ void _leaf_split(struct tree *t,
 			if (i == mid)
 				spk = msgdup(&iter.key);
 		} else {
-			msgbuf_put(bsmb,
+			msgbuf_put(buffb,
 			           iter.msn,
 			           iter.type,
 			           &iter.key,
@@ -126,13 +126,13 @@ void _leaf_split(struct tree *t,
 		msgbuf_iter_next(&iter);
 		i++;
 	}
-	msgbuf_free(old_bsm);
-	leafa->u.l.le->bsm = bsma;
+	msgbuf_free(old_buff);
+	leafa->u.l.buffer = buffa;
 
 	/* new leafb */
 	cache_create_node_and_pin(t->cf, 0, 0, &leafb);
 
-	leafb->u.l.le->bsm = bsmb;
+	leafb->u.l.buffer = buffb;
 	node_set_dirty(leafa);
 	node_set_dirty(leafb);
 
@@ -356,7 +356,7 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	struct node *child;
 	struct partition *part;
 	enum reactivity re_child;
-	struct msgbuf *bsm;
+	struct msgbuf *mb;
 	struct msgbuf_iter iter;
 
 	childnum = node_find_heaviest_idx(parent);
@@ -374,8 +374,8 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	}
 
 	msn = child->msn;
-	bsm = part->buffer;
-	msgbuf_iter_init(&iter, bsm);
+	mb = part->buffer;
+	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
 		if (msn >= iter.msn) continue;
@@ -635,7 +635,7 @@ struct tree *tree_open(const char *dbname,
 	/* tree root node */
 	if (is_create) {
 		cache_create_node_and_pin(cf, 0U, 0U, &root);
-		leaf_alloc_bsm(root);
+		leaf_alloc_msgbuf(root);
 		root->isroot = 1;
 		node_set_dirty(root);
 

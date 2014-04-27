@@ -73,12 +73,12 @@ void _decode(char *data,
 }
 
 struct msgbuf *msgbuf_new() {
-	struct msgbuf *bsm;
+	struct msgbuf *mb;
 
-	bsm = xcalloc(1, sizeof(*bsm));
-	bsm->mpool = mempool_new();
-	bsm->list = skiplist_new(internal_key_compare);
-	return bsm;
+	mb = xcalloc(1, sizeof(*mb));
+	mb->mpool = mempool_new();
+	mb->list = skiplist_new(internal_key_compare);
+	return mb;
 }
 
 /*
@@ -86,7 +86,7 @@ struct msgbuf *msgbuf_new() {
  *	if a key is exists, we will hit a mempool waste,
  *	so should to do some hacks on memeory useage
  */
-void msgbuf_put(struct msgbuf *bsm,
+void msgbuf_put(struct msgbuf *mb,
                 MSN msn,
                 msgtype_t type,
                 struct msg *key,
@@ -100,65 +100,65 @@ void msgbuf_put(struct msgbuf *bsm,
 	if (type != MSG_DELETE)
 		sizes += val->size;
 	sizes += sizeof(*xidpair);
-	base = mempool_alloc_aligned(bsm->mpool, sizes);
+	base = mempool_alloc_aligned(mb->mpool, sizes);
 	_encode(base, msn, type, key, val, xidpair);
-	skiplist_put(bsm->list, base);
-	bsm->count++;
+	skiplist_put(mb->list, base);
+	mb->count++;
 }
 
 /*
  * it's all alloced size, not used size
  */
-uint32_t msgbuf_memsize(struct msgbuf *bsm)
+uint32_t msgbuf_memsize(struct msgbuf *mb)
 {
-	return bsm->mpool->memory_used;
+	return mb->mpool->memory_used;
 }
 
-uint32_t msgbuf_count(struct msgbuf *bsm)
+uint32_t msgbuf_count(struct msgbuf *mb)
 {
-	return bsm->count;
+	return mb->count;
 }
 
-void msgbuf_free(struct msgbuf *bsm)
+void msgbuf_free(struct msgbuf *mb)
 {
-	if (!bsm) return;
+	if (!mb) return;
 
-	mempool_free(bsm->mpool);
-	skiplist_free(bsm->list);
-	xfree(bsm);
+	mempool_free(mb->mpool);
+	skiplist_free(mb->list);
+	xfree(mb);
 }
 
 /*******************************************************
  * msgbuf iterator (thread-safe)
 *******************************************************/
 
-void _iter_decode(const char *base, struct msgbuf_iter *bsm_iter)
+void _iter_decode(const char *base, struct msgbuf_iter *msgbuf_iter)
 {
 	if (base) {
 		_decode((char*)base,
-		        &bsm_iter->msn,
-		        &bsm_iter->type,
-		        &bsm_iter->key,
-		        &bsm_iter->val,
-		        &bsm_iter->xidpair);
-		bsm_iter->valid = 1;
+		        &msgbuf_iter->msn,
+		        &msgbuf_iter->type,
+		        &msgbuf_iter->key,
+		        &msgbuf_iter->val,
+		        &msgbuf_iter->xidpair);
+		msgbuf_iter->valid = 1;
 	} else {
-		bsm_iter->valid = 0;
+		msgbuf_iter->valid = 0;
 	}
 }
 
 /* init */
-void msgbuf_iter_init(struct msgbuf_iter *bsm_iter, struct msgbuf *bsm)
+void msgbuf_iter_init(struct msgbuf_iter *msgbuf_iter, struct msgbuf *mb)
 {
-	bsm_iter->valid = 0;
-	bsm_iter->bsm = bsm;
-	skiplist_iter_init(&bsm_iter->list_iter, bsm->list);
+	msgbuf_iter->valid = 0;
+	msgbuf_iter->mb = mb;
+	skiplist_iter_init(&msgbuf_iter->list_iter, mb->list);
 }
 
 /* valid */
-int msgbuf_iter_valid(struct msgbuf_iter *bsm_iter)
+int msgbuf_iter_valid(struct msgbuf_iter *msgbuf_iter)
 {
-	return skiplist_iter_valid(&bsm_iter->list_iter);
+	return skiplist_iter_valid(&msgbuf_iter->list_iter);
 }
 
 /* valid and less or equal */
@@ -169,27 +169,27 @@ int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *iter, struct msg *key)
 }
 
 /* next */
-void msgbuf_iter_next(struct msgbuf_iter *bsm_iter)
+void msgbuf_iter_next(struct msgbuf_iter *msgbuf_iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_next(&bsm_iter->list_iter);
-	if (bsm_iter->list_iter.node)
-		base = bsm_iter->list_iter.node->key;
+	skiplist_iter_next(&msgbuf_iter->list_iter);
+	if (msgbuf_iter->list_iter.node)
+		base = msgbuf_iter->list_iter.node->key;
 
-	_iter_decode(base, bsm_iter);
+	_iter_decode(base, msgbuf_iter);
 }
 
 /* prev */
-void msgbuf_iter_prev(struct msgbuf_iter *bsm_iter)
+void msgbuf_iter_prev(struct msgbuf_iter *msgbuf_iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_prev(&bsm_iter->list_iter);
-	if (bsm_iter->list_iter.node)
-		base = bsm_iter->list_iter.node->key;
+	skiplist_iter_prev(&msgbuf_iter->list_iter);
+	if (msgbuf_iter->list_iter.node)
+		base = msgbuf_iter->list_iter.node->key;
 
-	_iter_decode(base, bsm_iter);
+	_iter_decode(base, msgbuf_iter);
 }
 
 /*
@@ -197,7 +197,7 @@ void msgbuf_iter_prev(struct msgbuf_iter *bsm_iter)
  * when we do msgbuf_iter_seek('key1')
  * the postion in msgbuf is >= postion('key1')
  */
-void msgbuf_iter_seek(struct msgbuf_iter *bsm_iter, struct msg *k)
+void msgbuf_iter_seek(struct msgbuf_iter *msgbuf_iter, struct msg *k)
 {
 	int size;
 	char *data;
@@ -211,35 +211,35 @@ void msgbuf_iter_seek(struct msgbuf_iter *bsm_iter, struct msg *k)
 	entry->keylen = k->size;
 	entry->vallen = 0U;
 	memcpy(data + sizeof(struct append_entry), k->data, k->size);
-	skiplist_iter_seek(&bsm_iter->list_iter, data);
+	skiplist_iter_seek(&msgbuf_iter->list_iter, data);
 	xfree(data);
 
-	if (bsm_iter->list_iter.node)
-		base = bsm_iter->list_iter.node->key;
+	if (msgbuf_iter->list_iter.node)
+		base = msgbuf_iter->list_iter.node->key;
 
-	_iter_decode(base, bsm_iter);
+	_iter_decode(base, msgbuf_iter);
 }
 
 /* seek to first */
-void msgbuf_iter_seektofirst(struct msgbuf_iter *bsm_iter)
+void msgbuf_iter_seektofirst(struct msgbuf_iter *msgbuf_iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_seektofirst(&bsm_iter->list_iter);
-	if (bsm_iter->list_iter.node)
-		base = bsm_iter->list_iter.node->key;
+	skiplist_iter_seektofirst(&msgbuf_iter->list_iter);
+	if (msgbuf_iter->list_iter.node)
+		base = msgbuf_iter->list_iter.node->key;
 
-	_iter_decode(base, bsm_iter);
+	_iter_decode(base, msgbuf_iter);
 }
 
 /* seek to last */
-void msgbuf_iter_seektolast(struct msgbuf_iter *bsm_iter)
+void msgbuf_iter_seektolast(struct msgbuf_iter *msgbuf_iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_seektolast(&bsm_iter->list_iter);
-	if (bsm_iter->list_iter.node)
-		base = bsm_iter->list_iter.node->key;
+	skiplist_iter_seektolast(&msgbuf_iter->list_iter);
+	if (msgbuf_iter->list_iter.node)
+		base = msgbuf_iter->list_iter.node->key;
 
-	_iter_decode(base, bsm_iter);
+	_iter_decode(base, msgbuf_iter);
 }

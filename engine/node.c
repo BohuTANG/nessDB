@@ -21,17 +21,16 @@ struct node *leaf_alloc_empty(NID nid) {
 	node->height = 0;
 	node->node_op = &nop;
 
-	node->u.l.le = xcalloc(1, sizeof(struct leafentry));
-	rwlock_init(&node->u.l.le->rwlock);
+	rwlock_init(&node->u.l.rwlock);
 	mutex_init(&node->attr.mtx);
 
 	return node;
 }
 
-void leaf_alloc_bsm(struct node *node)
+void leaf_alloc_msgbuf(struct node *node)
 {
 	nassert(node->height == 0);
-	node->u.l.le->bsm = msgbuf_new();
+	node->u.l.buffer = msgbuf_new();
 }
 
 struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children) {
@@ -158,7 +157,7 @@ uint32_t node_count(struct node *n)
 	uint32_t c = 0U;
 
 	if (n->height == 0)
-		c += msgbuf_count(n->u.l.le->bsm);
+		c += msgbuf_count(n->u.l.buffer);
 	else {
 		uint32_t i;
 		for (i = 0; i < n->u.n.n_children; i++) {
@@ -175,7 +174,7 @@ uint32_t node_size(struct node *n)
 
 	size += (sizeof(*n));
 	if (n->height == 0) {
-		size += msgbuf_memsize(n->u.l.le->bsm);
+		size += msgbuf_memsize(n->u.l.buffer);
 	} else {
 		uint32_t i;
 
@@ -196,8 +195,7 @@ void node_free(struct node *node)
 	nassert(node != NULL);
 
 	if (node->height == 0) {
-		msgbuf_free(node->u.l.le->bsm);
-		xfree(node->u.l.le);
+		msgbuf_free(node->u.l.buffer);
 	} else {
 		uint32_t i;
 
