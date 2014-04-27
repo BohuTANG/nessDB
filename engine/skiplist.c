@@ -50,9 +50,13 @@ static inline void _set_height(int *a, int *b)
 	*a = *b;
 }
 
+/*
+ * @multi : if multi=1, means there is a same key exists
+ */
 struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
                 void *key,
-                struct skipnode **prev) {
+                struct skipnode **prev,
+                int *multi) {
 	int level;
 	register struct skipnode *x;
 	register struct skipnode *next;
@@ -61,7 +65,8 @@ struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
 	x = sl->header;
 	while (1) {
 		next = x->next[level];
-		if ((next != NULL) && (sl->compare_cb(next->key, key) < 0)) {
+		if ((next != NULL) &&
+		    (sl->compare_cb(next->key, key, multi) < 0)) {
 			x = next;
 		} else {
 			if (prev)
@@ -117,13 +122,14 @@ struct skiplist *skiplist_new(SKIPLIST_COMPARE_CALLBACK compare_cb) {
 void skiplist_put(struct skiplist *sl, void *key)
 {
 	int i;
+	int multi;
 	int height;
 
 	struct skipnode *x;
 	struct skipnode *prev[SKIPLIST_MAX_LEVEL];
 
 	memset(prev, 0, sizeof(struct skipnode*) * SKIPLIST_MAX_LEVEL);
-	x = skiplist_find_greater_or_equal(sl, key, prev);
+	x = skiplist_find_greater_or_equal(sl, key, prev, &multi);
 	height = _rand_height();
 
 	/* init prev arrays */
@@ -135,6 +141,7 @@ void skiplist_put(struct skiplist *sl, void *key)
 
 	x = _new_node(sl, height);
 	x->key = key;
+	x->multi = multi;
 
 	for (i = 0; i < height; i++) {
 		_set_next(&x->next[i], prev[i]->next[i]);
@@ -145,16 +152,18 @@ void skiplist_put(struct skiplist *sl, void *key)
 
 int skiplist_contains(struct skiplist *sl, void *key)
 {
+	int multi;
 	struct skipnode *x;
 
-	x = skiplist_find_greater_or_equal(sl, key, NULL);
-	if (x != NULL && sl->compare_cb(x->key, key) == 0)
+	x = skiplist_find_greater_or_equal(sl, key, NULL, &multi);
+	if (x != NULL && sl->compare_cb(x->key, key, &multi) == 0)
 		return NESS_OK;
 	else
 		return NESS_ERR;
 }
 
 struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key) {
+	int multi;
 	int height;
 	struct skipnode *x;
 
@@ -163,7 +172,7 @@ struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key) {
 	while (1) {
 		struct skipnode *next = _get_next(x, height);
 
-		if (next == NULL || sl->compare_cb(next->key, key) >= 0) {
+		if (next == NULL || sl->compare_cb(next->key, key, &multi) >= 0) {
 			if (height == 0)
 				return x;
 			else
@@ -245,9 +254,10 @@ void skiplist_iter_prev(struct skiplist_iter *iter)
 /* seek */
 void skiplist_iter_seek(struct skiplist_iter *iter, void *key)
 {
+	int multi;
 	struct skipnode *n;
 
-	n = skiplist_find_greater_or_equal(iter->list, key, NULL);
+	n = skiplist_find_greater_or_equal(iter->list, key, NULL, &multi);
 	iter->node = n;
 }
 

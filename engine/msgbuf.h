@@ -16,11 +16,24 @@
  * @file msgbuf.h
  * @brief msgbuf definitions
  *
- * msgbuf is a sorted-structure for inner nodes
+ * msgbuf is a sorted-structure and multi-version for nodes
+ * the key/val layout as follows:
+ * +--+----+----+---
+ * |k1|msn1|val1|   \
+ * +--+----+----+    \
+ * |k1|msn2|val2|     k1 multi-version
+ * +--+----+----+    /
+ * |k1|msn3|val3|   /
+ * +--+----+----+---
+ * |k2|msn4|val1|
+ * +--+----+----+
+ * |k2|msn5|val2|
+ * +--+----+----+
  *
  */
 
 struct msgbuf_iter {
+	int multi;
 	int valid;
 	MSN msn;
 	msgtype_t type;
@@ -55,7 +68,7 @@ void msgbuf_iter_init(struct msgbuf_iter *, struct msgbuf *);
 int msgbuf_iter_valid(struct msgbuf_iter *);
 int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *, struct msg *);
 void msgbuf_iter_next(struct msgbuf_iter *);
-void msgbuf_iter_next_diff_key(struct msgbuf_iter *);
+void msgbuf_iter_next_diff(struct msgbuf_iter *);
 void msgbuf_iter_prev(struct msgbuf_iter *);
 void msgbuf_iter_seek(struct msgbuf_iter *, struct msg *);
 void msgbuf_iter_seektofirst(struct msgbuf_iter *);

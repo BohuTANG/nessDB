@@ -56,20 +56,21 @@ int _search_in_which_child(struct search *so, struct node *node)
 	 * detecting whether we should move to the prev/next pivot
 	 * make a new root-to-leaf path
 	 */
+	int cmp;
 	switch (so->direction) {
 	case SEARCH_FORWARD:
-		while (childnum < (children - 1) &&
-		       so->pivotbound_compare_func(so,
-		                                   &node->u.n.pivots[childnum]) >= 0) {
+		cmp = so->pivotbound_compare_func(so,
+		                                  &node->u.n.pivots[childnum]);
+
+		while (childnum < (children - 1) && cmp >= 0)
 			childnum++;
-		}
 		break;
 	case SEARCH_BACKWARD:
-		while (childnum > 0 &&
-		       so->pivotbound_compare_func(so,
-		                                   &node->u.n.pivots[childnum - 1]) <= 0) {
+		cmp = so->pivotbound_compare_func(so,
+		                                  &node->u.n.pivots[childnum - 1]);
+
+		while (childnum > 0 && cmp <= 0)
 			childnum--;
-		}
 		break;
 	default:
 		__PANIC("unsupport direction %u", so->direction);
@@ -105,19 +106,129 @@ void ancestors_append(struct cursor *cur, struct msgbuf *bsm)
 	cur->ances_size++;
 }
 
-int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
+/*
+ * get the innermost value for the same key(k1):
+ *	+------------+
+ *	|k1|msn1|val1|
+ *	+------------+
+ *	|k1|msn2|val2|
+ *	+------------+
+ *	|k1|msn3|val3|
+ *	+------------+
+ *
+ *  val3 will get.
+ */
+int _get_innermost(struct cursor *cur, struct msgbuf_iter *iter)
+{
+	int ret = 0;
+
+	while (msgbuf_iter_valid(iter)) {
+		ret = 1;
+		cur->valid = 1;
+		cur->key = iter->key;
+		cur->val = iter->val;
+		ret = CURSOR_CONTINUE;
+
+		if (iter->multi)
+			msgbuf_iter_next(iter);
+		else
+			break;
+	}
+
+	return ret;
+}
+
+/*
+ * get the visible value
+ */
+int _get_visible(struct cursor *cur, struct msgbuf_iter *iter)
+{
+	int ret = 0;
+
+	while (msgbuf_iter_valid(iter)) {
+		/* TODO: (BohuTANG) visibility checking */
+		int visi = 1;
+
+		if (iter->multi && visi) {
+			ret = 1;
+			cur->valid = 1;
+			cur->key = iter->key;
+			cur->val = iter->val;
+			ret = CURSOR_CONTINUE;
+			msgbuf_iter_next(iter);
+		} else {
+			break;
+		}
+	}
+
+	return ret;
+}
+
+int _search_leaf(struct cursor *cur, struct search *so, struct node *leaf)
 {
 	int ret = CURSOR_EOF;
 
 	/* first to apply all msgs to leaf bsm */
-	leaf_apply_ancestors(n, cur->ances);
+	leaf_apply_ancestors(leaf, cur->ances);
 
-	/* TODO: (BohuTANG) txn visibility checking */
 	switch (so->direction) {
 	case SEARCH_FORWARD: {
+			struct msgbuf_iter iter;
+
+			iter.key = cur->key;
+			msgbuf_iter_init(&iter, leaf->u.l.buffer);
+C1:
+			msgbuf_iter_next_diff(&iter);
+			if (msgbuf_iter_valid(&iter)) {
+				if (cur->txn) {
+					/*
+					 * if we got none from a key array
+					 * restart the search from lable C1.
+					 * if cur->key is k1, cur->txn is 3, and the arrays are:
+					 * +-------------------+
+					 * |k1|msn:1|txn:1|val1| --> step1
+					 * +-------------------+
+					 * |k2|msn:3|txn:8|val1| --> step2
+					 * +-------------------+
+					 * |k3|msn:5|txn:2|val1| --> step3
+					 * +-------------------+
+					 * now, the status are:
+					 *	cur->key = k1
+					 *	iter->key = k2
+					 * since txn:8 is larger than 3, so we should skip the value in step2
+					 * restart from C1 and goto step 3
+					 */
+					if (!_get_visible(cur, &iter)) goto C1;
+				} else {
+					_get_innermost(cur, &iter);
+				}
+			} else {
+				cur->valid = 0;
+				ret = CURSOR_EOF;
+			}
 			break;
 		}
 	case SEARCH_BACKWARD: {
+			struct msgbuf_iter iter;
+
+			iter.key = cur->key;
+			msgbuf_iter_init(&iter, leaf->u.l.buffer);
+C2:
+			msgbuf_iter_prev(&iter);
+			if (msgbuf_iter_valid(&iter)) {
+				if (cur->txn) {
+					/*
+					 * if we got none from a key array
+					 * restart the search from lable C2.
+					 */
+					if (!_get_visible(cur, &iter)) goto C2;
+				} else {
+					_get_innermost(cur, &iter);
+				}
+			} else {
+				cur->valid = 0;
+				ret = CURSOR_EOF;
+			}
 			break;
 		}
 	default:
@@ -127,15 +238,12 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *n)
 	return ret;
 }
 
-int _search_node(struct cursor * cur,
-                 struct search * so,
-                 struct node * n,
-                 int child_to_search);
+int _search_node(struct cursor *, struct search *, struct node *, int);
 
 /* search in a node's child */
-int _search_child(struct cursor * cur,
-                  struct search * so,
-                  struct node * n,
+int _search_child(struct cursor *cur,
+                  struct search *so,
+                  struct node *n,
                   int childnum)
 {
 	int ret;
@@ -144,22 +252,17 @@ int _search_child(struct cursor * cur,
 	struct node *child;
 
 	nassert(n->height > 0);
-	/* add msgbuf to ances */
 	ancestors_append(cur, n->u.n.parts[childnum].buffer);
 
 	child_nid = n->u.n.parts[childnum].child_nid;
 	if (cache_get_and_pin(cur->tree->cf, child_nid, &child, L_READ) < 0) {
-		__ERROR("cache get node error, nid [%" PRIu64 "]",
-		        child_nid);
+		__ERROR("cache get node error, nid [%" PRIu64 "]", child_nid);
 
 		return NESS_ERR;
 	}
 
 	child_to_search = _search_in_which_child(so, child);
-	ret = _search_node(cur,
-	                   so,
-	                   child,
-	                   child_to_search);
+	ret = _search_node(cur, so, child, child_to_search);
 
 	/* unpin */
 	cache_unpin_readonly(cur->tree->cf, child);
@@ -167,12 +270,13 @@ int _search_child(struct cursor * cur,
 	return ret;
 }
 
-int _search_node(struct cursor * cur,
-                 struct search * so,
-                 struct node * n,
+int _search_node(struct cursor *cur,
+                 struct search *so,
+                 struct node *n,
                  int child_to_search)
 {
 	int r;
+	int children;
 
 	if (n->height > 0) {
 		r = _search_child(cur, so, n, child_to_search);
@@ -181,7 +285,8 @@ int _search_node(struct cursor * cur,
 			_save_pivot_bound(so, n, child_to_search);
 			switch (so->direction) {
 			case SEARCH_FORWARD:
-				if (child_to_search < (int)(n->u.n.n_children - 1))
+				children = (int)(n->u.n.n_children - 1);
+				if (child_to_search < children)
 					r = CURSOR_TRY_AGAIN;
 				break;
 			case SEARCH_BACKWARD:
@@ -237,10 +342,7 @@ try_again:
 	}
 
 	child_to_search = _search_in_which_child(so, root);
-	r = _search_node(cur,
-	                 so,
-	                 root,
-	                 child_to_search);
+	r = _search_node(cur, so, root, child_to_search);
 
 	/* unpin */
 	cache_unpin_readonly(t->cf, root);
@@ -289,11 +391,11 @@ void cursor_free(struct cursor * cur)
 	xfree(cur);
 }
 
-void _tree_search_init(struct search * so,
+void _tree_search_init(struct search *so,
                        search_direction_compare_func dcmp,
                        search_pivotbound_compare_func pcmp,
                        direction_t direction,
-                       struct msg * key)
+                       struct msg *key)
 {
 	memset(so, 0, sizeof(*so));
 	so->direction_compare_func = dcmp;
@@ -304,7 +406,7 @@ void _tree_search_init(struct search * so,
 		so->key = key;
 }
 
-int search_pivotbound_compare(struct search * so, struct msg * m)
+int search_pivotbound_compare(struct search *so, struct msg *m)
 {
 	return msg_key_compare(so->pivot_bound, m);
 }
@@ -312,18 +414,18 @@ int search_pivotbound_compare(struct search * so, struct msg * m)
 /*
  * tree cursor first
  */
-int tree_cursor_compare_first(struct search * so __attribute__((__unused__)),
-                              struct msg * b __attribute__((__unused__)))
+int tree_cursor_compare_first(struct search *so __attribute__((__unused__)),
+                              struct msg *b __attribute__((__unused__)))
 {
 	return -1;
 }
 
-int tree_cursor_valid(struct cursor * cur)
+int tree_cursor_valid(struct cursor *cur)
 {
 	return cur->valid == 1;
 }
 
-void tree_cursor_first(struct cursor * cur)
+void tree_cursor_first(struct cursor *cur)
 {
 	struct search search;
 
@@ -339,13 +441,13 @@ void tree_cursor_first(struct cursor * cur)
 /*
  * tree cursor last
  */
-int tree_cursor_compare_last(struct search * so __attribute__((__unused__)),
-                             struct msg * b __attribute__((__unused__)))
+int tree_cursor_compare_last(struct search *so __attribute__((__unused__)),
+                             struct msg *b __attribute__((__unused__)))
 {
 	return 1;
 }
 
-void tree_cursor_last(struct cursor * cur)
+void tree_cursor_last(struct cursor *cur)
 {
 	struct search search;
 
@@ -362,12 +464,12 @@ void tree_cursor_last(struct cursor * cur)
 /*
  * tree cursor next
  */
-int tree_cursor_compare_next(struct search * so, struct msg * b)
+int tree_cursor_compare_next(struct search *so, struct msg *b)
 {
 	return (msg_key_compare(so->key, b) < 0);
 }
 
-void tree_cursor_next(struct cursor * cur)
+void tree_cursor_next(struct cursor *cur)
 {
 	struct search search;
 
@@ -384,12 +486,12 @@ void tree_cursor_next(struct cursor * cur)
 /*
  * tree cursor prev
  */
-int tree_cursor_compare_prev(struct search * so, struct msg * b)
+int tree_cursor_compare_prev(struct search *so, struct msg *b)
 {
 	return (msg_key_compare(so->key, b) > 0);
 }
 
-void tree_cursor_prev(struct cursor * cur)
+void tree_cursor_prev(struct cursor *cur)
 {
 	struct search search;
 
@@ -406,12 +508,12 @@ void tree_cursor_prev(struct cursor * cur)
 /*
  * tree cursor current
  */
-int tree_cursor_compare_current(struct search * so, struct msg * b)
+int tree_cursor_compare_current(struct search *so, struct msg *b)
 {
 	return (msg_key_compare(so->key, b) <= 0);
 }
 
-void tree_cursor_current(struct cursor * cur)
+void tree_cursor_current(struct cursor *cur)
 {
 	struct search search;
 

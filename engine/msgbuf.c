@@ -8,17 +8,17 @@
 #include "compare-func.h"
 #include "msgbuf.h"
 
-void _encode(char *data,
-             MSN msn,
-             msgtype_t type,
-             struct msg *key,
-             struct msg *val,
-             struct txnid_pair *xidpair)
+void _msg_entry_pack(char *data,
+                     MSN msn,
+                     msgtype_t type,
+                     struct msg *key,
+                     struct msg *val,
+                     struct txnid_pair *xidpair)
 {
 	int pos = 0;
 	uint32_t vlen = 0U;
 	uint32_t klen = key->size;
-	struct append_entry *entry = (struct append_entry*)data;
+	struct msg_entry *entry = (struct msg_entry*)data;
 
 	if (type != MSG_DELETE)
 		vlen = val->size;
@@ -28,7 +28,7 @@ void _encode(char *data,
 	entry->xidpair = *xidpair;
 	entry->keylen = klen;
 	entry->vallen = vlen;
-	pos += get_entrylen(entry);
+	pos += MSG_ENTRY_SIZE;
 
 	memcpy(data + pos, key->data, key->size);
 	pos += key->size;
@@ -39,25 +39,25 @@ void _encode(char *data,
 	}
 }
 
-void _decode(char *data,
-             MSN *msn,
-             msgtype_t *type,
-             struct msg *key,
-             struct msg *val,
-             struct txnid_pair *xidpair)
+void _msg_entry_unpack(char *data,
+                       MSN *msn,
+                       msgtype_t *type,
+                       struct msg *key,
+                       struct msg *val,
+                       struct txnid_pair *xidpair)
 {
 	int pos = 0;
 	uint32_t klen;
 	uint32_t vlen;
-	struct append_entry *entry;
+	struct msg_entry *entry;
 
-	entry = (struct append_entry*)data;
+	entry = (struct msg_entry*)data;
 	*msn = entry->msn;
 	*type = entry->type;
 	*xidpair = entry->xidpair;
 	klen = entry->keylen;
 	vlen = entry->vallen;
-	pos += get_entrylen(entry);
+	pos += MSG_ENTRY_SIZE;
 
 	key->size = klen;
 	key->data = (data + pos);
@@ -77,15 +77,10 @@ struct msgbuf *msgbuf_new() {
 
 	mb = xcalloc(1, sizeof(*mb));
 	mb->mpool = mempool_new();
-	mb->list = skiplist_new(internal_key_compare);
+	mb->list = skiplist_new(msgbuf_key_compare);
 	return mb;
 }
 
-/*
- * TODO(BohuTANG):
- *	if a key is exists, we will hit a mempool waste,
- *	so should to do some hacks on memeory useage
- */
 void msgbuf_put(struct msgbuf *mb,
                 MSN msn,
                 msgtype_t type,
@@ -96,12 +91,12 @@ void msgbuf_put(struct msgbuf *mb,
 	char *base;
 	uint32_t sizes = 0U;
 
-	sizes += (sizeof(struct append_entry) + key->size);
+	sizes += (MSG_ENTRY_SIZE + key->size);
 	if (type != MSG_DELETE)
 		sizes += val->size;
 	sizes += sizeof(*xidpair);
 	base = mempool_alloc_aligned(mb->mpool, sizes);
-	_encode(base, msn, type, key, val, xidpair);
+	_msg_entry_pack(base, msn, type, key, val, xidpair);
 	skiplist_put(mb->list, base);
 	mb->count++;
 }
@@ -132,27 +127,28 @@ void msgbuf_free(struct msgbuf *mb)
  * msgbuf iterator (thread-safe)
 *******************************************************/
 
-void _iter_decode(const char *base, struct msgbuf_iter *msgbuf_iter)
+void _iter_unpack(const char *base, struct msgbuf_iter *iter)
 {
 	if (base) {
-		_decode((char*)base,
-		        &msgbuf_iter->msn,
-		        &msgbuf_iter->type,
-		        &msgbuf_iter->key,
-		        &msgbuf_iter->val,
-		        &msgbuf_iter->xidpair);
-		msgbuf_iter->valid = 1;
+		_msg_entry_unpack((char*)base,
+		                  &iter->msn,
+		                  &iter->type,
+		                  &iter->key,
+		                  &iter->val,
+		                  &iter->xidpair);
+		iter->valid = 1;
 	} else {
-		msgbuf_iter->valid = 0;
+		iter->valid = 0;
 	}
 }
 
 /* init */
-void msgbuf_iter_init(struct msgbuf_iter *msgbuf_iter, struct msgbuf *mb)
+void msgbuf_iter_init(struct msgbuf_iter *iter, struct msgbuf *mb)
 {
-	msgbuf_iter->valid = 0;
-	msgbuf_iter->mb = mb;
-	skiplist_iter_init(&msgbuf_iter->list_iter, mb->list);
+	iter->valid = 0;
+	iter->multi = 0;
+	iter->mb = mb;
+	skiplist_iter_init(&iter->list_iter, mb->list);
 }
 
 /* valid */
@@ -168,28 +164,44 @@ int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *iter, struct msg *key)
 	        (msg_key_compare(&iter->key, key) <= 0));
 }
 
-/* next */
-void msgbuf_iter_next(struct msgbuf_iter *msgbuf_iter)
+/*
+ * msgbuf iterator next is special
+ * we just arrive at the top version of key
+ */
+void msgbuf_iter_next(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_next(&msgbuf_iter->list_iter);
-	if (msgbuf_iter->list_iter.node)
-		base = msgbuf_iter->list_iter.node->key;
+	iter->multi = 0;
+	skiplist_iter_next(&iter->list_iter);
+	if (skiplist_iter_valid(&iter->list_iter)) {
+		base = iter->list_iter.node->key;
+		iter->multi = iter->list_iter.node->multi;
+	}
 
-	_iter_decode(base, msgbuf_iter);
+	_iter_unpack(base, iter);
 }
 
-/* prev */
-void msgbuf_iter_prev(struct msgbuf_iter *msgbuf_iter)
+/* next diff key */
+void msgbuf_iter_next_diff(struct msgbuf_iter *iter)
+{
+	msgbuf_iter_next(iter);
+	while (iter->multi) {
+		msgbuf_iter_next(iter);
+	}
+}
+
+/* prev is normal */
+void msgbuf_iter_prev(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_prev(&msgbuf_iter->list_iter);
-	if (msgbuf_iter->list_iter.node)
-		base = msgbuf_iter->list_iter.node->key;
+	skiplist_iter_prev(&iter->list_iter);
+	if (iter->list_iter.node) {
+		base = iter->list_iter.node->key;
+	}
 
-	_iter_decode(base, msgbuf_iter);
+	_iter_unpack(base, iter);
 }
 
 /*
@@ -197,49 +209,49 @@ void msgbuf_iter_prev(struct msgbuf_iter *msgbuf_iter)
  * when we do msgbuf_iter_seek('key1')
  * the postion in msgbuf is >= postion('key1')
  */
-void msgbuf_iter_seek(struct msgbuf_iter *msgbuf_iter, struct msg *k)
+void msgbuf_iter_seek(struct msgbuf_iter *iter, struct msg *k)
 {
 	int size;
 	char *data;
 	void *base = NULL;
-	struct append_entry *entry;
+	struct msg_entry *entry;
 
 	if (!k) return;
-	size = (sizeof(struct append_entry) + k->size);
+	size = (MSG_ENTRY_SIZE + k->size);
 	data = xcalloc(1, size);
-	entry = (struct append_entry*)(data);
+	entry = (struct msg_entry*)(data);
 	entry->keylen = k->size;
 	entry->vallen = 0U;
-	memcpy(data + sizeof(struct append_entry), k->data, k->size);
-	skiplist_iter_seek(&msgbuf_iter->list_iter, data);
+	memcpy(data + MSG_ENTRY_SIZE, k->data, k->size);
+	skiplist_iter_seek(&iter->list_iter, data);
 	xfree(data);
 
-	if (msgbuf_iter->list_iter.node)
-		base = msgbuf_iter->list_iter.node->key;
+	if (iter->list_iter.node)
+		base = iter->list_iter.node->key;
 
-	_iter_decode(base, msgbuf_iter);
+	_iter_unpack(base, iter);
 }
 
 /* seek to first */
-void msgbuf_iter_seektofirst(struct msgbuf_iter *msgbuf_iter)
+void msgbuf_iter_seektofirst(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_seektofirst(&msgbuf_iter->list_iter);
-	if (msgbuf_iter->list_iter.node)
-		base = msgbuf_iter->list_iter.node->key;
+	skiplist_iter_seektofirst(&iter->list_iter);
+	if (iter->list_iter.node)
+		base = iter->list_iter.node->key;
 
-	_iter_decode(base, msgbuf_iter);
+	_iter_unpack(base, iter);
 }
 
 /* seek to last */
-void msgbuf_iter_seektolast(struct msgbuf_iter *msgbuf_iter)
+void msgbuf_iter_seektolast(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
-	skiplist_iter_seektolast(&msgbuf_iter->list_iter);
-	if (msgbuf_iter->list_iter.node)
-		base = msgbuf_iter->list_iter.node->key;
+	skiplist_iter_seektolast(&iter->list_iter);
+	if (iter->list_iter.node)
+		base = iter->list_iter.node->key;
 
-	_iter_decode(base, msgbuf_iter);
+	_iter_unpack(base, iter);
 }

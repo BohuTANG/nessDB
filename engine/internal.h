@@ -68,39 +68,19 @@ typedef enum txn_state {
 	TX_ABORTINT,
 } TXNSTATE;
 
-/* transaction id */
-/*
-struct xids {
-	uint8_t num_xids;
-	TXNID ids[];
-} __attribute__((__packed__));
-*/
-
 struct txnid_pair {
 	TXNID child_xid;
 	TXNID parent_xid;
 };
 
-struct append_entry {
+#define MSG_ENTRY_SIZE (sizeof(struct msg_entry))
+struct msg_entry {
 	MSN msn;
 	uint8_t type;
 	struct txnid_pair xidpair;
 	uint32_t keylen;
 	uint32_t vallen;
 } __attribute__((__packed__));
-
-/*
-static inline uint32_t get_xidslen(struct xids *xids)
-{
-	if (!xids) return 0;
-	return (sizeof(*xids) + sizeof(TXNID) * xids->num_xids);
-}
-*/
-
-static inline uint32_t get_entrylen(struct append_entry *entry)
-{
-	return sizeof(*entry);
-}
 
 /*
  * align to ALIGNMENT for direct I/O

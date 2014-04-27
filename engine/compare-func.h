@@ -10,7 +10,7 @@
 #include "xtypes.h"
 #include "internal.h"
 
-int internal_key_compare(void *a, void *b);
-int msg_key_compare(struct msg *a, struct msg *b);
+int msgbuf_key_compare(void *, void *, int *);
+int msg_key_compare(struct msg *, struct msg *);
 
 #endif /* _nessDB_COMPARE_FUNC_H_ */

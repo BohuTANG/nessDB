@@ -21,7 +21,7 @@
  */
 
 /* compare function */
-typedef int (*SKIPLIST_COMPARE_CALLBACK)(void *a, void *b);
+typedef int (*SKIPLIST_COMPARE_CALLBACK)(void *, void *, int *);
 
 struct skiplist_iter {
 	struct skipnode *node;
@@ -29,6 +29,7 @@ struct skiplist_iter {
 };
 
 struct skipnode {
+	int multi;
 	void *key;
 	struct skipnode *next[1];
 };
