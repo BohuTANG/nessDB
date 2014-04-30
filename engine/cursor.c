@@ -4,11 +4,11 @@
  *
  */
 
-#include "tcursor.h"
 #include "cache.h"
 #include "leaf.h"
 #include "msgbuf.h"
 #include "compare-func.h"
+#include "cursor.h"
 
 /**
  * @file tcursor.c
@@ -57,17 +57,19 @@ int _search_in_which_child(struct search *so, struct node *node)
 	 * make a new root-to-leaf path
 	 */
 	int cmp;
+	struct msg *pivot;
+
 	switch (so->direction) {
 	case SEARCH_FORWARD:
-		cmp = so->pivotbound_compare_func(so,
-		                                  &node->u.n.pivots[childnum]);
+		pivot = &node->u.n.pivots[childnum];
+		cmp = so->pivotbound_compare_func(so, pivot);
 
 		while (childnum < (children - 1) && cmp >= 0)
 			childnum++;
 		break;
 	case SEARCH_BACKWARD:
-		cmp = so->pivotbound_compare_func(so,
-		                                  &node->u.n.pivots[childnum - 1]);
+		pivot = &node->u.n.pivots[childnum - 1];
+		cmp = so->pivotbound_compare_func(so, pivot);
 
 		while (childnum > 0 && cmp <= 0)
 			childnum--;
@@ -198,7 +200,15 @@ C1:
 					 * since txn:8 is larger than 3, so we should skip the value in step2
 					 * restart from C1 and goto step 3
 					 */
-					if (!_get_visible(cur, &iter)) goto C1;
+					if (!_get_visible(cur, &iter)) {
+						goto C1;
+					} else {
+						cur->valid = 1;
+						cur->key = iter.key;
+						cur->val = iter.val;
+						cur->msgtype = iter.type;
+						ret = CURSOR_CONTINUE;
+					}
 				} else {
 					_get_innermost(cur, &iter);
 				}
@@ -221,7 +231,15 @@ C2:
 					 * if we got none from a key array
 					 * restart the search from lable C2.
 					 */
-					if (!_get_visible(cur, &iter)) goto C2;
+					if (!_get_visible(cur, &iter)) {
+						goto C2;
+					} else {
+						cur->valid = 1;
+						cur->key = iter.key;
+						cur->val = iter.val;
+						cur->msgtype = iter.type;
+						ret = CURSOR_CONTINUE;
+					}
 				} else {
 					_get_innermost(cur, &iter);
 				}

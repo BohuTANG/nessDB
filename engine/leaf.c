@@ -4,7 +4,7 @@
  *
  */
 
-#include "tcursor.h"
+#include "cursor.h"
 #include "node.h"
 
 /*

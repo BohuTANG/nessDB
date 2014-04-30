@@ -9,7 +9,7 @@
 #include "xmalloc.h"
 #include "status.h"
 #include "cache.h"
-#include "tcursor.h"
+#include "cursor.h"
 #include "tree.h"
 #include "tree-func.h"
 #include "txnmgr.h"

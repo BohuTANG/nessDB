@@ -45,7 +45,7 @@ LIB_OBJS =	 			\
 	./engine/cache.o		\
 	./engine/tree.o			\
 	./engine/leaf.o			\
-	./engine/tcursor.o		\
+	./engine/cursor.o		\
 	./engine/file.o			\
 	./engine/msg.o			\
 	./engine/buf.o			\

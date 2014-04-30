@@ -4,8 +4,8 @@
  *
  */
 
-#ifndef nessDB_TCURSOR_H_
-#define nessDB_TCURSOR_H_
+#ifndef nessDB_CURSOR_H_
+#define nessDB_CURSOR_H_
 
 #include "internal.h"
 #include "node.h"
@@ -78,4 +78,4 @@ void tree_cursor_current(struct cursor *cur);
 
 void ancestors_append(struct cursor *cur, struct msgbuf *bsm);
 
-#endif /* _nessDB_TCURSOR_H_ */
+#endif /* _nessDB_CURSOR_H_ */
