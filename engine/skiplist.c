@@ -13,7 +13,7 @@
  * @brief skiplist
  *
  * skiplist:
- *	- support multi-version (because there is no remove)
+ *	- support multi-version
  *	- read is lock-free(with Memory Barrier: Acquire & Release)
  *	- write should need a latch to protect.
  */
@@ -34,6 +34,11 @@ static inline void _set_next(struct skipnode **a, struct skipnode *b)
 	release_store((void**)a, (void*)b);
 }
 
+static inline void _set_prev(struct skipnode **a, struct skipnode *b)
+{
+	release_store((void**)a, (void*)b);
+}
+
 static inline int _get_height(struct skiplist *sl)
 {
 	int h;
@@ -50,13 +55,10 @@ static inline void _set_height(int *a, int *b)
 	*a = *b;
 }
 
-/*
- * @multi : if multi=1, means there is a same key exists
- */
 struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
                 void *key,
                 struct skipnode **prev,
-                int *multi) {
+                struct cmp_extra *extra) {
 	int level;
 	register struct skipnode *x;
 	register struct skipnode *next;
@@ -66,7 +68,7 @@ struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
 	while (1) {
 		next = x->next[level];
 		if ((next != NULL) &&
-		    (sl->compare_cb(next->key, key, multi) < 0)) {
+		    (sl->compare_cb(next->keys[0], key, extra) < 0)) {
 			x = next;
 		} else {
 			if (prev)
@@ -96,8 +98,13 @@ struct skipnode *_new_node(struct skiplist *sl, int height) {
 	struct skipnode *n;
 
 	sizes = (sizeof(*n) + (height - 1) * sizeof(void*));
+	/* prev link */
+	//sizes += sizeof(void*);
 	n = (struct skipnode*)mempool_alloc_aligned(sl->mpool, sizes);
 	memset(n, 0, sizes);
+	n->size = SLOTS_SIZE;
+	n->keys = (void*)mempool_alloc_aligned(sl->mpool,
+	                                       n->size * sizeof(void*));
 
 	return n;
 }
@@ -115,55 +122,69 @@ struct skiplist *skiplist_new(SKIPLIST_COMPARE_CALLBACK compare_cb) {
 	return sl;
 }
 
-/*
- * REQUIRES:
- *	  - cannot put duplicate key, deal it in judge_callback
- */
 void skiplist_put(struct skiplist *sl, void *key)
 {
 	int i;
-	int multi;
 	int height;
 
 	struct skipnode *x;
 	struct skipnode *prev[SKIPLIST_MAX_LEVEL];
+	struct cmp_extra extra = {.exists = 0};
 
 	memset(prev, 0, sizeof(struct skipnode*) * SKIPLIST_MAX_LEVEL);
-	x = skiplist_find_greater_or_equal(sl, key, prev, &multi);
-	height = _rand_height();
+	x = skiplist_find_greater_or_equal(sl, key, prev, &extra);
+	if (!extra.exists) {
+		height = _rand_height();
 
-	/* init prev arrays */
-	if (height > _get_height(sl)) {
-		for (i = _get_height(sl); i < height; i++)
-			prev[i] = sl->header;
-		_set_height(&sl->height, &height);
-	}
+		/* init prev arrays */
+		if (height > _get_height(sl)) {
+			for (i = _get_height(sl); i < height; i++)
+				prev[i] = sl->header;
+			_set_height(&sl->height, &height);
+		}
 
-	x = _new_node(sl, height);
-	x->key = key;
-	x->multi = multi;
+		x = _new_node(sl, height);
+		x->keys[x->used++] = key;
 
-	for (i = 0; i < height; i++) {
-		_set_next(&x->next[i], prev[i]->next[i]);
-		_set_next(&prev[i]->next[i], x);
+		for (i = 0; i < height; i++) {
+			_set_next(&x->next[i], prev[i]->next[i]);
+			_set_next(&prev[i]->next[i], x);
+		}
+
+		sl->unique++;
+	} else {
+		/*
+		 * there is a same key exists
+		 * so we append the new key buffer to the keys array
+		 */
+		if (x->used >= x->size) {
+			int new_size;
+			void *new_keys;
+
+			new_size = x->size * 2;
+			new_keys = (void*)mempool_alloc_aligned(sl->mpool,
+			                                        x->size * sizeof(void*));
+			xmemcpy(new_keys, x->keys, x->used * sizeof(void*));
+			x->size = new_size;
+			x->keys = new_keys;
+		}
+		x->keys[x->used++] = key;
 	}
 	sl->count++;
 }
 
 int skiplist_contains(struct skiplist *sl, void *key)
 {
-	int multi;
-	struct skipnode *x;
+	struct cmp_extra extra = {.exists = 0 };
 
-	x = skiplist_find_greater_or_equal(sl, key, NULL, &multi);
-	if (x != NULL && sl->compare_cb(x->key, key, &multi) == 0)
+	skiplist_find_greater_or_equal(sl, key, NULL, &extra);
+	if (extra.exists)
 		return NESS_OK;
 	else
 		return NESS_ERR;
 }
 
 struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key) {
-	int multi;
 	int height;
 	struct skipnode *x;
 
@@ -172,7 +193,9 @@ struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key) {
 	while (1) {
 		struct skipnode *next = _get_next(x, height);
 
-		if (next == NULL || sl->compare_cb(next->key, key, &multi) >= 0) {
+		if (next == NULL || sl->compare_cb(next->keys[0],
+		                                   key,
+		                                   NULL) >= 0) {
 			if (height == 0)
 				return x;
 			else
@@ -238,13 +261,19 @@ void skiplist_iter_next(struct skiplist_iter *iter)
 	iter->node = n;
 }
 
-/* prev */
+/*
+ * instead of using explicit 'prev' links
+ * we just search for the last node less than the key
+ * and it's lock free for reading
+ * otherwise, the 'prev' links update is more complex to be atomic
+ */
 void skiplist_iter_prev(struct skiplist_iter *iter)
 {
+
 	struct skipnode *n;
 
 	nassert(skiplist_iter_valid(iter));
-	n = skiplist_find_less_than(iter->list, iter->node->key);
+	n = skiplist_find_less_than(iter->list, iter->node->keys[0]);
 	if (n == iter->list->header)
 		n = NULL;
 
@@ -254,10 +283,9 @@ void skiplist_iter_prev(struct skiplist_iter *iter)
 /* seek */
 void skiplist_iter_seek(struct skiplist_iter *iter, void *key)
 {
-	int multi;
 	struct skipnode *n;
 
-	n = skiplist_find_greater_or_equal(iter->list, key, NULL, &multi);
+	n = skiplist_find_greater_or_equal(iter->list, key, NULL, NULL);
 	iter->node = n;
 }
 

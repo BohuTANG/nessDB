@@ -81,7 +81,7 @@ struct node *leaf_alloc_empty(NID nid);
 void leaf_alloc_msgbuf(struct node *node);
 
 struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children);
-void nonleaf_alloc_buffer(struct node *node);
+void nonleaf_alloc_msgbuf(struct node *node);
 
 void node_set_dirty(struct node *n);
 void node_set_nondirty(struct node *n);

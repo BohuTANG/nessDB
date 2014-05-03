@@ -146,7 +146,7 @@ void _iter_unpack(const char *base, struct msgbuf_iter *iter)
 void msgbuf_iter_init(struct msgbuf_iter *iter, struct msgbuf *mb)
 {
 	iter->valid = 0;
-	iter->multi = 0;
+	iter->idx = 0;
 	iter->mb = mb;
 	skiplist_iter_init(&iter->list_iter, mb->list);
 }
@@ -172,22 +172,28 @@ void msgbuf_iter_next(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
-	iter->multi = 0;
+	iter->idx = 0;
 	skiplist_iter_next(&iter->list_iter);
 	if (skiplist_iter_valid(&iter->list_iter)) {
-		base = iter->list_iter.node->key;
-		iter->multi = iter->list_iter.node->multi;
+		base = iter->list_iter.node->keys[0];
 	}
 
 	_iter_unpack(base, iter);
 }
 
-/* next diff key */
-void msgbuf_iter_next_diff(struct msgbuf_iter *iter)
+/*
+ * same key array iterator
+ */
+int msgbuf_internal_iter_next(struct msgbuf_iter *iter)
 {
-	msgbuf_iter_next(iter);
-	while (iter->multi) {
-		msgbuf_iter_next(iter);
+	void *base = NULL;
+
+	if (iter->idx < iter->list_iter.node->used) {
+		base = iter->list_iter.node->keys[iter->idx++];
+		_iter_unpack(base, iter);
+		return 1;
+	} else {
+		return 0;
 	}
 }
 
@@ -196,9 +202,10 @@ void msgbuf_iter_prev(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
+	iter->idx = 0;
 	skiplist_iter_prev(&iter->list_iter);
 	if (iter->list_iter.node) {
-		base = iter->list_iter.node->key;
+		base = iter->list_iter.node->keys[0];
 	}
 
 	_iter_unpack(base, iter);
@@ -226,8 +233,9 @@ void msgbuf_iter_seek(struct msgbuf_iter *iter, struct msg *k)
 	skiplist_iter_seek(&iter->list_iter, data);
 	xfree(data);
 
+	iter->idx = 0;
 	if (iter->list_iter.node)
-		base = iter->list_iter.node->key;
+		base = iter->list_iter.node->keys[0];
 
 	_iter_unpack(base, iter);
 }
@@ -237,9 +245,10 @@ void msgbuf_iter_seektofirst(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
+	iter->idx = 0;
 	skiplist_iter_seektofirst(&iter->list_iter);
 	if (iter->list_iter.node)
-		base = iter->list_iter.node->key;
+		base = iter->list_iter.node->keys[0];
 
 	_iter_unpack(base, iter);
 }
@@ -249,9 +258,10 @@ void msgbuf_iter_seektolast(struct msgbuf_iter *iter)
 {
 	void *base = NULL;
 
+	iter->idx = 0;
 	skiplist_iter_seektolast(&iter->list_iter);
 	if (iter->list_iter.node)
-		base = iter->list_iter.node->key;
+		base = iter->list_iter.node->keys[0];
 
 	_iter_unpack(base, iter);
 }

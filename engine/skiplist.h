@@ -21,21 +21,25 @@
  */
 
 /* compare function */
-typedef int (*SKIPLIST_COMPARE_CALLBACK)(void *, void *, int *);
+typedef int (*SKIPLIST_COMPARE_CALLBACK)(void *, void *, struct cmp_extra *);
 
 struct skiplist_iter {
 	struct skipnode *node;
 	struct skiplist *list;
 };
 
+#define SLOTS_SIZE (4)
+
 struct skipnode {
-	int multi;
-	void *key;
+	int size;
+	int used;
+	void **keys;
 	struct skipnode *next[1];
 };
 
 struct skiplist {
 	int count;
+	int unique;
 	int height;
 	struct skipnode *header;
 	struct mempool *mpool;

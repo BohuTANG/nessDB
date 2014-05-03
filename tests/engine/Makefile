@@ -48,7 +48,7 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/cache.o		\
 	$(top_builddir)/engine/tree.o		\
 	$(top_builddir)/engine/leaf.o		\
-	$(top_builddir)/engine/tcursor.o	\
+	$(top_builddir)/engine/cursor.o		\
 	$(top_builddir)/engine/file.o		\
 	$(top_builddir)/engine/msg.o		\
 	$(top_builddir)/engine/buf.o		\
@@ -61,7 +61,6 @@ LIB_OBJS =	 			\
 
 
 TEST_OBJS = 				\
-	posix-test.o			\
 	file-test.o			\
 	block-test.o			\
 	buf-test.o			\
@@ -71,7 +70,6 @@ TEST_OBJS = 				\
 	msgbuf-test.o			\
 	hdr-serialize-test.o		\
 	node-serialize-test.o		\
-	txn-test.o		\
 	main.o			
 
 

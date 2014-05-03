@@ -16,18 +16,15 @@
  *
  **********************************************************************/
 
-void _leaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
+void _nonleaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 {
 	struct msgbuf_iter iter;
 
 	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
-		/*
-		 * if type is MSG_DEL in leaf,
-		 * we don't need to write to disk
-		 */
-		if (iter.type != MSG_DELETE) {
+		/* same key array iterator */
+		while (msgbuf_internal_iter_next(&iter)) {
 			MSN msn = iter.msn;
 
 			msn = ((msn << 8) | iter.type);
@@ -37,35 +34,18 @@ void _leaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 			buf_putuint32(buf, iter.key.size);
 			buf_putnstr(buf, iter.key.data, iter.key.size);
 
-			buf_putuint32(buf, iter.val.size);
-			buf_putnstr(buf, iter.val.data, iter.val.size);
+			if (iter.type != MSG_DELETE) {
+				buf_putuint32(buf, iter.val.size);
+				buf_putnstr(buf, iter.val.data, iter.val.size);
+			}
 		}
 		msgbuf_iter_next(&iter);
 	}
 }
 
-void _nonleaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
+void _leaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 {
-	struct msgbuf_iter iter;
-
-	msgbuf_iter_init(&iter, mb);
-	msgbuf_iter_seektofirst(&iter);
-	while (msgbuf_iter_valid(&iter)) {
-		MSN msn = iter.msn;
-
-		msn = ((msn << 8) | iter.type);
-		buf_putuint64(buf, msn);
-		buf_putuint64(buf, iter.xidpair.child_xid);
-		buf_putuint64(buf, iter.xidpair.parent_xid);
-		buf_putuint32(buf, iter.key.size);
-		buf_putnstr(buf, iter.key.data, iter.key.size);
-
-		if (iter.type != MSG_DELETE) {
-			buf_putuint32(buf, iter.val.size);
-			buf_putnstr(buf, iter.val.data, iter.val.size);
-		}
-		msgbuf_iter_next(&iter);
-	}
+	_nonleaf_msgbuf_to_buf(mb, buf);
 }
 
 int _buf_to_msgbuf(struct buffer *rbuf, uint32_t size, struct msgbuf *mb)
@@ -417,7 +397,7 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 
 	/* new nonleaf node */
 	node = nonleaf_alloc_empty(bp->nid, height, children);
-	nonleaf_alloc_buffer(node);
+	nonleaf_alloc_msgbuf(node);
 
 	/* b) unpack pivots */
 	char *compress_ptr;

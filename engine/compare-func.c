@@ -22,46 +22,34 @@ int msg_key_compare(struct msg *a, struct msg *b)
 	return r;
 }
 
-int msgbuf_key_compare(void *a, void *b, int *multi)
+int msgbuf_key_compare(void *a, void *b, struct cmp_extra *extra)
 {
 	int pos;
-	MSN msna;
-	MSN msnb;
 	struct msg ma;
 	struct msg mb;
 
 	register int r;
 	register struct msg_entry *entry;
 
-	*multi = 0;
 	if (!a) return -1;
 	if (!b) return +1;
 
 	pos = 0;
 	entry = (struct msg_entry*)a;
-	msna = entry->msn;
 	ma.size = entry->keylen;
 	pos += MSG_ENTRY_SIZE;
 	ma.data = ((char*)a + pos);
 
 	pos = 0;
 	entry = (struct msg_entry*)b;
-	msnb = entry->msn;
 	mb.size = entry->keylen;
 	pos += MSG_ENTRY_SIZE;
 	mb.data = ((char*)b + pos);
 
 	r = msg_key_compare(&ma, &mb);
-
-	/*
-	 * msn comparing:
-	 *  1) if msna >= msnb, we seek the last postion
-	 *  2) if msna < msnb, we seek the first postion
-	 */
 	if (r == 0) {
-		*multi = 1;
-		if (nessunlikely(msna < msnb))
-			r = -1;
+		if (extra)
+			extra->exists = 1;
 	}
 
 	return r;

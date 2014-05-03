@@ -82,6 +82,10 @@ struct msg_entry {
 	uint32_t vallen;
 } __attribute__((__packed__));
 
+struct cmp_extra {
+	int exists;
+};
+
 /*
  * align to ALIGNMENT for direct I/O
  * but it is not always 512 bytes:

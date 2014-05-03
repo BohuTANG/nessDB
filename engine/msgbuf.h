@@ -33,7 +33,6 @@
  */
 
 struct msgbuf_iter {
-	int multi;
 	int valid;
 	MSN msn;
 	msgtype_t type;
@@ -42,6 +41,9 @@ struct msgbuf_iter {
 	struct txnid_pair xidpair;
 	struct msgbuf *mb;
 	struct skiplist_iter list_iter;
+
+	/* internal info */
+	int idx;
 };
 
 struct msgbuf {
@@ -68,7 +70,7 @@ void msgbuf_iter_init(struct msgbuf_iter *, struct msgbuf *);
 int msgbuf_iter_valid(struct msgbuf_iter *);
 int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *, struct msg *);
 void msgbuf_iter_next(struct msgbuf_iter *);
-void msgbuf_iter_next_diff(struct msgbuf_iter *);
+int msgbuf_internal_iter_next(struct msgbuf_iter *iter);
 void msgbuf_iter_prev(struct msgbuf_iter *);
 void msgbuf_iter_seek(struct msgbuf_iter *, struct msg *);
 void msgbuf_iter_seektofirst(struct msgbuf_iter *);

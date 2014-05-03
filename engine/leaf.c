@@ -77,18 +77,22 @@ void _apply_msg_to_child(struct node *parent,
 	msgbuf_iter_seek(&iter, left);
 
 	while (msgbuf_iter_valid_lessorequal(&iter, right)) {
-		struct bt_cmd cmd = {
-			.msn = iter.msn,
-			.type = iter.type,
-			.key = &iter.key,
-			.val = &iter.val,
-			.xidpair = iter.xidpair
-		};
+		while (msgbuf_internal_iter_next(&iter)) {
+			struct bt_cmd cmd = {
+				.msn = iter.msn,
+				.type = iter.type,
+				.key = &iter.key,
+				.val = &iter.val,
+				.xidpair = iter.xidpair
+			};
 
-		if (nessunlikely(height == 0))
-			leaf_put_cmd(child, &cmd);
-		else
-			nonleaf_put_cmd(child, &cmd);
+			if (nessunlikely(height == 0))
+				leaf_put_cmd(child, &cmd);
+			else
+				nonleaf_put_cmd(child, &cmd);
+		}
+
+		msgbuf_iter_next(&iter);
 	}
 }
 

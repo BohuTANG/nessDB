@@ -88,9 +88,9 @@ void _leaf_split(struct tree *t,
 {
 	int mid;
 	int i = 0;
-	int spkdup = 0;
 	struct node *leafa;
 	struct node *leafb;
+	struct msgbuf *mb;
 	struct msgbuf *buffa;
 	struct msgbuf *buffb;
 	struct msg *spk = NULL;
@@ -107,34 +107,25 @@ void _leaf_split(struct tree *t,
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
 		if (i <= mid) {
-			msgbuf_put(buffa,
+			mb = buffa;
+		} else {
+			mb = buffb;
+		}
+
+		while (msgbuf_internal_iter_next(&iter)) {
+			msgbuf_put(mb,
 			           iter.msn, iter.type,
 			           &iter.key, &iter.val,
 			           &iter.xidpair);
+			if (i == mid)
+				spk = msgdup(&iter.key);
 
-			/* add unique checking for the mid key */
-			if (i == mid) {
-				if (!spkdup) {
-					spk = msgdup(&iter.key);
-					spkdup = 1;
-				}
-			}
-		} else {
-			msgbuf_put(buffb,
-			           iter.msn,
-			           iter.type,
-			           &iter.key,
-			           &iter.val,
-			           &iter.xidpair);
-		}
-		msgbuf_iter_next(&iter);
-		if (mid == i) {
-			if (msgbuf_iter_valid(&iter) && iter.multi)
-				continue;
-		} else {
 			i++;
 		}
+
+		msgbuf_iter_next(&iter);
 	}
+
 	msgbuf_free(old_buff);
 	leafa->u.l.buffer = buffa;
 

@@ -67,5 +67,4 @@ struct msg {
 	uint32_t size;
 	void *data;
 };
-
 #endif

@@ -40,7 +40,7 @@ static inline struct options *options_new(void) {
 	opts->leaf_node_page_size = 1 << 20;		/* 1MB */
 	opts->leaf_node_page_count = -1;
 
-	opts->cache_limits_bytes = 512 << 20;
+	opts->cache_limits_bytes = 1024 << 20;
 	opts->cache_high_watermark = 80;		/* 80% */
 	opts->cache_flush_period_ms = 100;		/* 0.1s */
 	opts->cache_checkpoint_period_ms = 600000;	/* 60s */

@@ -124,17 +124,12 @@ int _get_innermost(struct cursor *cur, struct msgbuf_iter *iter)
 {
 	int ret = 0;
 
-	while (msgbuf_iter_valid(iter)) {
-		ret = 1;
+	while (msgbuf_internal_iter_next(iter)) {
 		cur->valid = 1;
+		cur->msgtype = iter->type;
 		cur->key = iter->key;
 		cur->val = iter->val;
-		ret = CURSOR_CONTINUE;
-
-		if (iter->multi)
-			msgbuf_iter_next(iter);
-		else
-			break;
+		ret = 1;
 	}
 
 	return ret;
@@ -145,25 +140,19 @@ int _get_innermost(struct cursor *cur, struct msgbuf_iter *iter)
  */
 int _get_visible(struct cursor *cur, struct msgbuf_iter *iter)
 {
-	int ret = 0;
+	int visi = 1;
+	/* TODO: (BohuTANG) visi checking */
 
-	while (msgbuf_iter_valid(iter)) {
-		/* TODO: (BohuTANG) visibility checking */
-		int visi = 1;
-
-		if (iter->multi && visi) {
-			ret = 1;
+	while (msgbuf_internal_iter_next(iter)) {
+		if (visi) {
 			cur->valid = 1;
+			cur->msgtype = iter->type;
 			cur->key = iter->key;
 			cur->val = iter->val;
-			ret = CURSOR_CONTINUE;
-			msgbuf_iter_next(iter);
-		} else {
-			break;
 		}
 	}
 
-	return ret;
+	return visi;
 }
 
 int _search_leaf(struct cursor *cur, struct search *so, struct node *leaf)
@@ -180,33 +169,17 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *leaf)
 			iter.key = cur->key;
 			msgbuf_iter_init(&iter, leaf->u.l.buffer);
 C1:
-			msgbuf_iter_next_diff(&iter);
+			if (so->gap != 0)
+				msgbuf_iter_next(&iter);
+			else
+				msgbuf_iter_seek(&iter, so->key);
+
 			if (msgbuf_iter_valid(&iter)) {
 				if (cur->txn) {
-					/*
-					 * if we got none from a key array
-					 * restart the search from lable C1.
-					 * if cur->key is k1, cur->txn is 3, and the arrays are:
-					 * +-------------------+
-					 * |k1|msn:1|txn:1|val1| --> step1
-					 * +-------------------+
-					 * |k2|msn:3|txn:8|val1| --> step2
-					 * +-------------------+
-					 * |k3|msn:5|txn:2|val1| --> step3
-					 * +-------------------+
-					 * now, the status are:
-					 *	cur->key = k1
-					 *	iter->key = k2
-					 * since txn:8 is larger than 3, so we should skip the value in step2
-					 * restart from C1 and goto step 3
-					 */
 					if (!_get_visible(cur, &iter)) {
-						goto C1;
+						if (so->gap != 0)
+							goto C1;
 					} else {
-						cur->valid = 1;
-						cur->key = iter.key;
-						cur->val = iter.val;
-						cur->msgtype = iter.type;
 						ret = CURSOR_CONTINUE;
 					}
 				} else {
@@ -227,19 +200,10 @@ C2:
 			msgbuf_iter_prev(&iter);
 			if (msgbuf_iter_valid(&iter)) {
 				if (cur->txn) {
-					/*
-					 * if we got none from a key array
-					 * restart the search from lable C2.
-					 */
-					if (!_get_visible(cur, &iter)) {
+					if (!_get_visible(cur, &iter))
 						goto C2;
-					} else {
-						cur->valid = 1;
-						cur->key = iter.key;
-						cur->val = iter.val;
-						cur->msgtype = iter.type;
+					else
 						ret = CURSOR_CONTINUE;
-					}
 				} else {
 					_get_innermost(cur, &iter);
 				}
@@ -452,6 +416,8 @@ void tree_cursor_first(struct cursor *cur)
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
 	                  NULL);
+	search.gap = +1;
+
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
 }
@@ -474,6 +440,7 @@ void tree_cursor_last(struct cursor *cur)
 	                  &search_pivotbound_compare,
 	                  SEARCH_BACKWARD,
 	                  NULL);
+	search.gap = -1;
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
@@ -496,6 +463,7 @@ void tree_cursor_next(struct cursor *cur)
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
 	                  &cur->key);
+	search.gap = +1;
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
@@ -518,6 +486,7 @@ void tree_cursor_prev(struct cursor *cur)
 	                  &search_pivotbound_compare,
 	                  SEARCH_BACKWARD,
 	                  &cur->key);
+	search.gap = -1;
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
@@ -540,6 +509,7 @@ void tree_cursor_current(struct cursor *cur)
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
 	                  &cur->key);
+	search.gap = 0;
 
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);

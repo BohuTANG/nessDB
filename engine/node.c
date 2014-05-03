@@ -57,7 +57,7 @@ struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children) {
 	return node;
 }
 
-void nonleaf_alloc_buffer(struct node *node)
+void nonleaf_alloc_msgbuf(struct node *node)
 {
 	int i;
 

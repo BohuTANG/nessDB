@@ -44,6 +44,13 @@ enum {
 
 /* internal search entry */
 struct search {
+	/*
+	 * if gap:
+	 *	gap ==  0: we are in current search
+	 *	gap == +1: we are in forward search
+	 *	gap == -1: we are in backward search
+	 */
+	int gap;
 	struct msg *key;
 	struct msg *pivot_bound;
 	direction_t direction;

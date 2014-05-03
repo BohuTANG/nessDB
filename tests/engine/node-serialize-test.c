@@ -31,7 +31,7 @@ CTEST(node_serial_test, leaf_empty)
 	uint64_t nid = 3;
 
 	struct node *dummy_leaf = leaf_alloc_empty(nid);
-	leaf_alloc_bsm(dummy_leaf);
+	leaf_alloc_msgbuf(dummy_leaf);
 	ret = serialize_node_to_disk(fd, b, dummy_leaf, hdr);
 	ASSERT_TRUE(ret > 0);
 	//free
@@ -40,7 +40,7 @@ CTEST(node_serial_test, leaf_empty)
 	struct node *dummy_leaf1;
 	ret = deserialize_node_from_disk(fd, b, nid, &dummy_leaf1, 0);
 	ASSERT_TRUE(ret > 0);
-	ASSERT_EQUAL(0, msgbuf_count(dummy_leaf1->u.l.le->bsm));
+	ASSERT_EQUAL(0, msgbuf_count(dummy_leaf1->u.l.buffer));
 	//free
 	node_free(dummy_leaf1);
 
@@ -70,7 +70,7 @@ CTEST(node_serial_test, leaf_2_record)
 	uint64_t nid = 3;
 
 	struct node *dummy_leaf = leaf_alloc_empty(nid);
-	leaf_alloc_bsm(dummy_leaf);
+	leaf_alloc_msgbuf(dummy_leaf);
 
 	MSN msn = 0U;
 	struct msg k, v;
@@ -78,14 +78,14 @@ CTEST(node_serial_test, leaf_2_record)
 	k.data = "hello";
 	v.size = 6;
 	v.data = "world";
-	msgbuf_put(dummy_leaf->u.l.le->bsm, MSG_INSERT, msn, &k, &v, &xidpair);
+	msgbuf_put(dummy_leaf->u.l.buffer, MSG_INSERT, msn, &k, &v, &xidpair);
 
 	struct msg k1, v1;
 	k1.size = 6;
 	k1.data = "hellx";
 	v1.size = 6;
 	v1.data = "worlx";
-	msgbuf_put(dummy_leaf->u.l.le->bsm, MSG_INSERT, msn, &k1, &v1, &xidpair);
+	msgbuf_put(dummy_leaf->u.l.buffer, MSG_INSERT, msn, &k1, &v1, &xidpair);
 
 	ret = serialize_node_to_disk(fd, b, dummy_leaf, hdr);
 	ASSERT_TRUE(ret > 0);
@@ -97,10 +97,10 @@ CTEST(node_serial_test, leaf_2_record)
 	ret = deserialize_node_from_disk(fd, b, nid, &dummy_leaf1, 0);
 	ASSERT_TRUE(ret > 0);
 
-	ASSERT_EQUAL(2, msgbuf_count(dummy_leaf1->u.l.le->bsm));
+	ASSERT_EQUAL(2, msgbuf_count(dummy_leaf1->u.l.buffer));
 
 	struct msgbuf_iter iter;
-	msgbuf_iter_init(&iter, dummy_leaf1->u.l.le->bsm);
+	msgbuf_iter_init(&iter, dummy_leaf1->u.l.buffer);
 	msgbuf_iter_seek(&iter, &k);
 	ASSERT_EQUAL(1, iter.valid);
 	ASSERT_STR("world", iter.val.data);
@@ -142,7 +142,7 @@ CTEST(node_serial_test, node_2th_part_empty)
 	hdr->last_nid++;
 	nid = hdr->last_nid;
 	dummy_node = nonleaf_alloc_empty(nid, 1, n_children);
-	nonleaf_alloc_buffer(dummy_node);
+	nonleaf_alloc_msgbuf(dummy_node);
 
 	struct msg p0;
 	p0.size = 6;
