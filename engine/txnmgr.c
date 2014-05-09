@@ -48,6 +48,16 @@ void txnmgr_live_root_txnid_del(struct txnmgr *tm, TXNID txnid)
 	lives->used--;
 }
 
+int txnmgr_txn_islive(struct txnid_snapshot *lives, TXNID txnid)
+{
+	int i;
+	for (i = 0; i < lives->used; i++)
+		if (lives->txnids[i] == txnid)
+			return 1;
+
+	return 0;
+}
+
 void _txnid_snapshot_clone(struct txnid_snapshot *src,
                            struct txnid_snapshot **dst)
 {

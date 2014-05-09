@@ -68,6 +68,7 @@ struct cursor {
 	struct msg val;		/* return val */
 	struct tree *tree;	/* index */
 	void *extra;		/* extra(no-use) */
+	TXN_ISOLATION_TYPE iso_type;
 
 	/* root->to->leaf bsm path */
 	int ances_size;

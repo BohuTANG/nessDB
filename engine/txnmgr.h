@@ -27,6 +27,7 @@ struct txnmgr {
 struct txnmgr *txnmgr_new(void);
 void txnmgr_txn_start(struct txnmgr* tm, TXN *txn);
 void txnmgr_child_txn_start(struct txnmgr* tm, TXN *parnet, TXN *txn);
+int txnmgr_txn_islive(struct txnid_snapshot *lives, TXNID txnid);
 void txnmgr_live_root_txnid_del(struct txnmgr *tm, TXNID txnid);
 void txnmgr_free(struct txnmgr *tm);
 

@@ -197,6 +197,39 @@ int msgbuf_internal_iter_next(struct msgbuf_iter *iter)
 	}
 }
 
+int msgbuf_internal_iter_reverse(struct msgbuf_iter *iter)
+{
+	void *base = NULL;
+
+	iter->idx = iter->list_iter.node->used - 1;
+	if (iter->idx > -1) {
+		base = iter->list_iter.node->keys[iter->idx--];
+		_iter_unpack(base, iter);
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+/*
+ * the last one of the same key array
+ */
+int msgbuf_internal_iter_last(struct msgbuf_iter *iter)
+{
+	void *base = NULL;
+
+	iter->valid = 0;
+	iter->idx = iter->list_iter.node->used - 1;
+	if (iter->idx > -1) {
+		base = iter->list_iter.node->keys[iter->idx];
+		_iter_unpack(base, iter);
+
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 /* prev is normal */
 void msgbuf_iter_prev(struct msgbuf_iter *iter)
 {

@@ -120,11 +120,12 @@ void ancestors_append(struct cursor *cur, struct msgbuf *bsm)
  *
  *  val3 will get.
  */
-int _get_innermost(struct cursor *cur, struct msgbuf_iter *iter)
+int _get_lastone(struct cursor *cur, struct msgbuf_iter *iter)
 {
 	int ret = 0;
 
-	while (msgbuf_internal_iter_next(iter)) {
+
+	if (msgbuf_internal_iter_last(iter)) {
 		cur->valid = 1;
 		cur->msgtype = iter->type;
 		cur->key = iter->key;
@@ -135,21 +136,50 @@ int _get_innermost(struct cursor *cur, struct msgbuf_iter *iter)
 	return ret;
 }
 
-/*
- * get the visible value
- */
 int _get_visible(struct cursor *cur, struct msgbuf_iter *iter)
 {
-	int visi = 1;
-	/* TODO: (BohuTANG) visi checking */
+	int visi = 0;
 
-	while (msgbuf_internal_iter_next(iter)) {
-		if (visi) {
-			cur->valid = 1;
-			cur->msgtype = iter->type;
-			cur->key = iter->key;
-			cur->val = iter->val;
+	while (msgbuf_internal_iter_reverse(iter)) {
+		switch (cur->iso_type) {
+		case TXN_ISO_READ_UNCOMMITTED:
+		case TXN_ISO_SERIALIZABLE:
+			visi = 1;
+			break;
+		case TXN_ISO_READ_COMMITTED: {
+				TXNID txnid;
+				struct txnid_snapshot *lives;
+				struct txnmgr *tmgr = cur->txn->logger->txnmgr;
+
+				txnid = cur->txn->root_parent_txnid;
+				lives = tmgr->live_root_txnids;
+
+				if (!txnmgr_txn_islive(lives, txnid)) {
+					visi = 1;
+					break;
+				}
+				break;
+			}
+		case TXN_ISO_REPEATABLE: {
+				TXNID txnid;
+				struct txnid_snapshot *clone;
+
+				txnid = cur->txn->root_parent_txnid;
+				clone = cur->txn->txnid_clone;
+				if (!txnmgr_txn_islive(clone, txnid)) {
+					visi = 1;
+					break;
+				}
+				break;
+			}
 		}
+	}
+
+	if (visi) {
+		cur->valid = 1;
+		cur->msgtype = iter->type;
+		cur->key = iter->key;
+		cur->val = iter->val;
 	}
 
 	return visi;
@@ -183,7 +213,7 @@ C1:
 						ret = CURSOR_CONTINUE;
 					}
 				} else {
-					_get_innermost(cur, &iter);
+					_get_lastone(cur, &iter);
 				}
 			} else {
 				cur->valid = 0;
@@ -205,7 +235,7 @@ C2:
 					else
 						ret = CURSOR_CONTINUE;
 				} else {
-					_get_innermost(cur, &iter);
+					_get_lastone(cur, &iter);
 				}
 			} else {
 				cur->valid = 0;
