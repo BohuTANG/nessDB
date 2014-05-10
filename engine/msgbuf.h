@@ -72,7 +72,6 @@ int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *, struct msg *);
 void msgbuf_iter_next(struct msgbuf_iter *);
 int msgbuf_internal_iter_next(struct msgbuf_iter *);
 int msgbuf_internal_iter_reverse(struct msgbuf_iter *);
-int msgbuf_internal_iter_last(struct msgbuf_iter *);
 void msgbuf_iter_prev(struct msgbuf_iter *);
 void msgbuf_iter_seek(struct msgbuf_iter *, struct msg *);
 void msgbuf_iter_seektofirst(struct msgbuf_iter *);

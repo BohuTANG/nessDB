@@ -109,72 +109,61 @@ void ancestors_append(struct cursor *cur, struct msgbuf *bsm)
 }
 
 /*
- * get the innermost value for the same key(k1):
- *	+------------+
- *	|k1|msn1|val1|
- *	+------------+
- *	|k1|msn2|val2|
- *	+------------+
- *	|k1|msn3|val3|
- *	+------------+
+ * if iso type is:
+ *	a) uncommitted, the last one is visible
+ *	b) serializable, the last one is visible
+ *	c) committed: cur_id >= id, and id not in live roots list
+ *	d) repeatable: cur_id >= id, and id not in live snapshot list
  *
- *  val3 will get.
  */
-int _get_lastone(struct cursor *cur, struct msgbuf_iter *iter)
+int _get_visible_value(struct cursor *cur, struct msgbuf_iter *iter)
 {
-	int ret = 0;
+	TXNID id;
+	TXNID curid;
 
-
-	if (msgbuf_internal_iter_last(iter)) {
-		cur->valid = 1;
-		cur->msgtype = iter->type;
-		cur->key = iter->key;
-		cur->val = iter->val;
-		ret = 1;
-	}
-
-	return ret;
-}
-
-int _get_visible(struct cursor *cur, struct msgbuf_iter *iter)
-{
 	int visi = 0;
+	int islive;
 
+	struct txnmgr *tmgr;
+	struct txnid_snapshot *lives;
+
+	tmgr = cur->txn->logger->txnmgr;
+	curid = cur->txn->root_parent_txnid;
 	while (msgbuf_internal_iter_reverse(iter)) {
-		switch (cur->iso_type) {
-		case TXN_ISO_READ_UNCOMMITTED:
-		case TXN_ISO_SERIALIZABLE:
+		/* in non-transaction */
+		if (!cur->txn) {
 			visi = 1;
+			goto GOT_VALUE;
+		}
+
+		/* in transaction */
+		switch (cur->iso_type) {
+		case TXN_ISO_SERIALIZABLE:
+		case TXN_ISO_READ_UNCOMMITTED:
+			visi = 1;
+			goto GOT_VALUE;
+		case TXN_ISO_READ_COMMITTED:
+			id = iter->xidpair.parent_xid;
+			lives = tmgr->live_root_txnids;
+			islive = txnmgr_txn_islive(lives, id);
+			if (!islive && (curid >= id)) {
+				visi = 1;
+				goto GOT_VALUE;
+			}
 			break;
-		case TXN_ISO_READ_COMMITTED: {
-				TXNID txnid;
-				struct txnid_snapshot *lives;
-				struct txnmgr *tmgr = cur->txn->logger->txnmgr;
-
-				txnid = cur->txn->root_parent_txnid;
-				lives = tmgr->live_root_txnids;
-
-				if (!txnmgr_txn_islive(lives, txnid)) {
-					visi = 1;
-					break;
-				}
-				break;
+		case TXN_ISO_REPEATABLE:
+			id = iter->xidpair.parent_xid;
+			lives = cur->txn->txnid_clone;
+			islive = txnmgr_txn_islive(lives, id);
+			if (!islive && (curid >= id)) {
+				visi = 1;
+				goto GOT_VALUE;
 			}
-		case TXN_ISO_REPEATABLE: {
-				TXNID txnid;
-				struct txnid_snapshot *clone;
-
-				txnid = cur->txn->root_parent_txnid;
-				clone = cur->txn->txnid_clone;
-				if (!txnmgr_txn_islive(clone, txnid)) {
-					visi = 1;
-					break;
-				}
-				break;
-			}
+			break;
 		}
 	}
 
+GOT_VALUE:
 	if (visi) {
 		cur->valid = 1;
 		cur->msgtype = iter->type;
@@ -188,65 +177,67 @@ int _get_visible(struct cursor *cur, struct msgbuf_iter *iter)
 int _search_leaf(struct cursor *cur, struct search *so, struct node *leaf)
 {
 	int ret = CURSOR_EOF;
+	struct msgbuf_iter iter;
 
-	/* first to apply all msgs to leaf bsm */
+	/* first to apply all msgs to leaf msgbuf */
 	leaf_apply_ancestors(leaf, cur->ances);
 
-	switch (so->direction) {
-	case SEARCH_FORWARD: {
-			struct msgbuf_iter iter;
+	/* init iter */
+	iter.key = cur->key;
+	msgbuf_iter_init(&iter, leaf->u.l.buffer);
 
-			iter.key = cur->key;
-			msgbuf_iter_init(&iter, leaf->u.l.buffer);
-C1:
-			if (so->gap != 0)
-				msgbuf_iter_next(&iter);
-			else
-				msgbuf_iter_seek(&iter, so->key);
-
-			if (msgbuf_iter_valid(&iter)) {
-				if (cur->txn) {
-					if (!_get_visible(cur, &iter)) {
-						if (so->gap != 0)
-							goto C1;
-					} else {
-						ret = CURSOR_CONTINUE;
-					}
-				} else {
-					_get_lastone(cur, &iter);
-				}
-			} else {
-				cur->valid = 0;
-				ret = CURSOR_EOF;
+	switch (so->gap) {
+	case GAP_ZERO:
+		nassert(so->direction == SEARCH_FORWARD);
+		msgbuf_iter_seek(&iter, so->key);
+		if (msgbuf_iter_valid(&iter)) {
+			if (_get_visible_value(cur, &iter) &&
+			    iter.type != MSG_DELETE) {
+				ret = CURSOR_CONTINUE;
+				goto RET;
 			}
-			break;
+		} else {
+			cur->valid = 0;
+			ret = CURSOR_EOF;
 		}
-	case SEARCH_BACKWARD: {
-			struct msgbuf_iter iter;
+		break;
+	case GAP_POSI:
+		nassert(so->direction == SEARCH_FORWARD);
+		msgbuf_iter_next(&iter);
+		while (msgbuf_iter_valid(&iter)) {
+			if (_get_visible_value(cur, &iter) &&
+			    iter.type != MSG_DELETE) {
+				ret = CURSOR_CONTINUE;
+				goto RET;
+			}
+			msgbuf_iter_next(&iter);
+		}
 
-			iter.key = cur->key;
-			msgbuf_iter_init(&iter, leaf->u.l.buffer);
-C2:
+		cur->valid = 0;
+		ret = CURSOR_EOF;
+		break;
+	case GAP_NEGA:
+		nassert(so->direction == SEARCH_BACKWARD);
+		msgbuf_iter_prev(&iter);
+		while (msgbuf_iter_valid(&iter)) {
+			if (_get_visible_value(cur, &iter) &&
+			    iter.type != MSG_DELETE) {
+				ret = CURSOR_CONTINUE;
+				goto RET;
+			}
 			msgbuf_iter_prev(&iter);
-			if (msgbuf_iter_valid(&iter)) {
-				if (cur->txn) {
-					if (!_get_visible(cur, &iter))
-						goto C2;
-					else
-						ret = CURSOR_CONTINUE;
-				} else {
-					_get_lastone(cur, &iter);
-				}
-			} else {
-				cur->valid = 0;
-				ret = CURSOR_EOF;
-			}
-			break;
 		}
+
+		cur->valid = 0;
+		ret = CURSOR_EOF;
+		break;
 	default:
-		__PANIC("unsupport direction %u", so->direction);
+		cur->valid = 0;
+		ret = CURSOR_EOF;
+		break;
 	}
 
+RET:
 	return ret;
 }
 
@@ -407,6 +398,7 @@ void _tree_search_init(struct search *so,
                        search_direction_compare_func dcmp,
                        search_pivotbound_compare_func pcmp,
                        direction_t direction,
+                       gap_t gap,
                        struct msg *key)
 {
 	memset(so, 0, sizeof(*so));
@@ -414,6 +406,7 @@ void _tree_search_init(struct search *so,
 	so->pivotbound_compare_func = pcmp;
 	so->key_compare_func = msg_key_compare;
 	so->direction = direction;
+	so->gap = gap;
 	if (key && key->data)
 		so->key = key;
 }
@@ -445,9 +438,8 @@ void tree_cursor_first(struct cursor *cur)
 	                  &tree_cursor_compare_first,
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
+	                  GAP_POSI,
 	                  NULL);
-	search.gap = +1;
-
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
 }
@@ -469,9 +461,8 @@ void tree_cursor_last(struct cursor *cur)
 	                  &tree_cursor_compare_last,
 	                  &search_pivotbound_compare,
 	                  SEARCH_BACKWARD,
+	                  GAP_NEGA,
 	                  NULL);
-	search.gap = -1;
-
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
 }
@@ -492,9 +483,8 @@ void tree_cursor_next(struct cursor *cur)
 	                  &tree_cursor_compare_next,
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
+	                  GAP_POSI,
 	                  &cur->key);
-	search.gap = +1;
-
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
 }
@@ -515,9 +505,8 @@ void tree_cursor_prev(struct cursor *cur)
 	                  &tree_cursor_compare_prev,
 	                  &search_pivotbound_compare,
 	                  SEARCH_BACKWARD,
+	                  GAP_NEGA,
 	                  &cur->key);
-	search.gap = -1;
-
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
 }
@@ -538,9 +527,8 @@ void tree_cursor_current(struct cursor *cur)
 	                  &tree_cursor_compare_current,
 	                  &search_pivotbound_compare,
 	                  SEARCH_FORWARD,
+	                  GAP_ZERO,
 	                  &cur->key);
-	search.gap = 0;
-
 	_tree_search(cur, &search);
 	_tree_search_finish(&search);
 }

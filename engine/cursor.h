@@ -36,6 +36,12 @@ typedef enum {
 	SEARCH_BACKWARD = -1
 } direction_t;
 
+typedef enum {
+	GAP_POSI = 1,
+	GAP_ZERO = 0,
+	GAP_NEGA = -1
+} gap_t;
+
 enum {
 	CURSOR_CONTINUE = 10000,
 	CURSOR_EOF = -10001,

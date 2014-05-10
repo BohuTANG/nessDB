@@ -59,7 +59,7 @@ struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
                 void *key,
                 struct skipnode **prev,
                 struct cmp_extra *extra) {
-	int level;
+	register int level;
 	register struct skipnode *x;
 	register struct skipnode *next;
 
@@ -74,10 +74,10 @@ struct skipnode *skiplist_find_greater_or_equal(struct skiplist *sl,
 			if (prev)
 				prev[level] = x;
 
-			if (level == 0)
-				return next;
-			else
+			if (level > 0)
 				level--;
+			else
+				return next;
 		}
 	}
 }
