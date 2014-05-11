@@ -10,6 +10,7 @@
 #include "txn.h"
 #include "txnmgr.h"
 #include "logger.h"
+#include "tree-func.h"
 #include "ctest.h"
 
 CTEST(txn, begin_with_no_parent)
@@ -89,4 +90,77 @@ CTEST(txn, begin_with_parent)
 
 	logger_free(logger);
 	txnmgr_free(tm);
+}
+
+#define KEY_SIZE (16)
+#define VAL_SIZE (100)
+#define DBPATH1 "txn-test-1.brt"
+CTEST(txn, uncommitted)
+{
+	int r;
+	int i;
+	int R = 1000;
+	char kbuf[KEY_SIZE];
+	char vbuf[VAL_SIZE];
+
+	struct options *opts;
+	struct status *status;
+	struct cache *cache;
+	struct tree *tree;
+
+	LOGGER *logger;
+	struct txnmgr *txnmgr;
+
+	static struct tree_callback tree_cb = {
+		.fetch_node = fetch_node_callback,
+		.flush_node = flush_node_callback,
+		.fetch_hdr = fetch_hdr_callback,
+		.flush_hdr = flush_hdr_callback
+	};
+
+	xreset();
+	/* create */
+	opts = options_new();
+	status = status_new();
+	cache = cache_new(opts);
+	tree = tree_open(DBPATH1, opts, status, cache, &tree_cb);
+
+	txnmgr = txnmgr_new();
+	logger = logger_new(NULL, txnmgr);
+
+	/* uncommiited test */
+	struct txn *tx1;
+	int readonly = 0;
+
+	r = txn_begin(NULL, logger, TXN_ISO_READ_UNCOMMITTED, readonly, &tx1);
+
+	ASSERT_EQUAL(1, r);
+	ASSERT_EQUAL(0, tx1->txnid);
+	ASSERT_EQUAL(1, txnmgr->live_root_txnids->used);
+	ASSERT_EQUAL(tx1->txnid, txnmgr->live_root_txnids->txnids[0]);
+
+	/* insert to tree */
+	for (i = 0; i < R; i++) {
+		memset(kbuf, 0 , KEY_SIZE);
+		memset(vbuf, 0 , VAL_SIZE);
+		snprintf(kbuf, KEY_SIZE, "key-%d", i);
+		snprintf(vbuf, VAL_SIZE, "val-%d", i);
+
+		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg v = {.data = vbuf, .size = VAL_SIZE};
+
+		tree_put(tree, &k, &v, MSG_INSERT, tx1);
+	}
+
+	txn_finish(tx1);
+	/* free */
+	logger_free(logger);
+	txnmgr_free(txnmgr);
+
+	cache_free(cache);
+	tree_free(tree);
+	options_free(opts);
+	status_free(status);
+
+	xcheck_all_free();
 }

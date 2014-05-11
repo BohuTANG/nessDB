@@ -286,11 +286,14 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
  *
  * REQUIRES:
  * a) leaf lock (L_WRITE)
- * b) leaf dmt write lock
  */
 void leaf_put_cmd(struct node *leaf, struct bt_cmd *cmd)
 {
+	write_lock(&leaf->u.l.rwlock);
 	leaf_apply_msg(leaf, cmd);
+	leaf->msn = cmd->msn > leaf->msn ? cmd->msn : leaf->msn;
+	node_set_dirty(leaf);
+	write_unlock(&leaf->u.l.rwlock);
 }
 
 /*

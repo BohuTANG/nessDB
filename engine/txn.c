@@ -148,5 +148,9 @@ void txn_finish(TXN *txn)
 		}
 	}
 
+	if (txn->txnid_clone) {
+		xfree(txn->txnid_clone->txnids);
+		xfree(txn->txnid_clone);
+	}
 	xfree(txn);
 }

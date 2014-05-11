@@ -31,7 +31,9 @@
 #define	NESS_LOG_READ_SIZE_ERR	 (-30983)
 #define	NESS_LOG_READ_DATA_ERR	 (-30982)
 #define	NESS_LOG_READ_XSUM_ERR	 (-30981)
-#define	NESS_LOG_EOF		 (-30980)
+#define	NESS_LOG_EOF	 (-30980)
+#define	NESS_TXN_COMMIT_ERR	 (-30979)
+#define	NESS_TXN_ABORT_ERR	 (-30978)
 
 typedef enum {
 	TXN_ISO_SERIALIZABLE = 0,

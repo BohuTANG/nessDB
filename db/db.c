@@ -137,7 +137,7 @@ void db_c_first(struct db_cursor *cursor)
 
 	assert(cursor->db == NULL);
 
-	tree_cursor = cursor_new(cursor->db->tree);
+	tree_cursor = cursor_new(cursor->db->tree, NULL);
 	tree_cursor_first(tree_cursor);
 	if (tree_cursor_valid(tree_cursor)) {
 		cursor->valid = 1;
@@ -154,7 +154,7 @@ void db_c_last(struct db_cursor *cursor)
 
 	assert(cursor->db == NULL);
 
-	tree_cursor = cursor_new(cursor->db->tree);
+	tree_cursor = cursor_new(cursor->db->tree, NULL);
 	tree_cursor_last(tree_cursor);
 	if (tree_cursor_valid(tree_cursor)) {
 		cursor->valid = 1;
@@ -171,7 +171,7 @@ void db_c_next(struct db_cursor *cursor)
 
 	assert(cursor->db == NULL);
 
-	tree_cursor = cursor_new(cursor->db->tree);
+	tree_cursor = cursor_new(cursor->db->tree, NULL);
 	tree_cursor_next(tree_cursor);
 	if (tree_cursor_valid(tree_cursor)) {
 		cursor->valid = 1;
@@ -188,7 +188,7 @@ void db_c_prev(struct db_cursor *cursor)
 
 	assert(cursor->db == NULL);
 
-	tree_cursor = cursor_new(cursor->db->tree);
+	tree_cursor = cursor_new(cursor->db->tree, NULL);
 	tree_cursor_prev(tree_cursor);
 	if (tree_cursor_valid(tree_cursor)) {
 		cursor->valid = 1;

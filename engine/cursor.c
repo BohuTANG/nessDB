@@ -127,8 +127,10 @@ int _get_visible_value(struct cursor *cur, struct msgbuf_iter *iter)
 	struct txnmgr *tmgr;
 	struct txnid_snapshot *lives;
 
-	tmgr = cur->txn->logger->txnmgr;
-	curid = cur->txn->root_parent_txnid;
+	if (cur->txn) {
+		tmgr = cur->txn->logger->txnmgr;
+		curid = cur->txn->root_parent_txnid;
+	}
 	while (msgbuf_internal_iter_reverse(iter)) {
 		/* in non-transaction */
 		if (!cur->txn) {
@@ -203,31 +205,45 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *leaf)
 		break;
 	case GAP_POSI:
 		nassert(so->direction == SEARCH_FORWARD);
-		msgbuf_iter_next(&iter);
+		if (!so->key)
+			msgbuf_iter_seektofirst(&iter);
+		else
+			msgbuf_iter_seek(&iter, so->key);
 		while (msgbuf_iter_valid(&iter)) {
-			if (_get_visible_value(cur, &iter) &&
-			    iter.type != MSG_DELETE) {
-				ret = CURSOR_CONTINUE;
-				goto RET;
-			}
 			msgbuf_iter_next(&iter);
+			if (msgbuf_iter_valid(&iter)) {
+				if (_get_visible_value(cur, &iter) &&
+				    iter.type != MSG_DELETE) {
+					ret = CURSOR_CONTINUE;
+					goto RET;
+				}
+			} else {
+				goto POSI_RET;
+			}
 		}
-
+POSI_RET:
 		cur->valid = 0;
 		ret = CURSOR_EOF;
 		break;
 	case GAP_NEGA:
 		nassert(so->direction == SEARCH_BACKWARD);
-		msgbuf_iter_prev(&iter);
+		if (!so->key)
+			msgbuf_iter_seektolast(&iter);
+		else
+			msgbuf_iter_seek(&iter, so->key);
 		while (msgbuf_iter_valid(&iter)) {
-			if (_get_visible_value(cur, &iter) &&
-			    iter.type != MSG_DELETE) {
-				ret = CURSOR_CONTINUE;
-				goto RET;
-			}
 			msgbuf_iter_prev(&iter);
+			if (msgbuf_iter_valid(&iter)) {
+				if (_get_visible_value(cur, &iter) &&
+				    iter.type != MSG_DELETE) {
+					ret = CURSOR_CONTINUE;
+					goto RET;
+				}
+			} else {
+				goto NEGA_RET;
+			}
 		}
-
+NEGA_RET:
 		cur->valid = 0;
 		ret = CURSOR_EOF;
 		break;
@@ -368,11 +384,12 @@ void _tree_search_finish(struct search * so)
 	msgfree(so->pivot_bound);
 }
 
-struct cursor *cursor_new(struct tree * t) {
+struct cursor *cursor_new(struct tree * t, TXN *txn) {
 	struct cursor *cur;
 
 	cur = xcalloc(1, sizeof(*cur));
 	cur->tree = t;
+	cur->txn = txn;
 
 	return cur;
 }

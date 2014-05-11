@@ -81,7 +81,7 @@ struct cursor {
 	struct ancestors *ances;
 };
 
-struct cursor *cursor_new(struct tree *t);
+struct cursor *cursor_new(struct tree *t, TXN *txn);
 void cursor_free(struct cursor *cur);
 int tree_cursor_valid(struct cursor *cur);
 void tree_cursor_first(struct cursor *cur);

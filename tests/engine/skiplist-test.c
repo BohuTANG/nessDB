@@ -205,7 +205,7 @@ CTEST(skiplist, cursor)
 CTEST(skiplist, benchmark)
 {
 	int i;
-	int N = 3000000;
+	int N = 1000000;
 	int *keys;
 	long long cost_ms;
 	struct timespec start, end;
@@ -279,7 +279,7 @@ void _do_next(struct skiplist *list)
 volatile int _stop = 0;
 void *_thd_write(void *arg)
 {
-	int n = 3000000;
+	int n = 2000000;
 	int *keys;
 	struct skiplist *list = (struct skiplist*)arg;
 

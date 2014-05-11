@@ -33,6 +33,8 @@ struct skiplist_iter {
 struct skipnode {
 	int size;
 	int used;
+	int num_cx; /* number of committed transaction */
+	int num_px; /* number of provisional transaction */
 	void **keys;
 	struct skipnode *next[1];
 };

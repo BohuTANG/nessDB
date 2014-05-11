@@ -150,7 +150,6 @@ void skiplist_put(struct skiplist *sl, void *key)
 			_set_next(&x->next[i], prev[i]->next[i]);
 			_set_next(&prev[i]->next[i], x);
 		}
-
 		sl->unique++;
 	} else {
 		/*
@@ -158,18 +157,20 @@ void skiplist_put(struct skiplist *sl, void *key)
 		 * so we append the new key buffer to the keys array
 		 */
 		if (x->used >= x->size) {
+			int as;
 			int new_size;
 			void *new_keys;
 
 			new_size = x->size * 2;
-			new_keys = (void*)mempool_alloc_aligned(sl->mpool,
-			                                        x->size * sizeof(void*));
+			as = x->size * sizeof(void*);
+			new_keys = (void*)mempool_alloc_aligned(sl->mpool, as);
 			xmemcpy(new_keys, x->keys, x->used * sizeof(void*));
 			x->size = new_size;
 			x->keys = new_keys;
 		}
 		x->keys[x->used++] = key;
 	}
+	x->num_px++;
 	sl->count++;
 }
 

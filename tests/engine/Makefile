@@ -70,12 +70,12 @@ TEST_OBJS = 				\
 	msgbuf-test.o			\
 	hdr-serialize-test.o		\
 	node-serialize-test.o		\
+	txn-test.o		\
 	main.o			
 
 
 test: ctest.h $(LIB_OBJS) $(TEST_OBJS)
 		$(CC) -pthread $(LIB_OBJS) $(TEST_OBJS) $(OPT) $(DEBUG) -o $@
-		./test
 
 clean:
 	-rm -rf $(LIB_OBJS) $(TEST_OBJS) test
