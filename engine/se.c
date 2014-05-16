@@ -302,14 +302,17 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 
 int _deserialize_leaf_from_disk(int fd,
                                 struct block_pair *bp,
-                                struct node **node)
+                                struct node **node,
+                                struct status *status)
 {
 	int r = NESS_OK;
 	uint32_t read_size;
 	struct buffer *rbuf;
+	struct timespec t1, t2;
 
 	read_size = ALIGN(bp->real_size);
 	rbuf = buf_new(read_size);
+	gettime(&t1);
 	if (ness_os_pread(fd,
 	                  rbuf->buf,
 	                  read_size,
@@ -317,6 +320,8 @@ int _deserialize_leaf_from_disk(int fd,
 		r = NESS_READ_ERR;
 		goto RET;
 	}
+	gettime(&t2);
+	status->leaf_read_from_disk_costs += time_diff_ms(t1, t2);
 
 	char *datas = NULL;
 	uint32_t act_xsum;
@@ -503,16 +508,19 @@ ERR1:
 int _deserialize_nonleaf_from_disk(int fd,
                                    struct block_pair *bp,
                                    struct node **node,
-                                   int light)
+                                   int light,
+                                   struct status *status)
 {
 	int r = NESS_ERR;
 	uint32_t read_size;
 	uint32_t real_size;
 	struct buffer *rbuf = NULL;
+	struct timespec t1, t2;
 
 	real_size = (light == 1) ? (bp->skeleton_size) : (bp->real_size);
 	read_size = ALIGN(real_size);
 	rbuf = buf_new(read_size);
+	gettime(&t1);
 	if (ness_os_pread(fd,
 	                  rbuf->buf,
 	                  read_size,
@@ -520,6 +528,8 @@ int _deserialize_nonleaf_from_disk(int fd,
 		r = NESS_READ_ERR;
 		goto ERR;
 	}
+	gettime(&t2);
+	status->nonleaf_read_from_disk_costs += time_diff_ms(t1, t2);
 
 	/*
 	 * check the checksum
@@ -613,14 +623,14 @@ int deserialize_node_from_disk(int fd,
 		return NESS_BLOCK_NULL_ERR;
 
 	if (bp->height == 0) {
-		r = _deserialize_leaf_from_disk(fd, bp, node);
+		r = _deserialize_leaf_from_disk(fd, bp, node, block->status);
 	} else {
 
 		/*
 		 * if light is 1, we just need to read nonleaf info,
 		 * others, we need to read the whole innernode from disk
 		 */
-		r = _deserialize_nonleaf_from_disk(fd, bp, node, light);
+		r = _deserialize_nonleaf_from_disk(fd, bp, node, light, block->status);
 	}
 
 	return r;

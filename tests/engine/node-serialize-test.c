@@ -21,7 +21,8 @@ CTEST(node_serial_test, leaf_empty)
 {
 	int ret = 0;
 	int fd = ness_os_open(BRT_FILE, O_RDWR | O_CREAT, 0777);
-	struct block *b = block_new();
+	struct status *status = status_new();
+	struct block *b = block_new(status);
 	struct hdr *hdr = (struct hdr*)xcalloc(1, sizeof(*hdr));
 	struct options *opts = options_new();
 
@@ -46,6 +47,7 @@ CTEST(node_serial_test, leaf_empty)
 
 	ness_os_close(fd);
 	block_free(b);
+	status_free(status);
 	xfree(hdr);
 	options_free(opts);
 	xcheck_all_free();
@@ -55,7 +57,8 @@ CTEST(node_serial_test, leaf_2_record)
 {
 	int ret = 0;
 	int fd = ness_os_open(BRT_FILE, O_RDWR | O_CREAT, 0777);
-	struct block *b = block_new();
+	struct status *status = status_new();
+	struct block *b = block_new(status);
 	struct hdr *hdr = (struct hdr*)xcalloc(1, sizeof(*hdr));
 	struct options *opts = options_new();
 
@@ -114,6 +117,7 @@ CTEST(node_serial_test, leaf_2_record)
 
 	ness_os_close(fd);
 	block_free(b);
+	status_free(status);
 	xfree(hdr);
 	options_free(opts);
 	xcheck_all_free();
@@ -125,7 +129,8 @@ CTEST(node_serial_test, node_2th_part_empty)
 	NID nid;
 	uint32_t n_children = 3;
 	int fd = ness_os_open(BRT_FILE, O_RDWR | O_CREAT, 0777);
-	struct block *b = block_new();
+	struct status *status = status_new();
+	struct block *b = block_new(status);
 	struct hdr *hdr = (struct hdr*)xcalloc(1, sizeof(*hdr));
 	struct options *opts = options_new();
 
@@ -211,6 +216,7 @@ CTEST(node_serial_test, node_2th_part_empty)
 
 	ness_os_close(fd);
 	block_free(b);
+	status_free(status);
 	xfree(hdr);
 	options_free(opts);
 	xcheck_all_free();

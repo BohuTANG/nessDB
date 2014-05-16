@@ -329,12 +329,16 @@ int cache_create_node_and_pin(struct cache_file *cf,
 	struct cpair *p;
 	struct node *new_node;
 	struct cache *c = cf->cache;
+	struct tree *t = (struct tree*)cf->args;
 
-	next_nid = hdr_next_nid((struct tree*)cf->args);
-	if (height == 0)
+	next_nid = hdr_next_nid(t);
+	if (height == 0) {
 		new_node = leaf_alloc_empty(next_nid);
-	else
+		t->status->tree_leaf_nums++;
+	} else {
 		new_node = nonleaf_alloc_empty(next_nid, height, children);
+		t->status->tree_nonleaf_nums++;
+	}
 
 	p = cpair_new();
 	cpair_init(p, new_node, cf);

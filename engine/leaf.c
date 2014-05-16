@@ -175,10 +175,7 @@ void _apply_msg_to_child(struct node *parent,
 	nassert(parent->height > 0);
 
 	height = child->height;
-	if (height == 0)
-		mb = child->u.l.buffer;
-	else
-		mb = child->u.n.parts[child_num].buffer;
+	mb = parent->u.n.parts[child_num].buffer;
 
 	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seek(&iter, left);

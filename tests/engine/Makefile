@@ -71,6 +71,7 @@ TEST_OBJS = 				\
 	hdr-serialize-test.o		\
 	node-serialize-test.o		\
 	txn-test.o		\
+	tree-test.o		\
 	main.o			
 
 

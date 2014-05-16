@@ -193,6 +193,7 @@ int write_hdr_to_disk(int fd, struct hdr *hdr, DISKOFF off)
 	buf_putnstr(wbuf, "nesshdr*", 8);
 	buf_putuint32(wbuf, LAYOUT_VERSION);
 	buf_putuint64(wbuf, hdr->last_nid);
+	buf_putuint64(wbuf, hdr->last_msn);
 	buf_putuint64(wbuf, hdr->root_nid);
 	buf_putuint32(wbuf, hdr->blocksize);
 	buf_putuint64(wbuf, hdr->blockoff);
@@ -264,6 +265,7 @@ int read_hdr_from_disk(int fd, struct block *b, struct hdr **h, DISKOFF off)
 	read_size = (
 	                    + 8		/* magic        */
 	                    + 8		/* last nid     */
+	                    + 8		/* last msn     */
 	                    + 8		/* root nid     */
 	                    + 4		/* version      */
 	                    + 4		/* block size   */
@@ -299,6 +301,7 @@ int read_hdr_from_disk(int fd, struct block *b, struct hdr **h, DISKOFF off)
 	if (!buf_skip(rbuf, 8)) goto ERR;
 	if (!buf_getuint32(rbuf, &hdr->version)) goto ERR;
 	if (!buf_getuint64(rbuf, &hdr->last_nid)) goto ERR;
+	if (!buf_getuint64(rbuf, &hdr->last_msn)) goto ERR;
 	if (!buf_getuint64(rbuf, &hdr->root_nid)) goto ERR;
 	if (!buf_getuint32(rbuf, &hdr->blocksize)) goto ERR;
 	if (!buf_getuint64(rbuf, &hdr->blockoff)) goto ERR;

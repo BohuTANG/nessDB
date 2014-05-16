@@ -76,6 +76,22 @@ void _add_pivot_to_parent(struct tree *t,
 
 /*
  * split leaf to two leaves:a & b
+ * leaf(root):
+ * 	+-----------------------------------+
+ * 	|  0  |  1  |  2  |  3  |  4  |  5  |
+ * 	+-----------------------------------+
+ *
+ * split:
+ *			   root
+ * 			 +--------+
+ * 			 |   2    |
+ * 			 +--------+
+ *	                /          \
+ * 	+-----------------+	 +------------------+
+ * 	|  0  |  1  |  2  |	 |  3  |  4  |  5   |
+ * 	+-----------------+	 +------------------+
+ * 	      nodea			nodeb
+ *
  *
  * REQUIRES:
  * a) leaf lock (L_WRITE)
@@ -120,9 +136,8 @@ void _leaf_split(struct tree *t,
 			if (i == mid)
 				spk = msgdup(&iter.key);
 
-			i++;
 		}
-
+		i++;
 		msgbuf_iter_next(&iter);
 	}
 
@@ -264,16 +279,16 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
 			return FISSIBLE;
 
 		uint32_t i;
-		int haszero = 0;
+		int empty = 1;
 
 		for (i = 0; i < children; i++) {
-			if (msgbuf_memsize(node->u.n.parts[i].buffer) == 0) {
-				haszero = 1;
+			if (msgbuf_memsize(node->u.n.parts[i].buffer) > 0) {
+				empty = 0;
 				break;
 			}
 		}
 
-		if (((node_size(node) > t->opts->inner_node_page_size) && !haszero) ||
+		if (((node_size(node) > t->opts->inner_node_page_size) && !empty) ||
 		    node_count(node) >= t->opts->inner_node_page_count)
 			return FLUSHBLE;
 	}
@@ -353,7 +368,6 @@ void _node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
  */
 int _flush_some_child(struct tree *t, struct node *parent)
 {
-	MSN msn;
 	int childnum;
 
 	struct node *child;
@@ -361,6 +375,7 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	enum reactivity re_child;
 	struct msgbuf *mb;
 	struct msgbuf_iter iter;
+	struct timespec t1, t2;
 
 	childnum = node_find_heaviest_idx(parent);
 	nassert(childnum < (int)parent->u.n.n_children);
@@ -376,13 +391,12 @@ int _flush_some_child(struct tree *t, struct node *parent)
 		return NESS_ERR;
 	}
 
-	msn = child->msn;
+	gettime(&t1);
 	mb = part->buffer;
 	msgbuf_iter_init(&iter, mb);
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
-		if (msn >= iter.msn) continue;
-
+		/* TODO(BohuTANG): check msn */
 		struct bt_cmd cmd = {
 			.msn = iter.msn,
 			.type = iter.type,
@@ -399,6 +413,9 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	part->buffer = msgbuf_new();
 	node_set_dirty(parent);
 	node_set_dirty(child);
+	gettime(&t2);
+	t->status->tree_flush_child_costs += time_diff_ms(t1, t2);
+	t->status->tree_flush_child_nums++;
 
 	/*
 	 * check child reactivity
@@ -433,6 +450,7 @@ int _flush_some_child(struct tree *t, struct node *parent)
 /*
  * in order to keep the root NID is eternal
  * so swap me!
+ * TODO:(BohuTANG) swap the msn
  *
  * REQUIRES:
  * a) new_root lock(L_WRITE)
@@ -463,10 +481,12 @@ void _root_split(struct tree *t,
                  struct node *new_root,
                  struct node *old_root)
 {
+	MSN msn;
 	struct node *a;
 	struct node *b;
 	struct msg *split_key;
 
+	msn = old_root->msn;
 	if (old_root->height == 0) {
 		_leaf_split(t, old_root, &a, &b, &split_key);
 	} else {
@@ -475,6 +495,7 @@ void _root_split(struct tree *t,
 
 	/* swap two roots */
 	_root_swap(t, new_root, old_root);
+	new_root->msn = msn;
 
 	msgcpy(&new_root->u.n.pivots[0], split_key);
 	new_root->u.n.parts[0].child_nid = a->nid;
@@ -554,7 +575,6 @@ CHANGE_LOCK_TYPE:
 			goto CHANGE_LOCK_TYPE;
 		}
 		_flush_some_child(t, root);
-		t->status->tree_flush_child_nums++;
 
 		locktype = L_READ;
 		goto CHANGE_LOCK_TYPE;
@@ -620,7 +640,7 @@ struct tree *tree_open(const char *dbname,
 	}
 
 	t->fd = fd;
-	t->block = block_new();
+	t->block = block_new(t->status);
 
 	/* tree header */
 	if (is_create) {

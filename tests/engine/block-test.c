@@ -12,7 +12,8 @@
 
 CTEST(block_test, block_get)
 {
-	struct block *b = block_new();
+	struct status *status = status_new();
+	struct block *b = block_new(status);
 
 	uint32_t height = 0;
 	uint32_t skeleton_size = 0;
@@ -72,4 +73,5 @@ CTEST(block_test, block_get)
 	ASSERT_EQUAL(2560, off0);
 
 	block_free(b);
+	status_free(status);
 }

@@ -34,12 +34,13 @@ static int _pair_compare_fun(const void *a, const void *b)
 	return 0;
 }
 
-struct block *block_new() {
+struct block *block_new(struct status *status) {
 	struct block *b;
 
 	b = xcalloc(1, sizeof(*b));
 	rwlock_init(&b->rwlock);
 	b->allocated += ALIGN(BLOCK_OFFSET_START);
+	b->status = status;
 
 	return b;
 }

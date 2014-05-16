@@ -13,9 +13,14 @@
 int fetch_node_callback(void *tree, NID nid, struct node **n)
 {
 	int r;
+	struct timespec t1, t2;
 	struct tree *t = (struct tree*)tree;
 
+	gettime(&t1);
 	r = deserialize_node_from_disk(t->fd, t->block, nid, n, 0);
+	gettime(&t2);
+	t->status->tree_node_fetch_costs += time_diff_ms(t1, t2);
+	t->status->tree_node_fetch_nums++;
 	if (r != NESS_OK)
 		__PANIC("fetch node from disk error, errno [%d]", r);
 
@@ -25,9 +30,14 @@ int fetch_node_callback(void *tree, NID nid, struct node **n)
 int flush_node_callback(void *tree, struct node *n)
 {
 	int r;
+	struct timespec t1, t2;
 	struct tree *t = (struct tree*)tree;
 
+	gettime(&t1);
 	r = serialize_node_to_disk(t->fd, t->block, n, t->hdr);
+	gettime(&t2);
+	t->status->tree_node_flush_costs += time_diff_ms(t1, t2);
+	t->status->tree_node_flush_nums++;
 	if (r != NESS_OK)
 		__PANIC("flush node to disk error, errno [%d]", r);
 

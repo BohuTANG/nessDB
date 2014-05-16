@@ -9,6 +9,7 @@
 
 #include "internal.h"
 #include "posix.h"
+#include "status.h"
 #include "file.h"
 
 /**
@@ -35,9 +36,10 @@ struct block {
 	uint32_t pairs_size;
 	struct block_pair * pairs;
 	ness_rwlock_t rwlock;
+	struct status *status;
 };
 
-struct block *block_new();
+struct block *block_new(struct status*);
 void block_init(struct block *b,
                 struct block_pair *pairs,
                 uint32_t size);
