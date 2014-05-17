@@ -16,16 +16,16 @@ else
 endif
 
 CC = gcc
-# OPT ?= -O2 -DERROR # (A) Production use (optimized mode)
-OPT ?= -g2 -DINFO -DASSERT # (B) Debug mode, w/ full line-level debugging symbols
-# OPT ?= -O2 -g2 -DERROR # (C) Profiling mode: opt, but w/debugging symbols
+#OPT ?= -O2 -DERROR # (A) Production use (optimized mode)
+#OPT ?= -g2 -DINFO -DASSERT # (B) Debug mode, w/ full line-level debugging symbols
+OPT ?= -O2 -g2 -DWARN# (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
 INCLUDES = -Iengine -Idb
 CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PLATFORM_FLAGS) $(OPT)
 
 LIB_OBJS =	 			\
 	./engine/compress/compress.o	\
-	./engine/compress/quicklz.o	\
+	./engine/compress/snappy.o	\
 	./engine/compare-func.o		\
 	./engine/tree-func.o		\
 	./engine/hdrse.o		\
@@ -33,9 +33,9 @@ LIB_OBJS =	 			\
 	./engine/skiplist.o		\
 	./engine/xmalloc.o		\
 	./engine/atomic.o		\
-	./engine/mb.o			\
 	./engine/mempool.o		\
 	./engine/msgbuf.o		\
+	./engine/fifo.o 		\
 	./engine/posix.o		\
 	./engine/crc32.o		\
 	./engine/block.o		\
@@ -55,7 +55,7 @@ LIB_OBJS =	 			\
 	./engine/logger.o		\
 	./engine/txn.o			\
 	./engine/rollback.o		\
-	./db/db.o			
+	./db/db.o
 
 
 BENCH_OBJS = \

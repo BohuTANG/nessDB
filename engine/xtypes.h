@@ -35,6 +35,12 @@
 #define	NESS_TXN_COMMIT_ERR	 (-30979)
 #define	NESS_TXN_ABORT_ERR	 (-30978)
 
+/* compress method */
+typedef enum {
+	NESS_NO_COMPRESS = 0,
+	NESS_SNAPPY_METHOD = 1,
+} ness_compress_method_t;
+
 typedef enum {
 	TXN_ISO_SERIALIZABLE = 0,
 	TXN_ISO_REPEATABLE = 1,

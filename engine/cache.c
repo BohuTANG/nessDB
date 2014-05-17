@@ -103,9 +103,19 @@ void _cache_dump(struct cache *c, const char *msg)
 	cur = c->clock->head;
 	printf("----%s: cache dump:\n", msg);
 	while (cur) {
-		printf("\t nid[%" PRIu64 "],\tnodesz[%d]MB,\tdirty[%d],"
-		       "\tnum_readers[%d],\tnum_writers[%d]\n",
+		int children = cur->v->height > 0 ? cur->v->u.n.n_children : 0;
+		printf("\t nid[%" PRIu64 "]"
+		       " \tisroot[%d]"
+		       " \theight[%d]"
+		       " \tchildren[%d]"
+		       " \tnodesz[%d]MB"
+		       " \tdirty[%d]"
+		       " \tnum_readers[%d]"
+		       " \tnum_writers[%d]\n",
 		       cur->v->nid,
+		       cur->v->isroot == 1,
+		       cur->v->height,
+		       children,
 		       (int)(cur->v->attr.newsz / (1024 * 1024)),
 		       node_is_dirty(cur->v),
 		       cur->value_lock.num_readers,
@@ -273,7 +283,9 @@ TRY_PIN:
 				goto TRY_PIN;
 		}
 
+		nassert(p->v->pintype == L_NONE);
 		*n = p->v;
+		(*n)->pintype = locktype;
 		return NESS_OK;
 	}
 
@@ -311,7 +323,7 @@ TRY_PIN:
 	} else {
 		read_lock(&p->value_lock);
 	}
-
+	(*n)->pintype = locktype;
 	cpair_unlocked_by_key(c->table, k);
 
 	return NESS_OK;
@@ -331,6 +343,9 @@ int cache_create_node_and_pin(struct cache_file *cf,
 	struct cache *c = cf->cache;
 	struct tree *t = (struct tree*)cf->args;
 
+	/* make room for me, please */
+	_make_room(c);
+
 	next_nid = hdr_next_nid(t);
 	if (height == 0) {
 		new_node = leaf_alloc_empty(next_nid);
@@ -347,6 +362,7 @@ int cache_create_node_and_pin(struct cache_file *cf,
 	write_lock(&p->value_lock);
 
 	*n = new_node;
+	(*n)->pintype = L_WRITE;
 
 	/* add to cache list */
 	write_lock(&c->clock_lock);
@@ -354,22 +370,6 @@ int cache_create_node_and_pin(struct cache_file *cf,
 	write_unlock(&c->clock_lock);
 
 	return NESS_OK;
-}
-
-void cache_unpin_readonly(struct cache_file *cf, struct node *n)
-{
-	struct cpair *p;
-	struct cache *c = cf->cache;
-
-	/*
-	 * here, we don't need a hashtable array lock,
-	 * since we have hold the pair->value_lock,
-	 * others(evict thread) can't remove it from cache
-	 */
-	p = cpair_htable_find(c->table, n->nid);
-	nassert(p);
-
-	write_unlock(&p->value_lock);
 }
 
 void cache_unpin(struct cache_file *cf, struct node *n)
@@ -384,14 +384,19 @@ void cache_unpin(struct cache_file *cf, struct node *n)
 	 */
 	p = cpair_htable_find(c->table, n->nid);
 	nassert(p);
+	nassert(n->pintype != L_NONE);
 
-	n->attr.oldsz = n->attr.newsz;
-	n->attr.newsz = node_size(n);
-	mutex_lock(&c->mtx);
-	c->cache_size += (n->attr.newsz - n->attr.oldsz);
-	mutex_unlock(&c->mtx);
-
-	write_unlock(&p->value_lock);
+	if (n->pintype == L_WRITE) {
+		n->attr.oldsz = n->attr.newsz;
+		n->attr.newsz = node_size(n);
+		mutex_lock(&c->mtx);
+		c->cache_size += (n->attr.newsz - n->attr.oldsz);
+		mutex_unlock(&c->mtx);
+		write_unlock(&p->value_lock);
+	} else {
+		read_unlock(&p->value_lock);
+	}
+	n->pintype = L_NONE;
 }
 
 /*

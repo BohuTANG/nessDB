@@ -33,7 +33,9 @@
  */
 
 struct msgbuf_iter {
+	int idx;
 	int valid;
+	int mvcc;
 	MSN msn;
 	msgtype_t type;
 	struct msg key;
@@ -41,15 +43,14 @@ struct msgbuf_iter {
 	struct txnid_pair xidpair;
 	struct msgbuf *mb;
 	struct skiplist_iter list_iter;
-
-	/* internal info */
-	int idx;
+	struct msgarray *marray;
 };
 
+#define MSGENTRY_ARRAY_SLOTS (2)
 struct msgbuf {
-	uint32_t count;
 	struct mempool *mpool;
 	struct skiplist *list;
+	struct msgarray *marray;
 };
 
 struct msgbuf *msgbuf_new(void);

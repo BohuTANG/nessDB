@@ -35,6 +35,9 @@ extern "C" {
 	void db_c_next(struct db_cursor *cursor);
 	void db_c_prev(struct db_cursor *cursor);
 
+	int env_set_cache_size(struct nessdb *db, uint64_t cache_size);
+	int env_set_compress_method(struct nessdb *db, ness_compress_method_t method);
+
 #ifdef __cplusplus
 }
 #endif

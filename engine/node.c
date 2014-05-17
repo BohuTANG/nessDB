@@ -27,7 +27,7 @@ struct node *leaf_alloc_empty(NID nid) {
 	return node;
 }
 
-void leaf_alloc_msgbuf(struct node *node)
+void leaf_alloc_buffer(struct node *node)
 {
 	nassert(node->height == 0);
 	node->u.l.buffer = msgbuf_new();
@@ -57,14 +57,14 @@ struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children) {
 	return node;
 }
 
-void nonleaf_alloc_msgbuf(struct node *node)
+void nonleaf_alloc_buffer(struct node *node)
 {
 	int i;
 
 	nassert(node->height > 0);
 	nassert(node->u.n.n_children > 0);
 	for (i = 0; i < (int)node->u.n.n_children; i++) {
-		node->u.n.parts[i].buffer = msgbuf_new();
+		node->u.n.parts[i].buffer = fifo_new();
 	}
 }
 
@@ -142,7 +142,7 @@ int node_find_heaviest_idx(struct node *node)
 		struct partition *part;
 
 		part = &node->u.n.parts[i];
-		sz = msgbuf_memsize(part->buffer);
+		sz = fifo_memsize(part->buffer);
 		if (sz > maxsz) {
 			idx = i;
 			maxsz = sz;
@@ -161,7 +161,7 @@ uint32_t node_count(struct node *n)
 	else {
 		uint32_t i;
 		for (i = 0; i < n->u.n.n_children; i++) {
-			c += msgbuf_count(n->u.n.parts[i].buffer);
+			c += n->u.n.parts[i].buffer->count;
 		}
 	}
 
@@ -173,7 +173,7 @@ uint32_t node_size(struct node *n)
 	uint32_t size = 0U;
 
 	size += (sizeof(*n));
-	if (n->height == 0) {
+	if (nessunlikely(n->height == 0)) {
 		size += msgbuf_memsize(n->u.l.buffer);
 	} else {
 		uint32_t i;
@@ -183,7 +183,7 @@ uint32_t node_size(struct node *n)
 		}
 
 		for (i = 0; i < n->u.n.n_children; i++) {
-			size += msgbuf_memsize(n->u.n.parts[i].buffer);
+			size += fifo_memsize(n->u.n.parts[i].buffer);
 		}
 	}
 
@@ -205,7 +205,7 @@ void node_free(struct node *node)
 			}
 
 			for (i = 0; i < node->u.n.n_children; i++) {
-				msgbuf_free(node->u.n.parts[i].buffer);
+				fifo_free(node->u.n.parts[i].buffer);
 			}
 
 			xfree(node->u.n.pivots);

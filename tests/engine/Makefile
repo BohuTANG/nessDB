@@ -28,7 +28,7 @@ CFLAGS = -I$(top_builddir)/engine -I$(top_builddir)/db $(PLATFORM_SHARED_LDFLAGS
 
 LIB_OBJS =	 			\
 	$(top_builddir)/engine/compress/compress.o\
-	$(top_builddir)/engine/compress/quicklz.o\
+	$(top_builddir)/engine/compress/snappy.o\
 	$(top_builddir)/engine/compare-func.o	\
 	$(top_builddir)/engine/tree-func.o	\
 	$(top_builddir)/engine/hdrse.o		\
@@ -36,9 +36,9 @@ LIB_OBJS =	 			\
 	$(top_builddir)/engine/skiplist.o	\
 	$(top_builddir)/engine/xmalloc.o	\
 	$(top_builddir)/engine/atomic.o		\
-	$(top_builddir)/engine/mb.o		\
 	$(top_builddir)/engine/mempool.o	\
-	$(top_builddir)/engine/msgbuf.o	\
+	$(top_builddir)/engine/msgbuf.o		\
+	$(top_builddir)/engine/fifo.o		\
 	$(top_builddir)/engine/posix.o		\
 	$(top_builddir)/engine/crc32.o		\
 	$(top_builddir)/engine/block.o		\
@@ -68,10 +68,9 @@ TEST_OBJS = 				\
 	compress-test.o			\
 	skiplist-test.o			\
 	msgbuf-test.o			\
+	fifo-test.o			\
 	hdr-serialize-test.o		\
-	node-serialize-test.o		\
 	txn-test.o		\
-	tree-test.o		\
 	main.o			
 
 

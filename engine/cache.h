@@ -41,7 +41,6 @@ int cache_create_node_and_pin(struct cache_file *cf,
                               struct node **n);
 
 void cache_unpin(struct cache_file *cf, struct node *n);
-void cache_unpin_readonly(struct cache_file *cf, struct node *n);
 
 void cache_cpair_value_swap(struct cache_file *cf,
                             struct node *a,

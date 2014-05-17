@@ -90,6 +90,6 @@ void tree_cursor_next(struct cursor *cur);
 void tree_cursor_prev(struct cursor *cur);
 void tree_cursor_current(struct cursor *cur);
 
-void ancestors_append(struct cursor *cur, struct msgbuf *bsm);
+void ancestors_append(struct cursor *, struct fifo *);
 
 #endif /* _nessDB_CURSOR_H_ */

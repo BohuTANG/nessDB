@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#define SHORT_FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 enum DEBUG_LEVEL {
 	LEVEL_DEBUG = 0,
 	LEVEL_INFO,
@@ -32,7 +33,7 @@ void __debug(char *file,
 void _assert(void *expr, void *filename, unsigned lineno);
 
 #ifdef ASSERT
-#define nassert(exp) (void) ((exp) || (_assert(#exp, __FILE__, __LINE__), 0))
+#define nassert(exp) (void) ((exp) || (_assert(#exp, SHORT_FILE, __LINE__), 0))
 #else
 #define nassert(exp) ((void) 0)
 #endif
@@ -40,7 +41,7 @@ void _assert(void *expr, void *filename, unsigned lineno);
 
 #ifdef INFO
 #define __INFO(format, ...)						\
-	do { __debug(__FILE__, __LINE__,				\
+	do { __debug(SHORT_FILE, __LINE__,				\
 			LEVEL_INFO, format, __VA_ARGS__);		\
 	} while (0)
 #else
@@ -49,7 +50,7 @@ void _assert(void *expr, void *filename, unsigned lineno);
 
 #if defined(DEBUG) || defined(INFO)
 #define __DEBUG(format, ...)						\
-	do { __debug(__FILE__, __LINE__,				\
+	do { __debug(SHORT_FILE, __LINE__,				\
 			LEVEL_DEBUG,					\
 			format, __VA_ARGS__);				\
 	} while (0)
@@ -59,7 +60,7 @@ void _assert(void *expr, void *filename, unsigned lineno);
 
 #if defined(WARN) || defined(INFO)
 #define __WARN(format, ...)						\
-	do { __debug(__FILE__, __LINE__,				\
+	do { __debug(SHORT_FILE, __LINE__,				\
 			LEVEL_WARNING,					\
 			format, __VA_ARGS__);				\
 	} while (0)
@@ -69,7 +70,7 @@ void _assert(void *expr, void *filename, unsigned lineno);
 
 #if defined(ERROR) || defined(DEBUG) || defined(WARN) || defined(INFO)
 #define __ERROR(format, ...)						\
-	do { __debug(__FILE__, __LINE__,				\
+	do { __debug(SHORT_FILE, __LINE__,				\
 			LEVEL_ERROR,					\
 			format, __VA_ARGS__);				\
 	} while (0)
@@ -78,7 +79,7 @@ void _assert(void *expr, void *filename, unsigned lineno);
 #endif
 
 #define __PANIC(format, ...)						\
-	do { __debug(__FILE__, __LINE__,				\
+	do { __debug(SHORT_FILE, __LINE__,				\
 			LEVEL_ERROR,					\
 			format, __VA_ARGS__); abort(); exit(1);		\
 	} while (0)

@@ -6,15 +6,15 @@
 
 #include "debug.h"
 #include "compress.h"
-#include "compress/quicklz.h"
+#include "compress/snappy.h"
 
 uint32_t ness_compress_bound(ness_compress_method_t m, uint32_t size)
 {
 	switch (m) {
 	case NESS_NO_COMPRESS:
 		return size + 1;
-	case NESS_QUICKLZ_METHOD:
-		return size + 400 + 1;
+	case NESS_SNAPPY_METHOD:
+		return snappy_max_compressed_length(size) + 1;
 	default:
 		break;
 	}
@@ -22,66 +22,85 @@ uint32_t ness_compress_bound(ness_compress_method_t m, uint32_t size)
 	return 0;
 }
 
-void ness_compress(ness_compress_method_t m,
-                   const char *src,
-                   uint32_t src_size,
-                   char *dst,
-                   uint32_t *dst_size)
+int ness_compress(ness_compress_method_t m,
+                  const char *src,
+                  uint32_t src_size,
+                  char *dst,
+                  uint32_t *dst_size)
 {
+	int ret = 1;
+
 	switch (m) {
 	case NESS_NO_COMPRESS:
 		memcpy(dst + 1, src, src_size);
 		*dst_size = src_size + 1;
 		dst[0] = NESS_NO_COMPRESS;
-		return;
+		break;
 
-	case NESS_QUICKLZ_METHOD:
+	case NESS_SNAPPY_METHOD:
 		if (src_size == 0) {
-			/*
-			 * quicklz requirs at least one byte
-			 */
 			*dst_size = 1;
 		} else {
-			uint32_t act_dstlen;
-			qlz_state_compress *qsc;
+			size_t out_size;
+			int status;
+			struct snappy_env env;
+			snappy_init_env(&env);
 
-			qsc = xcalloc(1, sizeof(*qsc));
-			act_dstlen = qlz_compress(src, dst + 1, src_size, qsc);
-			*dst_size = act_dstlen + 1;
-			xfree(qsc);
+			status = snappy_compress(&env, src, src_size, dst + 1, &out_size);
+			if (status != 0) {
+				__ERROR("snappy compress error %d, src_size %d, dst_size %d",
+				        status,
+				        src_size,
+				        dst_size);
+				ret = 0;
+			}
+			*dst_size = out_size + 1;
 		}
 
-		dst[0] = NESS_QUICKLZ_METHOD + (QLZ_COMPRESSION_LEVEL << 4);
-		return;
+		dst[0] = NESS_SNAPPY_METHOD;
+		break;
+
+	default:
+		ret = 0;
+		__ERROR("%s", "no compress method support!");
+		break;
 	}
+
+	return ret;
 }
 
-void ness_decompress(const char *src,
-                     uint32_t src_size,
-                     char *dst,
-                     uint32_t dst_size)
+int ness_decompress(const char *src,
+                    uint32_t src_size,
+                    char *dst,
+                    uint32_t dst_size)
 {
+	int ret = 1;
+
 	switch (src[0] & 0xF) {
 	case NESS_NO_COMPRESS:
 		memcpy(dst, src + 1, src_size - 1);
 		break;
 
-	case NESS_QUICKLZ_METHOD: {
-			uint32_t raw_size;
-			qlz_state_decompress *qsd;
+	case NESS_SNAPPY_METHOD: {
+			int status;
+			struct snappy_env env;
+			snappy_init_env(&env);
 
-			qsd = xcalloc(1, sizeof(*qsd));
-			raw_size = qlz_decompress(src + 1, dst, qsd);
-			nassert(raw_size == dst_size);
-			(void)raw_size;
+			status = snappy_uncompress(src + 1, src_size - 1, dst);
+			if (status != 0) {
+				__ERROR("snappy uncompress error %d", status);
+				ret = 0;
+				goto ERR;
+			}
 			(void)dst_size;
-
-			xfree(qsd);
 		}
 		break;
 	default:
-		printf("no decompress support!\n");
-		nassert(1);
+		ret = 0;
+		__ERROR("%s", "no decompress method support!");
 		break;
 	}
+
+ERR:
+	return ret;
 }

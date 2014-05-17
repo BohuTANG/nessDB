@@ -11,6 +11,6 @@
 #include "internal.h"
 
 int msg_key_compare(struct msg *, struct msg *);
-int msgbuf_key_compare(void *, void *, struct cmp_extra *);
+int msgbuf_key_compare(void *, void *);
 
 #endif /* _nessDB_COMPARE_FUNC_H_ */

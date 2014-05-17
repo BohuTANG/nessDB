@@ -11,7 +11,7 @@
 #include "skiplist.h"
 #include "ctest.h"
 
-int _compare_fun(void *a, void *b, struct cmp_extra *extra)
+int _compare_fun(void *a, void *b)
 {
 	if (!a)
 		return -1;
@@ -26,8 +26,6 @@ int _compare_fun(void *a, void *b, struct cmp_extra *extra)
 	else if (ia > ib)
 		return +1;
 	else {
-		if (extra)
-			extra->exists = 1;
 		return 0;
 	}
 }
@@ -100,7 +98,7 @@ CTEST(skiplist, insert_and_lookup)
 
 			skiplist_iter_seek(&iter, &i);
 			ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-			exp = *(int*)iter.node->keys[0];
+			exp = *(int*)iter.node->key;
 			ASSERT_EQUAL(i, exp);
 		}
 	}
@@ -129,11 +127,7 @@ CTEST(skiplist, insert_same_key)
 	ret = skiplist_iter_valid(&iter);
 	ASSERT_EQUAL(1, ret);
 
-	ASSERT_EQUAL(5, iter.node->used);
-	ASSERT_EQUAL(8, iter.node->size);
-	ASSERT_EQUAL(k, *(int*)iter.node->keys[0]);
-	ASSERT_EQUAL(k, *(int*)iter.node->keys[1]);
-	ASSERT_EQUAL(k, *(int*)iter.node->keys[2]);
+	ASSERT_EQUAL(k, *(int*)iter.node->key);
 
 	skiplist_free(list);
 	xcheck_all_free();
@@ -156,11 +150,11 @@ CTEST(skiplist, cursor)
 	skiplist_iter_init(&iter, list);
 	skiplist_iter_seektofirst(&iter);
 	ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-	ASSERT_EQUAL(0, *(int*)iter.node->keys[0]);
+	ASSERT_EQUAL(0, *(int*)iter.node->key);
 
 	skiplist_iter_seektolast(&iter);
 	ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-	ASSERT_EQUAL(N - 1, *(int*)iter.node->keys[0]);
+	ASSERT_EQUAL(N - 1, *(int*)iter.node->key);
 
 	i = 1982;
 	skiplist_put(list, &keys[i]);
@@ -168,13 +162,13 @@ CTEST(skiplist, cursor)
 
 	skiplist_iter_seek(&iter, &keys[i]);
 	ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-	ASSERT_EQUAL(i, *(int*)iter.node->keys[0]);
+	ASSERT_EQUAL(i, *(int*)iter.node->key);
 
 	int s = 1981;
 	skiplist_iter_prev(&iter);
 	while (skiplist_iter_valid(&iter) && (s > 1500)) {
 		ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-		ASSERT_EQUAL(s, *(int*)iter.node->keys[0]);
+		ASSERT_EQUAL(s, *(int*)iter.node->key);
 		skiplist_iter_prev(&iter);
 		s -= 1;
 	}
@@ -184,19 +178,19 @@ CTEST(skiplist, cursor)
 	ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
 	while (skiplist_iter_valid(&iter) && (s < 1981)) {
 		ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-		ASSERT_EQUAL(s, *(int*)iter.node->keys[0]);
+		ASSERT_EQUAL(s, *(int*)iter.node->key);
 		skiplist_iter_next(&iter);
 		s += 1;
 	}
 
 	skiplist_iter_next(&iter);
 	ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-	ASSERT_EQUAL(i, *(int*)iter.node->keys[0]);
-	ASSERT_EQUAL(i, *(int*)iter.node->keys[1]);
+	ASSERT_EQUAL(i, *(int*)iter.node->key);
+	ASSERT_EQUAL(i, *(int*)iter.node->key);
 
 	skiplist_iter_next(&iter);
 	ASSERT_EQUAL(1, skiplist_iter_valid(&iter));
-	ASSERT_EQUAL(i + 1, *(int*)iter.node->keys[0]);
+	ASSERT_EQUAL(i + 1, *(int*)iter.node->key);
 
 	skiplist_free(list);
 	xcheck_all_free();
@@ -205,7 +199,7 @@ CTEST(skiplist, cursor)
 CTEST(skiplist, benchmark)
 {
 	int i;
-	int N = 1000000;
+	int N = 5000000;
 	int *keys;
 	long long cost_ms;
 	struct timespec start, end;
@@ -274,66 +268,4 @@ void _do_next(struct skiplist *list)
 	while (skiplist_iter_valid(&iter)) {
 		skiplist_iter_next(&iter);
 	}
-}
-
-volatile int _stop = 0;
-void *_thd_write(void *arg)
-{
-	int n = 2000000;
-	int *keys;
-	struct skiplist *list = (struct skiplist*)arg;
-
-	keys = xcalloc(n, sizeof(int));
-	_do_write(list, keys, n);
-	_stop = 1;
-	xfree(keys);
-
-	return NULL;
-}
-
-void *_thd_prev(void *arg)
-{
-	struct skiplist *list = (struct skiplist*)arg;
-
-	while (!_stop) {
-		_do_prev(list);
-	}
-
-	return NULL;
-}
-
-void *_thd_next(void *arg)
-{
-	struct skiplist *list = (struct skiplist*)arg;
-
-	while (!_stop) {
-		_do_next(list);
-	}
-
-	return NULL;
-}
-
-
-CTEST(skiplsit, concurrent)
-{
-	int i;
-	pthread_t thread_id[3];
-	struct skiplist *list = skiplist_new(&_compare_fun);
-
-	if (pthread_create(&thread_id[0], NULL, _thd_prev, (void*)list) != 0)
-		assert(0);
-
-	if (pthread_create(&thread_id[1], NULL, _thd_next, (void*)list) != 0)
-		assert(0);
-
-	usleep(10000);
-	if (pthread_create(&thread_id[2], NULL, _thd_write, (void*)list) != 0)
-		assert(0);
-
-
-	for (i = 0; i < 3; i++)
-		pthread_join(thread_id[i], NULL);
-
-	skiplist_free(list);
-
 }

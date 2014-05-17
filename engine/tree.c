@@ -65,7 +65,7 @@ void _add_pivot_to_parent(struct tree *t,
 
 	msgcpy(&parent->u.n.pivots[pidx], spk);
 	parent->u.n.parts[pidx].child_nid = a->nid;
-	parent->u.n.parts[pidx].buffer = msgbuf_new();
+	parent->u.n.parts[pidx].buffer = fifo_new();
 
 	parent->u.n.parts[pidx + 1].child_nid = b->nid;
 	parent->u.n.n_children += 1;
@@ -118,25 +118,31 @@ void _leaf_split(struct tree *t,
 	buffa = msgbuf_new();
 	buffb = msgbuf_new();
 
-	mid = old_buff->count / 2;
+	mid = msgbuf_count(old_buff) / 2;
 	msgbuf_iter_init(&iter, old_buff);
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
-		if (i <= mid) {
+		if (i <= mid)
 			mb = buffa;
-		} else {
+		else
 			mb = buffb;
-		}
 
-		while (msgbuf_internal_iter_next(&iter)) {
+		if (iter.mvcc) {
+			while (msgbuf_internal_iter_next(&iter)) {
+				msgbuf_put(mb,
+				           iter.msn, iter.type,
+				           &iter.key, &iter.val,
+				           &iter.xidpair);
+			}
+		} else {
 			msgbuf_put(mb,
 			           iter.msn, iter.type,
 			           &iter.key, &iter.val,
 			           &iter.xidpair);
-			if (i == mid)
-				spk = msgdup(&iter.key);
-
 		}
+
+		if (i == mid)
+			spk = msgdup(&iter.key);
 		i++;
 		msgbuf_iter_next(&iter);
 	}
@@ -218,7 +224,7 @@ void _nonleaf_split(struct tree *t,
 	}
 
 	/* the rightest partition of nodea */
-	nodea->u.n.parts[pivots_in_a].buffer = msgbuf_new();
+	nodea->u.n.parts[pivots_in_a].buffer = fifo_new();
 
 	/* split key */
 	spk = msgdup(&node->u.n.pivots[pivots_in_a - 1]);
@@ -268,7 +274,7 @@ void _node_split_child(struct tree *t,
 
 enum reactivity _get_reactivity(struct tree *t, struct node *node)
 {
-	if (node->height == 0) {
+	if (nessunlikely(node->height == 0)) {
 		if ((node_size(node) >= t->opts->leaf_node_page_size && node_count(node) > 1) ||
 		    node_count(node) >= t->opts->leaf_node_page_count)
 			return FISSIBLE;
@@ -278,17 +284,7 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
 		if (children >= t->opts->inner_node_fanout)
 			return FISSIBLE;
 
-		uint32_t i;
-		int empty = 1;
-
-		for (i = 0; i < children; i++) {
-			if (msgbuf_memsize(node->u.n.parts[i].buffer) > 0) {
-				empty = 0;
-				break;
-			}
-		}
-
-		if (((node_size(node) > t->opts->inner_node_page_size) && !empty) ||
+		if (((node_size(node) > t->opts->inner_node_page_size)) ||
 		    node_count(node) >= t->opts->inner_node_page_count)
 			return FLUSHBLE;
 	}
@@ -330,12 +326,12 @@ void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
 		__PANIC("partiton buffer is null, index %d", pidx);
 
 	write_lock(&part->rwlock);
-	msgbuf_put(part->buffer,
-	           cmd-> msn,
-	           cmd->type,
-	           cmd->key,
-	           cmd->val,
-	           &cmd->xidpair);
+	fifo_append(part->buffer,
+	            cmd-> msn,
+	            cmd->type,
+	            cmd->key,
+	            cmd->val,
+	            &cmd->xidpair);
 	node->msn = cmd->msn > node->msn ? cmd->msn : node->msn;
 	node_set_dirty(node);
 	write_unlock(&part->rwlock);
@@ -350,7 +346,7 @@ void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
  */
 void _node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
 {
-	if (node->height == 0) {
+	if (nessunlikely(node->height == 0)) {
 		leaf_put_cmd(node, cmd);
 		t->status->tree_leaf_put_nums++;
 	} else {
@@ -373,8 +369,8 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	struct node *child;
 	struct partition *part;
 	enum reactivity re_child;
-	struct msgbuf *mb;
-	struct msgbuf_iter iter;
+	struct fifo *fifo;
+	struct fifo_iter iter;
 	struct timespec t1, t2;
 
 	childnum = node_find_heaviest_idx(parent);
@@ -392,10 +388,9 @@ int _flush_some_child(struct tree *t, struct node *parent)
 	}
 
 	gettime(&t1);
-	mb = part->buffer;
-	msgbuf_iter_init(&iter, mb);
-	msgbuf_iter_seektofirst(&iter);
-	while (msgbuf_iter_valid(&iter)) {
+	fifo = part->buffer;
+	fifo_iter_init(&iter, fifo);
+	while (fifo_iter_next(&iter)) {
 		/* TODO(BohuTANG): check msn */
 		struct bt_cmd cmd = {
 			.msn = iter.msn,
@@ -405,12 +400,11 @@ int _flush_some_child(struct tree *t, struct node *parent)
 			.xidpair = iter.xidpair
 		};
 		_node_put_cmd(t, child, &cmd);
-		msgbuf_iter_next(&iter);
 	}
 
 	/* free flushed msgbuffer */
-	msgbuf_free(part->buffer);
-	part->buffer = msgbuf_new();
+	fifo_free(part->buffer);
+	part->buffer = fifo_new();
 	node_set_dirty(parent);
 	node_set_dirty(child);
 	gettime(&t2);
@@ -499,10 +493,10 @@ void _root_split(struct tree *t,
 
 	msgcpy(&new_root->u.n.pivots[0], split_key);
 	new_root->u.n.parts[0].child_nid = a->nid;
-	new_root->u.n.parts[0].buffer = msgbuf_new();
+	new_root->u.n.parts[0].buffer = fifo_new();
 
 	new_root->u.n.parts[1].child_nid = b->nid;
-	new_root->u.n.parts[1].buffer = msgbuf_new();
+	new_root->u.n.parts[1].buffer = fifo_new();
 	msgfree(split_key);
 
 	node_set_dirty(b);
@@ -647,9 +641,10 @@ struct tree *tree_open(const char *dbname,
 		t->hdr = xcalloc(1, sizeof(*t->hdr));
 		t->hdr->height = 0U;
 		t->hdr->last_nid = NID_START;
-		t->hdr->method = opts->compress_method;
 	} else
 		tcb->fetch_hdr(t);
+
+	t->hdr->opts = opts;
 
 	/* create cache file */
 	cf = cache_file_create(cache, tcb, t);
@@ -658,7 +653,7 @@ struct tree *tree_open(const char *dbname,
 	/* tree root node */
 	if (is_create) {
 		cache_create_node_and_pin(cf, 0U, 0U, &root);
-		leaf_alloc_msgbuf(root);
+		leaf_alloc_buffer(root);
 		root->isroot = 1;
 		node_set_dirty(root);
 

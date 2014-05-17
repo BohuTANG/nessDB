@@ -28,8 +28,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include "xmalloc.h"
+#include "status.h"
 #include "atomic.h"
-#include "mb.h"
 
 
 #define nesslikely(EXPR) __builtin_expect(!! (EXPR), 1)
@@ -48,16 +48,11 @@ typedef uint64_t MSN;
 typedef uint64_t TXNID;
 typedef uint64_t DISKOFF;
 
-/* compress method */
-typedef enum {
-	NESS_NO_COMPRESS,
-	NESS_QUICKLZ_METHOD,
-} ness_compress_method_t;
-
 /* lock type */
 enum lock_type {
-	L_READ,
-	L_WRITE,
+	L_NONE = 0,
+	L_READ = 1,
+	L_WRITE = 2,
 };
 
 /* transaction state */
@@ -73,14 +68,23 @@ struct txnid_pair {
 	TXNID parent_xid;
 };
 
-#define MSG_ENTRY_SIZE (sizeof(struct msg_entry))
-struct msg_entry {
+#define MSGENTRY_SIZE (sizeof(struct msgentry))
+struct msgentry {
 	MSN msn;
 	uint8_t type;
 	struct txnid_pair xidpair;
 	uint32_t keylen;
 	uint32_t vallen;
 } __attribute__((__packed__));
+
+/* key for skiplist */
+struct msgarray {
+	int size;
+	int used;
+	int num_cx;
+	int num_px;
+	struct msgentry **arrays;
+};
 
 struct cmp_extra {
 	int exists;

@@ -8,7 +8,7 @@
 #include "mempool.h"
 
 /* 4KB per block */
-#define MEMPOOL_BLOCKSIZE	(4096)
+#define MEMPOOL_BLOCKSIZE	(4096*16)
 
 struct mempool_block *_new_block(struct mempool *pool, uint32_t bytes) {
 	uint32_t sizes;
@@ -33,6 +33,26 @@ struct mempool *mempool_new() {
 	pool->n_blocks++;
 
 	return pool;
+}
+
+char *mempool_alloc(struct mempool *pool, uint32_t bytes)
+{
+	char *results;
+	struct mempool_block *blk;
+
+	blk = pool->blocks;
+	if (blk->remaining <= bytes) {
+		uint32_t newsize = blk->size * 2;
+		blk->memory = xrealloc(blk->memory, newsize);
+		blk->size = newsize;
+		blk->remaining = blk->size - pool->memory_used;
+	}
+	results = (blk->memory + pool->memory_used);
+	blk->remaining -= bytes;
+	pool->memory_used += bytes;
+	pool->memory_size = blk->size;
+
+	return results;
 }
 
 /*

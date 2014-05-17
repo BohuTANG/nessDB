@@ -27,9 +27,9 @@ CTEST(compress, compressed)
 	xfree(dst);
 	xfree(src);
 
-	bound_size = ness_compress_bound(NESS_QUICKLZ_METHOD, data_size);
+	bound_size = ness_compress_bound(NESS_SNAPPY_METHOD, data_size);
 	dst = xmalloc(bound_size);
-	ness_compress(NESS_QUICKLZ_METHOD, data, data_size, dst, &dst_size);
+	ness_compress(NESS_SNAPPY_METHOD, data, data_size, dst, &dst_size);
 	src = xcalloc(1, data_size + 1);
 	ness_decompress(dst, dst_size, src, data_size);
 	ASSERT_STR(data, src);

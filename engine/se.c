@@ -16,7 +16,73 @@
  *
  **********************************************************************/
 
-void _nonleaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
+void _nonleaf_fifo_to_buf(struct fifo *fifo, struct buffer *buf)
+{
+	struct fifo_iter iter;
+
+	fifo_iter_init(&iter, fifo);
+	while (fifo_iter_next(&iter)) {
+		MSN msn = iter.msn;
+
+		msn = ((msn << 8) | iter.type);
+		buf_putuint64(buf, msn);
+		buf_putuint64(buf, iter.xidpair.child_xid);
+		buf_putuint64(buf, iter.xidpair.parent_xid);
+		buf_putuint32(buf, iter.key.size);
+		buf_putnstr(buf, iter.key.data, iter.key.size);
+
+		if (iter.type != MSG_DELETE) {
+			buf_putuint32(buf, iter.val.size);
+			buf_putnstr(buf, iter.val.data, iter.val.size);
+		}
+	}
+}
+
+int _nonleaf_buf_to_fifo(struct buffer *rbuf, uint32_t size, struct fifo *fifo)
+{
+	uint32_t pos = 0;
+
+	while (pos < size) {
+		MSN msn;
+		uint8_t type;
+		struct txnid_pair xidpair;
+		struct msg k;
+		struct msg v;
+
+		if (!buf_getuint64(rbuf, &msn)) goto ERR;
+		pos += sizeof(uint64_t);
+		type = (msn & 0xff);
+		msn = (msn >> 8);
+		if (!buf_getuint64(rbuf, &xidpair.child_xid)) goto ERR;
+		pos += sizeof(uint64_t);
+
+		if (!buf_getuint64(rbuf, &xidpair.parent_xid)) goto ERR;
+		pos += sizeof(uint64_t);
+
+		if (!buf_getuint32(rbuf, &k.size)) goto ERR;
+		pos += sizeof(uint32_t);
+
+		if (!buf_getnstr(rbuf, k.size, (char**)&k.data)) goto ERR;
+		pos += k.size;
+
+		if (type != MSG_DELETE) {
+			if (!buf_getuint32(rbuf, &v.size)) goto ERR;
+			pos += sizeof(uint32_t);
+
+			if (!buf_getnstr(rbuf, v.size, (char**)&v.data)) goto ERR;
+			pos += v.size;
+		}
+
+		fifo_append(fifo, msn, type, &k, &v, &xidpair);
+	}
+
+	return NESS_OK;
+
+ERR:
+	return NESS_ERR;
+}
+
+void _leaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 {
 	struct msgbuf_iter iter;
 
@@ -43,12 +109,7 @@ void _nonleaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 	}
 }
 
-void _leaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
-{
-	_nonleaf_msgbuf_to_buf(mb, buf);
-}
-
-int _buf_to_msgbuf(struct buffer *rbuf, uint32_t size, struct msgbuf *mb)
+int _leaf_buf_to_msgbuf(struct buffer *rbuf, uint32_t size, struct msgbuf *mb)
 {
 	uint32_t pos = 0;
 
@@ -97,7 +158,8 @@ ERR:
  */
 void _serialize_leaf_to_buf(struct buffer *wbuf,
                             struct node *node,
-                            struct hdr *hdr)
+                            struct hdr *hdr,
+                            struct status *status)
 {
 	struct buffer *buf;
 	char *compress_ptr = NULL;
@@ -116,15 +178,18 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 	buf_putnstr(wbuf, "nodeleaf", 8);
 	if (uncompress_size > 0) {
 		uint32_t bound;
+		struct timespec t1, t2;
 
-		bound = ness_compress_bound(hdr->method, uncompress_size);
+		gettime(&t1);
+		bound = ness_compress_bound(hdr->opts->compress_method, uncompress_size);
 		compress_ptr =  xcalloc(1, bound);
-		ness_compress(hdr->method,
+		ness_compress(hdr->opts->compress_method,
 		              uncompress_ptr,
 		              uncompress_size,
 		              compress_ptr,
 		              &compress_size);
-
+		gettime(&t2);
+		status->leaf_compress_data_costs += time_diff_ms(t1, t2);
 		/*
 		 * b) |compress_size|uncompress_size|compress datas|
 		 */
@@ -153,7 +218,8 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 void _serialize_nonleaf_to_buf(struct buffer *wbuf,
                                struct node *node,
                                struct hdr *hdr,
-                               uint32_t *skeleton_size)
+                               uint32_t *skeleton_size,
+                               struct status *status)
 {
 	uint32_t i;
 	uint32_t part_off = 0U;
@@ -185,8 +251,7 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 		 */
 		buf_clear(part_wbuf);
 		if (node->u.n.parts[i].buffer)
-			_nonleaf_msgbuf_to_buf(node->u.n.parts[i].buffer,
-			                       part_wbuf);
+			_nonleaf_fifo_to_buf(node->u.n.parts[i].buffer, part_wbuf);
 
 		uncompress_size = part_wbuf->NUL;
 		uncompress_ptr = part_wbuf->buf;
@@ -194,14 +259,18 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 		buf_clear(part_wbuf);
 		if (uncompress_size > 0) {
 			uint32_t bound;
+			struct timespec t1, t2;
 
-			bound = ness_compress_bound(hdr->method, uncompress_size);
+			gettime(&t1);
+			bound = ness_compress_bound(hdr->opts->compress_method, uncompress_size);
 			compress_ptr =  xcalloc(1, bound);
-			ness_compress(hdr->method,
+			ness_compress(hdr->opts->compress_method,
 			              uncompress_ptr,
 			              uncompress_size,
 			              compress_ptr,
 			              &compress_size);
+			gettime(&t2);
+			status->nonleaf_compress_data_costs += time_diff_ms(t1, t2);
 
 			buf_putuint32(part_wbuf, compress_size);
 			buf_putuint32(part_wbuf, uncompress_size);
@@ -266,9 +335,9 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 
 	uint32_t bound;
 
-	bound = ness_compress_bound(hdr->method, uncompress_size);
+	bound = ness_compress_bound(hdr->opts->compress_method, uncompress_size);
 	compress_ptr =  xcalloc(1, bound);
-	ness_compress(hdr->method,
+	ness_compress(hdr->opts->compress_method,
 	              uncompress_ptr, uncompress_size,
 	              compress_ptr, &compress_size);
 	buf_clear(pivots_wbuf);
@@ -322,6 +391,7 @@ int _deserialize_leaf_from_disk(int fd,
 	}
 	gettime(&t2);
 	status->leaf_read_from_disk_costs += time_diff_ms(t1, t2);
+	status->leaf_read_from_disk_nums++;
 
 	char *datas = NULL;
 	uint32_t act_xsum;
@@ -358,19 +428,20 @@ int _deserialize_leaf_from_disk(int fd,
 
 	lbuf = buf_new(uncompress_size);
 	if (uncompress_size > 0) {
+		gettime(&t1);
 		ness_decompress(datas,
 		                compress_size,
 		                lbuf->buf,
 		                uncompress_size);
+		gettime(&t2);
+		status->leaf_uncompress_data_costs += time_diff_ms(t1, t2);
 	}
 
 	/* alloc leaf node */
 	n = leaf_alloc_empty(bp->nid);
-	leaf_alloc_msgbuf(n);
+	leaf_alloc_buffer(n);
 
-	r = _buf_to_msgbuf(lbuf,
-	                   uncompress_size,
-	                   n->u.l.buffer);
+	r = _leaf_buf_to_msgbuf(lbuf, uncompress_size, n->u.l.buffer);
 	if (r != NESS_OK) {
 		__ERROR("buf to dmt error, "
 		        "buf raw_size [%" PRIu32 "]",
@@ -387,7 +458,8 @@ RET:
 int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
                                   struct block_pair *bp,
                                   struct node **n,
-                                  int light)
+                                  int light,
+                                  struct status *status)
 {
 	uint32_t i;
 	int r = NESS_OK;
@@ -402,22 +474,27 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 
 	/* new nonleaf node */
 	node = nonleaf_alloc_empty(bp->nid, height, children);
-	nonleaf_alloc_msgbuf(node);
+	nonleaf_alloc_buffer(node);
 
 	/* b) unpack pivots */
 	char *compress_ptr;
 	uint32_t compress_size;
 	uint32_t uncompress_size;
+	struct timespec t1, t2;
 
 	if (!buf_getuint32(rbuf, &compress_size)) goto ERR;
 	if (!buf_getuint32(rbuf, &uncompress_size)) goto ERR;
 	if (!buf_getnstr(rbuf, compress_size, &compress_ptr)) goto ERR;
 
 	struct buffer *pivots_rbuf = buf_new(uncompress_size);
+
+	gettime(&t1);
 	ness_decompress(compress_ptr,
 	                compress_size,
 	                pivots_rbuf->buf,
 	                uncompress_size);
+	gettime(&t2);
+	status->nonleaf_uncompress_data_costs += time_diff_ms(t1, t2);
 
 	for (i = 0; i < node->u.n.n_children; i++) {
 		if (i < (node->u.n.n_children - 1)) {
@@ -473,9 +550,7 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 				                part_size,
 				                part_rbuf->buf,
 				                part_raw_size);
-				r = _buf_to_msgbuf(part_rbuf,
-				                   part_raw_size,
-				                   node->u.n.parts[i].buffer);
+				r = _nonleaf_buf_to_fifo(part_rbuf, part_raw_size, node->u.n.parts[i].buffer);
 				buf_free(part_rbuf);
 
 				if (r != NESS_OK) {
@@ -530,6 +605,7 @@ int _deserialize_nonleaf_from_disk(int fd,
 	}
 	gettime(&t2);
 	status->nonleaf_read_from_disk_costs += time_diff_ms(t1, t2);
+	status->nonleaf_read_from_disk_nums++;
 
 	/*
 	 * check the checksum
@@ -551,7 +627,7 @@ int _deserialize_nonleaf_from_disk(int fd,
 		goto ERR;
 	}
 
-	r = _deserialize_nonleaf_from_buf(rbuf, bp, node, light);
+	r = _deserialize_nonleaf_from_buf(rbuf, bp, node, light, status);
 	buf_free(rbuf);
 
 	return r;
@@ -575,9 +651,9 @@ int serialize_node_to_disk(int fd,
 
 	wbuf = buf_new(1 << 20);
 	if (node->height == 0)
-		_serialize_leaf_to_buf(wbuf, node, hdr);
+		_serialize_leaf_to_buf(wbuf, node, hdr, block->status);
 	else
-		_serialize_nonleaf_to_buf(wbuf, node, hdr, &skeleton_size);
+		_serialize_nonleaf_to_buf(wbuf, node, hdr, &skeleton_size, block->status);
 
 	real_size = wbuf->NUL;
 	address = block_alloc_off(block,
@@ -728,9 +804,9 @@ int deserialize_part_from_disk(int fd,
 		                compress_size,
 		                part_rbuf->buf,
 		                uncompress_size);
-		r = _buf_to_msgbuf(part_rbuf,
-		                   uncompress_size,
-		                   node->u.n.parts[idx].buffer);
+		r = _nonleaf_buf_to_fifo(part_rbuf,
+		                         uncompress_size,
+		                         node->u.n.parts[idx].buffer);
 		buf_free(part_rbuf);
 
 		if (r != NESS_OK) {

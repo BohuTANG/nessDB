@@ -15,33 +15,23 @@
  * @file skiplist.h
  * @brief skiplist definitions
  *
- * skiplist is the fundamental sort-structure with iterator(thread-safe).
- * it's used in innernode's msgbuf and leafnode's msgbuf.
- *
  */
 
 /* compare function */
-typedef int (*SKIPLIST_COMPARE_CALLBACK)(void *, void *, struct cmp_extra *);
+typedef int (*SKIPLIST_COMPARE_CALLBACK)(void *, void *);
 
 struct skiplist_iter {
 	struct skipnode *node;
 	struct skiplist *list;
 };
 
-#define SLOTS_SIZE (4)
-
 struct skipnode {
-	int size;
-	int used;
-	int num_cx; /* number of committed transaction */
-	int num_px; /* number of provisional transaction */
-	void **keys;
+	void *key;
 	struct skipnode *next[1];
 };
 
 struct skiplist {
 	int count;
-	int unique;
 	int height;
 	struct skipnode *header;
 	struct mempool *mpool;
@@ -49,19 +39,20 @@ struct skiplist {
 };
 
 struct skiplist *skiplist_new(SKIPLIST_COMPARE_CALLBACK compare_cb);
-
-void skiplist_put(struct skiplist *sl, void *key);
-struct skipnode *skiplist_find_less_than(struct skiplist *sl, void *key);
-struct skipnode *skiplist_find_last(struct skiplist *sl);
-void skiplist_free(struct skiplist *sl);
+int skiplist_makeroom(struct skiplist *, void *, struct skipnode **);
+void skiplist_put(struct skiplist *, void *);
+void *skiplist_find(struct skiplist *, void *);
+struct skipnode *skiplist_find_less_than(struct skiplist *, void *);
+struct skipnode *skiplist_find_last(struct skiplist *);
+void skiplist_free(struct skiplist *);
 
 /* skiplsit iterator */
-void skiplist_iter_init(struct skiplist_iter *iter, struct skiplist *list);
-int skiplist_iter_valid(struct skiplist_iter *iter);
-void skiplist_iter_next(struct skiplist_iter *iter);
-void skiplist_iter_prev(struct skiplist_iter *iter);
-void skiplist_iter_seek(struct skiplist_iter *iter, void *key);
-void skiplist_iter_seektofirst(struct skiplist_iter *iter);
-void skiplist_iter_seektolast(struct skiplist_iter *iter);
+void skiplist_iter_init(struct skiplist_iter *, struct skiplist *);
+int skiplist_iter_valid(struct skiplist_iter *);
+void skiplist_iter_next(struct skiplist_iter *);
+void skiplist_iter_prev(struct skiplist_iter *);
+void skiplist_iter_seek(struct skiplist_iter *, void *);
+void skiplist_iter_seektofirst(struct skiplist_iter *);
+void skiplist_iter_seektolast(struct skiplist_iter *);
 
 #endif /* _nessDB_SKIPLIST_H_ */

@@ -47,6 +47,7 @@ int _le_apply_commit(struct msgbuf *mb, struct bt_cmd *cmd)
 	cmp = msg_key_compare(&iter.key, cmd->key);
 	if (cmp == 0) {
 		/* change the array */
+		/*
 		struct skipnode *node;
 
 		node = iter.list_iter.node;
@@ -54,7 +55,6 @@ int _le_apply_commit(struct msgbuf *mb, struct bt_cmd *cmd)
 			ret = NESS_TXN_COMMIT_ERR;
 			goto RET;
 		}
-		/* the top of the txn stack */
 		if (msgbuf_internal_iter_reverse(&iter)) {
 			int same_pxid = iter.xidpair.parent_xid == cmd->xidpair.parent_xid;
 			int same_xid = iter.xidpair.child_xid == cmd->xidpair.child_xid;
@@ -65,12 +65,12 @@ int _le_apply_commit(struct msgbuf *mb, struct bt_cmd *cmd)
 				node->keys[node->num_cx] = node->keys[node->used - 1];
 			}
 		}
+		*/
 		ret = NESS_OK;
 	} else {
 		ret = NESS_TXN_COMMIT_ERR;
 	}
 
-RET:
 	return ret;
 }
 
@@ -88,6 +88,7 @@ int _le_apply_abort(struct msgbuf *mb, struct bt_cmd *cmd)
 	cmp = msg_key_compare(&iter.key, cmd->key);
 	if (cmp == 0) {
 		/* change the array */
+		/*
 		struct skipnode *node;
 
 		node = iter.list_iter.node;
@@ -95,7 +96,6 @@ int _le_apply_abort(struct msgbuf *mb, struct bt_cmd *cmd)
 			ret = NESS_TXN_COMMIT_ERR;
 			goto RET;
 		}
-		/* the top of the txn stack */
 		if (msgbuf_internal_iter_reverse(&iter)) {
 			int same_pxid = iter.xidpair.parent_xid == cmd->xidpair.parent_xid;
 			int same_xid = iter.xidpair.child_xid == cmd->xidpair.child_xid;
@@ -105,12 +105,12 @@ int _le_apply_abort(struct msgbuf *mb, struct bt_cmd *cmd)
 				node->used--;
 			}
 		}
+		*/
 		ret = NESS_OK;
 	} else {
 		ret = NESS_TXN_ABORT_ERR;
 	}
 
-RET:
 	return ret;
 }
 
@@ -167,17 +167,23 @@ void _apply_msg_to_child(struct node *parent,
                          struct msg *left,
                          struct msg *right)
 {
+	(void)parent;
+	(void)child_num;
+	(void)child;
+	(void)left;
+	(void)right;
+	/*
 	int height;
-	struct msgbuf *mb;
+	struct fifo *fifo;
 	struct msgbuf_iter iter;
 
 	nassert(child != NULL);
 	nassert(parent->height > 0);
 
 	height = child->height;
-	mb = parent->u.n.parts[child_num].buffer;
+	fifo = parent->u.n.parts[child_num].buffer;
 
-	msgbuf_iter_init(&iter, mb);
+	fifo_iter_init(&iter, fifo);
 	msgbuf_iter_seek(&iter, left);
 
 	while (msgbuf_iter_valid_lessorequal(&iter, right)) {
@@ -199,6 +205,7 @@ void _apply_msg_to_child(struct node *parent,
 		}
 		msgbuf_iter_next(&iter);
 	}
+	*/
 }
 
 /*

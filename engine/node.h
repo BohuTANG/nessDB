@@ -11,6 +11,8 @@
 #include "options.h"
 #include "posix.h"
 #include "msgbuf.h"
+#include "fifo.h"
+#include "fifo.h"
 
 #define PART_SIZE (sizeof(struct partition))
 #define PIVOT_SIZE (sizeof(struct msg))
@@ -38,7 +40,7 @@ struct node_operations {
 struct partition {
 	uint32_t inner_offset;		/* the postion start from the block start in disk */
 	uint64_t child_nid;		/* child node id of this partition */
-	struct msgbuf *buffer;
+	struct fifo *buffer;
 	int fetched: 2;			/* if 0, we need to fetch from disk */
 	ness_rwlock_t rwlock;
 };
@@ -62,6 +64,7 @@ struct node {
 	struct timespec modified;
 	struct node_attr attr;
 	struct node_operations *node_op;
+	enum lock_type pintype;
 
 	union un {
 		struct nonleaf {
@@ -78,10 +81,10 @@ struct node {
 };
 
 struct node *leaf_alloc_empty(NID nid);
-void leaf_alloc_msgbuf(struct node *node);
+void leaf_alloc_buffer(struct node *node);
 
 struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children);
-void nonleaf_alloc_msgbuf(struct node *node);
+void nonleaf_alloc_buffer(struct node *node);
 
 void node_set_dirty(struct node *n);
 void node_set_nondirty(struct node *n);

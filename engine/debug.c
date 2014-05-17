@@ -14,43 +14,18 @@ void __debug_raw(int level,
                  char *file,
                  int line)
 {
+	char buf[64];
 	const char *c = ".-*#";
 	time_t now = time(NULL);
-	FILE *fp;
-	char buf[64];
+	FILE *fp = fopen(EVENT_NAME, "a");
 
-	strftime(buf, sizeof(buf), "%d %b %I:%M:%S",
-	         localtime(&now));
+	if (fp) {
+		strftime(buf, sizeof(buf), "%d %b %I:%M:%S", localtime(&now));
+		fprintf(fp, "[%d] | %s | %c | %s:%d | %s\n", (int)getpid(), buf, c[level], file, line, msg);
 
-	if (level == LEVEL_ERROR) {
-
-		fp = fopen(EVENT_NAME, "a");
-		if (fp) {
-			fprintf(stderr, "[%d] %s %c %s, os-error:%s %s:%d\n",
-			        (int)getpid(),
-			        buf,
-			        c[level],
-			        msg,
-			        strerror(errno),
-			        file,
-			        line);
-			fprintf(fp, "[%d] %s %c %s, os-error:%s %s:%d\n",
-			        (int)getpid(),
-			        buf,
-			        c[level],
-			        msg,
-			        strerror(errno),
-			        file,
-			        line);
-			fflush(fp);
-			fclose(fp);
-		}
-	} else
-		fprintf(stderr, "[%d] %s %c %s\n",
-		        (int)getpid(),
-		        buf,
-		        c[level],
-		        msg);
+		fflush(fp);
+		fclose(fp);
+	}
 }
 
 void __debug(char *file, int line,

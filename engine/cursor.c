@@ -97,12 +97,12 @@ void _save_pivot_bound(struct search *so, struct node *n, int child_searched)
 	}
 }
 
-void ancestors_append(struct cursor *cur, struct msgbuf *bsm)
+void ancestors_append(struct cursor *cur, struct fifo *fifo)
 {
 	struct ancestors *next_ance;
 
 	next_ance = xcalloc(1, sizeof(*next_ance));
-	next_ance->v = bsm;
+	next_ance->v = fifo;
 	next_ance->next = cur->ances;
 	cur->ances = next_ance;
 	cur->ances_size++;
@@ -119,12 +119,12 @@ void ancestors_append(struct cursor *cur, struct msgbuf *bsm)
 int _get_visible_value(struct cursor *cur, struct msgbuf_iter *iter)
 {
 	TXNID id;
-	TXNID curid;
+	TXNID curid = TXNID_NONE;
 
 	int visi = 0;
 	int islive;
 
-	struct txnmgr *tmgr;
+	struct txnmgr *tmgr = NULL;
 	struct txnid_snapshot *lives;
 
 	if (cur->txn) {
@@ -284,7 +284,7 @@ int _search_child(struct cursor *cur,
 	ret = _search_node(cur, so, child, child_to_search);
 
 	/* unpin */
-	cache_unpin_readonly(cur->tree->cf, child);
+	cache_unpin(cur->tree->cf, child);
 
 	return ret;
 }
@@ -364,7 +364,7 @@ try_again:
 	r = _search_node(cur, so, root, child_to_search);
 
 	/* unpin */
-	cache_unpin_readonly(t->cf, root);
+	cache_unpin(t->cf, root);
 
 	switch (r) {
 	case CURSOR_CONTINUE:

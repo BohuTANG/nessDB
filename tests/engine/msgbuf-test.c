@@ -11,6 +11,46 @@
 #include "debug.h"
 #include "ctest.h"
 
+/*
+CTEST(msgbuf, keycompare)
+{
+	struct txnid_pair pair = {.child_xid = TXNID_NONE, .parent_xid= TXNID_NONE};
+	struct msg ma = {.size = 5, .data = "key-0"};
+	struct msg mb = {.size = 5, .data = "key-0"};
+
+	struct msgarray *maa = xcalloc(1, sizeof(*maa));
+	maa->keylen = 5;
+
+	struct msgarray *mab = xcalloc(1, sizeof(*maa));
+	mab->keylen = 5;
+
+	uint32_t sizesa = _msgentry_size(&ma, NULL);
+	ASSERT_TRUE(sizesa == (MSGENTRY_SIZE + 5));
+	char *basea = xcalloc(1, sizesa);
+	_msgentry_pack(basea, 1, MSG_DELETE, &ma, NULL, &pair);
+	maa->arrays = xcalloc(1, sizeof(void*));
+	maa->arrays[0] = (struct msgentry*)basea;
+
+	uint32_t sizesb = _msgentry_size(&mb, NULL);
+	ASSERT_TRUE(sizesb == (MSGENTRY_SIZE + 5));
+	char *baseb = xcalloc(1, sizesb);
+	_msgentry_pack(baseb, 1, MSG_DELETE, &mb, NULL, &pair);
+	mab->arrays = xcalloc(1, sizeof(void*));
+	mab->arrays[0] = (struct msgentry*)baseb;
+
+	int r = msgbuf_key_compare((void*)maa, (void*)mab);
+	fprintf(stderr, "----cmp: %d\n", r);
+	ASSERT_TRUE(r < 0);
+
+	xfree(maa->arrays);
+	xfree(mab->arrays);
+	xfree(maa);
+	xfree(mab);
+	xfree(basea);
+	xfree(baseb);
+}
+*/
+
 CTEST(msgbuf, empty)
 {
 	int ret;
@@ -68,7 +108,7 @@ CTEST(msgbuf, insert_and_lookup)
 		memset(kbuf, 0, KEY_SIZE);
 		snprintf(kbuf, KEY_SIZE, "key-%d", i);
 
-		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg k = {.data = kbuf, .size = strlen(kbuf)};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
 		msgs[i] = msgdup(&k);
@@ -86,6 +126,12 @@ CTEST(msgbuf, insert_and_lookup)
 	ret = msgbuf_iter_valid(&iter);
 	ASSERT_EQUAL(1, ret);
 
+
+	msgbuf_iter_seektofirst(&iter);
+	while (msgbuf_iter_valid(&iter)) {
+		msgbuf_iter_next(&iter);
+	}
+
 	for (i = 0; i < R; i++) {
 		msgbuf_iter_seek(&iter, msgs[i]);
 		ret = msgbuf_iter_valid(&iter);
@@ -94,7 +140,6 @@ CTEST(msgbuf, insert_and_lookup)
 		ASSERT_EQUAL(0, ret);
 	}
 
-	/* do msg free */
 	for (i = 0; i < R; i++) {
 		xfree(msgs[i]->data);
 		xfree(msgs[i]);
@@ -126,7 +171,7 @@ CTEST(msgbuf, multiversion)
 		memset(kbuf, 0, KEY_SIZE);
 		snprintf(kbuf, KEY_SIZE, "key-%d", i);
 
-		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg k = {.data = kbuf, .size = strlen(kbuf)};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
 
 		msgbuf_put(bsm,
@@ -138,15 +183,17 @@ CTEST(msgbuf, multiversion)
 		          );
 	}
 
-	/* 3 versions of key-66 */
+	// 3 versions of key-66
 	R = 3;
 	msn = 661;
 	for (i = 0; i < R; i++) {
 		memset(kbuf, 0, KEY_SIZE);
 		snprintf(kbuf, KEY_SIZE, "key-66");
 
-		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg k = {.data = kbuf, .size = strlen(kbuf)};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
+		xidpair.child_xid = 2;
+		xidpair.parent_xid = 1;
 
 		msgbuf_put(bsm,
 		           msn++,
@@ -157,15 +204,18 @@ CTEST(msgbuf, multiversion)
 		          );
 	}
 
-	/* 5 versions of key-88 */
+	// 5 versions of key-88
 	R = 5;
 	msn = 881;
 	for (i = 0; i < R; i++) {
 		memset(kbuf, 0, KEY_SIZE);
 		snprintf(kbuf, KEY_SIZE, "key-88");
 
-		struct msg k = {.data = kbuf, .size = KEY_SIZE};
+		struct msg k = {.data = kbuf, .size = strlen(kbuf)};
 		struct msg v = {.data = vbuf, .size = VAL_SIZE};
+
+		xidpair.child_xid = 2;
+		xidpair.parent_xid = 1;
 
 		msgbuf_put(bsm,
 		           msn++,
@@ -176,18 +226,18 @@ CTEST(msgbuf, multiversion)
 		          );
 	}
 
-	/* key-66 */
+	// key-66
 	memset(kbuf, 0, KEY_SIZE);
 	snprintf(kbuf, KEY_SIZE, "key-66");
 
-	struct msg k1 = {.data = kbuf, .size = KEY_SIZE};
+	struct msg k1 = {.data = kbuf, .size = strlen(kbuf)};
 	msgbuf_iter_init(&iter, bsm);
 	msgbuf_iter_seek(&iter, &k1);
 	ret = msgbuf_iter_valid(&iter);
 	ASSERT_EQUAL(1, ret);
 	ASSERT_EQUAL(66, iter.msn);
 
-	/* key-66 array iterator */
+	// key-66 array iterator
 	ret = msgbuf_internal_iter_next(&iter);
 	ASSERT_EQUAL(1, ret);
 	ASSERT_EQUAL(66, iter.msn);
@@ -202,7 +252,7 @@ CTEST(msgbuf, multiversion)
 	ASSERT_EQUAL(663, iter.msn);
 
 
-	/* less than valid */
+	// less than valid
 	ret = msgbuf_iter_valid_lessorequal(&iter, &k1);
 	ASSERT_EQUAL(1, ret);
 
@@ -224,11 +274,11 @@ CTEST(msgbuf, multiversion)
 	ret = msgbuf_iter_valid_lessorequal(&iter, &k1);
 	ASSERT_EQUAL(0, ret);
 
-	/* key-88 */
+	// key-88
 	memset(kbuf, 0, KEY_SIZE);
 	snprintf(kbuf, KEY_SIZE, "key-88");
 
-	struct msg k2 = {.data = kbuf, .size = KEY_SIZE};
+	struct msg k2 = {.data = kbuf, .size = strlen(kbuf)};
 	msgbuf_iter_seek(&iter, &k2);
 	ret = msgbuf_iter_valid(&iter);
 	ASSERT_EQUAL(1, ret);
@@ -238,7 +288,7 @@ CTEST(msgbuf, multiversion)
 	ASSERT_EQUAL(1, ret);
 	ASSERT_EQUAL(88, iter.msn);
 
-	/* key-88 array iterator */
+	// key-88 array iterator
 	i = 881;
 	while (msgbuf_internal_iter_next(&iter)) {
 		ASSERT_EQUAL(i++, iter.msn);

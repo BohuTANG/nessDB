@@ -72,8 +72,8 @@ int txn_commit(TXN *txn)
 int txn_abort(TXN *txn)
 {
 	FILENUM fn;
-	struct tree *t;
-	struct msg *rollkey;
+	struct tree *t = NULL;
+	struct msg *rollkey = NULL;
 	struct roll_entry *re = txn->rollentry;
 	struct cache *c = txn->logger->cache;
 

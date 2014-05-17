@@ -6,15 +6,13 @@
 
 #include "compare-func.h"
 
-int msg_key_compare(struct msg *a, struct msg *b)
+inline int msg_key_compare(struct msg *a, struct msg *b)
 {
 	if (!a) return -1;
 	if (!b) return 1;
 
-	register int r;
-	register int minlen;
-
-	minlen = a->size < b->size ? a->size : b->size;
+	int r;
+	uint32_t minlen = a->size < b->size ? a->size : b->size;
 	r = memcmp(a->data, b->data, minlen);
 	if (r == 0)
 		return (a->size - b->size);
@@ -22,35 +20,20 @@ int msg_key_compare(struct msg *a, struct msg *b)
 	return r;
 }
 
-int msgbuf_key_compare(void *a, void *b, struct cmp_extra *extra)
+inline int msgbuf_key_compare(void *a, void *b)
 {
-	int pos;
-	struct msg ma;
-	struct msg mb;
+	int r;
+	if (!a) return (-1);
+	if (!a) return (+1);
 
-	register int r;
-	register struct msg_entry *entry;
+	struct msgarray *maa = (struct msgarray*)a;
+	struct msgentry *mea = maa->arrays[0];
+	struct msgarray *mab = (struct msgarray*)b;
+	struct msgentry *meb = mab->arrays[0];
 
-	if (!a) return -1;
-	if (!b) return +1;
-
-	pos = 0;
-	entry = (struct msg_entry*)a;
-	ma.size = entry->keylen;
-	pos += MSG_ENTRY_SIZE;
-	ma.data = ((char*)a + pos);
-
-	pos = 0;
-	entry = (struct msg_entry*)b;
-	mb.size = entry->keylen;
-	pos += MSG_ENTRY_SIZE;
-	mb.data = ((char*)b + pos);
-
-	r = msg_key_compare(&ma, &mb);
-	if (r == 0) {
-		if (extra)
-			extra->exists = 1;
-	}
-
+	uint32_t minlen = mea->keylen < meb->keylen ? mea->keylen : meb->keylen;
+	r = memcmp((char*)mea + MSGENTRY_SIZE, (char*)meb + MSGENTRY_SIZE, minlen);
+	if (r == 0)
+		return (mea->keylen - meb->keylen);
 	return r;
 }

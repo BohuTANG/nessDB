@@ -8,6 +8,7 @@
 #define nessDB_STATUS_H_
 
 #include "xmalloc.h"
+#include "debug.h"
 
 /*
  * some probes
@@ -29,8 +30,15 @@ struct status {
 	uint64_t tree_node_flush_nums;
 	uint64_t tree_node_flush_costs;
 
+	uint64_t leaf_read_from_disk_nums;
 	uint64_t leaf_read_from_disk_costs;
+	uint64_t leaf_compress_data_costs;
+	uint64_t leaf_uncompress_data_costs;
+
+	uint64_t nonleaf_read_from_disk_nums;
 	uint64_t nonleaf_read_from_disk_costs;
+	uint64_t nonleaf_compress_data_costs;
+	uint64_t nonleaf_uncompress_data_costs;
 };
 
 static inline struct status *status_new() {
@@ -44,35 +52,33 @@ static inline struct status *status_new() {
 static inline void status_free(struct status *status)
 {
 #if 1
-	printf("--status:\n");
-	printf("\ttree_nodes: leaf [%" PRIu64 "], nonleaf [%" PRIu64 "]\n",
+	__WARN("tree_nodes: leaf [%" PRIu64 "], nonleaf [%" PRIu64 "]",
 	       status->tree_leaf_nums,
-	       status->tree_nonleaf_nums);
+	       status->tree_nonleaf_nums
+	      );
 
-	printf("\tleaf_read_from_disk_costs: [%" PRIu64 "]\n", status->leaf_read_from_disk_costs);
-	printf("\tnonleaf_read_from_disk_costs: [%" PRIu64 "]\n", status->nonleaf_read_from_disk_costs);
+	__WARN("leaf_read_from_disk_nums [%" PRIu64 "]", status->leaf_read_from_disk_nums);
+	__WARN("leaf_compress_data_costs [%" PRIu64 "], leaf_uncompress_data_costs [%" PRIu64 "]",
+	       status->leaf_compress_data_costs,
+	       status->leaf_uncompress_data_costs
+	      );
 
-	printf("\ttree_leaf_split_nums: [%" PRIu64 "]\n", status->tree_leaf_split_nums);
-	printf("\ttree_nonleaf_split_nums: [%" PRIu64 "]\n", status->tree_nonleaf_split_nums);
+	__WARN("nonleaf_read_from_disk_nums [%" PRIu64 "]", status->nonleaf_read_from_disk_nums);
+	__WARN("nonleaf_compress_data_costs [%" PRIu64 "], nonleaf_uncompress_data_costs [%" PRIu64 "]",
+	       status->nonleaf_compress_data_costs,
+	       status->nonleaf_uncompress_data_costs
+	      );
 
-	printf("\ttree_leaf_put_nums: [%" PRIu64 "]\n", status->tree_leaf_put_nums);
-	printf("\ttree_nonleaf_put_nums: [%" PRIu64 "]\n", status->tree_nonleaf_put_nums);
+	__WARN("tree_node_fetch_nums [%" PRIu64 "], tree_node_fetch_costs_ms [%" PRIu64 "]",
+	       status->tree_node_fetch_nums,
+	       status->tree_node_fetch_costs
+	      );
 
-	printf("\ttree_root_new_nums: [%" PRIu64 "]\n", status->tree_root_new_nums);
-	printf("\ttree_flush_child_nums: [%" PRIu64 "]\n", status->tree_flush_child_nums);
-	printf("\ttree_flush_child_costs: [%" PRIu64"]\n", status->tree_flush_child_costs);
-	printf("\t                      : [%.1f ms/num]\n",
-	       (double) status->tree_flush_child_costs / status->tree_flush_child_nums);
+	__WARN("tree_flush_child_nums [%" PRIu64 "], tree_flush_child_costs_ms [%" PRIu64 "]",
+	       status->tree_flush_child_nums,
+	       status->tree_flush_child_costs
+	      );
 
-	printf("\ttree_node_fetch_nums: [%" PRIu64 "]\n", status->tree_node_fetch_nums);
-	printf("\ttree_node_fetch_costs: [%" PRIu64 "]\n", status->tree_node_fetch_costs);
-	printf("\t                     : [%.1f ms/num]\n",
-	       (double) status->tree_node_fetch_costs / status->tree_node_fetch_nums);
-
-	printf("\ttree_node_flush_nums: [%" PRIu64 "]\n", status->tree_node_flush_nums);
-	printf("\ttree_node_flush_costs: [%" PRIu64 "]\n", status->tree_node_flush_costs);
-	printf("\t                     : [%.1f ms/num]\n",
-	       (double) status->tree_node_flush_costs / status->tree_node_flush_nums);
 #endif
 	xfree(status);
 }

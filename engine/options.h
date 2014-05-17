@@ -8,6 +8,7 @@
 #define nessDB_OPTIONS_H_
 
 #include "xmalloc.h"
+#include "xtypes.h"
 
 struct options {
 	uint32_t inner_node_fanout;
@@ -52,7 +53,8 @@ static inline struct options *options_new(void) {
 	opts->enable_redo_log = 1;
 
 	/* compress */
-	opts->compress_method = NESS_QUICKLZ_METHOD;
+	opts->compress_method = NESS_SNAPPY_METHOD;
+	//opts->compress_method = NESS_QUICKLZ_METHOD;
 
 	return opts;
 }

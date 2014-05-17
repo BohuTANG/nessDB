@@ -32,7 +32,7 @@ struct hdr {
 	NID root_nid;
 	MSN last_msn;
 	DISKOFF blockoff;
-	ness_compress_method_t method;
+	struct options *opts;
 };
 
 struct tree_callback {
