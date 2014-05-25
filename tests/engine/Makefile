@@ -1,22 +1,6 @@
-# Detect OS
-TARGET_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-
 top_builddir = ../..
-PLATFORM_FLAGS=
 PLATFORM_SHARED_CFLAGS=-fPIC
 PLATFORM_SHARED_LDFLAGS=-c -std=c99 -pedantic -W -Wall -Werror -D_GNU_SOURCE
-
-
-ifeq ($(TARGET_OS), Linux)
-	PLATFORM_FLAGS=-DOS_LINUX
-else ifeq ($(TARGET_OS), Darwin)
-	PLATFORM_FLAGS=-DOS_MACOSX
-else ifeq ($(TARGET_OS), OS_ANDROID_CROSSCOMPILE)
-	PLATFORM_FLAGS=-DOS_ANDROID
-else
-	echo "Unknown platform!" >&2
-	exit 1
-endif
 
 CC = gcc
 # OPT ?= -O2 -DERROR # (A) Production use (optimized mode)
@@ -24,7 +8,7 @@ OPT ?= -g2 -DINFO -DASSERT # (B) Debug mode, w/ full line-level debugging symbol
 # OPT ?= -O2 -g2 -DERROR # (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
 
-CFLAGS = -I$(top_builddir)/engine -I$(top_builddir)/db $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PLATFORM_FLAGS) $(OPT)
+CFLAGS = -I$(top_builddir)/engine -I$(top_builddir)/db $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(OPT)
 
 LIB_OBJS =	 			\
 	$(top_builddir)/engine/compress/compress.o\
@@ -69,6 +53,7 @@ TEST_OBJS = 				\
 	skiplist-test.o			\
 	msgbuf-test.o			\
 	fifo-test.o			\
+	tree-test.o			\
 	hdr-serialize-test.o		\
 	txn-test.o		\
 	main.o			

@@ -1,19 +1,5 @@
-# Detect OS
-TARGET_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-
-PLATFORM_FLAGS=
 PLATFORM_SHARED_CFLAGS=-fPIC
 PLATFORM_SHARED_LDFLAGS=-c -std=c99 -pedantic -W -Wall -Werror -D_GNU_SOURCE
-
-ifeq ($(TARGET_OS), Linux)
-	PLATFORM_FLAGS=-DOS_LINUX
-else ifeq ($(TARGET_OS), Darwin)
-	PLATFORM_FLAGS=-DOS_MACOSX
-else ifeq ($(TARGET_OS), OS_ANDROID_CROSSCOMPILE) PLATFORM_FLAGS=-DOS_ANDROID
-else
-	echo "Unknown platform!" >&2
-	exit 1
-endif
 
 CC = gcc
 #OPT ?= -O2 -DERROR # (A) Production use (optimized mode)
@@ -21,7 +7,7 @@ CC = gcc
 OPT ?= -O2 -g2 -DWARN# (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
 INCLUDES = -Iengine -Idb
-CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(PLATFORM_FLAGS) $(OPT)
+CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(OPT)
 
 LIB_OBJS =	 			\
 	./engine/compress/compress.o	\

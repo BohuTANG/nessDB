@@ -20,6 +20,7 @@ struct fifo_iter {
 	struct txnid_pair xidpair;
 	struct fifo *fifo;
 	uint32_t used;
+	int blk_curr;
 };
 
 struct  fifo {
@@ -29,6 +30,7 @@ struct  fifo {
 
 struct fifo *fifo_new(void);
 uint32_t fifo_memsize(struct fifo *);
+uint32_t fifo_count(struct fifo *);
 void fifo_append(struct fifo*, MSN, msgtype_t, struct msg*, struct msg*, struct txnid_pair*);
 void fifo_free(struct fifo*);
 

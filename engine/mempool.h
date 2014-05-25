@@ -19,18 +19,18 @@
  *	- aligned address
  */
 
-struct mempool_block {
-	char *memory;
+struct memblk {
+	char *base;
 	uint32_t size;
 	uint32_t remaining;
-	struct mempool_block *next;
 };
 
 struct mempool {
-	uint32_t n_blocks;
+	int blk_used;
+	int blk_nums;
 	uint32_t memory_size;
 	uint32_t memory_used;
-	struct mempool_block *blocks;
+	struct memblk **blks;
 };
 
 struct mempool *mempool_new(void);

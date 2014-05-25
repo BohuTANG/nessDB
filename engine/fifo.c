@@ -104,6 +104,11 @@ uint32_t fifo_memsize(struct fifo *fifo)
 	return fifo->mpool->memory_used;
 }
 
+uint32_t fifo_count(struct fifo *fifo)
+{
+	return fifo->count;
+}
+
 void fifo_free(struct fifo *fifo)
 {
 	if (!fifo) return;
@@ -137,18 +142,29 @@ void fifo_iter_init(struct fifo_iter *iter, struct fifo *fifo)
 {
 	iter->valid = 0;
 	iter->used = 0;
+	iter->blk_curr = 0;
 	iter->fifo = fifo;
 }
 
 int fifo_iter_next(struct fifo_iter *iter)
 {
-	int ret;
-	struct mempool *mpool = iter->fifo->mpool;
-	void *base = mpool->blocks->memory + iter->used;
+	int ret = 0;
+	struct mempool *mpool;
 
-	ret = (iter->used < iter->fifo->mpool->memory_used);
-	if (ret)
-		_fifo_iter_unpack(base, iter);
+	mpool = iter->fifo->mpool;
+	if (iter->blk_curr < mpool->blk_used) {
+		struct memblk *blk = mpool->blks[iter->blk_curr];
+		uint32_t used = (blk->size - blk->remaining);
+
+		if (iter->used < used) {
+			_fifo_iter_unpack(blk->base + iter->used, iter);
+			if (iter->used == used) {
+				iter->used = 0;
+				iter->blk_curr++;
+			}
+			ret = 1;
+		}
+	}
 
 	return ret;
 }

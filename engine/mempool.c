@@ -7,50 +7,80 @@
 #include "debug.h"
 #include "mempool.h"
 
-/* 4KB per block */
+#define MEMPOOL_BLOCKNUM	(16)
 #define MEMPOOL_BLOCKSIZE	(4096*16)
 
-struct mempool_block *_new_block(struct mempool *pool, uint32_t bytes) {
+struct memblk *_new_blk(struct mempool *pool, uint32_t bytes) {
 	uint32_t sizes;
-	struct mempool_block *blk;
+	struct memblk *blk;
 
 	sizes = (bytes > MEMPOOL_BLOCKSIZE ? bytes : MEMPOOL_BLOCKSIZE);
 	blk = xcalloc(1, sizeof(*blk));
-	blk->memory = xmalloc(sizes * sizeof(char));
+	blk->base = xmalloc(sizes * sizeof(char));
 	blk->size = sizes;
-	blk->remaining = MEMPOOL_BLOCKSIZE;
-
+	blk->remaining = sizes;
 	pool->memory_size += sizes;
 
 	return blk;
+}
+
+static inline void _add_blk(struct mempool *pool, struct memblk *blk)
+{
+	pool->blks[pool->blk_used++] = blk;
+}
+
+void _mempool_makeroom(struct mempool *pool)
+{
+	if (pool->blk_nums > (pool->blk_used))
+		return;
+
+	int new_nums = pool->blk_nums * 2;
+	struct memblk **new_blks = xcalloc(new_nums, sizeof(*new_blks));
+
+	xmemcpy(new_blks, pool->blks, pool->blk_used * sizeof(*new_blks));
+	xfree(pool->blks);
+
+	pool->blks = new_blks;
+	pool->blk_nums = new_nums;
 }
 
 struct mempool *mempool_new() {
 	struct mempool *pool;
 
 	pool = xcalloc(1, sizeof(*pool));
-	pool->blocks = _new_block(pool, MEMPOOL_BLOCKSIZE);
-	pool->n_blocks++;
+	pool->blk_nums = MEMPOOL_BLOCKNUM;
+	pool->blks = xcalloc(MEMPOOL_BLOCKNUM, sizeof(*pool->blks));
+	pool->blks[pool->blk_used++] = _new_blk(pool, MEMPOOL_BLOCKSIZE);
 
 	return pool;
 }
 
+/*
+ * malloc bytes with unaligned address
+ * for fifo packed memory
+ */
 char *mempool_alloc(struct mempool *pool, uint32_t bytes)
 {
+	char *base;
 	char *results;
-	struct mempool_block *blk;
+	struct memblk *blk;
 
-	blk = pool->blocks;
-	if (blk->remaining <= bytes) {
-		uint32_t newsize = blk->size * 2;
-		blk->memory = xrealloc(blk->memory, newsize);
-		blk->size = newsize;
-		blk->remaining = blk->size - pool->memory_used;
+
+	blk = pool->blks[pool->blk_used - 1];
+	base = (blk->base + (blk->size - blk->remaining));
+
+	if (blk->remaining >= bytes) {
+		results = base;
+	} else {
+		_mempool_makeroom(pool);
+		blk = _new_blk(pool, bytes);
+		_add_blk(pool, blk);
+
+		results = blk->base;
 	}
-	results = (blk->memory + pool->memory_used);
+
 	blk->remaining -= bytes;
 	pool->memory_used += bytes;
-	pool->memory_size = blk->size;
 
 	return results;
 }
@@ -68,7 +98,7 @@ char *mempool_alloc_aligned(struct mempool *pool, uint32_t bytes)
 	char *base;
 	char *results;
 	uint32_t needed;
-	struct mempool_block *blk;
+	struct memblk *blk;
 
 
 	align = ((sizeof(void*) > 8) ? sizeof(void*) : 8);
@@ -76,8 +106,8 @@ char *mempool_alloc_aligned(struct mempool *pool, uint32_t bytes)
 	/* align must power of 2 */
 	nassert((align & (align - 1)) == 0);
 
-	blk = pool->blocks;
-	base = (blk->memory + (blk->size - blk->remaining));
+	blk = pool->blks[pool->blk_used - 1];
+	base = (blk->base + (blk->size - blk->remaining));
 	ptr = (size_t)base;
 	mod = ptr & (align - 1);
 	slob = ((mod == 0) ? 0 : (align - mod));
@@ -88,15 +118,13 @@ char *mempool_alloc_aligned(struct mempool *pool, uint32_t bytes)
 		blk->remaining -= needed;
 		pool->memory_used += needed;
 	} else {
-		blk = _new_block(pool, bytes);
-		blk->next = pool->blocks;
-		pool->blocks = blk;
-		pool->n_blocks++;
+		_mempool_makeroom(pool);
+		blk = _new_blk(pool, bytes);
+		_add_blk(pool, blk);
 
 		blk->remaining -= bytes;
 		pool->memory_used += bytes;
-
-		results = blk->memory;
+		results = blk->base;
 	}
 
 	return results;
@@ -104,20 +132,16 @@ char *mempool_alloc_aligned(struct mempool *pool, uint32_t bytes)
 
 void mempool_free(struct mempool *pool)
 {
-	uint32_t i;
-	struct mempool_block *cur;
-	struct mempool_block *nxt;
-
 	if (!pool)
 		return;
 
-	cur = pool->blocks;
-	for (i = 0; i < pool->n_blocks; i++) {
-		nxt = cur->next;
-		xfree(cur->memory);
-		xfree(cur);
-		cur = nxt;
+	int i;
+
+	for (i = 0; i < pool->blk_used; i++) {
+		xfree(pool->blks[i]->base);
+		xfree(pool->blks[i]);
 	}
 
+	xfree(pool->blks);
 	xfree(pool);
 }

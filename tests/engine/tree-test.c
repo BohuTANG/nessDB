@@ -116,8 +116,8 @@ CTEST(tree, split)
 	r = cache_get_and_pin(tree->cf, NID_START + 1, &root, L_READ);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(1, root->height);
-	ASSERT_EQUAL(0, root->u.n.parts[0].buffer->count);
-	ASSERT_EQUAL(1, root->u.n.parts[1].buffer->count);
+	ASSERT_EQUAL(0, fifo_count(root->u.n.parts[0].buffer));
+	ASSERT_EQUAL(1, fifo_count(root->u.n.parts[1].buffer));
 	ASSERT_EQUAL(1, root->isroot);
 	ASSERT_EQUAL(NID_START + 1, root->nid);
 	ASSERT_EQUAL(2, root->u.n.n_children);
@@ -131,7 +131,7 @@ CTEST(tree, split)
 	snprintf(kbuf, KEY_SIZE, "key-%d", 2);
 	struct msg e_p0 = {.data = kbuf, .size = KEY_SIZE};
 	ASSERT_EQUAL(0, msg_key_compare(&p0, &e_p0));
-	cache_unpin_readonly(tree->cf, root);
+	cache_unpin(tree->cf, root);
 
 
 	struct msgbuf_iter itera;
@@ -152,14 +152,14 @@ CTEST(tree, split)
 		ASSERT_EQUAL(0, r);
 		msgbuf_iter_next(&itera);
 	}
-	cache_unpin_readonly(tree->cf, leafa);
+	cache_unpin(tree->cf, leafa);
 
 	struct msgbuf_iter iterb;
 	struct node *leafb;
 	r = cache_get_and_pin(tree->cf, bnid, &leafb, L_READ);
 	ASSERT_EQUAL(1, r);
 	ASSERT_EQUAL(0, leafb->msn);
-	ASSERT_EQUAL(2, leafb->u.l.buffer->count);
+	ASSERT_EQUAL(2, msgbuf_count(leafb->u.l.buffer));
 	msgbuf_iter_init(&iterb, leafb->u.l.buffer);
 	msgbuf_iter_seektofirst(&iterb);
 	for (i = 3; i < 5; i++) {
@@ -173,7 +173,7 @@ CTEST(tree, split)
 		ASSERT_EQUAL(0, r);
 		msgbuf_iter_next(&iterb);
 	}
-	cache_unpin_readonly(tree->cf, leafb);
+	cache_unpin(tree->cf, leafb);
 
 	// flush
 	// now, in root msgbuf ,there is a key(key-5)
@@ -188,16 +188,16 @@ CTEST(tree, split)
 	}
 	r = cache_get_and_pin(tree->cf, NID_START + 1, &root, L_READ);
 	ASSERT_EQUAL(1, r);
-	ASSERT_EQUAL(0, root->u.n.parts[0].buffer->count);
-	ASSERT_EQUAL(0, root->u.n.parts[1].buffer->count);
-	ASSERT_EQUAL(1, root->u.n.parts[2].buffer->count);
+	ASSERT_EQUAL(0, fifo_count(root->u.n.parts[0].buffer));
+	ASSERT_EQUAL(0, fifo_count(root->u.n.parts[1].buffer));
+	ASSERT_EQUAL(1, fifo_count(root->u.n.parts[2].buffer));
 	ASSERT_EQUAL(3, root->u.n.n_children);
 	NID cnid = root->u.n.parts[2].child_nid;
-	cache_unpin_readonly(tree->cf, root);
+	cache_unpin(tree->cf, root);
 
 	struct msgbuf_iter iter;
 	r = cache_get_and_pin(tree->cf, anid, &leafa, L_READ);
-	ASSERT_EQUAL(3, leafa->u.l.buffer->count);
+	ASSERT_EQUAL(3, msgbuf_count(leafa->u.l.buffer));
 	msgbuf_iter_init(&iter, leafa->u.l.buffer);
 	msgbuf_iter_seektofirst(&iter);
 	for (i = 0; i < 3; i++) {
@@ -211,10 +211,10 @@ CTEST(tree, split)
 		ASSERT_EQUAL(0, r);
 		msgbuf_iter_next(&iter);
 	}
-	cache_unpin_readonly(tree->cf, leafa);
+	cache_unpin(tree->cf, leafa);
 
 	r = cache_get_and_pin(tree->cf, bnid, &leafb, L_READ);
-	ASSERT_EQUAL(3, leafb->u.l.buffer->count);
+	ASSERT_EQUAL(3, msgbuf_count(leafb->u.l.buffer));
 	msgbuf_iter_init(&iter, leafb->u.l.buffer);
 	msgbuf_iter_seektofirst(&iter);
 	for (i = 3; i < 6; i++) {
@@ -228,11 +228,11 @@ CTEST(tree, split)
 		ASSERT_EQUAL(0, r);
 		msgbuf_iter_next(&iter);
 	}
-	cache_unpin_readonly(tree->cf, leafb);
+	cache_unpin(tree->cf, leafb);
 
 	struct node *leafc;
 	r = cache_get_and_pin(tree->cf, cnid, &leafc, L_READ);
-	ASSERT_EQUAL(2, leafc->u.l.buffer->count);
+	ASSERT_EQUAL(2, msgbuf_count(leafc->u.l.buffer));
 	msgbuf_iter_init(&iter, leafc->u.l.buffer);
 	msgbuf_iter_seektofirst(&iter);
 	for (i = 6; i < 8; i++) {
@@ -245,7 +245,7 @@ CTEST(tree, split)
 		ASSERT_EQUAL(0, r);
 		msgbuf_iter_next(&iter);
 	}
-	cache_unpin_readonly(tree->cf, leafc);
+	cache_unpin(tree->cf, leafc);
 
 	//free
 	cache_free(cache);
