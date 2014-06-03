@@ -55,6 +55,7 @@ CTEST(tree, open)
 /*
  * this test include:
  */
+/*
 CTEST(tree, split)
 {
 	int i;
@@ -254,3 +255,4 @@ CTEST(tree, split)
 	status_free(status);
 	xcheck_all_free();
 }
+*/

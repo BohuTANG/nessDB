@@ -10,6 +10,3 @@
 #include "ctest.h"
 
 /* TODO */
-CTEST(db, open)
-{
-}

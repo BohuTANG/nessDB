@@ -10,7 +10,6 @@
 #include "xtypes.h"
 #include "internal.h"
 #include "posix.h"
-#include "skiplist.h"
 
 struct txnid_snapshot {
 	int size;

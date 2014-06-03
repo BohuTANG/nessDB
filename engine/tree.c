@@ -7,10 +7,10 @@
 #include "cache.h"
 #include "hdrse.h"
 #include "se.h"
-#include "atomic.h"
 #include "file.h"
 #include "leaf.h"
 #include "txn.h"
+#include "flusher.h"
 #include "tree.h"
 
 /*
@@ -31,10 +31,10 @@
  * 		  pidx0   [pidx1]   pidx2    pidx3     pidx4
  *
  *
- * REQUIRES:
- * a) parent locked(L_WRITE)
- * b) node a locked(L_WRITE)
- * c) node b locked(L_WRITE)
+ * ENTRY:
+ *	- parent is already locked(L_WRITE)
+ *	- node a is already locked(L_WRITE)
+ *	- node b is already locked(L_WRITE)
  */
 void _add_pivot_to_parent(struct tree *t,
                           struct node *parent,
@@ -71,7 +71,7 @@ void _add_pivot_to_parent(struct tree *t,
 	parent->u.n.n_children += 1;
 	node_set_dirty(parent);
 
-	t->status->tree_add_pivots_nums++;
+	status_increment(&t->status->tree_add_pivots_nums);
 }
 
 /*
@@ -93,8 +93,11 @@ void _add_pivot_to_parent(struct tree *t,
  * 	      nodea			nodeb
  *
  *
- * REQUIRES:
- * a) leaf lock (L_WRITE)
+ * ENTRY:
+ *	- leaf is already locked (L_WRITE)
+ * EXITS:
+ *	- a is locked
+ *	- b is locked
  */
 void _leaf_split(struct tree *t,
                  struct node *leaf,
@@ -102,66 +105,30 @@ void _leaf_split(struct tree *t,
                  struct node **b,
                  struct msg **split_key)
 {
-	int mid;
-	int i = 0;
 	struct node *leafa;
 	struct node *leafb;
 	struct msgbuf *mb;
-	struct msgbuf *buffa;
-	struct msgbuf *buffb;
-	struct msg *spk = NULL;
-	struct msgbuf *old_buff;
-	struct msgbuf_iter iter;
+	struct msgbuf *mba;
+	struct msgbuf *mbb;
 
 	leafa = leaf;
-	old_buff = leafa->u.l.buffer;
-	buffa = msgbuf_new();
-	buffb = msgbuf_new();
+	mb = leafa->u.l.buffer;
+	msgbuf_split(mb, &mba, &mbb, split_key);
 
-	mid = msgbuf_count(old_buff) / 2;
-	msgbuf_iter_init(&iter, old_buff);
-	msgbuf_iter_seektofirst(&iter);
-	while (msgbuf_iter_valid(&iter)) {
-		if (i <= mid)
-			mb = buffa;
-		else
-			mb = buffb;
-
-		if (iter.mvcc) {
-			while (msgbuf_internal_iter_next(&iter)) {
-				msgbuf_put(mb,
-				           iter.msn, iter.type,
-				           &iter.key, &iter.val,
-				           &iter.xidpair);
-			}
-		} else {
-			msgbuf_put(mb,
-			           iter.msn, iter.type,
-			           &iter.key, &iter.val,
-			           &iter.xidpair);
-		}
-
-		if (i == mid)
-			spk = msgdup(&iter.key);
-		i++;
-		msgbuf_iter_next(&iter);
-	}
-
-	msgbuf_free(old_buff);
-	leafa->u.l.buffer = buffa;
+	leafa->u.l.buffer = mba ;
 
 	/* new leafb */
 	cache_create_node_and_pin(t->cf, 0, 0, &leafb);
+	leafb->u.l.buffer = mbb;
 
-	leafb->u.l.buffer = buffb;
+	/* set dirty */
 	node_set_dirty(leafa);
 	node_set_dirty(leafb);
 
 	*a = leafa;
 	*b = leafb;
-	*split_key = spk;
 
-	t->status->tree_leaf_split_nums++;
+	status_increment(&t->status->tree_leaf_split_nums);
 }
 
 /*
@@ -182,8 +149,11 @@ void _leaf_split(struct tree *t,
  * 			    +--------+	    +---------+
  *
  *
- * REQUIRES:
- * a) node lock(L_WRITE)
+ * ENTRY:
+ *	- node is already locked(L_WRITE)
+ * EXITS:
+ *	- a is locked(L_WRITE)
+ *	- b is locked(L_WRITE)
  */
 void _nonleaf_split(struct tree *t,
                     struct node *node,
@@ -236,20 +206,23 @@ void _nonleaf_split(struct tree *t,
 	*b = nodeb;
 	*split_key = spk;
 
-	t->status->tree_nonleaf_split_nums++;
+	status_increment(&t->status->tree_nonleaf_split_nums);
 }
 
 /*
- * split the child
- * add a new pivot(split-key) to parent
- *
- * REQUIRES:
- * a) parent lock(L_WRITE)
- * b) child lock(L_WRITE)
+ * EFFECT:
+ *	- split the child
+ *	- add a new pivot(split-key) to parent
+ * ENTRY:
+ *	- parent is already locked(L_WRITE)
+ *	- child is already locked(L_WRITE)
+ * EXITS:
+ *	- parent is locked
+ *	- child is locked
  */
-void _node_split_child(struct tree *t,
-                       struct node *parent,
-                       struct node *child)
+void node_split_child(struct tree *t,
+                      struct node *parent,
+                      struct node *child)
 {
 	int child_num;
 	struct node *a;
@@ -269,10 +242,10 @@ void _node_split_child(struct tree *t,
 	msgfree(split_key);
 	cache_unpin(t->cf, b);
 
-	t->status->tree_nonleaf_split_nums++;
+	status_increment(&t->status->tree_nonleaf_split_nums);
 }
 
-enum reactivity _get_reactivity(struct tree *t, struct node *node)
+enum reactivity get_reactivity(struct tree *t, struct node *node)
 {
 	if (nessunlikely(node->height == 0)) {
 		if ((node_size(node) >= t->opts->leaf_node_page_size && node_count(node) > 1) ||
@@ -293,26 +266,29 @@ enum reactivity _get_reactivity(struct tree *t, struct node *node)
 }
 
 /*
- * put cmd to leaf
- *
- * REQUIRES:
- * a) leaf lock (L_WRITE)
+ * EFFECT:
+ *	- put cmd to leaf
+ * ENTRY:
+ *	- leaf is already locked(L_WRITE)
+ * EXITS:
+ *	- leaf is locked
  */
 void leaf_put_cmd(struct node *leaf, struct bt_cmd *cmd)
 {
-	write_lock(&leaf->u.l.rwlock);
+	rwlock_write_lock(&leaf->u.l.rwlock, &leaf->u.l.mtx);
 	leaf_apply_msg(leaf, cmd);
 	leaf->msn = cmd->msn > leaf->msn ? cmd->msn : leaf->msn;
 	node_set_dirty(leaf);
-	write_unlock(&leaf->u.l.rwlock);
+	rwlock_write_unlock(&leaf->u.l.rwlock);
 }
 
 /*
- * put cmd to nonleaf
- *
- * REQUIRES:
- * a) node lock (L_READ)
- * b) partition write lock
+ * EFFECT:
+ *	- put cmd to nonleaf
+ * ENTRY:
+ *	- node is already locked (L_READ)
+ * EXITS:
+ *	- node is locked
  */
 void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
 {
@@ -325,7 +301,7 @@ void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
 	if (!part->buffer)
 		__PANIC("partiton buffer is null, index %d", pidx);
 
-	write_lock(&part->rwlock);
+	rwlock_write_lock(&part->rwlock, &part->mtx);
 	fifo_append(part->buffer,
 	            cmd-> msn,
 	            cmd->type,
@@ -334,137 +310,67 @@ void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
 	            &cmd->xidpair);
 	node->msn = cmd->msn > node->msn ? cmd->msn : node->msn;
 	node_set_dirty(node);
-	write_unlock(&part->rwlock);
-
+	rwlock_write_unlock(&part->rwlock);
 }
 
 /*
- * put cmd to node
- *
- * REQUIRES:
- * a) node lock(L_WRITE)
+ * EFFECT:
+ *	- put cmd to node
+ * ENTRY:
+ *	- node is already locked(L_WRITE)
+ * EXITS:
+ *	- node is locked
  */
-void _node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
+void node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
 {
 	if (nessunlikely(node->height == 0)) {
 		leaf_put_cmd(node, cmd);
-		t->status->tree_leaf_put_nums++;
+		status_increment(&t->status->tree_leaf_put_nums);
 	} else {
 		nonleaf_put_cmd(node, cmd);
-		t->status->tree_nonleaf_put_nums++;
+		status_increment(&t->status->tree_nonleaf_put_nums);
 	}
 }
 
 /*
- * TODO:(BohuTANG) I am wanna in background thread
- *
- * REQUIRES:
- * a) parent lock (L_WRITE)
- * b) child lock (L_WRITE)
+ * EFFECT:
+ *	- in order to keep the root NID is eternal
+ * ENTRY:
+ *	- old_root is already locked
+ *	- new_root is already locked
+ * EXITS:
+ *	- old_root is already locked
+ *	- new_root is already locked
  */
-int _flush_some_child(struct tree *t, struct node *parent)
+void _root_swap(struct node *new_root, struct node *old_root)
 {
-	int childnum;
-
-	struct node *child;
-	struct partition *part;
-	enum reactivity re_child;
-	struct fifo *fifo;
-	struct fifo_iter iter;
-	struct timespec t1, t2;
-
-	childnum = node_find_heaviest_idx(parent);
-	nassert(childnum < (int)parent->u.n.n_children);
-
-	part = &parent->u.n.parts[childnum];
-	if (cache_get_and_pin(t->cf,
-	                      part->child_nid,
-	                      &child,
-	                      L_WRITE) != NESS_OK) {
-		__ERROR("cache get node error, nid [%" PRIu64 "]",
-		        part->child_nid);
-
-		return NESS_ERR;
-	}
-
-	gettime(&t1);
-	fifo = part->buffer;
-	fifo_iter_init(&iter, fifo);
-	while (fifo_iter_next(&iter)) {
-		/* TODO(BohuTANG): check msn */
-		struct bt_cmd cmd = {
-			.msn = iter.msn,
-			.type = iter.type,
-			.key = &iter.key,
-			.val = &iter.val,
-			.xidpair = iter.xidpair
-		};
-		_node_put_cmd(t, child, &cmd);
-	}
-
-	/* free flushed msgbuffer */
-	fifo_free(part->buffer);
-	part->buffer = fifo_new();
-	node_set_dirty(parent);
-	node_set_dirty(child);
-	gettime(&t2);
-	t->status->tree_flush_child_costs += time_diff_ms(t1, t2);
-	t->status->tree_flush_child_nums++;
-
-	/*
-	 * check child reactivity
-	 * 1. if STABLE, return
-	 * 2. if FISSIBLE, split the node
-	 * 3. if FLUSHBLE, flush child node w/recursive
-	 * 4. others it will get panic
-	 */
-	re_child = _get_reactivity(t, child);
-	switch (re_child) {
-	case STABLE:
-		cache_unpin(t->cf, child);
-		cache_unpin(t->cf, parent);
-		break;
-	case FISSIBLE:
-		_node_split_child(t, parent, child);
-		cache_unpin(t->cf, child);
-		cache_unpin(t->cf, parent);
-		break;
-	case FLUSHBLE:
-		nassert(child->height > 0);
-		cache_unpin(t->cf, parent);
-		_flush_some_child(t, child);
-		break;
-	default:
-		__PANIC("%s", "unsupport reactivity enum");
-	}
-
-	return NESS_OK;
-}
-
-/*
- * in order to keep the root NID is eternal
- * so swap me!
- * TODO:(BohuTANG) swap the msn
- *
- * REQUIRES:
- * a) new_root lock(L_WRITE)
- * b) old_root lock(L_WRITE)
- */
-void _root_swap(struct tree *t,
-                struct node *new_root,
-                struct node *old_root)
-{
+	MSN old_msn;
+	MSN new_msn;
 	NID old_nid;
 	NID new_nid;
 
-	old_nid = old_root->nid;
-	new_nid = new_root->nid;
+	struct cpair *old_cp;
+	struct cpair *new_cp;
 
-	cache_cpair_value_swap(t->cf, new_root, old_root);
+	/* swap msn */
+	old_msn = old_root->msn;
+	new_msn = new_root->msn;
+	old_root->msn = new_msn;
+	new_root->msn = old_msn;
 
 	/* swap nid */
+	old_nid = old_root->nid;
+	new_nid = new_root->nid;
 	old_root->nid = new_nid;
 	new_root->nid = old_nid;
+
+	/* swap cpair */
+	old_cp = old_root->cpair;
+	new_cp = new_root->cpair;
+	old_root->cpair = new_cp;
+	new_root->cpair = old_cp;
+	old_cp->v = new_root;
+	new_cp->v = old_root;
 
 	/* swap root flag */
 	old_root->isroot = 0;
@@ -475,12 +381,10 @@ void _root_split(struct tree *t,
                  struct node *new_root,
                  struct node *old_root)
 {
-	MSN msn;
 	struct node *a;
 	struct node *b;
 	struct msg *split_key;
 
-	msn = old_root->msn;
 	if (old_root->height == 0) {
 		_leaf_split(t, old_root, &a, &b, &split_key);
 	} else {
@@ -488,8 +392,7 @@ void _root_split(struct tree *t,
 	}
 
 	/* swap two roots */
-	_root_swap(t, new_root, old_root);
-	new_root->msn = msn;
+	_root_swap(new_root, old_root);
 
 	msgcpy(&new_root->u.n.pivots[0], split_key);
 	new_root->u.n.parts[0].child_nid = a->nid;
@@ -505,62 +408,66 @@ void _root_split(struct tree *t,
 	node_set_dirty(old_root);
 	node_set_dirty(new_root);
 
-	t->status->tree_root_new_nums++;
 	t->hdr->height++;
+	status_increment(&t->status->tree_root_new_nums);
 }
 
 /*
- * REQUIRES:
- * a) root node locked
- *
- * PROCESSES:
- * a) to check root reactivity
- *    a1) if not stable, relock from L_READ to L_WRITE
+ * EFFECT:
+ *	- split the fissible root
+ */
+void _root_fissible(struct tree *t, struct node *root)
+{
+	struct node *new_root;
+	uint32_t new_root_height = 1;
+	uint32_t new_root_children = 2;
+
+	cache_create_node_and_pin(t->cf, new_root_height, new_root_children, &new_root);
+	_root_split(t, new_root, root);
+
+	cache_unpin(t->cf, root);
+	cache_unpin(t->cf, new_root);
+}
+
+/*
+ * PROCESS:
+ *	- put cmd to root
+ *	- check root reactivity
+ *	    -- FISSIBLE: split root
+ *	    -- FLUSHABLE: flush root in background
+ * ENTRY:
+ *	- no nodes are locked
+ * EXITS:
+ *	- all nodes are unlocked
  */
 int root_put_cmd(struct tree *t, struct bt_cmd *cmd)
 {
 	struct node *root;
 	enum reactivity re;
+	volatile int hasput = 0;
 	enum lock_type locktype = L_READ;
 
 CHANGE_LOCK_TYPE:
-	if (!cache_get_and_pin(t->cf, t->hdr->root_nid, &root, locktype)) {
+	if (!cache_get_and_pin(t->cf, t->hdr->root_nid, &root, locktype))
 		return NESS_ERR;
+
+	if (!hasput) {
+		node_put_cmd(t, root, cmd);
+		hasput = 1;
 	}
 
-	re = _get_reactivity(t, root);
+	re = get_reactivity(t, root);
 	switch (re) {
 	case STABLE:
+		cache_unpin(t->cf, root);
 		break;
-	case FISSIBLE: {
-			if (locktype == L_READ) {
-				cache_unpin(t->cf, root);
-
-				locktype = L_WRITE;
-				goto CHANGE_LOCK_TYPE;
-			}
-
-			struct node *new_root;
-			uint32_t new_root_height = 1;
-			uint32_t new_root_children = 2;
-
-			cache_create_node_and_pin(t->cf,
-			                          new_root_height,
-			                          new_root_children,
-			                          &new_root);
-			/*
-			 * split root node,
-			 * now new_root is real root node with same NID
-			 * after root swap
-			 */
-			_root_split(t, new_root, root);
-
+	case FISSIBLE:
+		if (locktype == L_READ) {
 			cache_unpin(t->cf, root);
-			cache_unpin(t->cf, new_root);
-
-			locktype = L_READ;
+			locktype = L_WRITE;
 			goto CHANGE_LOCK_TYPE;
 		}
+		_root_fissible(t, root);
 		break;
 	case FLUSHBLE:
 		if (locktype == L_READ) {
@@ -568,18 +475,9 @@ CHANGE_LOCK_TYPE:
 			locktype = L_WRITE;
 			goto CHANGE_LOCK_TYPE;
 		}
-		_flush_some_child(t, root);
-
-		locktype = L_READ;
-		goto CHANGE_LOCK_TYPE;
-
+		tree_flush_node_on_background(t, root);
 		break;
-	default :
-		abort();
 	}
-
-	_node_put_cmd(t, root, cmd);
-	cache_unpin(t->cf, root);
 
 	return NESS_OK;
 }

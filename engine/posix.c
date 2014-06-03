@@ -6,6 +6,75 @@
 
 #include "posix.h"
 
+/* atomic functions */
+static pthread_mutex_t atomic_mtx __attribute__((__unused__)) = PTHREAD_MUTEX_INITIALIZER;
+int atomic32_increment(int *dest)
+{
+	int r;
+
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4
+	r = __sync_add_and_fetch(dest, 1U);
+#else
+	pthread_mutex_lock(&atomic_mtx);
+	*dest += 1;
+	r = *dest;
+	pthread_mutex_unlock(&atomic_mtx);
+#endif
+	return r;
+}
+
+int atomic32_decrement(int *dest)
+{
+	int r;
+
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4
+	r = __sync_sub_and_fetch(dest, 1U);
+#else
+	pthread_mutex_lock(&atomic_mtx);
+	*dest -= 1;
+	r = *dest;
+	pthread_mutex_unlock(&atomic_mtx);
+#endif
+	return r;
+
+}
+
+uint64_t atomic64_add(uint64_t *dest, uint64_t add)
+{
+	uint64_t r;
+
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8
+	r = __sync_add_and_fetch(dest, add);
+#else
+	pthread_mutex_lock(&atomic_mtx);
+	*dest += add;
+	r = *dest;
+	pthread_mutex_unlock(&atomic_mtx);
+#endif
+	return r;
+}
+
+uint64_t atomic64_increment(uint64_t *dest)
+{
+	return atomic64_add(dest, 1UL);
+}
+
+uint64_t atomic64_decrement(uint64_t *dest)
+{
+	uint64_t r;
+
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8
+	r = __sync_sub_and_fetch(dest, 1U);
+#else
+	pthread_mutex_lock(&atomic_mtx);
+	*dest -= 1;
+	r = *dest;
+	pthread_mutex_unlock(&atomic_mtx);
+#endif
+	return r;
+}
+
+/* cron functions */
 struct cron *cron_new(func f, uint32_t period_ms) {
 	struct cron *cron;
 
@@ -111,11 +180,15 @@ void cron_free(struct cron *cron)
 		cron_stop(cron);
 
 	pthread_join(cron->thread, NULL);
+
+	/* TODO (BohuTANG): here is helgrind warning
 	pthread_cond_destroy(&cron->cond);
+	*/
 	pthread_mutex_destroy(&cron->mtx);
 	xfree(cron);
 }
 
+/* time functions */
 void gettime(struct timespec *a)
 {
 	struct timeval tv;
@@ -162,3 +235,4 @@ long long time_diff_ms(struct timespec start, struct timespec end)
 {
 	return millisec_elapsed(diff_timespec(start, end));
 }
+

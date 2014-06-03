@@ -29,7 +29,7 @@
 #include <unistd.h>
 #include "xmalloc.h"
 #include "status.h"
-#include "atomic.h"
+#include "posix.h"
 
 
 #define nesslikely(EXPR) __builtin_expect(!! (EXPR), 1)

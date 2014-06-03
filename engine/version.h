@@ -17,5 +17,3 @@ enum layout_version_e {
 };
 
 #endif
-
-

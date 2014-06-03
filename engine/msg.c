@@ -29,6 +29,9 @@ void msgcpy(struct msg *dst, struct msg *src)
 
 uint32_t msgsize(struct msg *msg)
 {
+	if (!msg)
+		return 0;
+
 	return (sizeof(msg->size) + msg->size);
 }
 

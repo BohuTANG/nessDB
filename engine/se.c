@@ -90,20 +90,18 @@ void _leaf_msgbuf_to_buf(struct msgbuf *mb, struct buffer *buf)
 	msgbuf_iter_seektofirst(&iter);
 	while (msgbuf_iter_valid(&iter)) {
 		/* same key array iterator */
-		while (msgbuf_internal_iter_next(&iter)) {
-			MSN msn = iter.msn;
+		MSN msn = iter.msn;
 
-			msn = ((msn << 8) | iter.type);
-			buf_putuint64(buf, msn);
-			buf_putuint64(buf, iter.xidpair.child_xid);
-			buf_putuint64(buf, iter.xidpair.parent_xid);
-			buf_putuint32(buf, iter.key.size);
-			buf_putnstr(buf, iter.key.data, iter.key.size);
+		msn = ((msn << 8) | iter.type);
+		buf_putuint64(buf, msn);
+		buf_putuint64(buf, iter.xidpair.child_xid);
+		buf_putuint64(buf, iter.xidpair.parent_xid);
+		buf_putuint32(buf, iter.key.size);
+		buf_putnstr(buf, iter.key.data, iter.key.size);
 
-			if (iter.type != MSG_DELETE) {
-				buf_putuint32(buf, iter.val.size);
-				buf_putnstr(buf, iter.val.data, iter.val.size);
-			}
+		if (iter.type != MSG_DELETE) {
+			buf_putuint32(buf, iter.val.size);
+			buf_putnstr(buf, iter.val.data, iter.val.size);
 		}
 		msgbuf_iter_next(&iter);
 	}
@@ -189,7 +187,7 @@ void _serialize_leaf_to_buf(struct buffer *wbuf,
 		              compress_ptr,
 		              &compress_size);
 		gettime(&t2);
-		status->leaf_compress_data_costs += time_diff_ms(t1, t2);
+		status_add(&status->leaf_compress_data_costs, time_diff_ms(t1, t2));
 		/*
 		 * b) |compress_size|uncompress_size|compress datas|
 		 */
@@ -270,7 +268,7 @@ void _serialize_nonleaf_to_buf(struct buffer *wbuf,
 			              compress_ptr,
 			              &compress_size);
 			gettime(&t2);
-			status->nonleaf_compress_data_costs += time_diff_ms(t1, t2);
+			status_add(&status->nonleaf_compress_data_costs, time_diff_ms(t1, t2));
 
 			buf_putuint32(part_wbuf, compress_size);
 			buf_putuint32(part_wbuf, uncompress_size);
@@ -390,8 +388,8 @@ int _deserialize_leaf_from_disk(int fd,
 		goto RET;
 	}
 	gettime(&t2);
-	status->leaf_read_from_disk_costs += time_diff_ms(t1, t2);
-	status->leaf_read_from_disk_nums++;
+	status_add(&status->leaf_read_from_disk_costs, time_diff_ms(t1, t2));
+	status_increment(&status->leaf_read_from_disk_nums);
 
 	char *datas = NULL;
 	uint32_t act_xsum;
@@ -434,7 +432,7 @@ int _deserialize_leaf_from_disk(int fd,
 		                lbuf->buf,
 		                uncompress_size);
 		gettime(&t2);
-		status->leaf_uncompress_data_costs += time_diff_ms(t1, t2);
+		status_add(&status->leaf_uncompress_data_costs, time_diff_ms(t1, t2));
 	}
 
 	/* alloc leaf node */
@@ -494,7 +492,7 @@ int _deserialize_nonleaf_from_buf(struct buffer *rbuf,
 	                pivots_rbuf->buf,
 	                uncompress_size);
 	gettime(&t2);
-	status->nonleaf_uncompress_data_costs += time_diff_ms(t1, t2);
+	status_add(&status->nonleaf_uncompress_data_costs, time_diff_ms(t1, t2));
 
 	for (i = 0; i < node->u.n.n_children; i++) {
 		if (i < (node->u.n.n_children - 1)) {
@@ -604,8 +602,8 @@ int _deserialize_nonleaf_from_disk(int fd,
 		goto ERR;
 	}
 	gettime(&t2);
-	status->nonleaf_read_from_disk_costs += time_diff_ms(t1, t2);
-	status->nonleaf_read_from_disk_nums++;
+	status_add(&status->nonleaf_read_from_disk_costs, time_diff_ms(t1, t2));
+	status_increment(&status->nonleaf_read_from_disk_nums);
 
 	/*
 	 * check the checksum

@@ -81,43 +81,13 @@ uint32_t _msgentry_size(struct msg *k, struct msg *v)
 	return size;
 }
 
-/* resize arrays size to double */
-struct msgarray *_msgarray_new(struct msgbuf *mb) {
-	struct msgarray *marray;
-
-	marray = (struct msgarray*)mempool_alloc_aligned(mb->mpool, sizeof(struct msgarray));
-	memset(marray, 0, sizeof(*marray));
-	marray->size = MSGENTRY_ARRAY_SLOTS;
-	marray->arrays = (void*)mempool_alloc_aligned(mb->mpool, marray->size * sizeof(void*));
-
-	return marray;
-}
-
 struct msgbuf *msgbuf_new() {
 	struct msgbuf *mb;
 
 	mb = xcalloc(1, sizeof(*mb));
-	mb->mpool = mempool_new();
-	mb->list = skiplist_new(msgbuf_key_compare);
-	mb->marray = (struct msgarray*)mempool_alloc_aligned(mb->mpool, sizeof(struct msgarray));
-	memset(mb->marray, 0, sizeof(*mb->marray));
-	mb->marray->size = MSGENTRY_ARRAY_SLOTS;
-	mb->marray->arrays = (void*)mempool_alloc_aligned(mb->mpool, mb->marray->size * sizeof(void*));
+	mb->pma = pma_new(128);
 
 	return mb;
-}
-
-void _msgarray_resize(struct msgbuf *mb, struct msgarray *marray)
-{
-	int newsize;
-	void *newarrays;
-
-	newsize = marray->size * 2;
-	newarrays = mempool_alloc_aligned(mb->mpool, newsize * sizeof(void*));
-	xmemcpy(newarrays, marray->arrays, marray->used * sizeof(void*));
-
-	marray->size = newsize;
-	marray->arrays = newarrays;
 }
 
 void msgbuf_put(struct msgbuf *mb,
@@ -127,63 +97,44 @@ void msgbuf_put(struct msgbuf *mb,
                 struct msg *val,
                 struct txnid_pair *xidpair)
 {
-	char *base;
-	int newroom;
-	uint32_t sizes;
-	struct msgarray *marray;
-	struct skipnode *node;
+	uint32_t sizes = _msgentry_size(key, val);
+	char *base = xmalloc(sizes);
 
-	sizes = _msgentry_size(key, val);
-	base = mempool_alloc_aligned(mb->mpool, sizes);
 	_msgentry_pack(base, msn, type, key, val, xidpair);
-	mb->marray->arrays[0] = (struct msgentry*)base;
-
-	newroom = skiplist_makeroom(mb->list, (void*)mb->marray, &node);
-	if (newroom) {
-		marray = _msgarray_new(mb);
-		marray->arrays[marray->used++] = (struct msgentry*)base;
-		if (xidpair->child_xid == TXNID_NONE)
-			marray->num_cx++;
-		else
-			marray->num_px++;
-
-		(node)->key = (void*)marray;
-	} else {
-		/* just update the arrays */
-		marray = (struct msgarray*)(node)->key;
-		if (xidpair->child_xid != TXNID_NONE) {
-			if (marray->used >= marray->size)
-				_msgarray_resize(mb, marray);
-			marray->arrays[marray->used++] = (struct msgentry*)base;
-			marray->num_px++;
-		} else {
-			marray->arrays[0] = (struct msgentry*)base;
-			marray->used = 1;
-			marray->num_cx = 1;
-			marray->num_px = 0;
-		}
-	}
+	pma_insert(mb->pma, (void*)base, sizes, msgbuf_key_compare);
 }
+
 
 /*
  * it's all alloced size, not used size
  */
 uint32_t msgbuf_memsize(struct msgbuf *mb)
 {
-	return mb->mpool->memory_used;
+	return mb->pma->memory_used;
 }
 
 uint32_t msgbuf_count(struct msgbuf *mb)
 {
-	return mb->list->count;
+	return mb->pma->count;
 }
 
 void msgbuf_free(struct msgbuf *mb)
 {
 	if (!mb) return;
 
-	mempool_free(mb->mpool);
-	skiplist_free(mb->list);
+	int cidx;
+	int aidx;
+
+	for (cidx = 0; cidx < mb->pma->used; cidx++) {
+		struct array *a = mb->pma->chain[cidx];
+
+		for (aidx = 0; aidx < a->used; aidx++) {
+			void *v = a->elems[aidx];
+			xfree(v);
+		}
+	}
+
+	pma_free(mb->pma);
 	xfree(mb);
 }
 
@@ -191,12 +142,9 @@ void msgbuf_free(struct msgbuf *mb)
  * msgbuf iterator (thread-safe)
 *******************************************************/
 
-void _iter_unpack(struct msgarray *marray, struct msgbuf_iter *iter)
+void _iter_unpack(char *base, struct msgbuf_iter *iter)
 {
-	iter->mvcc = 0;
-	if (marray) {
-		char *base = (char*)marray->arrays[iter->idx];
-
+	if (base) {
 		_msgentry_unpack(base,
 		                 &iter->msn,
 		                 &iter->type,
@@ -204,34 +152,92 @@ void _iter_unpack(struct msgarray *marray, struct msgbuf_iter *iter)
 		                 &iter->val,
 		                 &iter->xidpair);
 		iter->valid = 1;
-		iter->mvcc = marray->used > 1;
 	} else {
 		iter->valid = 0;
 	}
-	iter->marray = marray;
 }
 
 /* init */
 void msgbuf_iter_init(struct msgbuf_iter *iter, struct msgbuf *mb)
 {
 	iter->valid = 0;
-	iter->idx = 0;
-	iter->mvcc = 0;
 	iter->mb = mb;
-	skiplist_iter_init(&iter->list_iter, mb->list);
+	iter->pma = mb->pma;
+
+	iter->chain_idx = 0;
+	iter->array_idx = 0;
+}
+
+int msgbuf_split(struct msgbuf *mb,
+                 struct msgbuf** a,
+                 struct msgbuf** b,
+                 struct msg ** split_key)
+{
+	int ret;
+	struct msgbuf *mba = mb;
+	struct msgbuf *mbb;
+
+	struct pma *pa = mb->pma;
+	struct pma *pb;
+
+	if (pa->used < 2) {
+		ret = NESS_ERR;
+		goto ERR;
+	}
+
+	int a_used = pa->used / 2;
+	int b_used = pa->used - a_used;
+	struct array *last_array_in_a = pa->chain[a_used - 1];
+	char *midbase = last_array_in_a->elems[last_array_in_a->used - 1];
+
+	/* mbb */
+	mbb = msgbuf_new();
+	pb = mbb->pma;
+	pma_resize(pb, b_used);
+
+	/* copy chain elems to new pma */
+	xmemcpy(pb->chain, pa->chain + a_used, b_used * sizeof(void*));
+
+	/* update count */
+	pa->used = a_used;
+	pb->used = b_used;
+	pa->count = pma_count_calc(pa);
+	pb->count = pma_count_calc(pb);
+
+	/* memory size */
+	pa->memory_used = pma_memsize_calc(pa);
+	pb->memory_used = pma_memsize_calc(pb);
+
+	/* split key */
+	struct msgbuf_iter iter;
+
+	msgbuf_iter_init(&iter, mb);
+	_iter_unpack(midbase, &iter);
+
+	*split_key = msgdup(&iter.key);
+
+	*a = mba;
+	*b = mbb;
+
+	ret = NESS_OK;
+ERR:
+	return ret;
 }
 
 /* valid */
-int msgbuf_iter_valid(struct msgbuf_iter *msgbuf_iter)
+int msgbuf_iter_valid(struct msgbuf_iter *iter)
 {
-	return skiplist_iter_valid(&msgbuf_iter->list_iter);
-}
+	int valid = 0;
+	struct pma *p = iter->pma;
+	int chain_idx = iter->chain_idx;
+	int array_idx = iter->array_idx;
 
-/* valid and less or equal */
-int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *iter, struct msg *key)
-{
-	return (skiplist_iter_valid(&iter->list_iter) &&
-	        (msg_key_compare(&iter->key, key) <= 0));
+
+	if ((chain_idx < p->used)
+	    && (array_idx < p->chain[chain_idx]->used))
+		valid = 1;
+
+	return valid;
 }
 
 /*
@@ -240,59 +246,43 @@ int msgbuf_iter_valid_lessorequal(struct msgbuf_iter *iter, struct msg *key)
  */
 void msgbuf_iter_next(struct msgbuf_iter *iter)
 {
-	struct msgarray *marray = NULL;
+	char *base;
+	int chain_idx = iter->chain_idx;
+	int array_idx = iter->array_idx;
+	struct pma *pma = iter->pma;
 
-	iter->idx = 0;
-	skiplist_iter_next(&iter->list_iter);
-	if (skiplist_iter_valid(&iter->list_iter)) {
-		marray = (struct msgarray*)iter->list_iter.node->key;
-	}
+	nassert(msgbuf_iter_valid(iter) == 1);
 
-	_iter_unpack(marray, iter);
-}
+	base = pma->chain[chain_idx]->elems[array_idx];
+	_iter_unpack(base, iter);
 
-/*
- * same key array iterator
- */
-int msgbuf_internal_iter_next(struct msgbuf_iter *iter)
-{
-	struct msgarray *marray = iter->marray;
-
-	if (iter->idx < marray->used) {
-		_iter_unpack(marray, iter);
-		iter->idx++;
-
-		return 1;
+	if (array_idx == (pma->chain[chain_idx]->used - 1)) {
+		iter->chain_idx++;
+		iter->array_idx = 0;
 	} else {
-		return 0;
-	}
-}
-
-int msgbuf_internal_iter_reverse(struct msgbuf_iter *iter)
-{
-	struct msgarray *marray = iter->marray;
-
-	iter->idx = marray->used - 1;
-	if (iter->idx > -1) {
-		_iter_unpack(marray, iter);
-		return 1;
-	} else {
-		return 0;
+		iter->array_idx++;
 	}
 }
 
 /* prev is normal */
 void msgbuf_iter_prev(struct msgbuf_iter *iter)
 {
-	struct msgarray *marray = NULL;
+	char *base;
+	int chain_idx = iter->chain_idx;
+	int array_idx = iter->array_idx;
+	struct pma *pma = iter->pma;
 
-	iter->idx = 0;
-	skiplist_iter_prev(&iter->list_iter);
-	if (iter->list_iter.node) {
-		marray = iter->list_iter.node->key;
+	nassert(msgbuf_iter_valid(iter) == 1);
+
+	base = pma->chain[chain_idx]->elems[array_idx];
+	_iter_unpack(base, iter);
+
+	if (array_idx == 0) {
+		iter->chain_idx--;
+		iter->array_idx = pma->chain[chain_idx]->used - 1;
+	} else {
+		iter->array_idx--;
 	}
-
-	_iter_unpack(marray, iter);
 }
 
 /*
@@ -303,8 +293,8 @@ void msgbuf_iter_prev(struct msgbuf_iter *iter)
 void msgbuf_iter_seek(struct msgbuf_iter *iter, struct msg *k)
 {
 	int size;
+	char *base = NULL;
 	struct msgentry *mentry;
-	struct msgarray array;
 
 	if (!k) return;
 	size = _msgentry_size(k, NULL);
@@ -314,43 +304,31 @@ void msgbuf_iter_seek(struct msgbuf_iter *iter, struct msg *k)
 	mentry->vallen = 0U;
 	memcpy((char*)mentry + MSGENTRY_SIZE, k->data, k->size);
 
-	array.arrays = xcalloc(1, sizeof(void*));
-	array.arrays[0] = mentry;
-
-	skiplist_iter_seek(&iter->list_iter, (void*)&array);
+	// pma seek
 	xfree(mentry);
-	xfree(array.arrays);
 
-	struct msgarray *marray = NULL;
-
-	iter->idx = 0;
-	if (skiplist_iter_valid(&iter->list_iter))
-		marray = iter->list_iter.node->key;
-	_iter_unpack(marray, iter);
+	_iter_unpack(base, iter);
 }
 
 /* seek to first */
 void msgbuf_iter_seektofirst(struct msgbuf_iter *iter)
 {
-	struct msgarray *marray = NULL;
+	char *base;
+	struct pma *pma = iter->pma;
 
-	iter->idx = 0;
-	skiplist_iter_seektofirst(&iter->list_iter);
-	if (skiplist_iter_valid(&iter->list_iter))
-		marray = iter->list_iter.node->key;
-
-	_iter_unpack(marray, iter);
+	if (pma->used > 0) {
+		base = pma->chain[0]->elems[0];
+		_iter_unpack(base, iter);
+	}
 }
 
 /* seek to last */
 void msgbuf_iter_seektolast(struct msgbuf_iter *iter)
 {
-	struct msgarray *marray = NULL;
+	char *base;
+	struct pma *pma = iter->pma;
+	struct array *array = pma->chain[pma->used - 1];
 
-	iter->idx = 0;
-	skiplist_iter_seektolast(&iter->list_iter);
-	if (skiplist_iter_valid(&iter->list_iter))
-		marray = iter->list_iter.node->key;
-
-	_iter_unpack(marray, iter);
+	base = array->elems[array->used - 1];
+	_iter_unpack(base, iter);
 }

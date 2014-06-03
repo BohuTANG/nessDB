@@ -51,6 +51,7 @@ CTEST(msgbuf, keycompare)
 }
 */
 
+/*
 CTEST(msgbuf, empty)
 {
 	int ret;
@@ -297,3 +298,4 @@ CTEST(msgbuf, multiversion)
 	msgbuf_free(bsm);
 	xcheck_all_free();
 }
+*/

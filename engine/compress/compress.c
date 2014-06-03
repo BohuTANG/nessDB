@@ -47,6 +47,7 @@ int ness_compress(ness_compress_method_t m,
 			snappy_init_env(&env);
 
 			status = snappy_compress(&env, src, src_size, dst + 1, &out_size);
+			snappy_free_env(&env);
 			if (status != 0) {
 				__ERROR("snappy compress error %d, src_size %d, dst_size %d",
 				        status,
@@ -87,6 +88,7 @@ int ness_decompress(const char *src,
 			snappy_init_env(&env);
 
 			status = snappy_uncompress(src + 1, src_size - 1, dst);
+			snappy_free_env(&env);
 			if (status != 0) {
 				__ERROR("snappy uncompress error %d", status);
 				ret = 0;

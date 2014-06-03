@@ -101,7 +101,7 @@ struct fifo *fifo_new(void) {
 
 uint32_t fifo_memsize(struct fifo *fifo)
 {
-	return fifo->mpool->memory_used;
+	return fifo->memory_used;
 }
 
 uint32_t fifo_count(struct fifo *fifo)
@@ -135,6 +135,7 @@ void fifo_append(struct fifo *fifo,
 	ret = _fifo_entry_pack(base, msn, type, key, val, xidpair);
 	nassert(ret == sizes);
 	fifo->count++;
+	fifo->memory_used += sizes;
 }
 
 /* init */

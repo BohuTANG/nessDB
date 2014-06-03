@@ -70,5 +70,8 @@ NID hdr_next_nid(struct tree *t);
 int root_put_cmd(struct tree *t, struct bt_cmd *cmd);
 void leaf_put_cmd(struct node *node, struct bt_cmd *cmd);
 void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd);
+void node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd);
+enum reactivity get_reactivity(struct tree *t, struct node *node);
+void node_split_child(struct tree *t, struct node *parent, struct node *child);
 
 #endif /* nessDB_TREE_H_ */

@@ -19,8 +19,9 @@ int fetch_node_callback(void *tree, NID nid, struct node **n)
 	gettime(&t1);
 	r = deserialize_node_from_disk(t->fd, t->block, nid, n, 0);
 	gettime(&t2);
-	t->status->tree_node_fetch_costs += time_diff_ms(t1, t2);
-	t->status->tree_node_fetch_nums++;
+
+	atomic64_add(&t->status->tree_node_fetch_costs, (uint64_t)time_diff_ms(t1, t2));
+	atomic64_increment(&t->status->tree_node_fetch_nums);
 	if (r != NESS_OK)
 		__PANIC("fetch node from disk error, errno [%d]", r);
 

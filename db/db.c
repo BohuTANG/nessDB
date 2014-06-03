@@ -111,97 +111,12 @@ int db_get(struct nessdb *db, struct msg *k, struct msg *v)
 	return -1;
 }
 
-struct db_cursor *db_cursor_new(struct nessdb *db) {
-	struct db_cursor *cursor;
-
-	cursor = xcalloc(1, sizeof(*cursor));
-	cursor->db = db;
-
-	return cursor;
-}
-
-void db_cursor_free(struct db_cursor *cursor)
-{
-	cursor->valid = 0;
-	xfree(cursor);
-}
-
-int db_c_valid(struct db_cursor *cursor)
-{
-	return (cursor->valid == 1);
-}
-
-void db_c_first(struct db_cursor *cursor)
-{
-	struct cursor *tree_cursor;
-
-	assert(cursor->db == NULL);
-
-	tree_cursor = cursor_new(cursor->db->tree, NULL);
-	tree_cursor_first(tree_cursor);
-	if (tree_cursor_valid(tree_cursor)) {
-		cursor->valid = 1;
-		cursor->key = tree_cursor->key;
-		cursor->val = tree_cursor->val;
-	} else
-		cursor->valid = 0;
-	cursor_free(tree_cursor);
-}
-
-void db_c_last(struct db_cursor *cursor)
-{
-	struct cursor *tree_cursor;
-
-	assert(cursor->db == NULL);
-
-	tree_cursor = cursor_new(cursor->db->tree, NULL);
-	tree_cursor_last(tree_cursor);
-	if (tree_cursor_valid(tree_cursor)) {
-		cursor->valid = 1;
-		cursor->key = tree_cursor->key;
-		cursor->val = tree_cursor->val;
-	} else
-		cursor->valid = 0;
-	cursor_free(tree_cursor);
-}
-
-void db_c_next(struct db_cursor *cursor)
-{
-	struct cursor *tree_cursor;
-
-	assert(cursor->db == NULL);
-
-	tree_cursor = cursor_new(cursor->db->tree, NULL);
-	tree_cursor_next(tree_cursor);
-	if (tree_cursor_valid(tree_cursor)) {
-		cursor->valid = 1;
-		cursor->key = tree_cursor->key;
-		cursor->val = tree_cursor->val;
-	} else
-		cursor->valid = 0;
-	cursor_free(tree_cursor);
-}
-
-void db_c_prev(struct db_cursor *cursor)
-{
-	struct cursor *tree_cursor;
-
-	assert(cursor->db == NULL);
-
-	tree_cursor = cursor_new(cursor->db->tree, NULL);
-	tree_cursor_prev(tree_cursor);
-	if (tree_cursor_valid(tree_cursor)) {
-		cursor->valid = 1;
-		cursor->key = tree_cursor->key;
-		cursor->val = tree_cursor->val;
-	} else
-		cursor->valid = 0;
-	cursor_free(tree_cursor);
-}
-
 int env_set_cache_size(struct nessdb *db, uint64_t cache_size)
 {
+
+	mutex_lock(&db->cache->mtx);
 	db->opts->cache_limits_bytes = cache_size;
+	mutex_unlock(&db->cache->mtx);
 
 	return NESS_OK;
 }
@@ -212,6 +127,7 @@ int env_set_compress_method(struct nessdb *db, ness_compress_method_t method)
 		return NESS_ERR;
 
 	db->opts->compress_method = method;
+
 	return NESS_OK;
 }
 

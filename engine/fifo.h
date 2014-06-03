@@ -25,6 +25,7 @@ struct fifo_iter {
 
 struct  fifo {
 	uint32_t count;
+	uint64_t memory_used;
 	struct mempool *mpool;
 };
 

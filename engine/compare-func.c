@@ -24,12 +24,10 @@ inline int msgbuf_key_compare(void *a, void *b)
 {
 	int r;
 	if (!a) return (-1);
-	if (!a) return (+1);
+	if (!b) return (+1);
 
-	struct msgarray *maa = (struct msgarray*)a;
-	struct msgentry *mea = maa->arrays[0];
-	struct msgarray *mab = (struct msgarray*)b;
-	struct msgentry *meb = mab->arrays[0];
+	struct msgentry *mea = (struct msgentry*)a;
+	struct msgentry *meb = (struct msgentry*)b;
 
 	uint32_t minlen = mea->keylen < meb->keylen ? mea->keylen : meb->keylen;
 	r = memcmp((char*)mea + MSGENTRY_SIZE, (char*)meb + MSGENTRY_SIZE, minlen);

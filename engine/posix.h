@@ -9,7 +9,6 @@
 
 #include "xtypes.h"
 #include "internal.h"
-#include "atomic.h"
 #include "debug.h"
 
 #define pthread_call(result, msg)					\
@@ -21,9 +20,18 @@
 	} while(0)
 
 /*******************************
+ * atomic
+ ******************************/
+int atomic32_increment(int *dest);
+int atomic32_decrement(int *dest);
+uint64_t atomic64_increment(uint64_t *dest);
+uint64_t atomic64_decrement(uint64_t *dest);
+uint64_t atomic64_add(uint64_t *dest, uint64_t add);
+
+/*******************************
  * mutex
  ******************************/
-typedef struct {
+typedef struct ness_mutex {
 	pthread_mutex_t mtx;
 } ness_mutex_t;
 
@@ -48,30 +56,27 @@ static inline void mutex_unlock(ness_mutex_t *mutex)
 	pthread_call(pthread_mutex_unlock(&mutex->mtx), "mutex unlock");
 }
 
-static inline void lock_destroy(ness_mutex_t *mutex)
+static inline void mutex_destroy(ness_mutex_t *mutex)
 {
 	pthread_call(pthread_mutex_destroy(&mutex->mtx), "mutex destroy");
 }
-
 
 /*******************************
  * cond
  ******************************/
 typedef struct {
 	pthread_cond_t cond;
-	pthread_mutex_t mtx;
 	pthread_condattr_t  attr;
 } ness_cond_t;
 
 static inline void cond_init(ness_cond_t *cond)
 {
-	pthread_mutex_init(&cond->mtx, NULL);
 	pthread_call(pthread_cond_init(&cond->cond, &cond->attr), "cond init");
 }
 
-static inline void cond_wait(ness_cond_t *cond)
+static inline void cond_wait(ness_cond_t *cond, ness_mutex_t *mtx)
 {
-	pthread_call(pthread_cond_wait(&cond->cond, &cond->mtx), "cond wait");
+	pthread_call(pthread_cond_wait(&cond->cond, &mtx->mtx), "cond wait");
 }
 
 static inline void cond_signal(ness_cond_t *cond)
@@ -90,79 +95,101 @@ static inline void cond_destroy(ness_cond_t *cond)
 }
 
 /*******************************
- * lock
+ * rwlock
  ******************************/
 
-typedef struct {
-	pthread_rwlock_t lock;
-	int num_readers;
-	int num_writers;
-	int num_want_read;
-	int num_want_write;
+typedef struct rwlock {
+	int reader;
+	int want_reader;
+	ness_cond_t wait_read;
+	int writer;
+	int want_writer;
+	ness_cond_t wait_write;
 } ness_rwlock_t;
 
-static inline void rwlock_init(ness_rwlock_t *rwlock)
+static inline void ness_rwlock_init(struct rwlock *rwlock)
 {
-	rwlock->num_readers = 0;
-	rwlock->num_writers = 0;
-	rwlock->num_want_read = 0;
-	rwlock->num_want_write = 0;
-	pthread_call(pthread_rwlock_init(&rwlock->lock, NULL), "ness rwlock init");
+	rwlock->reader = rwlock->want_reader = 0;
+	rwlock->writer = rwlock->want_writer = 0;
+	cond_init(&rwlock->wait_read);
+	cond_init(&rwlock->wait_write);
 }
 
-static inline void read_lock(ness_rwlock_t *rwlock)
+static inline void ness_rwlock_destroy(struct rwlock *rwlock)
 {
-	atomic32_increment(&rwlock->num_want_read);
-	pthread_call(pthread_rwlock_rdlock(&rwlock->lock), "ness read lock");
-	atomic32_decrement(&rwlock->num_want_read);
-	atomic32_increment(&rwlock->num_readers);
+	nassert(rwlock->reader == 0 && rwlock->want_reader == 0);
+	nassert(rwlock->writer == 0 && rwlock->want_writer == 0);
+	cond_destroy(&rwlock->wait_read);
+	cond_destroy(&rwlock->wait_write);
 }
 
-static inline int try_read_lock(ness_rwlock_t *rwlock)
+static inline void rwlock_read_lock(struct rwlock *rwlock, ness_mutex_t *mutex)
 {
-	if (pthread_rwlock_tryrdlock(&rwlock->lock) == 0) {
-		atomic32_increment(&rwlock->num_readers);
-		return 1;
-	} else {
-		return 0;
+	if (rwlock->writer || rwlock->want_writer) {
+		rwlock->want_reader++;
+		while (rwlock->writer || rwlock->want_writer) {
+			cond_wait(&rwlock->wait_read, mutex);
+		}
+		rwlock->want_reader--;
 	}
+	rwlock->reader++;
 }
 
-static inline void read_unlock(ness_rwlock_t *rwlock)
+static inline void rwlock_read_unlock(struct rwlock *rwlock)
 {
-	pthread_call(pthread_rwlock_unlock(&rwlock->lock), "ness read unlock");
-	atomic32_decrement(&rwlock->num_readers);
+	nassert(rwlock->reader > 0);
+	nassert(rwlock->writer == 0);
+	rwlock->reader--;
+	if (rwlock->want_writer > 0)
+		cond_signal(&rwlock->wait_write);
 }
 
-static inline void write_lock(ness_rwlock_t *rwlock)
+static inline void rwlock_write_lock(struct rwlock *rwlock, ness_mutex_t *mutex)
 {
-	atomic32_increment(&rwlock->num_want_write);
-	pthread_call(pthread_rwlock_wrlock(&rwlock->lock), "ness write lock");
-	atomic32_decrement(&rwlock->num_want_write);
-	atomic32_increment(&rwlock->num_writers);
-}
-
-static inline int try_write_lock(ness_rwlock_t *rwlock)
-{
-	if (pthread_rwlock_trywrlock(&rwlock->lock) == 0) {
-		atomic32_increment(&rwlock->num_writers);
-		return 1;
-	} else {
-		return 0;
+	if (rwlock->reader || rwlock->writer) {
+		rwlock->want_writer++;
+		while (rwlock->reader || rwlock->writer)
+			cond_wait(&rwlock->wait_write, mutex);
+		rwlock->want_writer--;
 	}
+	rwlock->writer++;
 }
 
-static inline void write_unlock(ness_rwlock_t *rwlock)
+static inline void rwlock_write_unlock(struct rwlock *rwlock)
 {
-	pthread_call(pthread_rwlock_unlock(&rwlock->lock), "ness write unlock");
-	atomic32_decrement(&rwlock->num_writers);
+	nassert(rwlock->reader == 0);
+	nassert(rwlock->writer == 1);
+	rwlock->writer--;
+	if (rwlock->want_writer)
+		cond_signal(&rwlock->wait_write);
+	else
+		cond_signalall(&rwlock->wait_read);
 }
 
-static inline void rwlock_destroy(ness_rwlock_t *rwlock)
+static inline int rwlock_users(struct rwlock *rwlock)
 {
-	pthread_call(pthread_rwlock_destroy(&rwlock->lock), "ness rwlock destroy");
+	return rwlock->reader + rwlock->want_reader + rwlock->writer + rwlock->want_writer;
 }
 
+static inline int rwlock_readers(struct rwlock *rwlock)
+{
+	return rwlock->reader;
+}
+
+static inline int rwlock_blocked_readers(struct rwlock *rwlock)
+{
+	return rwlock->want_reader;
+}
+
+static inline int rwlock_writers(struct rwlock *rwlock)
+{
+	return rwlock->writer;
+}
+
+static inline int rwlock_blocked_writers(struct rwlock *rwlock)
+{
+	return rwlock->want_writer;
+}
 
 /*******************************
  * cron
@@ -185,7 +212,6 @@ int cron_change_period(struct cron *cron, uint32_t period_ms);
 int cron_stop(struct cron *cron);
 void cron_signal(struct cron *cron);
 void cron_free(struct cron *cron);
-
 
 /*******************************
  * time

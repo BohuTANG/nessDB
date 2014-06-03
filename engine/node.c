@@ -21,8 +21,9 @@ struct node *leaf_alloc_empty(NID nid) {
 	node->height = 0;
 	node->node_op = &nop;
 
-	rwlock_init(&node->u.l.rwlock);
+	mutex_init(&node->u.l.mtx);
 	mutex_init(&node->attr.mtx);
+	ness_rwlock_init(&node->u.l.rwlock);
 
 	return node;
 }
@@ -50,7 +51,8 @@ struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children) {
 	node->u.n.parts = xcalloc(children, PART_SIZE);
 
 	for (i = 0; i < (int)children; i++) {
-		rwlock_init(&node->u.n.parts[i].rwlock);
+		mutex_init(&node->u.n.parts[i].mtx);
+		ness_rwlock_init(&node->u.n.parts[i].rwlock);
 	}
 	mutex_init(&node->attr.mtx);
 

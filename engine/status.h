@@ -10,6 +10,16 @@
 #include "xmalloc.h"
 #include "debug.h"
 
+#if defined(__linux__) && USE_VALGRIND
+#include <valgrind/helgrind.h>
+#include <valgrind/drd.h>
+#define VALGRIND_DISABLE_CHECKING(p, size) VALGRIND_HG_DISABLE_CHECKING(p, size)
+#define VALGRIND_ENABLE_CHECKING(p, size) VALGRIND_HG_ENABLE_CHECKING(p, size)
+#else /* !defined(__linux__) || !USE_VALGRIND */
+#define VALGRIND_DISABLE_CHECKING(p, size) ((void) 0)
+#define VALGRIND_ENABLE_CHECKING(p, size) ((void) 0)
+#endif
+
 /*
  * some probes
  */
@@ -47,6 +57,18 @@ static inline struct status *status_new() {
 	status = xcalloc(1, sizeof(*status));
 
 	return status;
+}
+
+static inline void status_increment(uint64_t *dest)
+{
+	VALGRIND_DISABLE_CHECKING(dest, sizeof(*dest));
+	(*dest)++;
+}
+
+static inline void status_add(uint64_t *dest, uint64_t add)
+{
+	VALGRIND_DISABLE_CHECKING(dest, sizeof(*dest));
+	*dest += add;
 }
 
 static inline void status_free(struct status *status)

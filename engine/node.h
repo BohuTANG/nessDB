@@ -8,10 +8,7 @@
 #define nessDB_NODE_H_
 
 #include "internal.h"
-#include "options.h"
-#include "posix.h"
 #include "msgbuf.h"
-#include "fifo.h"
 #include "fifo.h"
 
 #define PART_SIZE (sizeof(struct partition))
@@ -42,7 +39,8 @@ struct partition {
 	uint64_t child_nid;		/* child node id of this partition */
 	struct fifo *buffer;
 	int fetched: 2;			/* if 0, we need to fetch from disk */
-	ness_rwlock_t rwlock;
+	struct ness_mutex mtx;
+	struct rwlock rwlock;
 };
 
 enum {LE_CLEAN = 0, LE_MVCC = 1};
@@ -65,6 +63,7 @@ struct node {
 	struct node_attr attr;
 	struct node_operations *node_op;
 	enum lock_type pintype;
+	struct cpair *cpair;
 
 	union un {
 		struct nonleaf {
@@ -75,7 +74,8 @@ struct node {
 		struct leaf {
 			uint8_t type;	/* LE_CLEAN or LE_MVCC */
 			struct msgbuf *buffer;
-			ness_rwlock_t rwlock;
+			struct ness_mutex mtx;
+			struct rwlock rwlock;
 		} l;
 	} u;
 };

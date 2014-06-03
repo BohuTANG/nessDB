@@ -6,12 +6,17 @@
 
 #include "cache.h"
 
-/**
- * @file cache.c
- * @brief this file is a version implementation of vcache
- */
+#define PAIR_LIST_SIZE (5<<10)
 
-#define PAIR_LIST_SIZE (1<<20)
+struct cpair_list {
+	struct cpair *head;
+	struct cpair *last;
+};
+
+struct cpair_htable {
+	struct cpair **tables;
+	ness_mutex_aligned_t *mutexes;	/* array lock */
+};
 
 /* hashtable array lock */
 static inline void cpair_locked_by_key(struct cpair_htable *table, NID key)
@@ -23,6 +28,132 @@ static inline void cpair_locked_by_key(struct cpair_htable *table, NID key)
 static inline void cpair_unlocked_by_key(struct cpair_htable *table, NID key)
 {
 	mutex_unlock(&table->mutexes[key & (PAIR_LIST_SIZE - 1)].aligned_mtx);
+}
+
+struct cpair *cpair_new() {
+	struct cpair *cp;
+
+	cp = xcalloc(1, sizeof(*cp));
+	mutex_init(&cp->mtx);
+	ness_rwlock_init(&cp->disk_lock);
+	ness_rwlock_init(&cp->value_lock);
+
+	return cp;
+}
+
+void cpair_init(struct cpair *cp, struct node *value, struct cache_file *cf)
+{
+	cp->k = value->nid;
+	cp->cf = cf;
+	cp->v = value;
+	value->cpair = cp;
+}
+
+/*******************************
+ * list (in clock order)
+ ******************************/
+struct cpair_list *cpair_list_new() {
+	struct cpair_list *list;
+
+	list = xcalloc(1, sizeof(*list));
+	//rwlock_init(&list->lock);
+
+	return list;
+}
+
+void cpair_list_free(struct cpair_list *list)
+{
+	xfree(list);
+}
+
+void cpair_list_add(struct cpair_list *list, struct cpair *pair)
+{
+	if (list->head == NULL) {
+		list->head = pair;
+		list->last = pair;
+	} else {
+		pair->list_prev = list->last;
+		list->last->list_next = pair;
+		list->last = pair;
+	}
+}
+
+void cpair_list_remove(struct cpair_list *list, struct cpair *pair)
+{
+	if (list->head == pair)
+		list->head = pair->list_next;
+
+	if (pair->list_next)
+		pair->list_next->list_prev = pair->list_prev;
+
+	if (pair->list_prev)
+		pair->list_prev->list_next = pair->list_next;
+
+}
+
+/*******************************
+ * hashtable
+ ******************************/
+struct cpair_htable *cpair_htable_new() {
+	int i;
+	struct cpair_htable *table;
+
+	table = xcalloc(1, sizeof(*table));
+	table->tables = xcalloc(PAIR_LIST_SIZE, sizeof(*table->tables));
+	table->mutexes = xcalloc(PAIR_LIST_SIZE, sizeof(*table->mutexes));
+	for (i = 0; i < PAIR_LIST_SIZE; i++) {
+		mutex_init(&table->mutexes[i].aligned_mtx);
+	}
+
+	return table;
+}
+
+void cpair_htable_free(struct cpair_htable *table)
+{
+	xfree(table->tables);
+	xfree(table->mutexes);
+	xfree(table);
+}
+
+void cpair_htable_add(struct cpair_htable *table, struct cpair *pair)
+{
+	int hash;
+
+	hash = (pair->v->nid & (PAIR_LIST_SIZE - 1));
+	pair->hash_next = table->tables[hash];
+	table->tables[hash] = pair;
+}
+
+void cpair_htable_remove(struct cpair_htable *table, struct cpair *pair)
+{
+	int hash;
+
+	hash = (pair->v->nid & (PAIR_LIST_SIZE - 1));
+	if (table->tables[hash] == pair) {
+		table->tables[hash] = pair->hash_next;
+	} else {
+		struct cpair *curr = table->tables[hash];
+		while (curr->hash_next != pair) {
+			curr = curr->hash_next;
+		}
+		curr->hash_next = pair->hash_next;
+	}
+}
+
+struct cpair *cpair_htable_find(struct cpair_htable *table, NID key) {
+	int hash;
+	struct cpair *curr;
+
+	hash = (key & (PAIR_LIST_SIZE - 1));
+	curr = table->tables[hash];
+	while (curr) {
+		if (curr->k == key) {
+			return curr;
+		}
+		curr = curr->hash_next;
+	}
+
+	return NULL;
 }
 
 /*
@@ -40,6 +171,34 @@ void _free_cpair(struct cache *c, struct cpair *cp)
 
 	node_free(cp->v);
 	xfree(cp);
+}
+
+static inline void _cache_clock_write_lock(struct cache *c)
+{
+	mutex_lock(&c->mtx);
+	rwlock_write_lock(&c->clock_lock, &c->mtx);
+	mutex_unlock(&c->mtx);
+}
+
+static inline void _cache_clock_write_unlock(struct cache *c)
+{
+	mutex_lock(&c->mtx);
+	rwlock_write_unlock(&c->clock_lock);
+	mutex_unlock(&c->mtx);
+}
+
+static inline void _cache_clock_read_lock(struct cache *c)
+{
+	mutex_lock(&c->mtx);
+	rwlock_read_lock(&c->clock_lock, &c->mtx);
+	mutex_unlock(&c->mtx);
+}
+
+static inline void _cache_clock_read_unlock(struct cache *c)
+{
+	mutex_lock(&c->mtx);
+	rwlock_read_unlock(&c->clock_lock);
+	mutex_unlock(&c->mtx);
 }
 
 static inline int _must_evict(struct cache *c)
@@ -72,27 +231,30 @@ void _try_evict_pair(struct cache *c, struct cpair *p)
 	struct tree_callback *tcb = p->cf->tcb;
 	struct tree *tree = (struct tree*)p->cf->args;
 
-	/* others can't get&pin this node */
-	cpair_locked_by_key(c->table, p->k);
+	if (!rwlock_users(&p->value_lock)) {
+		/* barriered by key lock */
+		cpair_locked_by_key(c->table, p->k);
 
-	/* write dirty to disk */
-	write_lock(&p->value_lock);
-	is_dirty = node_is_dirty(p->v);
-	if (is_dirty) {
-		tcb->flush_node(tree, p->v);
-		node_set_nondirty(p->v);
+		/* write dirty to disk */
+		rwlock_write_lock(&p->disk_lock, &p->mtx);
+		is_dirty = node_is_dirty(p->v);
+		if (is_dirty) {
+			tcb->flush_node(tree, p->v);
+			node_set_nondirty(p->v);
+		}
+		rwlock_write_unlock(&p->disk_lock);
+
+		/* remove from list */
+		_cache_clock_write_lock(c);
+		cpair_list_remove(c->clock, p);
+		cpair_htable_remove(c->table, p);
+		_cache_clock_write_unlock(c);
+
+		cpair_unlocked_by_key(c->table, p->k);
+
+		/* here, none can grant the pair */
+		_free_cpair(c, p);
 	}
-	write_unlock(&p->value_lock);
-
-	/* remove from list */
-	write_lock(&c->clock_lock);
-	cpair_list_remove(c->clock, p);
-	cpair_htable_remove(c->table, p);
-	write_unlock(&c->clock_lock);
-	cpair_unlocked_by_key(c->table, p->k);
-
-	/* here, none can grant the p */
-	_free_cpair(c, p);
 }
 
 void _cache_dump(struct cache *c, const char *msg)
@@ -118,8 +280,8 @@ void _cache_dump(struct cache *c, const char *msg)
 		       children,
 		       (int)(cur->v->attr.newsz / (1024 * 1024)),
 		       node_is_dirty(cur->v),
-		       cur->value_lock.num_readers,
-		       cur->value_lock.num_writers
+		       cur->value_lock.reader,
+		       cur->value_lock.writer
 		      );
 		all_size += (cur->v->attr.newsz);
 		cur = cur->list_next;
@@ -135,29 +297,28 @@ void _run_eviction(struct cache *c)
 	struct cpair *cur;
 	struct cpair *nxt;
 
-	read_lock(&c->clock_lock);
+	/* barriered by clock READ lock */
+	_cache_clock_read_lock(c);
 	cur = c->clock->head;
-	read_unlock(&c->clock_lock);
+	_cache_clock_read_unlock(c);
+
 	if (!cur)
 		return;
 
 	while (_need_evict(c) && cur) {
 		int isroot = 0;
-		int num_readers = 0;
-		int num_writers = 0;
+		int users = 0;
 
-		read_lock(&c->clock_lock);
+		/* barriered by clock READ lock */
+		_cache_clock_read_lock(c);
 		isroot = cur->v->isroot;
-		num_readers = cur->value_lock.num_readers;
-		num_writers = cur->value_lock.num_writers;
+		users = rwlock_users(&cur->value_lock);
 		nxt = cur->list_next;
-		read_unlock(&c->clock_lock);
+		_cache_clock_read_unlock(c);
 
-		if ((num_readers == 0)
-		    && (num_writers == 0)
-		    && (isroot == 0)) {
+		if ((users == 0) && (isroot == 0)) {
 			_try_evict_pair(c, cur);
-			cond_signalall(&c->condvar);
+			cond_signalall(&c->wait_makeroom);
 		}
 		cur = nxt;
 	}
@@ -177,12 +338,14 @@ struct cache *cache_new(struct options *opts) {
 	struct cache *c;
 
 	c = xcalloc(1, sizeof(*c));
-	rwlock_init(&c->clock_lock);
 	mutex_init(&c->mtx);
-	cond_init(&c->condvar);
+	mutex_init(&c->makeroom_mtx);
+	cond_init(&c->wait_makeroom);
+	ness_rwlock_init(&c->clock_lock);
 
 	c->clock = cpair_list_new();
 	c->table = cpair_htable_new();
+	c->c_kibbutz = kibbutz_new(2);
 
 	c->opts = opts;
 	gettime(&c->last_checkpoint);
@@ -221,13 +384,11 @@ void _make_room(struct cache *c)
 		int need = _need_evict(c);
 
 		if (must) {
-			__WARN("must evict, waiting..., cache limits [%" PRIu64 "]MB",
-			       c->cache_size / 1048576);
-			cond_wait(&c->condvar);
+			__WARN("must evict, waiting..., cache limits [%" PRIu64 "]MB", c->cache_size / 1048576);
+			cron_signal(c->flusher);
+			cond_wait(&c->wait_makeroom, &c->makeroom_mtx);
 		} else if (allow_delay && need) {
-			/*
-			 * slow down
-			 */
+			 /* slow down */
 			usleep(100);
 			allow_delay = 0;
 		} else {
@@ -271,25 +432,32 @@ TRY_PIN:
 	/* make room for me, please */
 	_make_room(c);
 
+	/* barriered by key locked */
 	cpair_locked_by_key(c->table, k);
 	p = cpair_htable_find(c->table, k);
-	cpair_unlocked_by_key(c->table, k);
 	if (p) {
 		if (locktype != L_READ) {
-			if (!try_write_lock(&p->value_lock))
+			if (rwlock_users(&p->value_lock)) {
+				cpair_unlocked_by_key(c->table, k);
 				goto TRY_PIN;
+			}
+			rwlock_write_lock(&p->value_lock, &p->mtx);
 		} else {
-			if (!try_read_lock(&p->value_lock))
+			if (rwlock_blocked_writers(&p->value_lock)) {
+				cpair_unlocked_by_key(c->table, k);
 				goto TRY_PIN;
+			}
+			rwlock_read_lock(&p->value_lock, &p->mtx);
 		}
 
 		nassert(p->v->pintype == L_NONE);
 		*n = p->v;
 		(*n)->pintype = locktype;
+		cpair_unlocked_by_key(c->table, k);
+
 		return NESS_OK;
 	}
 
-	cpair_locked_by_key(c->table, k);
 	p = cpair_htable_find(c->table, k);
 	if (p) {
 		/*
@@ -313,16 +481,19 @@ TRY_PIN:
 	p = cpair_new();
 	cpair_init(p, *n, cf);
 
-	/* add to cache list */
-	write_lock(&c->clock_lock);
+	/*
+	 * add to cache list
+	 * barriered by clock WRITE lock
+	 */
+	_cache_clock_write_lock(c);
 	_cache_insert(c, p);
-	write_unlock(&c->clock_lock);
+	_cache_clock_write_unlock(c);
 
-	if (locktype != L_READ) {
-		write_lock(&p->value_lock);
-	} else {
-		read_lock(&p->value_lock);
-	}
+	if (locktype != L_READ)
+		rwlock_write_lock(&p->value_lock, &p->mtx);
+	else
+		rwlock_read_lock(&p->value_lock, &p->mtx);
+
 	(*n)->pintype = locktype;
 	cpair_unlocked_by_key(c->table, k);
 
@@ -349,80 +520,55 @@ int cache_create_node_and_pin(struct cache_file *cf,
 	next_nid = hdr_next_nid(t);
 	if (height == 0) {
 		new_node = leaf_alloc_empty(next_nid);
-		t->status->tree_leaf_nums++;
+		status_increment(&t->status->tree_leaf_nums);
 	} else {
 		new_node = nonleaf_alloc_empty(next_nid, height, children);
-		t->status->tree_nonleaf_nums++;
+		status_increment(&t->status->tree_nonleaf_nums);
 	}
 
 	p = cpair_new();
 	cpair_init(p, new_node, cf);
 
 	/* default lock type is L_WRITE */
-	write_lock(&p->value_lock);
 
+	rwlock_write_lock(&p->value_lock, &p->mtx);
 	*n = new_node;
 	(*n)->pintype = L_WRITE;
 
-	/* add to cache list */
-	write_lock(&c->clock_lock);
+	/* add to cache list, barriered by clock WRITE lock */
+	_cache_clock_write_lock(c);
 	_cache_insert(c, p);
-	write_unlock(&c->clock_lock);
+	_cache_clock_write_unlock(c);
 
 	return NESS_OK;
 }
 
 void cache_unpin(struct cache_file *cf, struct node *n)
 {
-	struct cpair *p;
+	NID k = n->nid;
+	struct cpair *p = n->cpair;
 	struct cache *c = cf->cache;
 
-	/*
-	 * here, we don't need a hashtable array lock,
-	 * since we have hold the pair->value_lock,
-	 * others(evict thread) can't remove it from cache
-	 */
-	p = cpair_htable_find(c->table, n->nid);
 	nassert(p);
 	nassert(n->pintype != L_NONE);
 
+	cpair_locked_by_key(c->table, k);
 	if (n->pintype == L_WRITE) {
+		mutex_lock(&c->mtx);
+		n->pintype = L_NONE;
 		n->attr.oldsz = n->attr.newsz;
 		n->attr.newsz = node_size(n);
-		mutex_lock(&c->mtx);
 		c->cache_size += (n->attr.newsz - n->attr.oldsz);
 		mutex_unlock(&c->mtx);
-		write_unlock(&p->value_lock);
+
+		rwlock_write_unlock(&p->value_lock);
 	} else {
-		read_unlock(&p->value_lock);
+		n->pintype = L_NONE;
+		rwlock_read_unlock(&p->value_lock);
 	}
-	n->pintype = L_NONE;
+
+	cpair_unlocked_by_key(c->table, k);
 }
-
-/*
- * swap the cache pair value and key
- *
- * REQUIRES:
- * a) node a lock(L_WRITE)
- * b) node b locked(L_WRITE)
- *
- */
-void cache_cpair_value_swap(struct cache_file *cf, struct node *a, struct node *b)
-{
-	struct cpair *cpa;
-	struct cpair *cpb;
-	struct cache *c = cf->cache;
-
-	cpa = cpair_htable_find(c->table, a->nid);
-	nassert(cpa);
-
-	cpb = cpair_htable_find(c->table, b->nid);
-	nassert(cpb);
-
-	cpa->v = b;
-	cpb->v = a;
-}
-
 
 struct cache_file *cache_file_create(struct cache *c,
                                      struct tree_callback *tcb,
@@ -469,32 +615,27 @@ struct tree *cache_get_tree_by_filenum(struct cache *c, FILENUM fn) {
 	return NULL;
 }
 
-void cache_close(struct cache *c)
+void cache_flush_all_dirty_nodes(struct cache *c)
 {
 	int r;
 	struct cpair *cur;
 	struct cpair *nxt;
 
-	/* a) stop the flusher cron */
-	cron_free(c->flusher);
-
-	/* b) write back nodes to disk */
 	cur = c->clock->head;
 	while (cur) {
 		nxt = cur->list_next;
 		if (node_is_dirty(cur->v)) {
+			NID k = cur->v->nid;
 			struct tree *tree;
 			struct tree_callback *tcb;
 
-			write_lock(&cur->disk_mtx);
+			cpair_locked_by_key(c->table, k);
 			tree = (struct tree*)cur->cf->args;
 			tcb = cur->cf->tcb;
 			r = tcb->flush_node(tree, cur->v);
-			write_unlock(&cur->disk_mtx);
-			if (r != NESS_OK) {
-				__PANIC("serialize node to disk error, fd [%d]",
-				        tree->fd);
-			}
+			cpair_unlocked_by_key(c->table, k);
+			if (r != NESS_OK)
+				__PANIC("serialize node to disk error, fd [%d]", tree->fd);
 			node_set_nondirty(cur->v);
 		}
 		_free_cpair(c, cur);
@@ -504,7 +645,6 @@ void cache_close(struct cache *c)
 	struct cache_file *cf_cur;
 	struct cache_file *cf_nxt;
 
-	/* TODO: (BohuTANG) we need a lock */
 	cf_cur = c->cf_first;
 	while (cf_cur) {
 		struct tree *tree;
@@ -527,7 +667,11 @@ void cache_close(struct cache *c)
 
 void cache_free(struct cache *c)
 {
-	cache_close(c);
+	/* first to stop background threads */
+	kibbutz_free(c->c_kibbutz);
+	cron_free(c->flusher);
+	cache_flush_all_dirty_nodes(c);
+
 	cpair_htable_free(c->table);
 	cpair_list_free(c->clock);
 	xfree(c);
