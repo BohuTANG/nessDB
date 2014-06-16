@@ -1,3 +1,4 @@
+#include "internal.h"
 #include "xtypes.h"
 #include "posix.h"
 #include "db.h"

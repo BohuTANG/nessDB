@@ -6,7 +6,6 @@
 
 #include "internal.h"
 #include "options.h"
-#include "xmalloc.h"
 #include "status.h"
 #include "cache.h"
 #include "cursor.h"
@@ -35,7 +34,6 @@ struct nessdb *db_open(const char *basedir) {
 	struct cache *cache;
 	struct tree *tree;
 	struct txnmgr *txnmgr;
-	struct logger *logger;
 
 	ness_check_dir(basedir);
 	memset(dbpath, 0, FILE_NAME_MAXLEN);
@@ -70,7 +68,6 @@ struct nessdb *db_open(const char *basedir) {
 	}
 	__WARN("%s", "create tree OK");
 	txnmgr = txnmgr_new();
-	logger = logger_new(cache, txnmgr);
 
 	db = xcalloc(1, sizeof(*db));
 	db->opts = opts;
@@ -78,7 +75,6 @@ struct nessdb *db_open(const char *basedir) {
 	db->cache = cache;
 	db->tree = tree;
 	db->txnmgr = txnmgr;
-	db->logger = logger;
 	__WARN("%s", "open database OK");
 
 	return db;
@@ -138,7 +134,6 @@ int db_close(struct nessdb *db)
 	options_free(db->opts);
 	status_free(db->status);
 	txnmgr_free(db->txnmgr);
-	logger_free(db->logger);
 	xfree(db);
 
 	return 1;

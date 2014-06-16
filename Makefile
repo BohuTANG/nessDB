@@ -1,45 +1,42 @@
 PLATFORM_SHARED_CFLAGS=-fPIC
-PLATFORM_SHARED_LDFLAGS=-c -std=c99 -pedantic -W -Wall -Werror -D_GNU_SOURCE
+PLATFORM_SHARED_LDFLAGS=-c -std=c99 -W -Wall -Werror
 
 CC = gcc
-#OPT ?= -O2 -DERROR                                 # (A) Production use (optimized mode)
-#OPT ?= -g2 -DINFO -DASSERT  -DUSE_VALGRIND         # (B) Debug mode, w/ full line-level debugging symbols
-OPT ?= -O2 -g2 -DWARN -DASSERT                      # (C) Profiling mode: opt, but w/debugging symbols
+#OPT ?= -O2 -DERROR# (A) Production use (optimized mode)
+#OPT ?= -g2 -DINFO -DASSERT  -DUSE_VALGRIND# (B) Debug mode, w/ full line-level debugging symbols
+OPT ?= -O2 -g2 -DWARN -DASSERT# (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
-INCLUDES = -Iengine -Idb
+INCLUDES =  -Iinclude -Itree -Icache -Iutil -Ilog -Itxn -Idb
 CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(OPT)
 
 LIB_OBJS =	 			\
-	./engine/compress/compress.o	\
-	./engine/compress/snappy.o	\
-	./engine/compare-func.o		\
-	./engine/xmalloc.o		\
-	./engine/mempool.o		\
-	./engine/kibbutz.o		\
-	./engine/posix.o		\
-	./engine/crc32.o		\
-	./engine/file.o			\
-	./engine/buf.o			\
-	./engine/debug.o		\
-	./engine/pma.o			\
-	./engine/fifo.o 		\
-	./engine/hdrse.o		\
-	./engine/tree-func.o		\
-	./engine/se.o			\
-	./engine/msgbuf.o		\
-	./engine/flusher.o		\
-	./engine/block.o		\
-	./engine/node.o			\
-	./engine/tree.o			\
-	./engine/leaf.o			\
-	./engine/msg.o			\
-	./engine/cache.o		\
-	./engine/logw.o			\
-	./engine/logr.o			\
-	./engine/txnmgr.o		\
-	./engine/logger.o		\
-	./engine/txn.o			\
-	./engine/rollback.o		\
+	./tree/compress/compress.o	\
+	./tree/compress/snappy.o	\
+	./tree/tree-func.o		\
+	./tree/flusher.o		\
+	./tree/msgpack.o		\
+	./tree/block.o			\
+	./tree/layout.o			\
+	./tree/hdr.o			\
+	./tree/node.o			\
+	./tree/tree.o			\
+	./tree/leaf.o			\
+	./tree/nmb.o			\
+	./tree/lmb.o			\
+	./tree/msg.o			\
+	./tree/mb.o			\
+	./util/xmalloc.o		\
+	./util/mempool.o		\
+	./util/kibbutz.o		\
+	./util/posix.o			\
+	./util/crc32.o			\
+	./util/file.o			\
+	./util/debug.o			\
+	./util/pma.o			\
+	./txn/txnmgr.o			\
+	./txn/txn.o			\
+	./txn/rollback.o		\
+	./cache/cache.o			\
 	./db/db.o
 
 
