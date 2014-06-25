@@ -9,6 +9,7 @@
 #include "compress/compress.h"
 #include "msgpack.h"
 #include "hdr.h"
+#include "crc32.h"
 
 
 /**********************************************************************
