@@ -11,6 +11,7 @@
 #include "msgpack.h"
 #include "compress/compress.h"
 #include "layout.h"
+#include "crc32.h"
 
 /**********************************************************************
  *
