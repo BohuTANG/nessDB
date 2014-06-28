@@ -28,7 +28,7 @@ int ness_compress(ness_compress_method_t m,
                   char *dst,
                   uint32_t *dst_size)
 {
-	int ret = 1;
+	int ret = NESS_OK;
 
 	switch (m) {
 	case NESS_NO_COMPRESS:
@@ -75,7 +75,11 @@ int ness_decompress(const char *src,
                     char *dst,
                     uint32_t dst_size)
 {
-	int ret = 1;
+	int ret = NESS_OK;
+
+	/* compressed data is NULL */
+	if (src_size == 1)
+		return NESS_ERR;
 
 	switch (src[0] & 0xF) {
 	case NESS_NO_COMPRESS:

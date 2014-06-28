@@ -15,13 +15,13 @@ void __debug_raw(int level,
                  int line)
 {
 	char buf[64];
-	const char *c = ".-*#";
 	time_t now = time(NULL);
 	FILE *fp = fopen(EVENT_NAME, "a");
+	const char *c[] = {"INFO", "WARN", "DEBUG", "ERROR"};
 
 	if (fp) {
 		strftime(buf, sizeof(buf), "%d %b %I:%M:%S", localtime(&now));
-		fprintf(fp, "[%d] | %s | %c | %s:%d | %s\n", (int)getpid(), buf, c[level], file, line, msg);
+		fprintf(fp, "[%d] | %s | %s | %s:%d | %s\n", (int)getpid(), buf, c[level], file, line, msg);
 
 		fflush(fp);
 		fclose(fp);

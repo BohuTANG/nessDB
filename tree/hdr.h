@@ -20,10 +20,11 @@
 
 struct hdr {
 	int dirty;
-	uint32_t height;
-	uint32_t version;
+	int height;
+	int version;
 	uint32_t blocksize;
 	uint64_t lastseq;
+
 	NID last_nid;
 	NID root_nid;
 	MSN last_msn;

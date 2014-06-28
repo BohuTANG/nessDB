@@ -8,10 +8,10 @@
 #include "mb.h"
 #include "nmb.h"
 #include "lmb.h"
+#include "crc32.h"
 #include "msgpack.h"
 #include "compress/compress.h"
 #include "layout.h"
-#include "crc32.h"
 
 /**********************************************************************
  *
@@ -19,7 +19,7 @@
  *
  **********************************************************************/
 
-int _nonleaf_mb_to_packer(struct nmb *mb, struct msgpack *packer)
+static int _nonleaf_mb_to_packer(struct nmb *mb, struct msgpack *packer)
 {
 	struct mb_iter iter;
 
@@ -36,7 +36,7 @@ ERR:
 	return NESS_ERR;
 }
 
-int _nonleaf_packer_to_mb(struct msgpack *packer, struct nmb *mb)
+static int _nonleaf_packer_to_mb(struct msgpack *packer, struct nmb *mb)
 {
 	while (packer->SEEK < packer->NUL) {
 		struct mb_iter iter;
@@ -51,7 +51,7 @@ ERR:
 	return NESS_ERR;
 }
 
-int _leaf_mb_to_packer(struct lmb *mb, struct msgpack *packer)
+static int _leaf_mb_to_packer(struct lmb *mb, struct msgpack *packer)
 {
 	struct mb_iter iter;
 
@@ -68,7 +68,7 @@ ERR:
 	return NESS_ERR;
 }
 
-int _leaf_packer_to_mb(struct msgpack *packer, struct lmb *mb)
+static int _leaf_packer_to_mb(struct msgpack *packer, struct lmb *mb)
 {
 	while (packer->SEEK < packer->NUL) {
 		struct mb_iter iter;
@@ -83,331 +83,381 @@ ERR:
 	return NESS_ERR;
 }
 
-void _pack_base(struct msgpack *packer,
-                char *uncompress_ptr,
-                uint32_t uncompress_size,
-                ness_compress_method_t compress_method)
-{
-	uint32_t compress_size = 0U;
-	char *compress_ptr = NULL;
-
-	/*
-	 * a) magicnum
-	 */
-	msgpack_pack_nstr(packer, "xxxxoooo", 8);
-	if (uncompress_size > 0) {
-		uint32_t bound;
-
-		bound = ness_compress_bound(compress_method, uncompress_size);
-		compress_ptr =  xcalloc(1, bound);
-		ness_compress(compress_method,
-		              uncompress_ptr,
-		              uncompress_size,
-		              compress_ptr,
-		              &compress_size);
-		/*
-		 * b) |compress_size|uncompress_size|compress datas|
-		 */
-		msgpack_pack_uint32(packer, compress_size);
-		msgpack_pack_uint32(packer, uncompress_size);
-		msgpack_pack_nstr(packer, compress_ptr, compress_size);
-		xfree(compress_ptr);
-	} else {
-		/*
-		 * b') |0|0|
-		 */
-		msgpack_pack_uint32(packer, 0U);
-		msgpack_pack_uint32(packer, 0U);
-	}
-
-	/*
-	 * c) xsum
-	 */
-	uint32_t xsum = 0;
-
-	do_xsum(packer->base, packer->NUL, &xsum);
-	msgpack_pack_uint32(packer, xsum);
-}
-
-void _unpack_base(struct msgpack *packer,
-                  struct msgpack **dest)
-{
-	char *datas = NULL;
-	char *new_base = NULL;
-	uint32_t act_xsum;
-	uint32_t exp_xsum;
-	uint32_t compress_size;
-	uint32_t uncompress_size;
-
-	/* SEEK maybe not 0 */
-	new_base = packer->base + packer->SEEK;
-	if (!msgpack_skip(packer, 8)) goto ERR; /* magic num */
-
-	if (!msgpack_unpack_uint32(packer, &compress_size)) goto ERR;
-	if (!msgpack_unpack_uint32(packer, &uncompress_size)) goto ERR;
-	if (!msgpack_unpack_nstr(packer, compress_size, &datas)) goto ERR;
-	if (!msgpack_unpack_uint32(packer, &exp_xsum)) goto ERR;
-	if (!do_xsum(new_base,
-	             + 8
-	             + sizeof(compress_size)
-	             + sizeof(uncompress_size)
-	             + compress_size,
-	             &act_xsum))
-		goto ERR;
-
-	if (exp_xsum != act_xsum) {
-		__ERROR("leaf xsum check error, "
-		        "exp_xsum: [%" PRIu32 "], "
-		        "act_xsum:[%" PRIu32 "]",
-		        exp_xsum, act_xsum);
-		goto ERR;
-	}
-
-	struct msgpack *dest_packer = msgpack_new(uncompress_size);
-
-	if (uncompress_size > 0)
-		ness_decompress(datas, compress_size, dest_packer->base, uncompress_size);
-
-	dest_packer->NUL = uncompress_size;
-	*dest = dest_packer;
-	return;
-
-ERR:
-	*dest = NULL;
-}
-
 /*
- * serialize the leaf to buf
+ * node header
+ * layout:
+ *	- | magic | height | children | layout version | xsum |
  */
-void _serialize_leaf_to_packer(struct msgpack *packer,
-                               struct node *node,
-                               struct hdr *hdr)
+static void serialize_node_header(struct msgpack *packer, struct node *node)
 {
-	struct msgpack *lb_packer;
+	uint32_t xsum = 0;
+	struct msgpack *header = msgpack_new(64 << 10);
 
-	lb_packer = msgpack_new(1 << 20);	/* 1MB */
-	_leaf_mb_to_packer(node->u.l.buffer, lb_packer);
-	_pack_base(packer, lb_packer->base, lb_packer->NUL, hdr->opts->compress_method);
-	msgpack_free(lb_packer);
+	/* 1) magic */
+	if (node->height == 0)
+		msgpack_pack_nstr(header, "nessleaf", 8);
+	else
+		msgpack_pack_nstr(header, "nessnode", 8);
+
+	/* 2) height */
+	msgpack_pack_uint32(header, node->height);
+
+	/* 3) children */
+	msgpack_pack_uint32(header, node->n_children);
+
+	/* 4) version */
+	msgpack_pack_uint32(header, node->layout_version);
+
+	/* 5) xsum */
+	do_xsum(header->base, header->NUL, &xsum);
+	msgpack_pack_uint32(header, xsum);
+
+	msgpack_pack_nstr(packer, header->base, header->NUL);
+	msgpack_free(header);
 }
 
-int _deserialize_leaf_from_disk(int fd,
-                                struct block_pair *bp,
-                                struct node **node,
-                                struct status *status)
+static int deserialize_node_header(struct msgpack *packer, struct node *node)
 {
 	int r = NESS_OK;
-	uint32_t read_size;
-	struct msgpack *lb_packer;
-	struct msgpack *read_packer;
-	struct node *n;
 
-	read_size = ALIGN(bp->real_size);
-	read_packer = msgpack_new(read_size);
-	if (ness_os_pread(fd, read_packer->base, read_size, bp->offset) != (ssize_t)read_size) {
-		r = NESS_READ_ERR;
-		goto RET;
-	}
-	status_increment(&status->leaf_read_from_disk_nums);
-	_unpack_base(read_packer, &lb_packer);
+	/* 1) magic */
+	msgpack_skip(packer, 8);
 
-	/* alloc leaf node */
-	n = leaf_alloc_empty(bp->nid);
-	leaf_alloc_buffer(n);
+	/* 2) height */
+	msgpack_unpack_uint32(packer, (uint32_t*)&node->height);
 
-	r = _leaf_packer_to_mb(lb_packer, n->u.l.buffer);
-	msgpack_free(lb_packer);
+	/* 3) children */
+	msgpack_unpack_uint32(packer, (uint32_t*)&node->n_children);
 
-	*node = n;
-RET:
-	msgpack_free(read_packer);
+	/* 4) version */
+	msgpack_unpack_uint32(packer, (uint32_t*)&node->layout_version);
+
+	/* 5) xsum */
+	uint32_t exp_xsum;
+	uint32_t act_xsum;
+
+	do_xsum(packer->base, packer->SEEK, &act_xsum);
+	msgpack_unpack_uint32(packer, &exp_xsum);
+
+	if (exp_xsum != act_xsum)
+		r = NESS_BAD_XSUM_ERR;
+
+	/* alloc parts */
+	node_init_empty(node, node->n_children, node->layout_version);
+	node_ptrs_alloc(node);
+
 	return r;
 }
 
-void _serialize_nonleaf_to_packer(struct msgpack *node_packer,
-                                  struct node *node,
-                                  struct hdr *hdr,
-                                  uint32_t *skeleton_size)
+static void serialize_node_info(struct msgpack *packer, struct node *node)
 {
-	uint32_t i;
-	uint32_t part_off = 0U;
-	uint32_t nchildren = 0U;
-
-	struct msgpack *pivots_packer;
-	struct msgpack *pivot_packer;
-
-	struct msgpack *parts_packer;
-	struct msgpack *part_packer;
-	struct msgpack *nb_packer;
-
-	nchildren = node->u.n.n_children;
-	nassert(nchildren > 0);
-
-	pivots_packer = msgpack_new(1 << 10);
-	pivot_packer = msgpack_new(1 << 10);
-
-	parts_packer = msgpack_new(1 << 20);
-	part_packer = msgpack_new(1 << 20);
-	nb_packer = msgpack_new(1 << 20);
-
-	for (i = 0; i < nchildren; i++) {
-		/* pack a part to packer */
-		msgpack_clear(nb_packer);
-		msgpack_clear(part_packer);
-		if (node->u.n.parts[i].buffer)
-			_nonleaf_mb_to_packer(node->u.n.parts[i].buffer, nb_packer);
-
-		_pack_base(part_packer, nb_packer->base, nb_packer->NUL, hdr->opts->compress_method);
-
-		/*
-		 * pack to parts
-		 * parts layout:
-		 * 		|part0|
-		 * 		|part1|
-		 * 		|partN|
-		 */
-		msgpack_pack_nstr(parts_packer, part_packer->base, part_packer->NUL);
-
-		/*
-		 * pack a pivot
-		 * pivot layout:
-		 * 		|pivot-length|pivot-value|
-		 * 		|child-nid|
-		 * 		|partition-inner-offset|
-		 * 		... ...
-		 */
-		if (i < (nchildren - 1))
-			msgpack_pack_msg(pivot_packer, &node->u.n.pivots[i]);
-		msgpack_pack_uint64(pivot_packer, node->u.n.parts[i].child_nid);
-		/* TODO: alignment */
-		msgpack_pack_uint32(pivot_packer, part_off);
-		part_off = parts_packer->NUL;
-	}
-	msgpack_free(nb_packer);
-
-	/*
-	 * pack pivots to buffer
-	 */
-	_pack_base(pivots_packer,
-	           pivot_packer->base,
-	           pivot_packer->NUL,
-	           hdr->opts->compress_method);
-
-	/* A) pack header to buffer */
-	msgpack_pack_nstr(node_packer, "nessnode", 8);
-	msgpack_pack_uint32(node_packer, node->height);
-	msgpack_pack_uint32(node_packer, node->u.n.n_children);
-
-	/* B) pack pivots-buffer to buffer and do a xsum */
+	int i;
 	uint32_t xsum = 0;
+	struct msgpack *info = msgpack_new(1 << 20);
 
-	msgpack_pack_nstr(node_packer, pivots_packer->base, pivots_packer->NUL);
-	do_xsum(node_packer->base, node_packer->NUL, &xsum);
-	msgpack_pack_uint32(node_packer, xsum);
-	*skeleton_size = node_packer->NUL;
-	msgpack_free(pivot_packer);
-	msgpack_free(pivots_packer);
+	/* 1) pivots */
+	for (i = 0; i < node->n_children - 1; i++)
+		msgpack_pack_msg(info, &node->pivots[i]);
 
-	/* C) pack partitions to buffer */
-	msgpack_pack_nstr(node_packer, parts_packer->base, parts_packer->NUL);
-	msgpack_free(part_packer);
-	msgpack_free(parts_packer);
+	/* 2) partition info */
+	for (i = 0; i < node->n_children; i++) {
+		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
 
-	/* D) do node xsum */
-	do_xsum(node_packer->base, node_packer->NUL, &xsum);
-	msgpack_pack_uint32(node_packer, xsum);
+		msgpack_pack_uint32(info, disk_info->compressed_size);
+		msgpack_pack_uint32(info, disk_info->uncompressed_size);
+		msgpack_pack_uint32(info, disk_info->start);
+		msgpack_pack_uint64(info, node->parts[i].child_nid);
+	}
+
+	/* 3) xsum */
+	do_xsum(info->base, info->NUL, &xsum);
+	msgpack_pack_uint32(info, xsum);
+
+	msgpack_pack_nstr(packer, info->base, info->NUL);
+	msgpack_free(info);
+
+	/* 4) get skeleton size */
+	node->skeleton_size = packer->NUL;
 }
 
-int _deserialize_nonleaf_from_packer(struct msgpack *packer,
-                                     struct block_pair *bp,
-                                     struct node **n,
-                                     int light)
+static int deserialize_node_info(struct msgpack *packer, struct node *node)
 {
-	uint32_t i;
+	int i;
 	int r = NESS_OK;
-	uint32_t height;
-	uint32_t children;
-	struct node *node = NULL;
+	uint32_t seek = packer->SEEK;
 
-	/* a) unpack magic, heigh, children */
-	if (!msgpack_seek(packer, 8U)) goto ERR;
-	if (!msgpack_unpack_uint32(packer, &height)) goto ERR;
-	if (!msgpack_unpack_uint32(packer, &children)) goto ERR;
+	/* 1) pivots */
+	for (i = 0; i < node->n_children - 1; i++)
+		msgpack_unpack_msg(packer, &node->pivots[i]);
 
-	/* new nonleaf node */
-	node = nonleaf_alloc_empty(bp->nid, height, children);
-	nonleaf_alloc_buffer(node);
+	/* 2) partition info */
+	for (i = 0; i < node->n_children; i++) {
+		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
 
-	/* b) unpack pivots */
-	struct msgpack *pivots_packer;
-
-	_unpack_base(packer, &pivots_packer);
-	for (i = 0; i < node->u.n.n_children; i++) {
-		if (i < (node->u.n.n_children - 1))
-			if (!msgpack_unpack_msg(pivots_packer, &node->u.n.pivots[i])) goto ERR1;
-		if (!msgpack_unpack_uint64(pivots_packer, &node->u.n.parts[i].child_nid)) goto ERR1;
-		if (!msgpack_unpack_uint32(pivots_packer, &node->u.n.parts[i].inner_offset)) goto ERR1;
-		node->u.n.parts[i].inner_offset += bp->skeleton_size;
+		msgpack_unpack_uint32(packer, &disk_info->compressed_size);
+		msgpack_unpack_uint32(packer, &disk_info->uncompressed_size);
+		msgpack_unpack_uint32(packer, &disk_info->start);
+		msgpack_unpack_uint64(packer, &node->parts[i].child_nid);
 	}
-	msgpack_free(pivots_packer);
 
-	/* c) unpack part */
-	if (!msgpack_seek(packer, bp->skeleton_size)) goto ERR1;
-	if (!light) {
-		for (i = 0; i < node->u.n.n_children; i++) {
-			struct msgpack *lb_packer;
-			uint32_t inneroff = node->u.n.parts[i].inner_offset;
+	/* 3) xsum */
+	uint32_t exp_xsum;
+	uint32_t act_xsum;
 
-			if (!msgpack_seek(packer, inneroff)) goto ERR1;
-			_unpack_base(packer, &lb_packer);
-			_nonleaf_packer_to_mb(lb_packer, node->u.n.parts[i].buffer);
-			msgpack_free(lb_packer);
+	do_xsum(packer->base + seek, packer->SEEK - seek, &act_xsum);
+	msgpack_unpack_uint32(packer, &exp_xsum);
+
+	if (exp_xsum != act_xsum)
+		r = NESS_BAD_XSUM_ERR;
+
+	/* 4) get skeleton size */
+	/* now, it's time to get skeleton size */
+	node->skeleton_size = packer->SEEK;
+	for (i = 0; i < node->n_children; i++) {
+		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
+
+		disk_info->compressed_ptr = packer->base + node->skeleton_size + disk_info->start;
+	}
+
+	return r;
+}
+
+static void serialize_node_partition(struct msgpack *packer, struct node *node, int i)
+{
+	struct partition_disk_info *disk_info = &node->parts[i].disk_info;
+
+	/* 1) partition compressed datas */
+	msgpack_pack_nstr(packer, disk_info->compressed_ptr, disk_info->compressed_size);
+
+	/* 2) xsum */
+	msgpack_pack_uint32(packer, disk_info->xsum);
+}
+
+static int deserialize_node_partition(struct msgpack *packer, struct node *node, int i)
+{
+	int r = NESS_OK;
+	uint32_t seek = packer->SEEK;
+	struct partition_disk_info *disk_info = &node->parts[i].disk_info;
+
+	/* 1) partition compressed datas */
+	msgpack_unpack_nstr(packer, disk_info->compressed_size, &disk_info->compressed_ptr);
+
+	/* 2) xsum */
+	uint32_t exp_xsum;
+	uint32_t act_xsum = 0U;
+
+	do_xsum(packer->base + seek, packer->SEEK - seek, &act_xsum);
+	msgpack_unpack_uint32(packer, &exp_xsum);
+
+	if (exp_xsum != act_xsum)
+		r = NESS_BAD_XSUM_ERR;
+
+	return r;
+}
+
+static void serialize_node_partitions(struct msgpack *packer, struct node *node)
+{
+	int i;
+
+	/* first to get skeleton size */
+	node->skeleton_size = packer->NUL;
+
+	for (i = 0; i < node->n_children; i++)
+		serialize_node_partition(packer, node, i);
+}
+
+static int deserialize_node_partitions(struct msgpack *packer, struct node *node)
+{
+	int i;
+	int r = NESS_OK;
+
+	for (i = 0; i < node->n_children; i++) {
+		r = deserialize_node_partition(packer, node, i);
+		if (r != NESS_OK)
+			goto ERR;
+	}
+
+ERR:
+	return r;
+}
+
+void compress_partitions(struct node *node, struct hdr *hdr)
+{
+	int i;
+	uint32_t bound;
+	uint32_t start = 0U;
+	struct msgpack *part_packer = msgpack_new(1 << 20);
+	ness_compress_method_t method = hdr->opts->compress_method;
+
+	__DEBUG("-node nid %"PRIu64 " , children %d, height %d", node->nid, node->n_children, node->height);
+	for (i = 0; i < node->n_children; i++) {
+		struct child_pointer *ptr = &node->parts[i].ptr;
+		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
+
+		msgpack_clear(part_packer);
+		if (node->height > 0) {
+			_nonleaf_mb_to_packer(ptr->u.nonleaf->buffer, part_packer);
+		} else {
+			_leaf_mb_to_packer(ptr->u.leaf->buffer, part_packer);
 		}
+
+		disk_info->start = start;
+		disk_info->uncompressed_size = part_packer->NUL;
+		bound = ness_compress_bound(method, disk_info->uncompressed_size);
+		disk_info->compressed_ptr =  xcalloc(1, bound);
+
+		ness_compress(method, part_packer->base, part_packer->NUL,
+		              disk_info->compressed_ptr, &disk_info->compressed_size);
+
+		do_xsum(disk_info->compressed_ptr, disk_info->compressed_size, &disk_info->xsum);
+		start += (disk_info->compressed_size + sizeof(disk_info->xsum));
 	}
-	*n = node;
+	msgpack_free(part_packer);
+}
+
+/*
+ * EFFECT:
+ *	- decompress partition from compressed datas
+ * REQUIRE:
+ *	- node disk_info has read
+ */
+void decompress_partitions(struct node *node)
+{
+	int r;
+	int i;
+	struct msgpack *part_packer;
+
+	for (i = 0; i < node->n_children; i++) {
+		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
+
+		part_packer = msgpack_new(disk_info->uncompressed_size);
+		r = ness_decompress(disk_info->compressed_ptr, disk_info->compressed_size,
+		                    part_packer->base, disk_info->uncompressed_size);
+
+		/* maybe compressed data is NULL */
+		if (r == NESS_OK) {
+			if (node->height > 0)
+				_nonleaf_packer_to_mb(part_packer, node->parts[i].ptr.u.nonleaf->buffer);
+			else
+				_leaf_packer_to_mb(part_packer, node->parts[i].ptr.u.leaf->buffer);
+		}
+		msgpack_free(part_packer);
+	}
+}
+
+void serialize_node_end(struct node *node)
+{
+	int i;
+
+	for (i = 0; i < node->n_children; i++) {
+		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
+
+		xfree(disk_info->compressed_ptr);
+		disk_info->compressed_ptr = NULL;
+		disk_info->uncompressed_ptr = NULL;
+	}
+}
+
+void deserialize_node_end(struct node *node)
+{
+	(void)node;
+}
+
+void serialize_node_to_packer(struct msgpack *packer, struct node *node, struct hdr *hdr)
+{
+	/* 1) compress part to subblock */
+	compress_partitions(node, hdr);
+
+	/* 2) node header */
+	serialize_node_header(packer, node);
+
+	/* 3) node info */
+	serialize_node_info(packer, node);
+
+	/* 4) node partitions */
+	serialize_node_partitions(packer, node);
+
+	/* 5) end */
+	serialize_node_end(node);
+}
+
+void deserialize_node_from_packer(struct msgpack *packer, struct node *node, struct hdr *hdr)
+{
+	(void)hdr;
+	/* 1) node header */
+	deserialize_node_header(packer, node);
+
+	/* 2) node info */
+	deserialize_node_info(packer, node);
+
+	/* 3) node partitions */
+	decompress_partitions(node);
+	deserialize_node_partitions(packer, node);
+
+	/* 4) end */
+	deserialize_node_end(node);
+}
+
+int serialize_node_to_disk(int fd, struct block *block, struct node *node, struct hdr *hdr)
+{
+	int r;
+	uint32_t xsum = 0;
+	uint32_t real_size;
+	uint32_t write_size;
+	DISKOFF address;
+	struct msgpack *write_packer = msgpack_new(1 << 20);
+
+	serialize_node_to_packer(write_packer, node, hdr);
+	do_xsum(write_packer->base, write_packer->NUL, &xsum);
+	msgpack_pack_uint32(write_packer, xsum);
+
+	real_size = write_packer->NUL;
+	write_size = ALIGN(real_size);
+	address = block_alloc_off(block, node->nid, real_size, node->skeleton_size, node->height);
+	msgpack_pack_null(write_packer, write_size - real_size);
+
+	if (ness_os_pwrite(fd, write_packer->base, write_size, address) != 0) {
+		r = NESS_WRITE_ERR;
+		__ERROR("--write node to disk error, fd %d, "
+		        "align size [%" PRIu32 "]", fd, write_size);
+		goto ERR;
+	}
+	msgpack_free(write_packer);
 
 	return NESS_OK;
 
 ERR:
-	xfree(node);
-
-	return r;
-
-ERR1:
-	msgpack_free(pivots_packer);
-	xfree(node);
+	msgpack_free(write_packer);
 
 	return r;
 }
 
-int _deserialize_nonleaf_from_disk(int fd,
-                                   struct block_pair *bp,
-                                   struct node **node,
-                                   int light,
-                                   struct status *status)
+int deserialize_node_from_disk(int fd, struct block *block, struct hdr *hdr, NID nid, struct node **node)
 {
-	int r = NESS_ERR;
-	uint32_t read_size;
+	int r = NESS_OK;
+	struct block_pair *bp;
+
+	uint32_t exp_xsum;
+	uint32_t act_xsum;
 	uint32_t real_size;
+	uint32_t read_size;
+	struct node *n;
 	struct msgpack *read_packer = NULL;
 
-	real_size = (light == 1) ? (bp->skeleton_size) : (bp->real_size);
+	r = block_get_off_bynid(block, nid, &bp);
+	if (r != NESS_OK)
+		return NESS_BLOCK_NULL_ERR;
+
+	real_size = bp->real_size;
 	read_size = ALIGN(real_size);
 	read_packer = msgpack_new(read_size);
 	if (ness_os_pread(fd, read_packer->base, read_size, bp->offset) != (ssize_t)read_size) {
 		r = NESS_READ_ERR;
 		goto ERR;
 	}
-	status_increment(&status->nonleaf_read_from_disk_nums);
 
-	/*
-	 * check the checksum
-	 */
+	/* check the checksum */
 	if (!msgpack_skip(read_packer, real_size - CRC_SIZE)) goto ERR;
-
-	uint32_t exp_xsum;
-	uint32_t act_xsum;
-
 	if (!msgpack_unpack_uint32(read_packer, &exp_xsum)) goto ERR;
 	if (!do_xsum(read_packer->base, real_size - CRC_SIZE, &act_xsum)) goto ERR;
 	if (exp_xsum != act_xsum) {
@@ -420,78 +470,17 @@ int _deserialize_nonleaf_from_disk(int fd,
 		goto ERR;
 	}
 
-	r = _deserialize_nonleaf_from_packer(read_packer, bp, node, light);
-	if (r != NESS_OK) {
-		__ERROR("%s", "de nonleaf from buf error");
-		goto ERR;
-	}
+	msgpack_seekfirst(read_packer);
+	n = node_alloc_empty(nid, bp->height);
+	deserialize_node_from_packer(read_packer, n, hdr);
+	*node = n;
+
 	msgpack_free(read_packer);
 
 	return r;
 
 ERR:
 	msgpack_free(read_packer);
-
-	return r;
-}
-
-int serialize_node_to_disk(int fd,
-                           struct block *block,
-                           struct node *node,
-                           struct hdr *hdr)
-{
-	int r;
-	DISKOFF address;
-	uint32_t real_size;
-	uint32_t skeleton_size = 0;
-	struct msgpack *packer;
-
-	packer = msgpack_new(1 << 20);
-	if (node->height == 0)
-		_serialize_leaf_to_packer(packer, node, hdr);
-	else
-		_serialize_nonleaf_to_packer(packer, node, hdr, &skeleton_size);
-
-	real_size = packer->NUL;
-	address = block_alloc_off(block, node->nid, real_size, skeleton_size, node->height);
-
-	msgpack_pack_null(packer, ALIGN(real_size) - real_size);
-	if (ness_os_pwrite(fd, packer->base, ALIGN(real_size), address) != 0) {
-		r = NESS_WRITE_ERR;
-		__ERROR("--write node to disk error, fd %d, "
-		        "align size [%" PRIu32 "]",
-		        fd,
-		        ALIGN(real_size));
-		goto ERR;
-	}
-
-	msgpack_free(packer);
-
-	return NESS_OK;
-
-ERR:
-	msgpack_free(packer);
-
-	return r;
-}
-
-int deserialize_node_from_disk(int fd,
-                               struct block *block,
-                               NID nid,
-                               struct node **node,
-                               int light)
-{
-	int r;
-	struct block_pair *bp;
-
-	r = block_get_off_bynid(block, nid, &bp);
-	if (r != NESS_OK)
-		return NESS_BLOCK_NULL_ERR;
-
-	if (bp->height == 0)
-		r = _deserialize_leaf_from_disk(fd, bp, node, block->status);
-	else
-		r = _deserialize_nonleaf_from_disk(fd, bp, node, light, block->status);
 
 	return r;
 }

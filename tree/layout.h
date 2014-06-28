@@ -25,7 +25,7 @@ int serialize_node_to_disk(int fd,
 
 int deserialize_node_from_disk(int fd,
                                struct block *block,
+                               struct hdr *hdr,
                                NID nid,
-                               struct node **node,
-                               int light);
+                               struct node **node);
 #endif /* nessDB_LAYOUT_H_ */

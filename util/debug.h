@@ -19,8 +19,8 @@
 
 #define SHORT_FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 enum DEBUG_LEVEL {
-	LEVEL_DEBUG = 0,
 	LEVEL_INFO,
+	LEVEL_DEBUG,
 	LEVEL_WARNING,
 	LEVEL_ERROR
 };

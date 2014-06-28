@@ -56,6 +56,7 @@ void nmb_free(struct nmb *nmb)
 
 	pma_free(nmb->pma);
 	mempool_free(nmb->mpool);
+	xfree(nmb);
 }
 
 void nmb_iter_init(struct mb_iter *iter, struct nmb *nmb)

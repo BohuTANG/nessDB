@@ -63,6 +63,7 @@ struct cache *cache_new(struct options *opts);
 void cache_free(struct cache *c);
 
 int cache_create_node_and_pin(struct cache_file *cf, uint32_t height, uint32_t children, struct node **n);
+int cache_create_light_node_and_pin(struct cache_file *cf, uint32_t height, uint32_t children, struct node **n);
 int cache_get_and_pin(struct cache_file *cf, NID k, struct node **n, enum lock_type locktype);
 void cache_unpin(struct cache_file *cf, struct node *n);
 

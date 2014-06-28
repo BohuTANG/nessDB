@@ -53,7 +53,6 @@ struct nessdb *db_open(const char *basedir) {
 		__PANIC("%s",
 		        "create dbcache error, will exit...");
 	}
-	__WARN("%s", "create dbcache OK");
 
 	static struct tree_callback tree_cb = {
 		.fetch_node = fetch_node_callback,
@@ -66,7 +65,6 @@ struct nessdb *db_open(const char *basedir) {
 		__PANIC("%s",
 		        "create tree error, will exit...");
 	}
-	__WARN("%s", "create tree OK");
 	txnmgr = txnmgr_new();
 
 	db = xcalloc(1, sizeof(*db));
@@ -75,7 +73,6 @@ struct nessdb *db_open(const char *basedir) {
 	db->cache = cache;
 	db->tree = tree;
 	db->txnmgr = txnmgr;
-	__WARN("%s", "open database OK");
 
 	return db;
 }

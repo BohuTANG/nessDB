@@ -24,7 +24,7 @@
 #define	 NESS_ERR		(0)
 #define	 NESS_OK		(1)
 #define	NESS_INNER_XSUM_ERR	(30999)
-#define	NESS_LEAF_XSUM_ERR	(-30998)
+#define	NESS_BAD_XSUM_ERR	(-30998)
 #define	NESS_PART_XSUM_ERR	(-30997)
 #define	NESS_HDR_XSUM_ERR	(-30996)
 #define	NESS_DO_XSUM_ERR	(-30995)

@@ -16,7 +16,7 @@ int fetch_node_callback(void *tree, NID nid, struct node **n)
 	struct tree *t = (struct tree*)tree;
 
 	gettime(&t1);
-	r = deserialize_node_from_disk(t->fd, t->block, nid, n, 0);
+	r = deserialize_node_from_disk(t->fd, t->block, t->hdr, nid, n);
 	gettime(&t2);
 
 	atomic64_add(&t->status->tree_node_fetch_costs, (uint64_t)time_diff_ms(t1, t2));

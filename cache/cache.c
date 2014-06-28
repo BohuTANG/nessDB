@@ -265,7 +265,7 @@ void _cache_dump(struct cache *c, const char *msg)
 	cur = c->clock->head;
 	printf("----%s: cache dump:\n", msg);
 	while (cur) {
-		int children = cur->v->height > 0 ? cur->v->u.n.n_children : 0;
+		int children = cur->v->height > 0 ? cur->v->n_children : 0;
 		printf("\t nid[%" PRIu64 "]"
 		       " \tisroot[%d]"
 		       " \theight[%d]"
@@ -503,10 +503,11 @@ ERR:
 	return NESS_ERR;
 }
 
-int cache_create_node_and_pin(struct cache_file *cf,
-                              uint32_t height,
-                              uint32_t children,
-                              struct node **n)
+static int _create_node_and_pin(struct cache_file *cf,
+                                uint32_t height,
+                                uint32_t children,
+                                struct node **n,
+                                int light)
 {
 	NID next_nid;
 	struct cpair *p;
@@ -518,19 +519,22 @@ int cache_create_node_and_pin(struct cache_file *cf,
 	_make_room(c);
 
 	next_nid = hdr_next_nid(t);
-	if (height == 0) {
-		new_node = leaf_alloc_empty(next_nid);
-		status_increment(&t->status->tree_leaf_nums);
+	if (light) {
+		new_node = node_alloc_empty(next_nid, height);
+		node_init_empty(new_node, children, t->hdr->version);
 	} else {
-		new_node = nonleaf_alloc_empty(next_nid, height, children);
-		status_increment(&t->status->tree_nonleaf_nums);
+		new_node = node_alloc_full(next_nid, height, children, t->hdr->version);
 	}
+
+	if (height == 0)
+		status_increment(&t->status->tree_leaf_nums);
+	else
+		status_increment(&t->status->tree_nonleaf_nums);
 
 	p = cpair_new();
 	cpair_init(p, new_node, cf);
 
 	/* default lock type is L_WRITE */
-
 	rwlock_write_lock(&p->value_lock, &p->mtx);
 	*n = new_node;
 	(*n)->pintype = L_WRITE;
@@ -541,6 +545,23 @@ int cache_create_node_and_pin(struct cache_file *cf,
 	_cache_clock_write_unlock(c);
 
 	return NESS_OK;
+}
+
+
+int cache_create_node_and_pin(struct cache_file *cf,
+                              uint32_t height,
+                              uint32_t children,
+                              struct node **n)
+{
+	return _create_node_and_pin(cf, height, children, n, 0);
+}
+
+int cache_create_light_node_and_pin(struct cache_file *cf,
+                                    uint32_t height,
+                                    uint32_t children,
+                                    struct node **n)
+{
+	return _create_node_and_pin(cf, height, children, n, 1);
 }
 
 void cache_unpin(struct cache_file *cf, struct node *n)

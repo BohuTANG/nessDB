@@ -115,10 +115,11 @@ int _le_apply_abort(struct msgbuf *mb, struct bt_cmd *cmd)
 int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 {
 	int ret = NESS_ERR;
+	struct lmb *buffer = leaf->parts[0].ptr.u.leaf->buffer;
 
 	switch (cmd->type & 0xff) {
 	case MSG_INSERT:
-		ret = _le_apply_insert(leaf->u.l.buffer, cmd);
+		ret = _le_apply_insert(buffer, cmd);
 		break;
 	case MSG_DELETE:
 		//ret = _le_apply_delete(leaf->u.l.buffer, cmd);

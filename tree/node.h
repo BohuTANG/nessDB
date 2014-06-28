@@ -35,16 +35,38 @@ struct node_operations {
 	int (*pivot_compare_func)(struct msg *a, struct msg *b);
 };
 
-struct partition {
-	uint32_t inner_offset;		/* the postion start from the block start in disk */
-	uint64_t child_nid;		/* child node id of this partition */
-	struct nmb *buffer;
-	int fetched: 2;			/* if 0, we need to fetch from disk */
-	struct ness_mutex mtx;
-	struct rwlock rwlock;
+struct partition_disk_info {
+	uint32_t xsum;
+	uint32_t start;
+	uint32_t compressed_size;
+	uint32_t uncompressed_size;
+
+	char *compressed_ptr;
+	char *uncompressed_ptr;
 };
 
-enum {LE_CLEAN = 0, LE_MVCC = 1};
+struct leaf_basement_node {
+	MSN max_applied_msn;
+	struct lmb *buffer;
+};
+
+struct nonleaf_childinfo {
+	struct nmb *buffer;
+};
+
+struct child_pointer {
+	union {
+		struct nonleaf_childinfo *nonleaf;
+		struct leaf_basement_node *leaf;
+	} u;
+};
+
+struct partition {
+	int fetched;
+	NID child_nid;
+	struct child_pointer ptr;
+	struct partition_disk_info disk_info;
+};
 
 struct node_attr {
 	uint64_t newsz;
@@ -54,37 +76,32 @@ struct node_attr {
 
 struct node {
 	MSN msn;
+	NID nid;
 	int dead;
 	int dirty;
 	int isroot;
-	uint32_t height;
-	uint64_t nid;
-	struct timespec modified;
-	struct node_attr attr;
-	struct node_operations *node_op;
+	int height;
+	int layout_version;
+	int skeleton_size;
 	enum lock_type pintype;
-	struct cpair *cpair;
 
-	union un {
-		struct nonleaf {
-			uint32_t n_children;		/* = pivots + 1 */
-			struct msg *pivots;
-			struct partition *parts;
-		} n;
-		struct leaf {
-			uint8_t type;	/* LE_CLEAN or LE_MVCC */
-			struct lmb *buffer;
-			struct ness_mutex mtx;
-			struct rwlock rwlock;
-		} l;
-	} u;
+	struct node_attr attr;
+	struct timespec modified;
+	struct node_operations *node_op;
+
+	int n_children;
+	struct msg *pivots;
+	struct partition *parts;
+	struct cpair *cpair;
 };
 
-struct node *leaf_alloc_empty(NID nid);
-void leaf_alloc_buffer(struct node *node);
-
-struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children);
-void nonleaf_alloc_buffer(struct node *node);
+struct leaf_basement_node *create_leaf(void);
+struct nonleaf_childinfo *create_nonleaf(void);
+void node_ptrs_alloc(struct node *node);
+struct node *node_alloc_empty(NID nid, int height);
+void node_init_empty(struct node *node, int children, int version);
+struct node *node_alloc_full(NID nid, int height, int children, int layout_version);
+void node_free(struct node *n);
 
 void node_set_dirty(struct node *n);
 void node_set_nondirty(struct node *n);
@@ -95,7 +112,5 @@ uint32_t node_count(struct node *n);
 
 int node_partition_idx(struct node *node, struct msg *k);
 int node_find_heaviest_idx(struct node *node);
-
-void node_free(struct node *n);
 
 #endif /* nessDB_NODE_H_ */

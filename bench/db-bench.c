@@ -235,14 +235,14 @@ int main(int argc, char *argv[])
 
 	srand(time(NULL));
 	rnd = rnd_new();
-	if (!dbopen()) {
+	if (!dbopen())
 		exit(1);
-	}
 
 	if (!run())
 		exit(1);
-	db_close(db);
+
 	rnd_free(rnd);
+	db_close(db);
 
 	return 1;
 }

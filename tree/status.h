@@ -73,7 +73,7 @@ static inline void status_add(uint64_t *dest, uint64_t add)
 
 static inline void status_free(struct status *status)
 {
-#if 1
+#if 0
 	__WARN("tree_nodes: leaf [%" PRIu64 "], nonleaf [%" PRIu64 "]",
 	       status->tree_leaf_nums,
 	       status->tree_nonleaf_nums

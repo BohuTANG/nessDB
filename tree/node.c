@@ -12,61 +12,32 @@ static struct node_operations nop = {
 	.pivot_compare_func = msg_key_compare
 };
 
-struct node *leaf_alloc_empty(NID nid) {
-	struct node *node;
+struct leaf_basement_node *create_leaf() {
+	struct leaf_basement_node *leaf = xcalloc(1, sizeof(*leaf));
 
-	node = xcalloc(1, sizeof(*node));
-	node->nid = nid;
-	node->height = 0;
-	node->node_op = &nop;
+	leaf->buffer = lmb_new();
 
-	mutex_init(&node->u.l.mtx);
-	mutex_init(&node->attr.mtx);
-	ness_rwlock_init(&node->u.l.rwlock);
-
-	return node;
+	return leaf;
 }
 
-void leaf_alloc_buffer(struct node *node)
+static void free_leaf(struct leaf_basement_node *leaf)
 {
-	nassert(node->height == 0);
-	node->u.l.buffer = lmb_new();
+	lmb_free(leaf->buffer);
+	xfree(leaf);
 }
 
-struct node *nonleaf_alloc_empty(NID nid, uint32_t height, uint32_t children) {
-	int i;
-	struct node *node;
+struct nonleaf_childinfo *create_nonleaf() {
+	struct nonleaf_childinfo *nonleaf = xcalloc(1, sizeof(*nonleaf));
 
-	nassert(height > 0);
-	nassert(children > 0);
+	nonleaf->buffer = nmb_new();
 
-	node = xcalloc(1, sizeof(*node));
-	node->nid = nid;
-	node->height = height;
-	node->node_op = &nop;
-	node->u.n.n_children = children;
-
-	node->u.n.pivots = xcalloc(children - 1, PIVOT_SIZE);
-	node->u.n.parts = xcalloc(children, PART_SIZE);
-
-	for (i = 0; i < (int)children; i++) {
-		mutex_init(&node->u.n.parts[i].mtx);
-		ness_rwlock_init(&node->u.n.parts[i].rwlock);
-	}
-	mutex_init(&node->attr.mtx);
-
-	return node;
+	return nonleaf;
 }
 
-void nonleaf_alloc_buffer(struct node *node)
+static void free_nonleaf(struct nonleaf_childinfo *nonleaf)
 {
-	int i;
-
-	nassert(node->height > 0);
-	nassert(node->u.n.n_children > 0);
-	for (i = 0; i < (int)node->u.n.n_children; i++) {
-		node->u.n.parts[i].buffer = nmb_new();
-	}
+	nmb_free(nonleaf->buffer);
+	xfree(nonleaf);
 }
 
 void node_set_dirty(struct node *node)
@@ -97,14 +68,104 @@ int node_is_dirty(struct node *node)
 }
 
 /*
- * the rule is k <= pivot
+ * EFFECT:
+ *	- alloc ptrs with nonleaf or leaf
+ * REQUIRE:
+ *	- node has height
+ *	- node has n_children
+ */
+void node_ptrs_alloc(struct node *node)
+{
+	int i;
+
+	for (i = 0; i < node->n_children; i++) {
+		struct child_pointer *ptr = &node->parts[i].ptr;
+		if (node->height > 0)
+			ptr->u.nonleaf = create_nonleaf();
+		else
+			ptr->u.leaf = create_leaf();
+	}
+}
+
+/*
+ * EFFECT:
+ *	- alloc node header
+ */
+struct node *node_alloc_empty(NID nid, int height) {
+	struct node *node;
+
+	node = xcalloc(1, sizeof(*node));
+	node->nid = nid;
+	node->height = height;
+	node->node_op = &nop;
+
+	mutex_init(&node->attr.mtx);
+	node_set_dirty(node);
+
+	return node;
+}
+
+/*
+ * EFFECT:
+ *	- just init and alloc pivots and parts
+ */
+void node_init_empty(struct node *node, int children, int layout_version)
+{
+	node->n_children = children;
+	node->layout_version = layout_version;
+
+	if (children > 0) {
+		node->pivots = xcalloc(children - 1, PIVOT_SIZE);
+		node->parts = xcalloc(children, PART_SIZE);
+	}
+}
+
+/*
+ * EFFECT:
+ *	- alloc a full node: header + non/leaf infos
+ */
+struct node *node_alloc_full(NID nid, int height, int children, int layout_version) {
+	struct node *node;
+
+	node = node_alloc_empty(nid, height);
+	node_init_empty(node, children, layout_version);
+	node_ptrs_alloc(node);
+
+	return node;
+}
+
+void node_free(struct node *node)
+{
+	int i;
+	nassert(node != NULL);
+
+	for (i = 0; i < (node->n_children - 1); i++)
+		xfree(node->pivots[i].data);
+
+
+	for (i = 0; i < node->n_children; i++) {
+		struct child_pointer *ptr = &node->parts[i].ptr;
+
+		if (node->height > 0)
+			free_nonleaf(ptr->u.nonleaf);
+		else
+			free_leaf(ptr->u.leaf);
+	}
+
+	xfree(node->pivots);
+	xfree(node->parts);
+	xfree(node);
+}
+
+/*
+ * PROCESS:
+ *	- the rule is k <= pivot, it's binary search with upperbound
  *
- *   i0   i1   i2   i3
- * +----+----+----+----+
- * | 15 | 17 | 19 | +∞ |
- * +----+----+----+----+
- *
- * so if key is 16, we will get 1(i1)
+ *	   i0   i1   i2   i3
+ *	+----+----+----+----+
+ *	| 15 | 17 | 19 | +∞ |
+ *	+----+----+----+----+
+ *	so if key is 16, we will get 1(i1)
  */
 int node_partition_idx(struct node *node, struct msg *k)
 {
@@ -113,13 +174,13 @@ int node_partition_idx(struct node *node, struct msg *k)
 	int mi;
 	int cmp;
 
-	nassert(node->u.n.n_children > 1);
+	nassert(node->n_children > 1);
 	lo = 0;
-	hi = node->u.n.n_children - 2;
+	hi = node->n_children - 2;
 	while (lo <= hi) {
 		/* mi integer overflow never happens */
 		mi = (lo + hi) / 2;
-		cmp = node->node_op->pivot_compare_func(k, &node->u.n.pivots[mi]);
+		cmp = node->node_op->pivot_compare_func(k, &node->pivots[mi]);
 		if (cmp > 0)
 			lo = mi + 1;
 		else if (cmp < 0)
@@ -136,14 +197,17 @@ int node_find_heaviest_idx(struct node *node)
 {
 	int i;
 	int idx = 0;
+	uint32_t sz = 0;
 	uint32_t maxsz = 0;
 
-	for (i = 0; i < (int)node->u.n.n_children; i++) {
-		uint32_t sz;
-		struct partition *part;
+	for (i = 0; i < node->n_children; i++) {
+		struct child_pointer *ptr = &node->parts[i].ptr;
 
-		part = &node->u.n.parts[i];
-		sz = nmb_memsize(part->buffer);
+		if (node->height > 0)
+			sz = nmb_memsize(ptr->u.nonleaf->buffer);
+		else
+			sz = lmb_memsize(ptr->u.leaf->buffer);
+
 		if (sz > maxsz) {
 			idx = i;
 			maxsz = sz;
@@ -153,66 +217,36 @@ int node_find_heaviest_idx(struct node *node)
 	return idx;
 }
 
-uint32_t node_count(struct node *n)
+uint32_t node_count(struct node *node)
 {
+	int i;
 	uint32_t c = 0U;
 
-	if (n->height == 0)
-		c += lmb_count(n->u.l.buffer);
-	else {
-		uint32_t i;
-		for (i = 0; i < n->u.n.n_children; i++) {
-			c += n->u.n.parts[i].buffer->count;
-		}
+	for (i = 0; i < node->n_children; i++) {
+		struct child_pointer *ptr = &node->parts[i].ptr;
+
+		if (node->height > 0)
+			c += nmb_count(ptr->u.nonleaf->buffer);
+		else
+			c += lmb_count(ptr->u.leaf->buffer);
 	}
 
 	return c;
 }
 
-uint32_t node_size(struct node *n)
+uint32_t node_size(struct node *node)
 {
-	uint32_t size = 0U;
+	int i;
+	uint32_t sz = 0;
 
-	size += (sizeof(*n));
-	if (nessunlikely(n->height == 0)) {
-		size += lmb_memsize(n->u.l.buffer);
-	} else {
-		uint32_t i;
+	for (i = 0; i < node->n_children; i++) {
+		struct child_pointer *ptr = &node->parts[i].ptr;
 
-		for (i = 0; i < n->u.n.n_children - 1; i++) {
-			size += msgsize(&n->u.n.pivots[i]);
-		}
-
-		for (i = 0; i < n->u.n.n_children; i++) {
-			size += nmb_memsize(n->u.n.parts[i].buffer);
-		}
+		if (node->height > 0)
+			sz += nmb_memsize(ptr->u.nonleaf->buffer);
+		else
+			sz += lmb_memsize(ptr->u.leaf->buffer);
 	}
 
-	return size;
-}
-
-void node_free(struct node *node)
-{
-	nassert(node != NULL);
-
-	if (node->height == 0) {
-		lmb_free(node->u.l.buffer);
-	} else {
-		uint32_t i;
-
-		if (node->u.n.n_children > 0) {
-			for (i = 0; i < node->u.n.n_children - 1; i++) {
-				xfree(node->u.n.pivots[i].data);
-			}
-
-			for (i = 0; i < node->u.n.n_children; i++) {
-				nmb_free(node->u.n.parts[i].buffer);
-			}
-
-			xfree(node->u.n.pivots);
-			xfree(node->u.n.parts);
-		}
-	}
-
-	xfree(node);
+	return sz;
 }

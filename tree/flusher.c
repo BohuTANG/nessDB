@@ -36,7 +36,7 @@ void _flush_some_child(struct tree *t, struct node *parent);
  *	- check child reactivity
  *	- if FISSIBLE: split child
  *	- if FLUSHBLE: flush buffer from child
- * ENTRY:
+ * ENTER:
  *	- parent is already locked
  *	- child is already locked
  * EXIT:
@@ -69,7 +69,7 @@ void _child_maybe_reactivity(struct tree *t, struct node *parent, struct node *c
  *	- pick a heaviest child of parent
  *	- flush from parent to child
  *	- maybe split/flush child recursively
- * ENTRY:
+ * ENTER:
  *	- parent is already locked
  * EXIT:
  *	- parent is unlocked
@@ -82,12 +82,12 @@ void _flush_some_child(struct tree *t, struct node *parent)
 	int childnum;
 	struct node *child;
 	struct partition *part;
-	struct nmb *buf;
+	struct nmb *buffer;
 
 	childnum = node_find_heaviest_idx(parent);
-	nassert(childnum < (int)parent->u.n.n_children);
-	part = &parent->u.n.parts[childnum];
-	buf = part->buffer;
+	nassert(childnum < parent->n_children);
+	part = &parent->parts[childnum];
+	buffer = part->ptr.u.nonleaf->buffer;
 	if (cache_get_and_pin(t->cf, part->child_nid, &child, L_WRITE) != NESS_OK) {
 		__ERROR("cache get node error, nid [%" PRIu64 "]", part->child_nid);
 		return;
@@ -96,9 +96,9 @@ void _flush_some_child(struct tree *t, struct node *parent)
 	re = get_reactivity(t, child);
 	if (re == STABLE) {
 		node_set_dirty(parent);
-		part->buffer = nmb_new();
-		_flush_buffer_to_child(t, child, buf);
-		nmb_free(buf);
+		part->ptr.u.nonleaf->buffer = nmb_new();
+		_flush_buffer_to_child(t, child, buffer);
+		nmb_free(buffer);
 	}
 	_child_maybe_reactivity(t, parent, child);
 }
@@ -109,7 +109,7 @@ void _flush_some_child(struct tree *t, struct node *parent)
  * PROCESS:
  *	- if buf is NULL, we will do _flush_some_child
  *	- if buf is NOT NULL, we will do _flush_buffer_to_child
- * ENTRY:
+ * ENTER:
  *	- fe->node is already locked
  * EXIT:
  *	- nodes are unlocked
@@ -158,7 +158,7 @@ static void _place_node_and_buffer_on_background(struct tree *t, struct node *no
 /*
  * EFFECT:
  *	- flush in background thread
- * ENTRY:
+ * ENTER:
  *	- parent is already locked
  * EXIT:
  *	- nodes are all unlocked
@@ -172,7 +172,7 @@ void tree_flush_node_on_background(struct tree *t, struct node *parent)
 
 	nassert(parent->height > 0);
 	childnum = node_find_heaviest_idx(parent);
-	part = &parent->u.n.parts[childnum];
+	part = &parent->parts[childnum];
 
 	/* pin the child */
 	if (cache_get_and_pin(t->cf, part->child_nid, &child, L_WRITE) != NESS_OK) {
@@ -182,10 +182,10 @@ void tree_flush_node_on_background(struct tree *t, struct node *parent)
 
 	re = get_reactivity(t, child);
 	if (re == STABLE) {
-		struct nmb *buf = part->buffer;
-
+		/* detach buffer from parent */
+		struct nmb *buf = part->ptr.u.nonleaf->buffer;
 		node_set_dirty(parent);
-		part->buffer = nmb_new();
+		part->ptr.u.nonleaf->buffer = nmb_new();
 
 		/* flush it in background thread */
 		_place_node_and_buffer_on_background(t, child, buf);
