@@ -8,10 +8,14 @@
 #define nessDB_LMB_H_
 
 #include "internal.h"
+#include "mempool.h"
 #include "mb.h"
 
 struct lmb {
+	uint32_t count;
+	uint32_t memory_used;
 	struct pma *pma;
+	struct mempool *mpool;
 };
 
 struct lmb *lmb_new();

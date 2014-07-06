@@ -12,9 +12,10 @@
 
 struct options {
 	uint32_t inner_node_fanout;
-	uint32_t inner_node_page_size;
+	uint32_t inner_default_node_size;
 	uint32_t inner_node_page_count;
-	uint32_t leaf_node_page_size;
+	uint32_t leaf_default_node_size;
+	uint32_t leaf_default_basement_size;
 	uint32_t leaf_node_page_count;
 
 	uint64_t cache_limits_bytes;
@@ -36,9 +37,10 @@ static inline struct options *options_new(void) {
 	opts = xcalloc(1, sizeof(*opts));
 
 	opts->inner_node_fanout = 16;
-	opts->inner_node_page_size = 4 << 20;		/* 4MB */
+	opts->inner_default_node_size = 4 << 20;	/* 4MB */
 	opts->inner_node_page_count = -1;
-	opts->leaf_node_page_size = 1 << 20;		/* 1MB */
+	opts->leaf_default_node_size = 4 << 20;		/* 4MB */
+	opts->leaf_default_basement_size = 128 << 10;	/* 128KB */
 	opts->leaf_node_page_count = -1;
 
 	opts->cache_limits_bytes = 1024 << 20;

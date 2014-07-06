@@ -281,6 +281,10 @@ ERR:
 	return r;
 }
 
+/*
+ * TODO(BohuTANG):
+ *	- if the node is leaf, we should rebalance the buffers under the options->leaf_default_basement_size
+ */
 void compress_partitions(struct node *node, struct hdr *hdr)
 {
 	int i;

@@ -135,28 +135,6 @@ void pma_pushback(struct pma *p, struct array *a)
 	pma_insertat(p, a, p->used);
 }
 
-int pma_count_calc(struct pma *p)
-{
-	int i;
-	int all = 0;
-
-	for (i = 0; i < p->used; i++)
-		all += p->chain[i]->used;
-
-	return all;
-}
-
-uint64_t pma_memsize_calc(struct pma *p)
-{
-	int i;
-	uint64_t all = 0;
-
-	for (i = 0; i < p->used; i++)
-		all += p->chain[i]->memory_used;
-
-	return all;
-}
-
 static inline int pma_findzero_lowerbound(struct pma *p, void *e, compare_func f)
 {
 	int low  = 0;

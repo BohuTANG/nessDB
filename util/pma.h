@@ -30,8 +30,6 @@ struct pma {
 struct pma *pma_new(int reverse);
 void pma_insert(struct pma *p, void *e, int size, compare_func f);
 void pma_resize(struct pma *p, int size);
-int pma_count_calc(struct pma *p);
-uint64_t pma_memsize_calc(struct pma *p);
 void pma_free(struct pma *p);
 
 #endif /* nessDB_PMA_H_ */

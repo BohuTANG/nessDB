@@ -73,23 +73,26 @@ static void _add_pivot_to_parent(struct tree *t,
 }
 
 /*
- * split leaf to two leaves:a & b
- * leaf(root):
- * 	+-----------------------------------+
- * 	|  0  |  1  |  2  |  3  |  4  |  5  |
- * 	+-----------------------------------+
+ * EFFECT:
+ *	- split leaf&lmb into two leaves:a & b
+ *	  a&b are both the half of the lmb
  *
- * split:
- *			   root
- * 			 +--------+
- * 			 |   2    |
- * 			 +--------+
- *	                /          \
- * 	+-----------------+	 +------------------+
- * 	|  0  |  1  |  2  |	 |  3  |  4  |  5   |
- * 	+-----------------+	 +------------------+
- * 	      nodea			nodeb
+ * PROCESS:
+ *	- leaf:
+ *		+-----------------------------------+
+ *		|  0  |  1  |  2  |  3  |  4  |  5  |
+ *		+-----------------------------------+
  *
+ *	- split:
+ *				   root
+ *				 +--------+
+ *				 |   2    |
+ *				 +--------+
+ *	  	                /          \
+ *	    	+-----------------+	 +------------------+
+ *	    	|  0  |  1  |  2  |	 |  3  |  4  |  5   |
+ *	    	+-----------------+	 +------------------+
+ *	    	      nodea			nodeb
  *
  * ENTER:
  *	- leaf is already locked (L_WRITE)
@@ -97,11 +100,11 @@ static void _add_pivot_to_parent(struct tree *t,
  *	- a is locked
  *	- b is locked
  */
-static void _leaf_split(struct tree *t,
-                        struct node *leaf,
-                        struct node **a,
-                        struct node **b,
-                        struct msg **split_key)
+static void _leaf_and_lmb_split(struct tree *t,
+                                struct node *leaf,
+                                struct node **a,
+                                struct node **b,
+                                struct msg **split_key)
 {
 	struct child_pointer *cptra;
 	struct child_pointer *cptrb;
@@ -127,7 +130,6 @@ static void _leaf_split(struct tree *t,
 	                          0,		/* height */
 	                          1,		/* children num */
 	                          &leafb);
-	/* TODO: free buffer first */
 	cptrb = &leafb->parts[0].ptr;
 	lmb_free(cptrb->u.leaf->buffer);
 	cptrb->u.leaf->buffer = mbb;
@@ -166,11 +168,11 @@ static void _leaf_split(struct tree *t,
  *	- a is locked(L_WRITE)
  *	- b is locked(L_WRITE)
  */
-static void _nonleaf_split(struct tree *t,
-                           struct node *node,
-                           struct node **a,
-                           struct node **b,
-                           struct msg **split_key)
+static void _node_split(struct tree *t,
+                        struct node *node,
+                        struct node **a,
+                        struct node **b,
+                        struct msg **split_key)
 {
 	int i;
 	int pivots_old;
@@ -192,8 +194,8 @@ static void _nonleaf_split(struct tree *t,
 
 	/* node b */
 	cache_create_light_node_and_pin(t->cf,
-	                                1,			/* height */
-	                                pivots_in_b + 1,	/* children */
+	                                node->height > 0 ? 1 : 0,	/* height */
+	                                pivots_in_b + 1,		/* children */
 	                                &nodeb);
 
 	for (i = 0; i < (pivots_in_b); i++)
@@ -204,7 +206,12 @@ static void _nonleaf_split(struct tree *t,
 
 	/* the rightest partition of nodea */
 	struct child_pointer *ptr = &nodea->parts[pivots_in_a].ptr;
-	ptr->u.nonleaf = create_nonleaf();
+
+	if (nodea->height > 0)
+		ptr->u.nonleaf = create_nonleaf();
+	else
+		ptr->u.leaf = create_leaf();
+
 
 	/* split key */
 	spk = msgdup(&node->pivots[pivots_in_a - 1]);
@@ -215,8 +222,6 @@ static void _nonleaf_split(struct tree *t,
 	*a = nodea;
 	*b = nodeb;
 	*split_key = spk;
-
-	status_increment(&t->status->tree_nonleaf_split_nums);
 }
 
 /*
@@ -239,34 +244,37 @@ void node_split_child(struct tree *t,
 	struct node *b;
 	struct msg *split_key;
 
-	if (child->height > 0)
-		_nonleaf_split(t, child, &a, &b, &split_key);
+	if (child->height > 0 || child->n_children > 2)
+		_node_split(t, child, &a, &b, &split_key);
 	else
-		_leaf_split(t, child, &a, &b, &split_key);
+		_leaf_and_lmb_split(t, child, &a, &b, &split_key);
 
 	child_num = node_partition_idx(parent, split_key);
 
 	/* add pivot to parent */
 	_add_pivot_to_parent(t, parent, child_num, a, b, split_key);
-	msgfree(split_key);
 	cache_unpin(t->cf, b);
+	msgfree(split_key);
 
-	status_increment(&t->status->tree_nonleaf_split_nums);
+	if (child->height > 0)
+		status_increment(&t->status->tree_nonleaf_split_nums);
+	else
+		status_increment(&t->status->tree_leaf_split_nums);
 }
 
 enum reactivity get_reactivity(struct tree *t, struct node *node)
 {
+	uint32_t children = node->n_children;
+
 	if (nessunlikely(node->height == 0)) {
-		if ((node_size(node) >= t->opts->leaf_node_page_size && node_count(node) > 1) ||
-		    node_count(node) >= t->opts->leaf_node_page_count)
+		if (node_size(node) >= t->opts->leaf_default_node_size &&
+		    node_count(node) > 1)
 			return FISSIBLE;
 	} else {
-		uint32_t children = node->n_children;
-
 		if (children >= t->opts->inner_node_fanout)
 			return FISSIBLE;
 
-		if (((node_size(node) > t->opts->inner_node_page_size)) ||
+		if (((node_size(node) > t->opts->inner_default_node_size)) ||
 		    node_count(node) >= t->opts->inner_node_page_count)
 			return FLUSHBLE;
 	}
@@ -392,10 +400,10 @@ static void _root_split(struct tree *t,
 	        , old_root->nid
 	        , old_root->height);
 
-	if (old_root->height > 0)
-		_nonleaf_split(t, old_root, &a, &b, &split_key);
+	if (old_root->height > 0 || old_root->n_children > 2)
+		_node_split(t, old_root, &a, &b, &split_key);
 	else
-		_leaf_split(t, old_root, &a, &b, &split_key);
+		_leaf_and_lmb_split(t, old_root, &a, &b, &split_key);
 
 	/* swap two roots */
 	_root_swap(new_root, old_root);

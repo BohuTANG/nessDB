@@ -11,7 +11,10 @@
 struct lmb *lmb_new() {
 	struct lmb *lmb = xmalloc(sizeof(*lmb));
 
+	lmb->mpool = mempool_new();
 	lmb->pma = pma_new(64);
+	lmb->count = 0;
+	lmb->memory_used = 0;
 
 	return lmb;
 }
@@ -30,19 +33,21 @@ void lmb_put(struct lmb *lmb,
 	if (type != MSG_DELETE)
 		size += val->size;
 
-	base = xcalloc(1, size);
+	base = mempool_alloc_aligned(lmb->mpool, size);
 	msgentry_pack(base, msn, type, key, val, xidpair);
 	pma_insert(lmb->pma, (void*)base, size, msgentry_key_compare);
+	lmb->count++;
+	lmb->memory_used += size;
 }
 
 uint32_t lmb_memsize(struct lmb *lmb)
 {
-	return lmb->pma->memory_used;
+	return lmb->memory_used;
 }
 
 uint32_t lmb_count(struct lmb *lmb)
 {
-	return lmb->pma->count;
+	return lmb->count;
 }
 
 void lmb_free(struct lmb *lmb)
@@ -50,19 +55,8 @@ void lmb_free(struct lmb *lmb)
 	if (!lmb)
 		return;
 
-	int cidx;
-	int aidx;
-
-	for (cidx = 0; cidx < lmb->pma->used; cidx++) {
-		struct array *a = lmb->pma->chain[cidx];
-
-		for (aidx = 0; aidx < a->used; aidx++) {
-			void *v = a->elems[aidx];
-			xfree(v);
-		}
-	}
-
 	pma_free(lmb->pma);
+	mempool_free(lmb->mpool);
 	xfree(lmb);
 }
 
@@ -150,8 +144,7 @@ void lmb_iter_seek(struct mb_iter *iter, struct msg *k)
 	mentry->keylen = k->size;
 	mentry->vallen = 0U;
 	xmemcpy((char*)mentry + MSGENTRY_SIZE, k->data, k->size);
-	//get base
-	// pma seek
+	/* TODO: get base and pma seek */
 	xfree(mentry);
 
 	msgentry_unpack(base,
@@ -193,63 +186,43 @@ void lmb_iter_seektolast(struct mb_iter *iter)
 	                &iter->xidpair);
 }
 
+/*
+ * EFFECT
+ *	-split mb to a&b, here is an ugly impl, but it's simpler than others
+ *	 for efficient, we should not use iter to do iterating
+ */
 int lmb_split(struct lmb *mb,
               struct lmb ** a,
               struct lmb ** b,
               struct msg ** split_key)
 {
 	int ret;
-	struct lmb *mba = mb;
-	struct lmb *mbb;
+	struct lmb *mba = lmb_new();
+	struct lmb *mbb = lmb_new();
 
-	struct pma *pa = mb->pma;
-	struct pma *pb;
-
-	if (pa->used < 2) {
-		ret = NESS_ERR;
-		goto ERR;
-	}
-
-	int a_used = pa->used / 2;
-	int b_used = pa->used - a_used;
-	struct array *last_array_in_a = pa->chain[a_used - 1];
-	char *midbase = last_array_in_a->elems[last_array_in_a->used - 1];
-
-	/* mbb */
-	mbb = lmb_new();
-	pb = mbb->pma;
-	pma_resize(pb, b_used);
-
-	/* copy chain elems to new pma */
-	xmemcpy(pb->chain, pa->chain + a_used, b_used * sizeof(void*));
-
-	/* update count */
-	pa->used = a_used;
-	pb->used = b_used;
-	pa->count = pma_count_calc(pa);
-	pb->count = pma_count_calc(pb);
-
-	/* memory size */
-	pa->memory_used = pma_memsize_calc(pa);
-	pb->memory_used = pma_memsize_calc(pb);
-
-	/* split key */
+	int a_count = mb->count / 2;
 	struct mb_iter iter;
 
+	int i = 0;
 	lmb_iter_init(&iter, mb);
-	msgentry_unpack(midbase,
-	                &iter.msn,
-	                &iter.type,
-	                &iter.key,
-	                &iter.val,
-	                &iter.xidpair);
+	lmb_iter_seektofirst(&iter);
+	while (lmb_iter_valid(&iter)) {
+		if (i <= a_count) {
+			lmb_put(mba, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
+			if (i == a_count)
+				*split_key = msgdup(&iter.key);
+		} else {
+			lmb_put(mbb, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
+		}
 
-	*split_key = msgdup(&iter.key);
-
+		i++;
+		lmb_iter_next(&iter);
+	}
+	lmb_free(mb);
 	*a = mba;
 	*b = mbb;
 
 	ret = NESS_OK;
-ERR:
+
 	return ret;
 }
