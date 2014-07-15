@@ -116,9 +116,6 @@ int env_set_cache_size(struct nessdb *db, uint64_t cache_size)
 
 int env_set_compress_method(struct nessdb *db, ness_compress_method_t method)
 {
-	if (method > 2)
-		return NESS_ERR;
-
 	db->opts->compress_method = method;
 
 	return NESS_OK;

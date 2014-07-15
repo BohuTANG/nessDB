@@ -60,7 +60,7 @@ void lmb_free(struct lmb *lmb)
 	xfree(lmb);
 }
 
-void lmb_iter_init(struct mb_iter *iter, struct lmb *lmb)
+void lmb_iter_init(struct lmb_iter *iter, struct lmb *lmb)
 {
 	iter->valid = 0;
 	iter->pma = lmb->pma;
@@ -70,7 +70,7 @@ void lmb_iter_init(struct mb_iter *iter, struct lmb *lmb)
 }
 
 /* valid */
-int lmb_iter_valid(struct mb_iter *iter)
+int lmb_iter_valid(struct lmb_iter *iter)
 {
 	int valid = 0;
 	struct pma *p = iter->pma;
@@ -84,7 +84,7 @@ int lmb_iter_valid(struct mb_iter *iter)
 	return valid;
 }
 
-void lmb_iter_next(struct mb_iter *iter)
+void lmb_iter_next(struct lmb_iter *iter)
 {
 	char *base;
 	struct pma *pma = iter->pma;
@@ -107,7 +107,7 @@ void lmb_iter_next(struct mb_iter *iter)
 	}
 }
 
-void lmb_iter_prev(struct mb_iter *iter)
+void lmb_iter_prev(struct lmb_iter *iter)
 {
 	char *base;
 	int chain_idx = iter->chain_idx;
@@ -130,7 +130,7 @@ void lmb_iter_prev(struct mb_iter *iter)
 	}
 }
 
-void lmb_iter_seek(struct mb_iter *iter, struct msg *k)
+void lmb_iter_seek(struct lmb_iter *iter, struct msg *k)
 {
 	char *base = NULL;
 	int size = MSGENTRY_SIZE;
@@ -155,7 +155,7 @@ void lmb_iter_seek(struct mb_iter *iter, struct msg *k)
 	                &iter->xidpair);
 }
 
-void lmb_iter_seektofirst(struct mb_iter *iter)
+void lmb_iter_seektofirst(struct lmb_iter *iter)
 {
 	char *base;
 	struct pma *pma = iter->pma;
@@ -171,7 +171,7 @@ void lmb_iter_seektofirst(struct mb_iter *iter)
 	}
 }
 
-void lmb_iter_seektolast(struct mb_iter *iter)
+void lmb_iter_seektolast(struct lmb_iter *iter)
 {
 	char *base;
 	struct pma *pma = iter->pma;
@@ -201,7 +201,7 @@ int lmb_split(struct lmb *mb,
 	struct lmb *mbb = lmb_new();
 
 	int a_count = mb->count / 2;
-	struct mb_iter iter;
+	struct lmb_iter iter;
 
 	int i = 0;
 	lmb_iter_init(&iter, mb);

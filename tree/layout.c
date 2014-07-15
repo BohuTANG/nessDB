@@ -21,12 +21,12 @@
 
 static int _nonleaf_mb_to_packer(struct nmb *mb, struct msgpack *packer)
 {
-	struct mb_iter iter;
+	struct nmb_iter iter;
 
 	nmb_iter_init(&iter, mb);
 	nmb_iter_seektofirst(&iter);
 	while (nmb_iter_valid(&iter)) {
-		if (!msgpack_pack_mbiter(packer, &iter)) goto ERR;
+		if (!msgpack_pack_nmbiter(packer, &iter)) goto ERR;
 		nmb_iter_next(&iter);
 	}
 
@@ -39,9 +39,9 @@ ERR:
 static int _nonleaf_packer_to_mb(struct msgpack *packer, struct nmb *mb)
 {
 	while (packer->SEEK < packer->NUL) {
-		struct mb_iter iter;
+		struct nmb_iter iter;
 
-		if (!msgpack_unpack_mbiter(packer, &iter)) goto ERR;
+		if (!msgpack_unpack_nmbiter(packer, &iter)) goto ERR;
 		nmb_put(mb, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
 	}
 
@@ -53,12 +53,12 @@ ERR:
 
 static int _leaf_mb_to_packer(struct lmb *mb, struct msgpack *packer)
 {
-	struct mb_iter iter;
+	struct lmb_iter iter;
 
 	lmb_iter_init(&iter, mb);
 	lmb_iter_seektofirst(&iter);
 	while (lmb_iter_valid(&iter)) {
-		if (!msgpack_pack_mbiter(packer, &iter)) goto ERR;
+		if (!msgpack_pack_lmbiter(packer, &iter)) goto ERR;
 		lmb_iter_next(&iter);
 	}
 
@@ -71,9 +71,9 @@ ERR:
 static int _leaf_packer_to_mb(struct msgpack *packer, struct lmb *mb)
 {
 	while (packer->SEEK < packer->NUL) {
-		struct mb_iter iter;
+		struct lmb_iter iter;
 
-		if (!msgpack_unpack_mbiter(packer, &iter)) goto ERR;
+		if (!msgpack_unpack_lmbiter(packer, &iter)) goto ERR;
 		lmb_put(mb, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
 	}
 

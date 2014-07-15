@@ -11,7 +11,7 @@
 
 void _flush_buffer_to_child(struct tree *t, struct node *child, struct nmb *buf)
 {
-	struct mb_iter iter;
+	struct nmb_iter iter;
 
 	nmb_iter_init(&iter, buf);
 	nmb_iter_seektofirst(&iter);

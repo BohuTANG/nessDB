@@ -20,19 +20,6 @@ struct msgentry {
 	uint32_t vallen;
 } __attribute__((__packed__));
 
-struct mb_iter {
-	int valid;
-	MSN msn;
-	msgtype_t type;
-	struct msg key;
-	struct msg val;
-	struct txnid_pair xidpair;
-
-	struct pma *pma;
-	int chain_idx;
-	int array_idx;
-};
-
 static inline int msgentry_key_compare(void *a, void *b)
 {
 	int r;
