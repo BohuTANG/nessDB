@@ -7,46 +7,90 @@
 #include "debug.h"
 #include "nmb.h"
 
+static inline int _nmb_entry_key_compare(void *a, void *b)
+{
+	int r;
+
+	if (!a) return (-1);
+	if (!b) return (+1);
+
+	struct nmb_entry *mea = (struct nmb_entry*)a;
+	struct nmb_entry *meb = (struct nmb_entry*)b;
+
+	uint32_t minlen = mea->keylen < meb->keylen ? mea->keylen : meb->keylen;
+	r = memcmp((char*)mea + NMB_ENTRY_SIZE, (char*)meb + NMB_ENTRY_SIZE, minlen);
+	if (r == 0)
+		return (mea->keylen - meb->keylen);
+	return r;
+}
+
+void _nmb_entry_pack(char *base,
+                     MSN msn,
+                     msgtype_t type,
+                     struct msg *key,
+                     struct msg *val,
+                     struct txnid_pair *xidpair)
+{
+	int pos = 0;
+	uint32_t vlen = 0U;
+	uint32_t klen = key->size;
+	struct nmb_entry *entry = (struct nmb_entry*)base;
+
+	if (type != MSG_DELETE)
+		vlen = val->size;
+
+	entry->msn = msn;
+	entry->type = type;
+	entry->xidpair = *xidpair;
+	entry->keylen = klen;
+	entry->vallen = vlen;
+	pos += NMB_ENTRY_SIZE;
+
+	memcpy(base + pos, key->data, key->size);
+	pos += key->size;
+	if (type != MSG_DELETE)
+		memcpy(base + pos, val->data, val->size);
+}
+
+void _nmb_entry_unpack(char *base,
+                       MSN *msn,
+                       msgtype_t *type,
+                       struct msg *key,
+                       struct msg *val,
+                       struct txnid_pair *xidpair)
+{
+	int pos = 0;
+	uint32_t klen;
+	uint32_t vlen;
+	struct nmb_entry *entry;
+
+	entry = (struct nmb_entry*)base;
+	*msn = entry->msn;
+	*type = entry->type;
+	*xidpair = entry->xidpair;
+	klen = entry->keylen;
+	vlen = entry->vallen;
+	pos += NMB_ENTRY_SIZE;
+
+	key->size = klen;
+	key->data = (base + pos);
+	pos += klen;
+	if (*type != MSG_DELETE) {
+		val->size = vlen;
+		val->data = (base + pos);
+	} else {
+		memset(val, 0, sizeof(*val));
+	}
+}
+
 struct nmb *nmb_new() {
 	struct nmb *nmb = xmalloc(sizeof(*nmb));
 
 	nmb->mpool = mempool_new();
 	nmb->pma = pma_new(64);
 	nmb->count = 0;
-	nmb->memory_used = 0;
 
 	return nmb;
-}
-
-void nmb_put(struct nmb *nmb,
-             MSN msn,
-             msgtype_t type,
-             struct msg *key,
-             struct msg *val,
-             struct txnid_pair *xidpair)
-{
-	char *base;
-	uint32_t size = 0U;
-
-	size += (MSGENTRY_SIZE + key->size);
-	if (type != MSG_DELETE)
-		size += val->size;
-
-	base = mempool_alloc_aligned(nmb->mpool, size);
-	msgentry_pack(base, msn, type, key, val, xidpair);
-	pma_insert(nmb->pma, (void*)base, size, msgentry_key_compare);
-	nmb->count++;
-	nmb->memory_used += size;
-}
-
-uint32_t nmb_memsize(struct nmb *nmb)
-{
-	return nmb->memory_used;
-}
-
-uint32_t nmb_count(struct nmb *nmb)
-{
-	return nmb->count;
 }
 
 void nmb_free(struct nmb *nmb)
@@ -59,129 +103,114 @@ void nmb_free(struct nmb *nmb)
 	xfree(nmb);
 }
 
-void nmb_iter_init(struct nmb_iter *iter, struct nmb *nmb)
+uint32_t nmb_memsize(struct nmb *nmb)
 {
-	iter->valid = 0;
-	iter->pma = nmb->pma;
-
-	iter->chain_idx = 0;
-	iter->array_idx = 0;
+	return nmb->mpool->memory_used;
 }
 
-/* valid */
-int nmb_iter_valid(struct nmb_iter *iter)
+uint32_t nmb_count(struct nmb *nmb)
 {
-	int valid = 0;
-	struct pma *p = iter->pma;
-	int chain_idx = iter->chain_idx;
-	int array_idx = iter->array_idx;
-
-	if ((chain_idx < p->used)
-	    && (array_idx < p->chain[chain_idx]->used))
-		valid = 1;
-
-	return valid;
+	return nmb->count;
 }
 
-void nmb_iter_next(struct nmb_iter *iter)
+void nmb_put(struct nmb *nmb,
+             MSN msn,
+             msgtype_t type,
+             struct msg *key,
+             struct msg *val,
+             struct txnid_pair *xidpair)
 {
 	char *base;
-	struct pma *pma = iter->pma;
-	int chain_idx = iter->chain_idx;
-	int array_idx = iter->array_idx;
+	uint32_t size = (NMB_ENTRY_SIZE + key->size);
 
-	nassert(nmb_iter_valid(iter) == 1);
-	base = pma->chain[chain_idx]->elems[array_idx];
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
-	if (array_idx == (pma->chain[chain_idx]->used - 1)) {
-		iter->chain_idx++;
-		iter->array_idx = 0;
-	} else {
-		iter->array_idx++;
+	if (type != MSG_DELETE)
+		size += val->size;
+
+	base = mempool_alloc_aligned(nmb->mpool, size);
+	_nmb_entry_pack(base, msn, type, key, val, xidpair);
+	pma_insert(nmb->pma, (void*)base, _nmb_entry_key_compare);
+	nmb->count++;
+}
+
+/*
+ * EFFECTS:
+ *	- unpack iter->base to nmb_values
+ */
+void nmb_get_values(struct mb_iter *iter, struct nmb_values *values)
+{
+	_nmb_entry_unpack(iter->base,
+	                  &values->msn,
+	                  &values->type,
+	                  &values->key,
+	                  &values->val,
+	                  &values->xidpair);
+}
+
+
+int nmb_pack_values_to_msgpack(struct nmb_values *values, struct msgpack *packer)
+{
+	MSN msn = values->msn;
+
+	msn = ((msn << 8) | values->type);
+	msgpack_pack_uint64(packer, msn);
+	msgpack_pack_uint64(packer, values->xidpair.child_xid);
+	msgpack_pack_uint64(packer, values->xidpair.parent_xid);
+	msgpack_pack_uint32(packer, values->key.size);
+	msgpack_pack_nstr(packer, values->key.data, values->key.size);
+
+	if (values->type != MSG_DELETE) {
+		msgpack_pack_uint32(packer, values->val.size);
+		msgpack_pack_nstr(packer, values->val.data, values->val.size);
+	}
+
+	return NESS_OK;
+}
+
+/*
+ * EFFECTS:
+ *	- unpack nmb values from msgpack
+ * RETURNS:
+ *	- 1: succuess
+ *	- 0: fail
+ */
+int nmb_unpack_values_from_msgpack(struct msgpack *packer, struct nmb_values *values)
+{
+	if (!msgpack_unpack_uint64(packer, &values->msn)) goto ERR;
+	values->type = (values->msn & 0xff);
+	values->msn = (values->msn >> 8);
+	if (!msgpack_unpack_uint64(packer, &values->xidpair.child_xid)) goto ERR;
+	if (!msgpack_unpack_uint64(packer, &values->xidpair.parent_xid)) goto ERR;
+	if (!msgpack_unpack_uint32(packer, &values->key.size)) goto ERR;
+	if (!msgpack_unpack_nstr(packer, values->key.size, (char**)&values->key.data)) goto ERR;
+	if (values->type != MSG_DELETE) {
+		if (!msgpack_unpack_uint32(packer, &values->val.size)) goto ERR;
+		if (!msgpack_unpack_nstr(packer, values->val.size, (char**)&values->val.data)) goto ERR;
+	}
+
+	return NESS_OK;
+ERR:
+	return NESS_ERR;
+}
+
+void nmb_to_msgpack(struct nmb  *nmb, struct msgpack *packer)
+{
+	struct mb_iter iter;
+
+	mb_iter_init(&iter, nmb->pma);
+	while (mb_iterate(&iter)) {
+		struct nmb_values values;
+
+		nmb_get_values(&iter, &values);
+		nmb_pack_values_to_msgpack(&values, packer);
 	}
 }
 
-void nmb_iter_prev(struct nmb_iter *iter)
+void msgpack_to_nmb(struct msgpack *packer, struct nmb *nmb)
 {
-	char *base;
-	int chain_idx = iter->chain_idx;
-	int array_idx = iter->array_idx;
-	struct pma *pma = iter->pma;
+	while (packer->SEEK < packer->NUL) {
+		struct nmb_values values;
 
-	nassert(nmb_iter_valid(iter) == 1);
-	base = pma->chain[chain_idx]->elems[array_idx];
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
-	if (array_idx == 0) {
-		iter->chain_idx--;
-		iter->array_idx = pma->chain[chain_idx]->used - 1;
-	} else {
-		iter->array_idx--;
+		nmb_unpack_values_from_msgpack(packer, &values);
+		nmb_put(nmb, values.msn, values.type, &values.key, &values.val, &values.xidpair);
 	}
-}
-
-void nmb_iter_seek(struct nmb_iter *iter, struct msg *k)
-{
-	char *base = NULL;
-	int size = MSGENTRY_SIZE;
-	struct msgentry *mentry;
-
-	if (!k) return;
-
-	size += k->size;
-	mentry = (struct msgentry*)xcalloc(1, size);
-
-	mentry->keylen = k->size;
-	mentry->vallen = 0U;
-	memcpy((char*)mentry + MSGENTRY_SIZE, k->data, k->size);
-	//get base
-	// pma seek
-	xfree(mentry);
-
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
-}
-
-void nmb_iter_seektofirst(struct nmb_iter *iter)
-{
-	char *base;
-	struct pma *pma = iter->pma;
-
-	if (pma->used > 0) {
-		base = pma->chain[0]->elems[0];
-		msgentry_unpack(base,
-		                &iter->msn,
-		                &iter->type,
-		                &iter->key,
-		                &iter->val,
-		                &iter->xidpair);
-	}
-}
-
-void nmb_iter_seektolast(struct nmb_iter *iter)
-{
-	char *base;
-	struct pma *pma = iter->pma;
-	struct array *array = pma->chain[pma->used - 1];
-
-	base = array->elems[array->used - 1];
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
 }

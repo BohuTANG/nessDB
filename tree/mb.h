@@ -9,35 +9,20 @@
 
 #include "internal.h"
 #include "pma.h"
-#include "msg.h"
 
-#define MSGENTRY_SIZE (sizeof(struct msgentry))
-struct msgentry {
-	MSN msn;
-	uint8_t type;
-	struct txnid_pair xidpair;
-	uint32_t keylen;
-	uint32_t vallen;
-} __attribute__((__packed__));
+struct mb_iter {
+	int valid;
 
-static inline int msgentry_key_compare(void *a, void *b)
-{
-	int r;
+	void *base;
+	int chain_idx;
+	int array_idx;
+	struct pma *pma;
+};
 
-	if (!a) return (-1);
-	if (!b) return (+1);
-
-	struct msgentry *mea = (struct msgentry*)a;
-	struct msgentry *meb = (struct msgentry*)b;
-
-	uint32_t minlen = mea->keylen < meb->keylen ? mea->keylen : meb->keylen;
-	r = memcmp((char*)mea + MSGENTRY_SIZE, (char*)meb + MSGENTRY_SIZE, minlen);
-	if (r == 0)
-		return (mea->keylen - meb->keylen);
-	return r;
-}
-
-void msgentry_pack(char*, MSN, msgtype_t, struct msg*, struct msg*, struct txnid_pair*);
-void msgentry_unpack(char *, MSN *, msgtype_t *, struct msg *, struct msg *, struct txnid_pair *);
+void mb_iter_init(struct mb_iter *, struct pma *);
+int mb_iterate(struct mb_iter *);
+int mb_iterate_on_range(struct mb_iter *,
+                        struct pma_coord *,
+                        struct pma_coord *);
 
 #endif /* nessDB_MB_H_ */

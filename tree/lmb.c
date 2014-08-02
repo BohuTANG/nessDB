@@ -5,16 +5,30 @@
  */
 
 #include "debug.h"
-#include "mb.h"
 #include "lmb.h"
+
+static inline int _lmb_entry_key_compare(void *a, void *b)
+{
+	int r;
+
+	if (!a) return (-1);
+	if (!b) return (+1);
+
+	struct leafentry *lea = (struct leafentry*)a;
+	struct leafentry *leb = (struct leafentry*)b;
+
+	uint32_t minlen = lea->keylen < leb->keylen ? lea->keylen : leb->keylen;
+	r = memcmp(lea->keyp, leb->keyp, minlen);
+	if (r == 0)
+		return (lea->keylen - leb->keylen);
+	return r;
+}
 
 struct lmb *lmb_new() {
 	struct lmb *lmb = xmalloc(sizeof(*lmb));
 
 	lmb->mpool = mempool_new();
 	lmb->pma = pma_new(64);
-	lmb->count = 0;
-	lmb->memory_used = 0;
 
 	return lmb;
 }
@@ -27,27 +41,46 @@ void lmb_put(struct lmb *lmb,
              struct txnid_pair *xidpair)
 {
 	char *base;
-	uint32_t size = 0U;
+	uint32_t size;
+	struct leafentry *le = NULL;
+	(void)msn;
 
-	size += (MSGENTRY_SIZE + key->size);
-	if (type != MSG_DELETE)
-		size += val->size;
+	/* TODO (BohuTANG) :to check the le is exists */
+	if (!le) {
+		size = (LEAFENTRY_SIZE + key->size);
+		base = mempool_alloc_aligned(lmb->mpool, size);
+		le = (struct leafentry*)base;
+		memset(le, 0, LEAFENTRY_SIZE);
 
-	base = mempool_alloc_aligned(lmb->mpool, size);
-	msgentry_pack(base, msn, type, key, val, xidpair);
-	pma_insert(lmb->pma, (void*)base, size, msgentry_key_compare);
-	lmb->count++;
-	lmb->memory_used += size;
+		le->keylen = key->size;
+		le->keyp = base + LEAFENTRY_SIZE;
+
+		xmemcpy(le->keyp, key->data, key->size);
+		pma_insert(lmb->pma, (void*)base, _lmb_entry_key_compare);
+	}
+
+	/* alloc value in mempool arena */
+	struct xr *xr = &le->xrs_static[le->num_pxrs + le->num_cxrs];
+
+	xr->type = type;
+	xr->xid = xidpair->parent_xid;
+	if (type != MSG_DELETE) {
+		base = mempool_alloc_aligned(lmb->mpool, val->size);
+		xmemcpy(base, val->data, val->size);
+		xr->vallen = val->size;
+		xr->valp = base;
+	}
+	le->num_pxrs++;
 }
 
 uint32_t lmb_memsize(struct lmb *lmb)
 {
-	return lmb->memory_used;
+	return lmb->mpool->memory_used;
 }
 
 uint32_t lmb_count(struct lmb *lmb)
 {
-	return lmb->count;
+	return pma_count(lmb->pma);
 }
 
 void lmb_free(struct lmb *lmb)
@@ -60,169 +93,179 @@ void lmb_free(struct lmb *lmb)
 	xfree(lmb);
 }
 
-void lmb_iter_init(struct lmb_iter *iter, struct lmb *lmb)
+/*
+ * EFFECTS:
+ *	- clone one leafentry to another one who malloced in mpool
+ */
+static void _lmb_leafentry_clone(struct leafentry *le,
+		struct mempool *mpool,
+		struct leafentry **le_cloned)
 {
-	iter->valid = 0;
-	iter->pma = lmb->pma;
-
-	iter->chain_idx = 0;
-	iter->array_idx = 0;
-}
-
-/* valid */
-int lmb_iter_valid(struct lmb_iter *iter)
-{
-	int valid = 0;
-	struct pma *p = iter->pma;
-	int chain_idx = iter->chain_idx;
-	int array_idx = iter->array_idx;
-
-	if ((chain_idx < p->used)
-	    && (array_idx < p->chain[chain_idx]->used))
-		valid = 1;
-
-	return valid;
-}
-
-void lmb_iter_next(struct lmb_iter *iter)
-{
+	int i;
 	char *base;
-	struct pma *pma = iter->pma;
-	int chain_idx = iter->chain_idx;
-	int array_idx = iter->array_idx;
+	struct leafentry *new_le;
+	uint32_t size = (LEAFENTRY_SIZE + le->keylen);
+	int nums = le->num_pxrs + le->num_cxrs;
 
-	nassert(lmb_iter_valid(iter) == 1);
-	base = pma->chain[chain_idx]->elems[array_idx];
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
-	if (array_idx == (pma->chain[chain_idx]->used - 1)) {
-		iter->chain_idx++;
-		iter->array_idx = 0;
-	} else {
-		iter->array_idx++;
+	base = mempool_alloc_aligned(mpool, size);
+	new_le = (struct leafentry*)base;
+	memset(new_le, 0, LEAFENTRY_SIZE);
+
+	new_le->keylen = le->keylen;
+	new_le->keyp = base + LEAFENTRY_SIZE;
+
+	/* copy key bytestring to mempool arena */
+	xmemcpy(new_le->keyp, le->keyp, le->keylen);
+	for (i = 0; i < nums; i++) {
+		size = (XR_SIZE + le->xrs_static[i].vallen);
+		base = mempool_alloc_aligned(mpool, size);
+		new_le->xrs_static[i].xid = le->xrs_static[i].xid;
+		new_le->xrs_static[i].type = le->xrs_static[i].type;
+		new_le->xrs_static[i].vallen = le->xrs_static[i].vallen;
+		new_le->xrs_static[i].valp = (base + XR_SIZE);
 	}
-}
 
-void lmb_iter_prev(struct lmb_iter *iter)
-{
-	char *base;
-	int chain_idx = iter->chain_idx;
-	int array_idx = iter->array_idx;
-	struct pma *pma = iter->pma;
-
-	nassert(lmb_iter_valid(iter) == 1);
-	base = pma->chain[chain_idx]->elems[array_idx];
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
-	if (array_idx == 0) {
-		iter->chain_idx--;
-		iter->array_idx = pma->chain[chain_idx]->used - 1;
-	} else {
-		iter->array_idx--;
-	}
-}
-
-void lmb_iter_seek(struct lmb_iter *iter, struct msg *k)
-{
-	char *base = NULL;
-	int size = MSGENTRY_SIZE;
-	struct msgentry *mentry;
-
-	if (!k) return;
-
-	size += k->size;
-	mentry = (struct msgentry*)xcalloc(1, size);
-
-	mentry->keylen = k->size;
-	mentry->vallen = 0U;
-	xmemcpy((char*)mentry + MSGENTRY_SIZE, k->data, k->size);
-	/* TODO: get base and pma seek */
-	xfree(mentry);
-
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
-}
-
-void lmb_iter_seektofirst(struct lmb_iter *iter)
-{
-	char *base;
-	struct pma *pma = iter->pma;
-
-	if (pma->used > 0) {
-		base = pma->chain[0]->elems[0];
-		msgentry_unpack(base,
-		                &iter->msn,
-		                &iter->type,
-		                &iter->key,
-		                &iter->val,
-		                &iter->xidpair);
-	}
-}
-
-void lmb_iter_seektolast(struct lmb_iter *iter)
-{
-	char *base;
-	struct pma *pma = iter->pma;
-	struct array *array = pma->chain[pma->used - 1];
-
-	base = array->elems[array->used - 1];
-	msgentry_unpack(base,
-	                &iter->msn,
-	                &iter->type,
-	                &iter->key,
-	                &iter->val,
-	                &iter->xidpair);
+	nassert(new_le);
+	*le_cloned = new_le;
 }
 
 /*
- * EFFECT
- *	-split mb to a&b, here is an ugly impl, but it's simpler than others
- *	 for efficient, we should not use iter to do iterating
+ * EFFECTS:
+ *	- split lmb to lmba & lmbb in evenly
+ *	- the old lmb need lmb_free
  */
-int lmb_split(struct lmb *mb,
-              struct lmb ** a,
-              struct lmb ** b,
-              struct msg ** split_key)
+void lmb_split(struct lmb *lmb,
+		struct lmb **lmba,
+		struct lmb **lmbb,
+		struct msg **split_key)
 {
-	int ret;
-	struct lmb *mba = lmb_new();
-	struct lmb *mbb = lmb_new();
+	uint32_t i = 0;
+	struct mb_iter iter;
+	uint32_t count = lmb_count(lmb);
+	uint32_t a_count = count / 2;
+	struct lmb *A = lmb_new();
+	struct lmb *B = lmb_new();
 
-	int a_count = mb->count / 2;
-	struct lmb_iter iter;
+	nassert(count > 1);
+	mb_iter_init(&iter, lmb->pma);
+	while (mb_iterate(&iter)) {
+		struct lmb *mb;
+		struct leafentry *le;
+		struct leafentry *le_clone = NULL;
 
-	int i = 0;
-	lmb_iter_init(&iter, mb);
-	lmb_iter_seektofirst(&iter);
-	while (lmb_iter_valid(&iter)) {
+		le = (struct leafentry*)iter.base;
+		nassert(le);
+
+		/* TODO(BohuTANG): count is 2 */
 		if (i <= a_count) {
-			lmb_put(mba, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
-			if (i == a_count)
-				*split_key = msgdup(&iter.key);
+			mb = A;
+			if (nessunlikely(i == a_count)) {
+				struct msg spkey = { .size = le->keylen, .data = le->keyp};
+				*split_key = msgdup(&spkey);
+			}
 		} else {
-			lmb_put(mbb, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
+			mb = B;
 		}
 
+		/* append to pma */
+		_lmb_leafentry_clone(le, mb->mpool, &le_clone);
+		pma_append(mb->pma, le_clone);
+
 		i++;
-		lmb_iter_next(&iter);
 	}
-	lmb_free(mb);
-	*a = mba;
-	*b = mbb;
 
-	ret = NESS_OK;
+	*lmba = A;
+	*lmbb = B;
+}
 
-	return ret;
+static int lmb_pack_le_to_msgpack(struct leafentry *le, struct msgpack *packer)
+{
+	uint32_t i;
+	uint32_t nums;
+
+	/* 1) key */
+	msgpack_pack_uint32(packer, le->keylen);
+	msgpack_pack_nstr(packer, le->keyp, le->keylen);
+
+	/* 2) xrs num */
+	msgpack_pack_uint32(packer, le->num_pxrs);
+	msgpack_pack_uint32(packer, le->num_cxrs);
+
+	/* 3) xrs */
+	nums = le->num_pxrs + le->num_cxrs;
+	for (i = 0; i < nums; i++) {
+		struct xr *xr = &le->xrs_static[i];
+
+		msgpack_pack_uint64(packer, xr->xid);
+		msgpack_pack_uint8(packer, xr->type);
+		msgpack_pack_uint32(packer, xr->vallen);
+		msgpack_pack_nstr(packer, xr->valp, xr->vallen);
+	}
+
+	return NESS_OK;
+}
+
+
+static int lmb_unpack_le_from_msgpack(struct msgpack *packer, struct leafentry *le)
+{
+	uint32_t i;
+	uint32_t nums;
+
+	memset(le, 0, LEAFENTRY_SIZE);
+	/* 1) key */
+	if (!msgpack_unpack_uint32(packer, &le->keylen)) goto ERR;
+	if (msgpack_unpack_nstr(packer, le->keylen, (char**)&le->keyp)) goto ERR;
+
+	/* 2) xrs num */
+	if (msgpack_unpack_uint32(packer, &le->num_pxrs)) goto ERR;
+	if (msgpack_unpack_uint32(packer, &le->num_cxrs)) goto ERR;
+
+	/* 3) xrs */
+	nums = le->num_pxrs + le->num_cxrs;
+	for (i = 0; i < nums; i++) {
+		struct xr *xr = &le->xrs_static[i];
+
+		if (!msgpack_unpack_uint64(packer, &xr->xid)) goto ERR;
+		if (!msgpack_unpack_uint8(packer, (uint8_t*)&xr->type)) goto ERR;
+		if (!msgpack_unpack_uint32(packer, &xr->vallen)) goto ERR;
+		if (!msgpack_unpack_nstr(packer, xr->vallen, (char**)&xr->valp)) goto ERR;
+	}
+
+	return NESS_OK;
+ERR:
+	return NESS_ERR;
+}
+
+/*
+ * EFFECTS:
+ *	- pack lmb leafentry to msgpack
+ */
+void lmb_to_msgpack(struct lmb *lmb, struct msgpack *packer)
+{
+	struct mb_iter iter;
+
+	mb_iter_init(&iter, lmb->pma);
+	while (mb_iterate(&iter)) {
+		struct leafentry *le = (struct leafentry*)iter.base;
+
+		lmb_pack_le_to_msgpack(le, packer);
+	}
+}
+
+/*
+ * EFFECTS:
+ *	- unpack lmb leafentry from msgpack
+ */
+void msgpack_to_lmb(struct msgpack *packer, struct lmb *lmb)
+{
+	while (packer->SEEK < packer->NUL) {
+		struct leafentry le;
+		struct leafentry *new_le;
+
+		lmb_unpack_le_from_msgpack(packer, &le);
+
+		/* clone le to mpool */
+		_lmb_leafentry_clone(&le, lmb->mpool, &new_le);
+		pma_append(lmb->pma, (void*)new_le);
+	}
 }

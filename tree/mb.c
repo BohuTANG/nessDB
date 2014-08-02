@@ -6,61 +6,66 @@
 
 #include "mb.h"
 
-void msgentry_pack(char *base,
-                   MSN msn,
-                   msgtype_t type,
-                   struct msg *key,
-                   struct msg *val,
-                   struct txnid_pair *xidpair)
+/*
+ * EFFECTS:
+ *	- init iterator
+ */
+void mb_iter_init(struct mb_iter *iter, struct pma *pma)
 {
-	int pos = 0;
-	uint32_t vlen = 0U;
-	uint32_t klen = key->size;
-	struct msgentry *entry = (struct msgentry*)base;
+	iter->valid = 0;
+	iter->pma = pma;
 
-	if (type != MSG_DELETE)
-		vlen = val->size;
-
-	entry->msn = msn;
-	entry->type = type;
-	entry->xidpair = *xidpair;
-	entry->keylen = klen;
-	entry->vallen = vlen;
-	pos += MSGENTRY_SIZE;
-
-	memcpy(base + pos, key->data, key->size);
-	pos += key->size;
-	if (type != MSG_DELETE)
-		memcpy(base + pos, val->data, val->size);
+	iter->chain_idx = 0;
+	iter->array_idx = 0;
+	iter->base = NULL;
 }
 
-void msgentry_unpack(char *base,
-                     MSN *msn,
-                     msgtype_t *type,
-                     struct msg *key,
-                     struct msg *val,
-                     struct txnid_pair *xidpair)
+/*
+ * EFFECTS:
+ *	- iterate the whole pma
+ * RETURNS:
+ *	- 0 means invalid
+ *	- 1 means valid
+ */
+int mb_iterate(struct mb_iter *iter)
 {
-	int pos = 0;
-	uint32_t klen;
-	uint32_t vlen;
-	struct msgentry *entry;
+	struct pma *pma = iter->pma;
+	int chain_idx = iter->chain_idx;
+	int array_idx = iter->array_idx;
 
-	entry = (struct msgentry*)base;
-	*msn = entry->msn;
-	*type = entry->type;
-	*xidpair = entry->xidpair;
-	klen = entry->keylen;
-	vlen = entry->vallen;
-	pos += MSGENTRY_SIZE;
+	if ((chain_idx < pma->used)
+	    && (array_idx < pma->chain[chain_idx]->used)) {
+		iter->base = pma->chain[chain_idx]->elems[array_idx];
+		if (array_idx == (pma->chain[chain_idx]->used - 1)) {
+			iter->chain_idx++;
+			iter->array_idx = 0;
+		} else {
+			iter->array_idx++;
+		}
 
-	key->size = klen;
-	key->data = (base + pos);
-	pos += klen;
-	if (*type != MSG_DELETE) {
-		val->size = vlen;
-		val->data = (base + pos);
+		return 1;
 	} else {
-		memset(val, 0, sizeof(*val));
+		return 0;
 	}
+}
+
+/*
+ * EFFECTS:
+ *	- iterate the pma with range[left, right)
+ * RETURNS:
+ *	- 0 means invalid
+ *	- 1 means valid
+ */
+int mb_iterate_on_range(struct mb_iter *iter,
+                        struct pma_coord *left,
+                        struct pma_coord *right)
+{
+	int cur_idx = iter->chain_idx + iter->array_idx;
+	int min_idx = left->chain_idx + left->array_idx;
+	int max_idx = right->chain_idx + right->array_idx;
+
+	if (cur_idx >= min_idx && cur_idx < max_idx)
+		return mb_iterate(iter);
+	else
+		return 0;
 }

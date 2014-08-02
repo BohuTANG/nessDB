@@ -12,11 +12,15 @@
 #define ARRAY_CACHE_SIZE (64)
 typedef int (*compare_func)(void *, void *);
 
+struct pma_coord {
+	int chain_idx;
+	int array_idx;
+};
+
 struct array {
 	int size;
 	int used;
 	void **elems;
-	uint64_t memory_used;
 } __attribute__((aligned(ARRAY_CACHE_SIZE)));
 
 struct pma {
@@ -24,12 +28,13 @@ struct pma {
 	int used;
 	int count;
 	struct array **chain;
-	uint64_t memory_used;
 };
 
-struct pma *pma_new(int reverse);
-void pma_insert(struct pma *p, void *e, int size, compare_func f);
-void pma_resize(struct pma *p, int size);
-void pma_free(struct pma *p);
+struct pma *pma_new(int);
+void pma_free(struct pma *);
+
+void pma_insert(struct pma *, void *, compare_func f);
+void pma_append(struct pma *, void *);
+uint32_t pma_count(struct pma *);
 
 #endif /* nessDB_PMA_H_ */

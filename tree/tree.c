@@ -121,6 +121,7 @@ static void _leaf_and_lmb_split(struct tree *t,
 	/* split lmb of leaf to mba & mbb */
 	mb = cptra->u.leaf->buffer;
 	lmb_split(mb, &mba, &mbb, &sp_key);
+	lmb_free(mb);
 
 	/* reset leafa buffer */
 	cptra->u.leaf->buffer = mba;
@@ -274,8 +275,7 @@ enum reactivity get_reactivity(struct tree *t, struct node *node)
 		if (children >= t->opts->inner_node_fanout)
 			return FISSIBLE;
 
-		if (((node_size(node) > t->opts->inner_default_node_size)) ||
-		    node_count(node) >= t->opts->inner_node_page_count)
+		if (node_size(node) > t->opts->inner_default_node_size)
 			return FLUSHBLE;
 	}
 

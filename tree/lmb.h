@@ -8,65 +8,58 @@
 #define nessDB_LMB_H_
 
 #include "internal.h"
+#include "msgpack.h"
 #include "mempool.h"
 #include "mb.h"
 
-/* unpacked transaction record */
-struct uxr {
+/* transaction record */
+#define XR_SIZE (sizeof(struct xr))
+struct xr {
+	TXNID xid;
 	msgtype_t type;
 	uint32_t vallen;
 	void *valp;
-	TXNID xid;
 };
 
-struct leafentry_mvcc {
-	uint32_t num_puxrs;		/* how many of uxrs[] are provisional */
-	uint32_t num_cuxrs;		/* how many of uxrs[] are committed */
-	struct uxr uxrs_static[32];
-};
-
-/* unpacked leaf entry, value of the pma */
+#define LEAFENTRY_SIZE (sizeof(struct leafentry))
 struct leafentry {
-	struct leafentry_mvcc mvcc;
+	uint32_t keylen;
+	void *keyp;
+	uint32_t num_pxrs;		/* how many of uxrs[] are provisional */
+	uint32_t num_cxrs;		/* how many of uxrs[] are committed */
+	struct xr xrs_static[32];
 };
 
-struct lmb_iter {
-	int valid;
-	MSN msn;
-	msgtype_t type;
+struct lmb_values {
 	struct msg key;
-	struct msg val;
-	struct txnid_pair xidpair;
-
-	struct pma *pma;
-	int chain_idx;
-	int array_idx;
+	struct leafentry *le;
 };
 
 struct lmb {
-	uint32_t count;
-	uint32_t memory_used;
 	struct pma *pma;
 	struct mempool *mpool;
 };
 
 struct lmb *lmb_new();
 void lmb_free(struct lmb*);
+
 uint32_t lmb_memsize(struct lmb*);
 uint32_t lmb_count(struct lmb*);
-void lmb_put(struct lmb*, MSN, msgtype_t, struct msg*, struct msg*, struct txnid_pair*);
 
-void lmb_iter_init(struct lmb_iter*, struct lmb*);
-int lmb_iter_valid(struct lmb_iter*);
-void lmb_iter_next(struct lmb_iter*);
-void lmb_iter_prev(struct lmb_iter*);
-void lmb_iter_seek(struct lmb_iter*, struct msg*);
-void lmb_iter_seektofirst(struct lmb_iter*);
-void lmb_iter_seektolast(struct lmb_iter*);
+void lmb_put(struct lmb*,
+             MSN, msgtype_t,
+             struct msg*,
+             struct msg*,
+             struct txnid_pair*);
 
-int lmb_split(struct lmb *mb,
-              struct lmb ** a,
-              struct lmb ** b,
-              struct msg ** split_key);
+
+void lmb_split(struct lmb *,
+               struct lmb **,
+               struct lmb **,
+               struct msg **);
+
+void lmb_get_values(struct mb_iter *, struct lmb_values *);
+void lmb_to_msgpack(struct lmb *, struct msgpack *);
+void msgpack_to_lmb(struct msgpack *, struct lmb *);
 
 #endif /* nessDB_LMB_H_ */

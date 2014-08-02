@@ -9,8 +9,6 @@
 
 #include "internal.h"
 #include "msg.h"
-#include "nmb.h"
-#include "lmb.h"
 
 /**
  * a msgpack stream
@@ -40,12 +38,6 @@ int msgpack_unpack_nstr(struct msgpack *pk, uint32_t n, char **v);
 
 int msgpack_pack_msg(struct msgpack *pk, struct msg *d);
 int msgpack_unpack_msg(struct msgpack *pk, struct msg *v);
-
-int msgpack_pack_nmbiter(struct msgpack *pk, struct nmb_iter *d);
-int msgpack_unpack_nmbiter(struct msgpack *pk, struct nmb_iter *v);
-
-int msgpack_pack_lmbiter(struct msgpack *pk, struct lmb_iter *d);
-int msgpack_unpack_lmbiter(struct msgpack *pk, struct lmb_iter *v);
 
 int msgpack_pack_null(struct msgpack *pk, uint32_t n);
 int msgpack_seek(struct msgpack *pk, uint32_t s);

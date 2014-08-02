@@ -13,76 +13,6 @@
 #include "compress/compress.h"
 #include "layout.h"
 
-/**********************************************************************
- *
- *  tree node serialize
- *
- **********************************************************************/
-
-static int _nonleaf_mb_to_packer(struct nmb *mb, struct msgpack *packer)
-{
-	struct nmb_iter iter;
-
-	nmb_iter_init(&iter, mb);
-	nmb_iter_seektofirst(&iter);
-	while (nmb_iter_valid(&iter)) {
-		if (!msgpack_pack_nmbiter(packer, &iter)) goto ERR;
-		nmb_iter_next(&iter);
-	}
-
-	return NESS_OK;
-
-ERR:
-	return NESS_ERR;
-}
-
-static int _nonleaf_packer_to_mb(struct msgpack *packer, struct nmb *mb)
-{
-	while (packer->SEEK < packer->NUL) {
-		struct nmb_iter iter;
-
-		if (!msgpack_unpack_nmbiter(packer, &iter)) goto ERR;
-		nmb_put(mb, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
-	}
-
-	return NESS_OK;
-
-ERR:
-	return NESS_ERR;
-}
-
-static int _leaf_mb_to_packer(struct lmb *mb, struct msgpack *packer)
-{
-	struct lmb_iter iter;
-
-	lmb_iter_init(&iter, mb);
-	lmb_iter_seektofirst(&iter);
-	while (lmb_iter_valid(&iter)) {
-		if (!msgpack_pack_lmbiter(packer, &iter)) goto ERR;
-		lmb_iter_next(&iter);
-	}
-
-	return NESS_OK;
-
-ERR:
-	return NESS_ERR;
-}
-
-static int _leaf_packer_to_mb(struct msgpack *packer, struct lmb *mb)
-{
-	while (packer->SEEK < packer->NUL) {
-		struct lmb_iter iter;
-
-		if (!msgpack_unpack_lmbiter(packer, &iter)) goto ERR;
-		lmb_put(mb, iter.msn, iter.type, &iter.key, &iter.val, &iter.xidpair);
-	}
-
-	return NESS_OK;
-
-ERR:
-	return NESS_ERR;
-}
-
 /*
  * node header
  * layout:
@@ -299,11 +229,10 @@ void compress_partitions(struct node *node, struct hdr *hdr)
 		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
 
 		msgpack_clear(part_packer);
-		if (node->height > 0) {
-			_nonleaf_mb_to_packer(ptr->u.nonleaf->buffer, part_packer);
-		} else {
-			_leaf_mb_to_packer(ptr->u.leaf->buffer, part_packer);
-		}
+		if (node->height > 0)
+			nmb_to_msgpack(ptr->u.nonleaf->buffer, part_packer);
+		else
+			lmb_to_msgpack(ptr->u.leaf->buffer, part_packer);
 
 		disk_info->start = start;
 		disk_info->uncompressed_size = part_packer->NUL;
@@ -341,9 +270,9 @@ void decompress_partitions(struct node *node)
 		/* maybe compressed data is NULL */
 		if (r == NESS_OK) {
 			if (node->height > 0)
-				_nonleaf_packer_to_mb(part_packer, node->parts[i].ptr.u.nonleaf->buffer);
+				msgpack_to_nmb(part_packer, node->parts[i].ptr.u.nonleaf->buffer);
 			else
-				_leaf_packer_to_mb(part_packer, node->parts[i].ptr.u.leaf->buffer);
+				msgpack_to_lmb(part_packer, node->parts[i].ptr.u.leaf->buffer);
 		}
 		msgpack_free(part_packer);
 	}

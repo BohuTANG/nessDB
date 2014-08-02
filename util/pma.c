@@ -16,7 +16,7 @@ static inline void _array_extend(struct array *a)
 	}
 }
 
-void _array_insertat(struct array *a, void *e, int i)
+static void _array_insertat(struct array *a, void *e, int i)
 {
 	_array_extend(a);
 
@@ -27,12 +27,6 @@ void _array_insertat(struct array *a, void *e, int i)
 	}
 	a->elems[i] = e;
 	a->used++;
-}
-
-void _array_pushback(struct array *a, void *e, int size)
-{
-	_array_insertat(a, e, a->used);
-	a->memory_used += size;
 }
 
 static inline int _array_findzero_upperbound(struct array *a, void *e, compare_func f)
@@ -52,14 +46,6 @@ static inline int _array_findzero_upperbound(struct array *a, void *e, compare_f
 	return low;
 }
 
-void _array_insert(struct array *a, void *e, int size, compare_func f)
-{
-	int idx = _array_findzero_upperbound(a, e, f);
-
-	_array_insertat(a, e, idx);
-	a->memory_used += size;
-}
-
 struct array *_array_new(int reverse) {
 	struct array *a = xcalloc(1, sizeof(*a));
 
@@ -70,13 +56,13 @@ struct array *_array_new(int reverse) {
 	return a;
 }
 
-void _array_free(struct array *a)
+static void _array_free(struct array *a)
 {
 	xfree(a->elems);
 	xfree(a);
 }
 
-static inline void _pma_extend(struct pma *p)
+static inline void _chain_extend(struct pma *p)
 {
 	if ((p->used + 1) >= p->size) {
 		p->size *= 2;
@@ -84,43 +70,9 @@ static inline void _pma_extend(struct pma *p)
 	}
 }
 
-void _dump_chain(struct pma *p)
+static void _chain_insertat(struct pma *p, struct array *a, int i)
 {
-	int i;
-	int k;
-	printf("-----chain dump[size: %d, used: %d]:\n", p->size, p->used);
-
-	for (i = 0; i < p->used; i++) {
-		struct array *a = p->chain[i];
-		printf("\t-----idx [%d], array used[%d], keys: ", i, a->used);
-		for (k = 0; k < a->used; k++) {
-			printf(" [%d] ", *(int*)a->elems[k]);
-		}
-		printf("\n");
-	}
-}
-
-struct pma *pma_new(int reverse) {
-	struct pma *p = xcalloc(1, sizeof(*p));
-
-	p->used = 0;
-	p->size = reverse;
-	p->chain = xcalloc(p->size, sizeof(struct array*));
-
-	return p;
-}
-
-void pma_resize(struct pma *p, int size)
-{
-	if (p->size < size) {
-		p->size = size;
-		p->chain = xcalloc(p->size, sizeof(struct array*));
-	}
-}
-
-void pma_insertat(struct pma *p, struct array *a, int i)
-{
-	_pma_extend(p);
+	_chain_extend(p);
 	if (i < p->used) {
 		xmemmove(p->chain + i + 1,
 		         p->chain + i,
@@ -130,12 +82,7 @@ void pma_insertat(struct pma *p, struct array *a, int i)
 	p->used++;
 }
 
-void pma_pushback(struct pma *p, struct array *a)
-{
-	pma_insertat(p, a, p->used);
-}
-
-static inline int pma_findzero_lowerbound(struct pma *p, void *e, compare_func f)
+static inline int _chain_findzero_lowerbound(struct pma *p, void *e, compare_func f)
 {
 	int low  = 0;
 	int high = p->used - 1;
@@ -157,47 +104,86 @@ static inline int pma_findzero_lowerbound(struct pma *p, void *e, compare_func f
 	return low;
 }
 
-void pma_insert(struct pma *p, void *e, int size, compare_func f)
+static void _pma_insertat(struct pma *p, void *e, struct pma_coord *coord)
 {
-	int chain_idx = 0;
 	struct array *array = NULL;
+	int pma_used = p->used;
+	int chain_idx = coord->chain_idx;
+	int array_idx = coord->array_idx;
 
-	chain_idx = pma_findzero_lowerbound(p, e, f);
-	if (p->used == chain_idx) {
-		if (p->used == 0) {
+	if (pma_used == chain_idx) {
+		if (pma_used == 0) {
 			array = _array_new(UNROLLED_LIMIT);
-			pma_pushback(p, array);
+			_chain_insertat(p, array, p->used);
 		} else {
-			array = p->chain[p->used - 1];
+			array = p->chain[pma_used - 1];
 		}
-		_array_pushback(array, e, size);
-		chain_idx = p->used - 1;
+		_array_insertat(array, e, array->used);
 	} else {
 		array = p->chain[chain_idx];
-		_array_insert(array, e, size, f);
+		_array_insertat(array, e, array_idx);
 	}
 
 	if (array->used >= UNROLLED_LIMIT) {
 		int half = array->used / 2;
-
-		/* deal with duplicate elements moving */
-		if (half > 0) {
-			while (f(array->elems[half - 1], array->elems[half]) == 0) {
-				if (half == (array->used - 1))
-					return;
-				half++;
-			}
-		}
-
 		struct array *na = _array_new(UNROLLED_LIMIT);
 
 		na->used = array->used - half;
 		memcpy(na->elems, array->elems + half, na->used * sizeof(void*));
 		array->used = half;
-		pma_insertat(p, na, chain_idx + 1);
+		_chain_insertat(p, na, chain_idx + 1);
 	}
+}
+
+struct pma *pma_new(int reverse) {
+	struct pma *p = xcalloc(1, sizeof(*p));
+
+	p->used = 0;
+	p->size = reverse;
+	p->chain = xcalloc(p->size, sizeof(struct array*));
+
+	return p;
+}
+
+void pma_insert(struct pma *p, void *e, compare_func f)
+{
+	int array_idx = 0;
+	int chain_idx = _chain_findzero_lowerbound(p, e, f);
+
+	if (chain_idx != p->used) {
+		struct array *arr = p->chain[chain_idx];
+		array_idx = _array_findzero_upperbound(arr, e, f);
+	}
+
+	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
+	_pma_insertat(p, e, &coord);
 	p->count++;
-	p->memory_used += size;
+}
+
+void pma_append(struct pma *p, void *e)
+{
+	int array_idx = 0;
+	int chain_idx = 0;
+
+	if (p->used > 0)
+		chain_idx = p->used - 1;
+
+	if (chain_idx > 0) {
+		struct array *arr = p->chain[chain_idx];
+
+		if (arr && (arr->used > 1))
+			array_idx = arr->used - 1;
+	}
+
+	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
+	_pma_insertat(p, e, &coord);
+
+	p->count++;
+}
+
+uint32_t pma_count(struct pma *p)
+{
+	return p->count;
 }
 
 void pma_free(struct pma *p)

@@ -7,25 +7,28 @@
 #include "cache.h"
 #include "tree.h"
 #include "node.h"
+#include "mb.h"
 #include "flusher.h"
 
 void _flush_buffer_to_child(struct tree *t, struct node *child, struct nmb *buf)
 {
-	struct nmb_iter iter;
+	struct mb_iter iter;
 
-	nmb_iter_init(&iter, buf);
-	nmb_iter_seektofirst(&iter);
-	while (nmb_iter_valid(&iter)) {
+	mb_iter_init(&iter, buf->pma);
+	while (mb_iterate(&iter)) {
 		/* TODO(BohuTANG): check msn */
+		struct nmb_values nvalues;
+
+		nmb_get_values(&iter, &nvalues);
+
 		struct bt_cmd cmd = {
-			.msn = iter.msn,
-			.type = iter.type,
-			.key = &iter.key,
-			.val = &iter.val,
-			.xidpair = iter.xidpair
+			.msn = nvalues.msn,
+			.type = nvalues.type,
+			.key = &nvalues.key,
+			.val = &nvalues.val,
+			.xidpair = nvalues.xidpair
 		};
 		node_put_cmd(t, child, &cmd);
-		nmb_iter_next(&iter);
 	}
 }
 
