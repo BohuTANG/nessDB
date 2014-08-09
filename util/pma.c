@@ -6,8 +6,101 @@
  */
 
 #include "pma.h"
+#include "debug.h"
 
-#define UNROLLED_LIMIT (48)
+#define UNROLLED_LIMIT (64)
+
+/*
+ * EFFECT:
+ *	- binary search with upper-bound
+ *	- find the 1st idx which array[idx] > e
+ * RETURN:
+ *	- return 0 when e < array[0]
+ *	- return -1 when e > array[max]
+ */
+static inline int _array_find_greater_than(struct array *a, void *e, compare_func f)
+{
+	int lo = 0;
+	int hi = a->used - 1;
+	int best = -1;
+
+	while (lo <= hi) {
+		/* we assume that mid never overflow */
+		int mid = (lo + hi) / 2;
+		int cmp = f(a->elems[mid], e);
+
+		if (cmp > 0) {
+			best = mid;
+			hi = mid - 1;
+		} else {
+			lo = mid + 1;
+		}
+	}
+
+	return best;
+}
+
+/*
+ * EFFECT:
+ *	- binary search with upper-bound
+ *	- find the 1st idx which array[idx]
+ * RETURN:
+ *	- return -1 when e < array[0]
+ *	- return max idx when array[max] < e
+ */
+static inline int _array_find_less_than(struct array *a, void *e, compare_func f)
+{
+	int lo = 0;
+	int hi = a->used - 1;
+	int best = -1;
+
+	nassert(a);
+	while (lo <= hi) {
+		int mid = (hi + lo) / 2;
+		int cmp = f(a->elems[mid], e);
+
+		if (cmp < 0) {
+			best = mid;
+			lo = mid + 1;
+		} else {
+			hi = mid - 1;
+		}
+	}
+
+	return best;
+}
+
+/*
+ * EFFECT:
+ *	- binary search
+ *	- find the 1st idx which e == array[idx]
+ * RETURN:
+ *	- return -1 when not found
+ */
+static inline int _array_find_zero(struct array *a, void *e, compare_func f)
+{
+	int lo = 0;
+	int hi = a->used - 1;
+	int best = -1;
+
+	nassert(a);
+	while (lo <= hi) {
+		int mid = (hi + lo) / 2;
+		int cmp = f(a->elems[mid], e);
+
+		if (cmp > 0) {
+			hi = mid - 1;
+		} else if (cmp == 0) {
+			best = mid;
+			break;
+		} else {
+			lo = mid + 1;
+		}
+	}
+
+	return best;
+}
+
 static inline void _array_extend(struct array *a)
 {
 	if ((a->used + 1) >= a->size) {
@@ -27,23 +120,6 @@ static void _array_insertat(struct array *a, void *e, int i)
 	}
 	a->elems[i] = e;
 	a->used++;
-}
-
-static inline int _array_findzero_upperbound(struct array *a, void *e, compare_func f)
-{
-	int low = 0;
-	int high = a->used;
-
-	while (low != high) {
-		int mid = (low + high) / 2;
-
-		if (f(e, a->elems[mid]) > 0)
-			low = mid + 1;
-		else
-			high = mid;
-	}
-
-	return low;
 }
 
 struct array *_array_new(int reverse) {
@@ -82,56 +158,75 @@ static void _chain_insertat(struct pma *p, struct array *a, int i)
 	p->used++;
 }
 
-static inline int _chain_findzero_lowerbound(struct pma *p, void *e, compare_func f)
+/*
+ * EFFECT:
+ *	- binary search with lower-bound
+ *	- find the 1st idx which array[idx] <= e
+ * RETURN:
+ *	- return 0 when e < array[0]
+ *	- return max  when e > array[max]
+ */
+static inline int _chain_find_lowerbound(struct pma *p, void *e, compare_func f)
 {
-	int low  = 0;
-	int high = p->used - 1;
-	struct array *a;
+	int lo = 0;
+	int hi = p->used - 1;
+	int best = hi;
 	struct array **chain = p->chain;
 
-	while (low <= high) {
-		int mid = (low + high) / 2;
-		a = chain[mid];
-		if (f(*(a->elems), e) < 0)
-			low  = mid + 1;
-		else
-			high = mid - 1;
+	if (p->used == 0)
+		return 0;
+
+	while (lo <= hi) {
+		int mid = (hi + lo) / 2;
+		struct array *a = chain[mid];
+		int cmp = f(*(a->elems), e);
+
+		if (cmp <= 0) {
+			best = mid;
+			lo = mid + 1;
+		} else {
+			hi = mid - 1;
+		}
 	}
 
-	if (low == p->used && low > 0)
-		low--;
-
-	return low;
+	return best;
 }
 
-static void _pma_insertat(struct pma *p, void *e, struct pma_coord *coord)
+static void _pma_insertat(struct pma *p, void *e, struct pma_coord *coord, compare_func f)
 {
 	struct array *array = NULL;
 	int pma_used = p->used;
 	int chain_idx = coord->chain_idx;
 	int array_idx = coord->array_idx;
 
-	if (pma_used == chain_idx) {
-		if (pma_used == 0) {
-			array = _array_new(UNROLLED_LIMIT);
-			_chain_insertat(p, array, p->used);
-		} else {
-			array = p->chain[pma_used - 1];
-		}
-		_array_insertat(array, e, array->used);
+	nassert(chain_idx <= pma_used);
+	if (pma_used == 0) {
+		array = _array_new(UNROLLED_LIMIT);
+		_chain_insertat(p, array, p->used);
 	} else {
 		array = p->chain[chain_idx];
-		_array_insertat(array, e, array_idx);
 	}
-
-	if (array->used >= UNROLLED_LIMIT) {
+	_array_insertat(array, e, array_idx);
+	if (array->used > UNROLLED_LIMIT) {
+		struct array *new_arr;
 		int half = array->used / 2;
-		struct array *na = _array_new(UNROLLED_LIMIT);
 
-		na->used = array->used - half;
-		memcpy(na->elems, array->elems + half, na->used * sizeof(void*));
+		/* deal with duplicate elements moving */
+		if (half > 0) {
+			int last = array->used - 1;
+
+			while (f(array->elems[half - 1], array->elems[half]) == 0) {
+				if (half == last)
+					return;
+				half++;
+			}
+		}
+
+		new_arr = _array_new(UNROLLED_LIMIT);
+		new_arr->used = array->used - half;
+		memcpy(new_arr->elems, array->elems + half, new_arr->used * sizeof(void*));
 		array->used = half;
-		_chain_insertat(p, na, chain_idx + 1);
+		_chain_insertat(p, new_arr, chain_idx + 1);
 	}
 }
 
@@ -145,22 +240,37 @@ struct pma *pma_new(int reverse) {
 	return p;
 }
 
+void pma_free(struct pma *p)
+{
+	int i;
+
+	for (i = 0; i < p->used; i++)
+		_array_free(p->chain[i]);
+
+	xfree(p->chain);
+	xfree(p);
+}
+
 void pma_insert(struct pma *p, void *e, compare_func f)
 {
 	int array_idx = 0;
-	int chain_idx = _chain_findzero_lowerbound(p, e, f);
+	int chain_idx = _chain_find_lowerbound(p, e, f);
+	struct array *arr = p->chain[chain_idx];
 
-	if (chain_idx != p->used) {
-		struct array *arr = p->chain[chain_idx];
-		array_idx = _array_findzero_upperbound(arr, e, f);
-	}
+	if (arr)
+		array_idx = _array_find_greater_than(arr, e, f);
+
+	/* if array_idx is -1, means that we got the end of the array */
+	if (nessunlikely(array_idx == -1))
+		array_idx = arr->used;
 
 	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
-	_pma_insertat(p, e, &coord);
+
+	_pma_insertat(p, e, &coord, f);
 	p->count++;
 }
 
-void pma_append(struct pma *p, void *e)
+void pma_append(struct pma *p, void *e, compare_func f)
 {
 	int array_idx = 0;
 	int chain_idx = 0;
@@ -176,7 +286,7 @@ void pma_append(struct pma *p, void *e)
 	}
 
 	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
-	_pma_insertat(p, e, &coord);
+	_pma_insertat(p, e, &coord, f);
 
 	p->count++;
 }
@@ -186,13 +296,89 @@ uint32_t pma_count(struct pma *p)
 	return p->count;
 }
 
-void pma_free(struct pma *p)
+int pma_find_minus(struct pma *p, void *k, compare_func f, void **e)
 {
-	int i;
+	int chain_idx = 0;
+	int array_idx = 0;
+	int ret = NESS_NOTFOUND;
+	struct array *arr;
 
-	for (i = 0; i < p->used; i++)
-		_array_free(p->chain[i]);
+	if (p->used == 0)
+		return ret;
+	
+	chain_idx = _chain_find_lowerbound(p, k, f);
+	arr = p->chain[chain_idx];
+	if (arr)
+		array_idx = _array_find_less_than(arr, k, f);
+	if (nessunlikely(array_idx == -1)) {
+		if (chain_idx > 0) {
+			chain_idx -= 1;
+			arr = p->chain[chain_idx];
+			if (arr->used > 0) {
+				*e = arr->elems[arr->used - 1];
+				ret = NESS_OK;
+			}
+		}
+	} else {
+		*e = arr->elems[array_idx];
+		ret = NESS_OK;
+	}
 
-	xfree(p->chain);
-	xfree(p);
+	return ret;
+}
+
+int pma_find_plus(struct pma *p, void *k, compare_func f, void **e)
+{
+	int chain_idx = 0;
+	int array_idx = 0;
+	int ret = NESS_NOTFOUND;
+	struct array *arr;
+
+	if (p->used == 0)
+		return ret;
+
+	chain_idx = _chain_find_lowerbound(p, k, f);
+	arr = p->chain[chain_idx];
+	if (arr)
+		array_idx = _array_find_greater_than(arr, k, f);
+
+	if (nessunlikely(array_idx == -1)) {
+		if (chain_idx < (p->used - 1)) {
+			chain_idx += 1;
+			arr = p->chain[chain_idx];
+			if (arr->used > 0) {
+				*e = arr->elems[0];
+				ret = NESS_OK;
+			}
+		}
+	} else {
+		*e = arr->elems[array_idx];
+		ret = NESS_OK;
+	}
+
+	return ret;
+}
+
+int pma_find_zero(struct pma *p, void *k, compare_func f, void **e)
+{
+	int chain_idx = 0;
+	int array_idx = 0;
+	int ret = NESS_NOTFOUND;
+	struct array *arr;
+
+	if (p->used == 0)
+		return ret;
+
+	chain_idx = _chain_find_lowerbound(p, k, f);
+	arr = p->chain[chain_idx];
+	if (arr)
+		array_idx = _array_find_zero(arr, k, f);
+
+	/* got one value */
+	if (array_idx != -1) {
+		*e = arr->elems[array_idx];
+		ret = NESS_OK;
+	}
+
+	return ret;
 }

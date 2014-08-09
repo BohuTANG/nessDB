@@ -40,13 +40,15 @@ void lmb_put(struct lmb *lmb,
              struct msg *val,
              struct txnid_pair *xidpair)
 {
+	(void)msn;
 	char *base;
 	uint32_t size;
 	struct leafentry *le = NULL;
-	(void)msn;
 
-	/* TODO (BohuTANG) :to check the le is exists */
-	if (!le) {
+	struct leafentry kle = {.keylen = key->size, .keyp = key->data};
+	int ret = pma_find_zero(lmb->pma, (void*)&kle, _lmb_entry_key_compare, (void**)&le);
+
+	if (ret == NESS_NOTFOUND) {
 		size = (LEAFENTRY_SIZE + key->size);
 		base = mempool_alloc_aligned(lmb->mpool, size);
 		le = (struct leafentry*)base;
@@ -98,8 +100,8 @@ void lmb_free(struct lmb *lmb)
  *	- clone one leafentry to another one who malloced in mpool
  */
 static void _lmb_leafentry_clone(struct leafentry *le,
-		struct mempool *mpool,
-		struct leafentry **le_cloned)
+                                 struct mempool *mpool,
+                                 struct leafentry **le_cloned)
 {
 	int i;
 	char *base;
@@ -135,9 +137,9 @@ static void _lmb_leafentry_clone(struct leafentry *le,
  *	- the old lmb need lmb_free
  */
 void lmb_split(struct lmb *lmb,
-		struct lmb **lmba,
-		struct lmb **lmbb,
-		struct msg **split_key)
+               struct lmb **lmba,
+               struct lmb **lmbb,
+               struct msg **split_key)
 {
 	uint32_t i = 0;
 	struct mb_iter iter;
@@ -169,7 +171,7 @@ void lmb_split(struct lmb *lmb,
 
 		/* append to pma */
 		_lmb_leafentry_clone(le, mb->mpool, &le_clone);
-		pma_append(mb->pma, le_clone);
+		pma_append(mb->pma, le_clone, _lmb_entry_key_compare);
 
 		i++;
 	}
@@ -266,6 +268,6 @@ void msgpack_to_lmb(struct msgpack *packer, struct lmb *lmb)
 
 		/* clone le to mpool */
 		_lmb_leafentry_clone(&le, lmb->mpool, &new_le);
-		pma_append(lmb->pma, (void*)new_le);
+		pma_append(lmb->pma, (void*)new_le, _lmb_entry_key_compare);
 	}
 }

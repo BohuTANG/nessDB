@@ -159,7 +159,8 @@ void node_free(struct node *node)
 
 /*
  * PROCESS:
- *	- the rule is k <= pivot, it's binary search with upperbound
+ *	- find the 1st pivot index which pivot >= k
+ *	- it's lowerbound binary search
  *
  *	   i0   i1   i2   i3
  *	+----+----+----+----+
@@ -169,28 +170,24 @@ void node_free(struct node *node)
  */
 int node_partition_idx(struct node *node, struct msg *k)
 {
-	int lo;
-	int hi;
-	int mi;
-	int cmp;
+	int lo = 0;
+	int hi = node->n_children - 2;
+	int best = hi;
 
 	nassert(node->n_children > 1);
-	lo = 0;
-	hi = node->n_children - 2;
 	while (lo <= hi) {
-		/* mi integer overflow never happens */
-		mi = (lo + hi) / 2;
-		cmp = node->node_op->pivot_compare_func(k, &node->pivots[mi]);
-		if (cmp > 0)
-			lo = mi + 1;
-		else if (cmp < 0)
-			hi = mi - 1;
-		else {
-			return mi;
+		int mid = (lo + hi) / 2;
+		int cmp = node->node_op->pivot_compare_func(&node->pivots[mid], k);
+
+		if (cmp >= 0) {
+			best = mid;
+			hi = mid - 1;
+		} else {
+			lo = mid + 1;
 		}
 	}
 
-	return lo;
+	return best;
 }
 
 int node_find_heaviest_idx(struct node *node)
