@@ -4,24 +4,18 @@
  *
  */
 
-#include "debug.h"
 #include "nmb.h"
 
-static inline int _nmb_entry_key_compare(void *a, void *b)
+static inline int _nmb_entry_key_compare(void *a, void *b, void *env)
 {
-	int r;
+	struct env *e = (struct env*)env;
+	struct nmb_entry *nea = (struct nmb_entry*)a;
+	struct nmb_entry *neb = (struct nmb_entry*)b;
 
-	if (!a) return (-1);
-	if (!b) return (+1);
-
-	struct nmb_entry *mea = (struct nmb_entry*)a;
-	struct nmb_entry *meb = (struct nmb_entry*)b;
-
-	uint32_t minlen = mea->keylen < meb->keylen ? mea->keylen : meb->keylen;
-	r = memcmp((char*)mea + NMB_ENTRY_SIZE, (char*)meb + NMB_ENTRY_SIZE, minlen);
-	if (r == 0)
-		return (mea->keylen - meb->keylen);
-	return r;
+	return e->bt_compare_func((char*)nea + NMB_ENTRY_SIZE,
+	                          nea->keylen,
+	                          (char*)neb + NMB_ENTRY_SIZE,
+	                          neb->keylen);
 }
 
 void _nmb_entry_pack(char *base,
@@ -83,12 +77,13 @@ void _nmb_entry_unpack(char *base,
 	}
 }
 
-struct nmb *nmb_new() {
+struct nmb *nmb_new(struct env *e) {
 	struct nmb *nmb = xmalloc(sizeof(*nmb));
 
 	nmb->mpool = mempool_new();
 	nmb->pma = pma_new(64);
 	nmb->count = 0;
+	nmb->e  = e;
 
 	return nmb;
 }
@@ -128,7 +123,7 @@ void nmb_put(struct nmb *nmb,
 
 	base = mempool_alloc_aligned(nmb->mpool, size);
 	_nmb_entry_pack(base, msn, type, key, val, xidpair);
-	pma_insert(nmb->pma, (void*)base, _nmb_entry_key_compare);
+	pma_insert(nmb->pma, (void*)base, _nmb_entry_key_compare, (void*)nmb->e);
 	nmb->count++;
 }
 

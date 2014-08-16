@@ -5,65 +5,80 @@
  */
 
 #include "layout.h"
-#include "debug.h"
-#include "tree.h"
 #include "tree-func.h"
 
-int fetch_node_callback(void *tree, NID nid, struct node **n)
+int tree_fetch_node_callback(int fd, void *hdr, NID nid, void **n)
 {
 	int r;
-	struct timespec t1, t2;
-	struct tree *t = (struct tree*)tree;
+	struct hdr *h = (struct hdr*)hdr;
 
-	gettime(&t1);
-	r = deserialize_node_from_disk(t->fd, t->block, t->hdr, nid, n);
-	gettime(&t2);
-
-	atomic64_add(&t->status->tree_node_fetch_costs, (uint64_t)time_diff_ms(t1, t2));
-	atomic64_increment(&t->status->tree_node_fetch_nums);
+	r = deserialize_node_from_disk(fd, h, nid, (struct node**)n);
 	if (r != NESS_OK)
 		__PANIC("fetch node from disk error, errno [%d]", r);
 
 	return r;
 }
 
-int flush_node_callback(void *tree, struct node *n)
+int tree_flush_node_callback(int fd, void *hdr, void *n)
 {
 	int r;
-	struct timespec t1, t2;
-	struct tree *t = (struct tree*)tree;
+	struct hdr *h = (struct hdr*)hdr;
 
-	gettime(&t1);
-	r = serialize_node_to_disk(t->fd, t->block, n, t->hdr);
-	gettime(&t2);
-	t->status->tree_node_flush_costs += time_diff_ms(t1, t2);
-	t->status->tree_node_flush_nums++;
+	r = serialize_node_to_disk(fd, n, h);
 	if (r != NESS_OK)
 		__PANIC("flush node to disk error, errno [%d]", r);
 
 	return r;
 }
 
-int fetch_hdr_callback(void *tree)
+int tree_fetch_hdr_callback(int fd, void *hdr)
 {
 	int r;
-	struct tree *t = (struct tree*)tree;
 
-	r = deserialize_hdr_from_disk(t->fd, t->block, &t->hdr);
+	r = deserialize_hdr_from_disk(fd, hdr);
 	if (r != NESS_OK)
 		__PANIC("fetch tree header from disk error, errno [%d]", r);
 
 	return r;
 }
 
-int flush_hdr_callback(void *tree)
+int tree_flush_hdr_callback(int fd, void *hdr)
 {
 	int r;
-	struct tree *t = (struct tree*)tree;
+	struct hdr *h = (struct hdr*)hdr;
 
-	r = serialize_hdr_to_disk(t->fd, t->block, t->hdr);
+	r = serialize_hdr_to_disk(fd, h);
 	if (r != NESS_OK)
 		__PANIC("flush tree header to disk error, errno [%d]", r);
 
 	return r;
+}
+
+int tree_free_node_callback(void *n)
+{
+	node_free(n);
+	return NESS_OK;
+}
+
+int tree_cache_put_callback(void *n, void *cpair)
+{
+	struct node *node = (struct node*)n;
+
+	node->cpair = cpair;
+	return NESS_OK;
+}
+
+int tree_node_is_dirty_callback(void *n)
+{
+	struct node *node = (struct node*)n;
+
+	return node_is_dirty(node);
+}
+
+int tree_node_set_nondirty_callback(void *n)
+{
+	struct node *node = (struct node*)n;
+
+	node_set_nondirty(node);
+	return NESS_OK;
 }

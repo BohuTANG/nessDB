@@ -5,7 +5,6 @@
  */
 
 #include "file.h"
-#include "debug.h"
 
 static int (*n_open)(const char *path, int oflag, int mode);
 static int (*n_pwrite)(int fd, const void *buf, size_t len, DISKOFF off);

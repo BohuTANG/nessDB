@@ -4,7 +4,6 @@
  *
  */
 
-#include "debug.h"
 #include "compress.h"
 #include "compress/snappy.h"
 

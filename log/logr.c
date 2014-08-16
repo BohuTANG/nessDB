@@ -7,7 +7,6 @@
 #include "logr.h"
 #include "file.h"
 #include "msgpack.h"
-#include "debug.h"
 
 #define LOG_BASE_SIZE (4194304) /* 4MB */
 

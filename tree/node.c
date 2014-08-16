@@ -12,10 +12,10 @@ static struct node_operations nop = {
 	.pivot_compare_func = msg_key_compare
 };
 
-struct leaf_basement_node *create_leaf() {
+struct leaf_basement_node *create_leaf(struct env *e) {
 	struct leaf_basement_node *leaf = xcalloc(1, sizeof(*leaf));
 
-	leaf->buffer = lmb_new();
+	leaf->buffer = lmb_new(e);
 
 	return leaf;
 }
@@ -26,10 +26,10 @@ static void free_leaf(struct leaf_basement_node *leaf)
 	xfree(leaf);
 }
 
-struct nonleaf_childinfo *create_nonleaf() {
+struct nonleaf_childinfo *create_nonleaf(struct env *e) {
 	struct nonleaf_childinfo *nonleaf = xcalloc(1, sizeof(*nonleaf));
 
-	nonleaf->buffer = nmb_new();
+	nonleaf->buffer = nmb_new(e);
 
 	return nonleaf;
 }
@@ -44,7 +44,7 @@ void node_set_dirty(struct node *node)
 {
 	mutex_lock(&node->attr.mtx);
 	if (!node->dirty)
-		gettime(&node->modified);
+		ngettime(&node->modified);
 	node->dirty = 1;
 	mutex_unlock(&node->attr.mtx);
 }
@@ -81,9 +81,9 @@ void node_ptrs_alloc(struct node *node)
 	for (i = 0; i < node->n_children; i++) {
 		struct child_pointer *ptr = &node->parts[i].ptr;
 		if (node->height > 0)
-			ptr->u.nonleaf = create_nonleaf();
+			ptr->u.nonleaf = create_nonleaf(node->env);
 		else
-			ptr->u.leaf = create_leaf();
+			ptr->u.leaf = create_leaf(node->env);
 	}
 }
 
@@ -91,13 +91,14 @@ void node_ptrs_alloc(struct node *node)
  * EFFECT:
  *	- alloc node header
  */
-struct node *node_alloc_empty(NID nid, int height) {
+struct node *node_alloc_empty(NID nid, int height, struct env *e) {
 	struct node *node;
 
 	node = xcalloc(1, sizeof(*node));
 	node->nid = nid;
 	node->height = height;
 	node->node_op = &nop;
+	node->env = e;
 
 	mutex_init(&node->attr.mtx);
 	node_set_dirty(node);
@@ -124,10 +125,14 @@ void node_init_empty(struct node *node, int children, int layout_version)
  * EFFECT:
  *	- alloc a full node: header + non/leaf infos
  */
-struct node *node_alloc_full(NID nid, int height, int children, int layout_version) {
+struct node *node_alloc_full(NID nid,
+                             int height,
+                             int children,
+                             int layout_version,
+                             struct env *e) {
 	struct node *node;
 
-	node = node_alloc_empty(nid, height);
+	node = node_alloc_empty(nid, height, e);
 	node_init_empty(node, children, layout_version);
 	node_ptrs_alloc(node);
 
@@ -246,4 +251,45 @@ uint32_t node_size(struct node *node)
 	}
 
 	return sz;
+}
+
+static int _create_node(NID nid,
+                        uint32_t height,
+                        uint32_t children,
+                        int version,
+                        struct node **n,
+                        struct env *e,
+                        int light)
+{
+	struct node *new_node;
+
+	if (light) {
+		new_node = node_alloc_empty(nid, height, e);
+		node_init_empty(new_node, children, version);
+	} else {
+		new_node = node_alloc_full(nid, height, children, version, e);
+	}
+	*n = new_node;
+
+	return 1;
+}
+
+int node_create(NID nid,
+                uint32_t height,
+                uint32_t children,
+                int version,
+                struct env *e,
+                struct node **n)
+{
+	return _create_node(nid, height, children, version, n, e, 0);
+}
+
+int node_create_light(NID nid,
+                      uint32_t height,
+                      uint32_t children,
+                      int version,
+                      struct env *e,
+                      struct node **n)
+{
+	return _create_node(nid, height, children, version, n, e, 1);
 }

@@ -7,8 +7,7 @@
 #ifndef nessDB_STATUS_H_
 #define nessDB_STATUS_H_
 
-#include "xmalloc.h"
-#include "debug.h"
+#include "internal.h"
 
 #if defined(__linux__) && USE_VALGRIND
 #include <valgrind/helgrind.h>
@@ -73,7 +72,7 @@ static inline void status_add(uint64_t *dest, uint64_t add)
 
 static inline void status_free(struct status *status)
 {
-#if 0
+#if 1
 	__WARN("tree_nodes: leaf [%" PRIu64 "], nonleaf [%" PRIu64 "]",
 	       status->tree_leaf_nums,
 	       status->tree_nonleaf_nums

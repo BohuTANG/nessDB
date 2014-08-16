@@ -1,4 +1,5 @@
 #include "random.h"
+#include "xmalloc.h"
 
 void _random_buffer(char *key, int length)
 {

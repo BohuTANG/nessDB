@@ -4,7 +4,6 @@
  *
  */
 
-#include "debug.h"
 #include "mempool.h"
 
 #define MEMPOOL_BLOCKNUM	(16)
@@ -35,12 +34,8 @@ void _mempool_makeroom(struct mempool *pool)
 		return;
 
 	int new_nums = pool->blk_nums * 2;
-	struct memblk **new_blks = xcalloc(new_nums, sizeof(*new_blks));
 
-	xmemcpy(new_blks, pool->blks, pool->blk_used * sizeof(*new_blks));
-	xfree(pool->blks);
-
-	pool->blks = new_blks;
+	pool->blks = xrealloc(pool->blks, sizeof(*pool->blks) * new_nums);
 	pool->blk_nums = new_nums;
 }
 

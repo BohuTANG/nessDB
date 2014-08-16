@@ -4,7 +4,9 @@
  *
  */
 
+#define _XOPEN_SOURCE 600
 #include "posix.h"
+#include "debug.h"
 #include "xmalloc.h"
 
 #if ASSERT

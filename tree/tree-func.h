@@ -8,11 +8,18 @@
 #define nessDB_TREE_FUNC_H_
 
 #include "internal.h"
-#include "tree.h"
+#include "node.h"
 
-int fetch_node_callback(void *tree, NID nid, struct node **n);
-int flush_node_callback(void *tree, struct node *n);
-int fetch_hdr_callback(void *tree);
-int flush_hdr_callback(void *tree);
+int tree_fetch_node_callback(int fd, void *hdr, NID nid, void **n);
+int tree_flush_node_callback(int fd, void *hdr, void *n);
+
+int tree_fetch_hdr_callback(int fd, void *hdr);
+int tree_flush_hdr_callback(int fd, void *hdr);
+
+int tree_cache_put_callback(void *n, void *cpair);
+int tree_free_node_callback(void *n);
+
+int tree_node_is_dirty_callback(void *n);
+int tree_node_set_nondirty_callback(void *n);
 
 #endif /* nessDB_TREE_FUNC_H_ */

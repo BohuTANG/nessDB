@@ -63,13 +63,13 @@ static void _add_pivot_to_parent(struct tree *t,
 	msgcpy(&parent->pivots[pidx], spk);
 	parent->parts[pidx].child_nid = a->nid;
 	cptr = &parent->parts[pidx].ptr;
-	cptr->u.nonleaf = create_nonleaf();
+	cptr->u.nonleaf = create_nonleaf(t->e);
 
 	parent->parts[pidx + 1].child_nid = b->nid;
 	parent->n_children += 1;
 	node_set_dirty(parent);
 
-	status_increment(&t->status->tree_add_pivots_nums);
+	status_increment(&t->e->status->tree_add_pivots_nums);
 }
 
 /*
@@ -127,10 +127,10 @@ static void _leaf_and_lmb_split(struct tree *t,
 	cptra->u.leaf->buffer = mba;
 
 	/* new leafb */
-	cache_create_node_and_pin(t->cf,
-	                          0,		/* height */
-	                          1,		/* children num */
-	                          &leafb);
+	NID nid = hdr_next_nid(t->hdr);
+	node_create(nid, 0, 1, t->hdr->version, t->e, &leafb);
+	cache_put_and_pin(t->cf, nid, leafb);
+
 	cptrb = &leafb->parts[0].ptr;
 	lmb_free(cptrb->u.leaf->buffer);
 	cptrb->u.leaf->buffer = mbb;
@@ -142,7 +142,7 @@ static void _leaf_and_lmb_split(struct tree *t,
 	*a = leafa;
 	*b = leafb;
 	*split_key = sp_key;
-	status_increment(&t->status->tree_leaf_split_nums);
+	status_increment(&t->e->status->tree_leaf_split_nums);
 }
 
 /*
@@ -194,10 +194,9 @@ static void _node_split(struct tree *t,
 	nodea->n_children = pivots_in_a + 1;
 
 	/* node b */
-	cache_create_light_node_and_pin(t->cf,
-	                                node->height > 0 ? 1 : 0,	/* height */
-	                                pivots_in_b + 1,		/* children */
-	                                &nodeb);
+	NID nid = hdr_next_nid(t->hdr);
+	node_create_light(nid, node->height > 0 ? 1 : 0, pivots_in_b + 1, t->hdr->version, t->e, &nodeb);
+	cache_put_and_pin(t->cf, nid, nodeb);
 
 	for (i = 0; i < (pivots_in_b); i++)
 		nodeb->pivots[i] = nodea->pivots[pivots_in_a + i];
@@ -209,9 +208,9 @@ static void _node_split(struct tree *t,
 	struct child_pointer *ptr = &nodea->parts[pivots_in_a].ptr;
 
 	if (nodea->height > 0)
-		ptr->u.nonleaf = create_nonleaf();
+		ptr->u.nonleaf = create_nonleaf(t->e);
 	else
-		ptr->u.leaf = create_leaf();
+		ptr->u.leaf = create_leaf(t->e);
 
 
 	/* split key */
@@ -223,6 +222,12 @@ static void _node_split(struct tree *t,
 	*a = nodea;
 	*b = nodeb;
 	*split_key = spk;
+}
+
+struct cpair_attr make_cpair_attr(struct node *n) {
+	struct cpair_attr attr = {.nodesz = node_size(n)};
+
+	return attr;
 }
 
 /*
@@ -254,13 +259,13 @@ void node_split_child(struct tree *t,
 
 	/* add pivot to parent */
 	_add_pivot_to_parent(t, parent, child_num, a, b, split_key);
-	cache_unpin(t->cf, b);
+	cache_unpin(t->cf, b->cpair, make_cpair_attr(b));
 	msgfree(split_key);
 
 	if (child->height > 0)
-		status_increment(&t->status->tree_nonleaf_split_nums);
+		status_increment(&t->e->status->tree_nonleaf_split_nums);
 	else
-		status_increment(&t->status->tree_leaf_split_nums);
+		status_increment(&t->e->status->tree_leaf_split_nums);
 }
 
 enum reactivity get_reactivity(struct tree *t, struct node *node)
@@ -268,14 +273,13 @@ enum reactivity get_reactivity(struct tree *t, struct node *node)
 	uint32_t children = node->n_children;
 
 	if (nessunlikely(node->height == 0)) {
-		if (node_size(node) >= t->opts->leaf_default_node_size &&
-		    node_count(node) > 1)
+		if (node_size(node) >= t->e->leaf_default_node_size)
 			return FISSIBLE;
 	} else {
-		if (children >= t->opts->inner_node_fanout)
+		if (children >= t->e->inner_node_fanout)
 			return FISSIBLE;
 
-		if (node_size(node) > t->opts->inner_default_node_size)
+		if (node_size(node) > t->e->inner_default_node_size)
 			return FLUSHBLE;
 	}
 
@@ -336,10 +340,10 @@ void node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
 {
 	if (nessunlikely(node->height == 0)) {
 		leaf_put_cmd(node, cmd);
-		status_increment(&t->status->tree_leaf_put_nums);
+		status_increment(&t->e->status->tree_leaf_put_nums);
 	} else {
 		nonleaf_put_cmd(node, cmd);
-		status_increment(&t->status->tree_nonleaf_put_nums);
+		status_increment(&t->e->status->tree_nonleaf_put_nums);
 	}
 }
 
@@ -413,13 +417,13 @@ static void _root_split(struct tree *t,
 	new_root->parts[1].child_nid = b->nid;
 	msgfree(split_key);
 
-	cache_unpin(t->cf, b);
+	cache_unpin(t->cf, b->cpair, make_cpair_attr(b));
 
 	node_set_dirty(old_root);
 	node_set_dirty(new_root);
 
 	t->hdr->height++;
-	status_increment(&t->status->tree_root_new_nums);
+	status_increment(&t->e->status->tree_root_new_nums);
 	__DEBUG("root split end, old NID %"PRIu64, old_root->nid);
 }
 
@@ -434,11 +438,14 @@ void _root_fissible(struct tree *t, struct node *root)
 	uint32_t new_root_children = 2;
 
 	/* alloc a nonleaf node with 2 children */
-	cache_create_node_and_pin(t->cf, new_root_height, new_root_children, &new_root);
+	NID nid = hdr_next_nid(t->hdr);
+	node_create(nid, new_root_height, new_root_children, t->hdr->version, t->e, &new_root);
+	cache_put_and_pin(t->cf, nid, new_root);
+
 	_root_split(t, new_root, root);
 
-	cache_unpin(t->cf, root);
-	cache_unpin(t->cf, new_root);
+	cache_unpin(t->cf, root->cpair, make_cpair_attr(root));
+	cache_unpin(t->cf, new_root->cpair, make_cpair_attr(new_root));
 }
 
 /*
@@ -460,7 +467,7 @@ int root_put_cmd(struct tree *t, struct bt_cmd *cmd)
 	enum lock_type locktype = L_READ;
 
 CHANGE_LOCK_TYPE:
-	if (!cache_get_and_pin(t->cf, t->hdr->root_nid, &root, locktype))
+	if (!cache_get_and_pin(t->cf, t->hdr->root_nid, (void**)&root, locktype))
 		return NESS_ERR;
 
 	if (!hasput) {
@@ -471,11 +478,11 @@ CHANGE_LOCK_TYPE:
 	re = get_reactivity(t, root);
 	switch (re) {
 	case STABLE:
-		cache_unpin(t->cf, root);
+		cache_unpin(t->cf, root->cpair, make_cpair_attr(root));
 		break;
 	case FISSIBLE:
 		if (locktype == L_READ) {
-			cache_unpin(t->cf, root);
+			cache_unpin(t->cf, root->cpair, make_cpair_attr(root));
 			locktype = L_WRITE;
 			goto CHANGE_LOCK_TYPE;
 		}
@@ -483,7 +490,7 @@ CHANGE_LOCK_TYPE:
 		break;
 	case FLUSHBLE:
 		if (locktype == L_READ) {
-			cache_unpin(t->cf, root);
+			cache_unpin(t->cf, root->cpair, make_cpair_attr(root));
 			locktype = L_WRITE;
 			goto CHANGE_LOCK_TYPE;
 		}
@@ -494,47 +501,29 @@ CHANGE_LOCK_TYPE:
 	return NESS_OK;
 }
 
-NID hdr_next_nid(struct tree *t)
-{
-	atomic64_increment(&t->hdr->last_nid);
-	nassert(t->hdr->last_nid >= NID_START);
-
-	return t->hdr->last_nid;
-}
-
-MSN hdr_next_msn(struct tree *t)
-{
-	atomic64_increment(&t->hdr->last_msn);
-
-	return t->hdr->last_msn;
-}
-
 struct tree *tree_open(const char *dbname,
-                       struct options *opts,
-                       struct status *status,
-                       struct cache *cache,
+                       struct env *e,
                        struct tree_callback *tcb) {
 	int fd;
 	int flag;
-	int is_create = 0;
 	mode_t mode;
+	int is_create = 0;
 	struct tree *t;
 	struct node *root;
 	struct cache_file *cf;
 
 	t = xcalloc(1, sizeof(*t));
-	t->opts = opts;
-	t->status = status;
+	t->e = e;
 
 	mode = S_IRWXU | S_IRWXG | S_IRWXO;
 	flag = O_RDWR | O_BINARY;
-	if (opts->use_directio)
+	if (e->use_directio)
 		fd = ness_os_open_direct(dbname, flag, mode);
 	else
 		fd = ness_os_open(dbname, flag, mode);
 
 	if (fd == -1) {
-		if (opts->use_directio)
+		if (e->use_directio)
 			fd = ness_os_open(dbname, flag | O_CREAT, mode);
 		else
 			fd = ness_os_open_direct(dbname, flag | O_CREAT, mode);
@@ -544,42 +533,35 @@ struct tree *tree_open(const char *dbname,
 	}
 
 	t->fd = fd;
-	t->block = block_new(t->status);
+	t->hdr = hdr_new(e);
 
 	/* tree header */
-	if (is_create) {
-		t->hdr = xcalloc(1, sizeof(*t->hdr));
-		t->hdr->height = 0U;
-		t->hdr->last_nid = NID_START;
-	} else {
-		tcb->fetch_hdr(t);
+	if (!is_create) {
+		tcb->fetch_hdr_cb(fd, t->hdr);
 	}
 
-	t->hdr->opts = opts;
-
 	/* create cache file */
-	cf = cache_file_create(cache, tcb, t);
+	cf = cache_file_create(e->cache, t->fd, t->hdr, tcb);
 	t->cf = cf;
 
 	/* tree root node */
 	if (is_create) {
-		cache_create_node_and_pin(cf,
-		                          0U,		/* height */
-		                          1,		/* children num */
-		                          &root);
+		NID nid = hdr_next_nid(t->hdr);
+		node_create(nid, 0, 1, t->hdr->version, t->e, &root);
+		cache_put_and_pin(cf, nid, root);
 		root->isroot = 1;
 		node_set_dirty(root);
 
-		cache_unpin(cf, root);
+		cache_unpin(cf, root->cpair, make_cpair_attr(root));
 		t->hdr->root_nid = root->nid;
 		__DEBUG("create new root, NID %"PRIu64, root->nid);
 	} else {
 		/* get the root node */
-		if (cache_get_and_pin(cf, t->hdr->root_nid, &root, L_READ) != NESS_OK)
+		if (cache_get_and_pin(cf, t->hdr->root_nid, (void**)&root, L_READ) != NESS_OK)
 			__PANIC("get root from cache error [%" PRIu64 "]", t->hdr->root_nid);
 
 		root->isroot = 1;
-		cache_unpin(cf, root);
+		cache_unpin(cf, root->cpair, make_cpair_attr(root));
 		__DEBUG("fetch root, NID %"PRIu64, root->nid);
 	}
 
@@ -600,7 +582,7 @@ int tree_put(struct tree *t,
 	TXNID parent_xid = TXNID_NONE;
 
 	if (txn) {
-		FILENUM fn = {.fileid = t->cf->filenum};
+		int fn = t->cf->filenum;
 		child_xid = txn->txnid;
 		parent_xid = txn->root_parent_txnid;
 
@@ -620,7 +602,7 @@ int tree_put(struct tree *t,
 	}
 
 	struct bt_cmd cmd = {
-		.msn = hdr_next_msn(t),
+		.msn = hdr_next_msn(t->hdr),
 		.type = type,
 		.key = k,
 		.val = v,
@@ -634,8 +616,12 @@ void tree_free(struct tree *t)
 {
 	if (!t) return;
 
+	/* flush dirty nodes&hdr to disk */
+	cache_file_flush_dirty_nodes(t->cf);
+	cache_file_flush_hdr(t->cf);
+	cache_file_free(t->cf);
+	hdr_free(t->hdr);
+
 	ness_os_close(t->fd);
-	block_free(t->block);
-	xfree(t->hdr);
 	xfree(t);
 }

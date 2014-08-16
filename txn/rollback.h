@@ -11,17 +11,17 @@
 #include "msg.h"
 
 struct rolltype_cmdinsert {
-	FILENUM filenum;
+	int filenum;
 	struct msg *key;
 };
 
 struct rolltype_cmddelete {
-	FILENUM filenum;
+	int filenum;
 	struct msg *key;
 };
 
 struct rolltype_cmdupdate {
-	FILENUM filenum;
+	int filenum;
 	struct msg *key;
 };
 
@@ -44,8 +44,8 @@ struct roll_entry {
 
 void rollentry_free(struct roll_entry *re);
 
-void rollback_save_cmdinsert(TXN *txn, FILENUM fn, struct msg *key);
-void rollback_save_cmddelete(TXN *txn, FILENUM fn, struct msg *key);
-void rollback_save_cmdupdate(TXN *txn, FILENUM fn, struct msg *key);
+void rollback_save_cmdinsert(TXN *txn, int fn, struct msg *key);
+void rollback_save_cmddelete(TXN *txn, int fn, struct msg *key);
+void rollback_save_cmdupdate(TXN *txn, int fn, struct msg *key);
 
 #endif /* nessDB_ROLLBACK_H_*/

@@ -4,31 +4,28 @@
  *
  */
 
-#include "debug.h"
 #include "lmb.h"
 
-static inline int _lmb_entry_key_compare(void *a, void *b)
+static inline int _lmb_entry_key_compare(void *a, void *b, void *env)
 {
-	int r;
-
-	if (!a) return (-1);
-	if (!b) return (+1);
-
+	struct env *e = (struct env*)env;
 	struct leafentry *lea = (struct leafentry*)a;
 	struct leafentry *leb = (struct leafentry*)b;
 
-	uint32_t minlen = lea->keylen < leb->keylen ? lea->keylen : leb->keylen;
-	r = memcmp(lea->keyp, leb->keyp, minlen);
-	if (r == 0)
-		return (lea->keylen - leb->keylen);
-	return r;
+	nassert(e->bt_compare_func);
+	return e->bt_compare_func(lea->keyp,
+	                          lea->keylen,
+	                          leb->keyp,
+	                          leb->keylen);
 }
 
-struct lmb *lmb_new() {
+struct lmb *lmb_new(struct env *e) {
 	struct lmb *lmb = xmalloc(sizeof(*lmb));
 
 	lmb->mpool = mempool_new();
 	lmb->pma = pma_new(64);
+	lmb->e = e;
+	lmb->count = 0;
 
 	return lmb;
 }
@@ -44,9 +41,15 @@ void lmb_put(struct lmb *lmb,
 	char *base;
 	uint32_t size;
 	struct leafentry *le = NULL;
+	struct pma_coord coord;
 
 	struct leafentry kle = {.keylen = key->size, .keyp = key->data};
-	int ret = pma_find_zero(lmb->pma, (void*)&kle, _lmb_entry_key_compare, (void**)&le);
+	int ret = pma_find_zero(lmb->pma,
+	                        (void*)&kle,
+	                        _lmb_entry_key_compare,
+	                        (void*)lmb->e,
+	                        (void**)&le,
+	                        &coord);
 
 	if (ret == NESS_NOTFOUND) {
 		size = (LEAFENTRY_SIZE + key->size);
@@ -58,11 +61,34 @@ void lmb_put(struct lmb *lmb,
 		le->keyp = base + LEAFENTRY_SIZE;
 
 		xmemcpy(le->keyp, key->data, key->size);
-		pma_insert(lmb->pma, (void*)base, _lmb_entry_key_compare);
+		pma_insertat(lmb->pma,
+		             (void*)base,
+		             _lmb_entry_key_compare,
+		             (void*)lmb->e,
+		             &coord);
+		lmb->count++;
 	}
 
 	/* alloc value in mempool arena */
-	struct xr *xr = &le->xrs_static[le->num_pxrs + le->num_cxrs];
+	if (!le->xrs) {
+		le->xrs_size = 1;
+		le->xrs = (struct xr*)mempool_alloc_aligned(lmb->mpool, le->xrs_size * sizeof(struct xr));
+	} else {
+		int size = le->xrs_size;
+		int nums = (le->num_pxrs + le->num_cxrs);
+
+		if (nums == size) {
+			if (size < 8)
+				size *= 2;
+			else
+				size += 2;
+		}
+		base = mempool_alloc_aligned(lmb->mpool, sizeof(struct xr) * size);
+		xmemcpy(base, le->xrs, sizeof(struct xr) * nums);
+		le->xrs = (struct xr*)base;
+		le->xrs_size = size;
+	}
+	struct xr *xr = &le->xrs[le->num_pxrs + le->num_cxrs];
 
 	xr->type = type;
 	xr->xid = xidpair->parent_xid;
@@ -82,7 +108,7 @@ uint32_t lmb_memsize(struct lmb *lmb)
 
 uint32_t lmb_count(struct lmb *lmb)
 {
-	return pma_count(lmb->pma);
+	return lmb->count;
 }
 
 void lmb_free(struct lmb *lmb)
@@ -115,16 +141,17 @@ static void _lmb_leafentry_clone(struct leafentry *le,
 
 	new_le->keylen = le->keylen;
 	new_le->keyp = base + LEAFENTRY_SIZE;
+	new_le->xrs = (struct xr*)mempool_alloc_aligned(mpool, nums * XR_SIZE);
 
 	/* copy key bytestring to mempool arena */
 	xmemcpy(new_le->keyp, le->keyp, le->keylen);
 	for (i = 0; i < nums; i++) {
-		size = (XR_SIZE + le->xrs_static[i].vallen);
+		size = le->xrs[i].vallen;
 		base = mempool_alloc_aligned(mpool, size);
-		new_le->xrs_static[i].xid = le->xrs_static[i].xid;
-		new_le->xrs_static[i].type = le->xrs_static[i].type;
-		new_le->xrs_static[i].vallen = le->xrs_static[i].vallen;
-		new_le->xrs_static[i].valp = (base + XR_SIZE);
+		xmemcpy(base, le->xrs[i].valp, size);
+
+		new_le->xrs[i] = le->xrs[i];
+		new_le->xrs[i].valp = base;
 	}
 
 	nassert(new_le);
@@ -145,8 +172,8 @@ void lmb_split(struct lmb *lmb,
 	struct mb_iter iter;
 	uint32_t count = lmb_count(lmb);
 	uint32_t a_count = count / 2;
-	struct lmb *A = lmb_new();
-	struct lmb *B = lmb_new();
+	struct lmb *A = lmb_new(lmb->e);
+	struct lmb *B = lmb_new(lmb->e);
 
 	nassert(count > 1);
 	mb_iter_init(&iter, lmb->pma);
@@ -171,11 +198,13 @@ void lmb_split(struct lmb *lmb,
 
 		/* append to pma */
 		_lmb_leafentry_clone(le, mb->mpool, &le_clone);
-		pma_append(mb->pma, le_clone, _lmb_entry_key_compare);
+		pma_append(mb->pma, le_clone, _lmb_entry_key_compare, mb->e);
+		mb->count++;
 
 		i++;
 	}
 
+	nassert(*split_key);
 	*lmba = A;
 	*lmbb = B;
 }
@@ -196,7 +225,7 @@ static int lmb_pack_le_to_msgpack(struct leafentry *le, struct msgpack *packer)
 	/* 3) xrs */
 	nums = le->num_pxrs + le->num_cxrs;
 	for (i = 0; i < nums; i++) {
-		struct xr *xr = &le->xrs_static[i];
+		struct xr *xr = &le->xrs[i];
 
 		msgpack_pack_uint64(packer, xr->xid);
 		msgpack_pack_uint8(packer, xr->type);
@@ -225,7 +254,7 @@ static int lmb_unpack_le_from_msgpack(struct msgpack *packer, struct leafentry *
 	/* 3) xrs */
 	nums = le->num_pxrs + le->num_cxrs;
 	for (i = 0; i < nums; i++) {
-		struct xr *xr = &le->xrs_static[i];
+		struct xr *xr = &le->xrs[i];
 
 		if (!msgpack_unpack_uint64(packer, &xr->xid)) goto ERR;
 		if (!msgpack_unpack_uint8(packer, (uint8_t*)&xr->type)) goto ERR;
@@ -268,6 +297,9 @@ void msgpack_to_lmb(struct msgpack *packer, struct lmb *lmb)
 
 		/* clone le to mpool */
 		_lmb_leafentry_clone(&le, lmb->mpool, &new_le);
-		pma_append(lmb->pma, (void*)new_le, _lmb_entry_key_compare);
+		pma_append(lmb->pma,
+		           (void*)new_le,
+		           _lmb_entry_key_compare,
+		           (void*)lmb->e);
 	}
 }

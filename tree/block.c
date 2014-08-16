@@ -34,14 +34,14 @@ static int _pair_compare_fun(const void *a, const void *b)
 	return 0;
 }
 
-struct block *block_new(struct status *status) {
+struct block *block_new(struct env *e) {
 	struct block *b;
 
 	b = xcalloc(1, sizeof(*b));
 	mutex_init(&b->mtx);
 	ness_rwlock_init(&b->rwlock);
 	b->allocated += ALIGN(BLOCK_OFFSET_START);
-	b->status = status;
+	b->e = e;
 
 	return b;
 }

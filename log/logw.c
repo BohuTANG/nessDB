@@ -6,7 +6,6 @@
 
 #include "buf.h"
 #include "file.h"
-#include "debug.h"
 #include "logw.h"
 
 /**

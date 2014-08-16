@@ -1,5 +1,3 @@
-#include "internal.h"
-#include "xtypes.h"
 #include "posix.h"
 #include "db.h"
 #include "random.h"
@@ -11,6 +9,7 @@
 #define VAL_SIZE (100)
 
 struct random *rnd;
+static struct env *e;
 static struct nessdb *db;
 static uint64_t FLAGS_num = 1000000;
 static uint64_t FLAGS_cache_size = (1024 * 1024 * 1024);
@@ -148,9 +147,9 @@ void writeseq()
 	char *name = "seq write";
 	struct timespec a, b;
 
-	gettime(&a);
+	ngettime(&a);
 	dbwrite(name, 0);
-	gettime(&b);
+	ngettime(&b);
 	report(name, a, b);
 }
 
@@ -159,28 +158,30 @@ void writerandom()
 	char *name = "random write";
 	struct timespec a, b;
 
-	gettime(&a);
+	ngettime(&a);
 	dbwrite(name, 1);
-	gettime(&b);
+	ngettime(&b);
 	report(name, a, b);
 }
 
 int dbopen()
 {
 	char basedir[] = "./dbbench/";
+	char dbname[] = "test.db";
 
-	db = db_open(basedir);
+	e = env_open(basedir, -1);
+	db = db_open(e, dbname);
 	if (!db) {
 		fprintf(stderr, "open db error, see ness.event for details\n");
 		return 0;
 	}
 
-	if (!env_set_cache_size(db, FLAGS_cache_size)) {
+	if (!env_set_cache_size(e, FLAGS_cache_size)) {
 		fprintf(stderr, "set cache size error, see ness.event for details\n");
 		return 0;
 	}
 
-	if (!env_set_compress_method(db, FLAGS_method)) {
+	if (!env_set_compress_method(e, FLAGS_method)) {
 		fprintf(stderr, "set compress method error, see ness.event for details\n");
 		return 0;
 	}
@@ -243,6 +244,7 @@ int main(int argc, char *argv[])
 
 	rnd_free(rnd);
 	db_close(db);
+	env_close(e);
 
 	return 1;
 }

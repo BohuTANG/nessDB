@@ -40,9 +40,10 @@ struct nmb {
 	uint32_t count;
 	struct pma *pma;
 	struct mempool *mpool;
+	struct env *e;
 };
 
-struct nmb *nmb_new();
+struct nmb *nmb_new(struct env *);
 void nmb_free(struct nmb*);
 
 uint32_t nmb_memsize(struct nmb*);

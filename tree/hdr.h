@@ -29,10 +29,15 @@ struct hdr {
 	NID root_nid;
 	MSN last_msn;
 	DISKOFF blockoff;
-	struct options *opts;
+	struct block *block;
+	struct env *e;
 };
 
-int serialize_hdr_to_disk(int fd, struct block *b, struct hdr *hdr);
-int deserialize_hdr_from_disk(int fd, struct block *b, struct hdr **hdr);
+struct hdr *hdr_new(struct env *e);
+void hdr_free(struct hdr *hdr);
+NID hdr_next_nid(struct hdr *hdr);
+MSN hdr_next_msn(struct hdr *hdr);
+int serialize_hdr_to_disk(int fd, struct hdr *hdr);
+int deserialize_hdr_from_disk(int fd, struct hdr *hdr);
 
 #endif /* nessDB_HDR_H_ */

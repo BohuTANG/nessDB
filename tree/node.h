@@ -93,14 +93,15 @@ struct node {
 	struct msg *pivots;
 	struct partition *parts;
 	struct cpair *cpair;
+	struct env *env;
 };
 
-struct leaf_basement_node *create_leaf(void);
-struct nonleaf_childinfo *create_nonleaf(void);
-void node_ptrs_alloc(struct node *node);
-struct node *node_alloc_empty(NID nid, int height);
+struct leaf_basement_node *create_leaf(struct env *);
+struct nonleaf_childinfo *create_nonleaf(struct env *);
+struct node *node_alloc_empty(NID nid, int height, struct env *);
+struct node *node_alloc_full(NID nid, int height, int children, int layout_version, struct env *);
 void node_init_empty(struct node *node, int children, int version);
-struct node *node_alloc_full(NID nid, int height, int children, int layout_version);
+void node_ptrs_alloc(struct node *node);
 void node_free(struct node *n);
 
 void node_set_dirty(struct node *n);
@@ -112,5 +113,19 @@ uint32_t node_count(struct node *n);
 
 int node_partition_idx(struct node *node, struct msg *k);
 int node_find_heaviest_idx(struct node *node);
+
+int node_create(NID nid,
+                uint32_t height,
+                uint32_t children,
+                int version,
+                struct env *e,
+                struct node **n);
+
+int node_create_light(NID nid,
+                      uint32_t height,
+                      uint32_t children,
+                      int version,
+                      struct env *e,
+                      struct node **n);
 
 #endif /* nessDB_NODE_H_ */

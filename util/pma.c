@@ -6,7 +6,6 @@
  */
 
 #include "pma.h"
-#include "debug.h"
 
 #define UNROLLED_LIMIT (64)
 
@@ -18,7 +17,7 @@
  *	- return 0 when e < array[0]
  *	- return -1 when e > array[max]
  */
-static inline int _array_find_greater_than(struct array *a, void *e, compare_func f)
+static inline int _array_find_greater_than(struct array *a, void *k, compare_func f, void *env)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -27,7 +26,7 @@ static inline int _array_find_greater_than(struct array *a, void *e, compare_fun
 	while (lo <= hi) {
 		/* we assume that mid never overflow */
 		int mid = (lo + hi) / 2;
-		int cmp = f(a->elems[mid], e);
+		int cmp = f(a->elems[mid], k, env);
 
 		if (cmp > 0) {
 			best = mid;
@@ -48,7 +47,7 @@ static inline int _array_find_greater_than(struct array *a, void *e, compare_fun
  *	- return -1 when e < array[0]
  *	- return max idx when array[max] < e
  */
-static inline int _array_find_less_than(struct array *a, void *e, compare_func f)
+static inline int _array_find_less_than(struct array *a, void *k, compare_func f, void *env)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -57,7 +56,7 @@ static inline int _array_find_less_than(struct array *a, void *e, compare_func f
 	nassert(a);
 	while (lo <= hi) {
 		int mid = (hi + lo) / 2;
-		int cmp = f(a->elems[mid], e);
+		int cmp = f(a->elems[mid], k, env);
 
 		if (cmp < 0) {
 			best = mid;
@@ -74,24 +73,23 @@ static inline int _array_find_less_than(struct array *a, void *e, compare_func f
  * EFFECT:
  *	- binary search
  *	- find the 1st idx which e == array[idx]
- * RETURN:
- *	- return -1 when not found
  */
-static inline int _array_find_zero(struct array *a, void *e, compare_func f)
+static inline int _array_find_zero(struct array *a, void *k, compare_func f, void *env, int *found)
 {
 	int lo = 0;
 	int hi = a->used - 1;
-	int best = -1;
+	int best = hi;
 
 	nassert(a);
 	while (lo <= hi) {
 		int mid = (hi + lo) / 2;
-		int cmp = f(a->elems[mid], e);
+		int cmp = f(a->elems[mid], k, env);
 
 		if (cmp > 0) {
+			best = mid;
 			hi = mid - 1;
 		} else if (cmp == 0) {
-			best = mid;
+			*found = 1;
 			break;
 		} else {
 			lo = mid + 1;
@@ -166,7 +164,7 @@ static void _chain_insertat(struct pma *p, struct array *a, int i)
  *	- return 0 when e < array[0]
  *	- return max  when e > array[max]
  */
-static inline int _chain_find_lowerbound(struct pma *p, void *e, compare_func f)
+static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f, void *env)
 {
 	int lo = 0;
 	int hi = p->used - 1;
@@ -179,7 +177,7 @@ static inline int _chain_find_lowerbound(struct pma *p, void *e, compare_func f)
 	while (lo <= hi) {
 		int mid = (hi + lo) / 2;
 		struct array *a = chain[mid];
-		int cmp = f(*(a->elems), e);
+		int cmp = f(*(a->elems), k, env);
 
 		if (cmp <= 0) {
 			best = mid;
@@ -192,7 +190,7 @@ static inline int _chain_find_lowerbound(struct pma *p, void *e, compare_func f)
 	return best;
 }
 
-static void _pma_insertat(struct pma *p, void *e, struct pma_coord *coord, compare_func f)
+void pma_insertat(struct pma *p, void *k, compare_func f, void *env, struct pma_coord *coord)
 {
 	struct array *array = NULL;
 	int pma_used = p->used;
@@ -206,7 +204,7 @@ static void _pma_insertat(struct pma *p, void *e, struct pma_coord *coord, compa
 	} else {
 		array = p->chain[chain_idx];
 	}
-	_array_insertat(array, e, array_idx);
+	_array_insertat(array, k, array_idx);
 	if (array->used > UNROLLED_LIMIT) {
 		struct array *new_arr;
 		int half = array->used / 2;
@@ -215,7 +213,7 @@ static void _pma_insertat(struct pma *p, void *e, struct pma_coord *coord, compa
 		if (half > 0) {
 			int last = array->used - 1;
 
-			while (f(array->elems[half - 1], array->elems[half]) == 0) {
+			while (f(array->elems[half - 1], array->elems[half], env) == 0) {
 				if (half == last)
 					return;
 				half++;
@@ -251,14 +249,14 @@ void pma_free(struct pma *p)
 	xfree(p);
 }
 
-void pma_insert(struct pma *p, void *e, compare_func f)
+void pma_insert(struct pma *p, void *k, compare_func f, void *env)
 {
 	int array_idx = 0;
-	int chain_idx = _chain_find_lowerbound(p, e, f);
+	int chain_idx = _chain_find_lowerbound(p, k, f, env);
 	struct array *arr = p->chain[chain_idx];
 
 	if (arr)
-		array_idx = _array_find_greater_than(arr, e, f);
+		array_idx = _array_find_greater_than(arr, k, f, env);
 
 	/* if array_idx is -1, means that we got the end of the array */
 	if (nessunlikely(array_idx == -1))
@@ -266,11 +264,11 @@ void pma_insert(struct pma *p, void *e, compare_func f)
 
 	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
 
-	_pma_insertat(p, e, &coord, f);
+	pma_insertat(p, k, f, env, &coord);
 	p->count++;
 }
 
-void pma_append(struct pma *p, void *e, compare_func f)
+void pma_append(struct pma *p, void *k, compare_func f, void *env)
 {
 	int array_idx = 0;
 	int chain_idx = 0;
@@ -286,7 +284,7 @@ void pma_append(struct pma *p, void *e, compare_func f)
 	}
 
 	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
-	_pma_insertat(p, e, &coord, f);
+	pma_insertat(p, k, f, env, &coord);
 
 	p->count++;
 }
@@ -296,7 +294,7 @@ uint32_t pma_count(struct pma *p)
 	return p->count;
 }
 
-int pma_find_minus(struct pma *p, void *k, compare_func f, void **e)
+int pma_find_minus(struct pma *p, void *k, compare_func f, void *env, void **retval)
 {
 	int chain_idx = 0;
 	int array_idx = 0;
@@ -305,29 +303,29 @@ int pma_find_minus(struct pma *p, void *k, compare_func f, void **e)
 
 	if (p->used == 0)
 		return ret;
-	
-	chain_idx = _chain_find_lowerbound(p, k, f);
+
+	chain_idx = _chain_find_lowerbound(p, k, f, env);
 	arr = p->chain[chain_idx];
 	if (arr)
-		array_idx = _array_find_less_than(arr, k, f);
+		array_idx = _array_find_less_than(arr, k, f, env);
 	if (nessunlikely(array_idx == -1)) {
 		if (chain_idx > 0) {
 			chain_idx -= 1;
 			arr = p->chain[chain_idx];
 			if (arr->used > 0) {
-				*e = arr->elems[arr->used - 1];
+				*retval = arr->elems[arr->used - 1];
 				ret = NESS_OK;
 			}
 		}
 	} else {
-		*e = arr->elems[array_idx];
+		*retval = arr->elems[array_idx];
 		ret = NESS_OK;
 	}
 
 	return ret;
 }
 
-int pma_find_plus(struct pma *p, void *k, compare_func f, void **e)
+int pma_find_plus(struct pma *p, void *k, compare_func f, void *env, void **retval)
 {
 	int chain_idx = 0;
 	int array_idx = 0;
@@ -337,47 +335,57 @@ int pma_find_plus(struct pma *p, void *k, compare_func f, void **e)
 	if (p->used == 0)
 		return ret;
 
-	chain_idx = _chain_find_lowerbound(p, k, f);
+	chain_idx = _chain_find_lowerbound(p, k, f, env);
 	arr = p->chain[chain_idx];
 	if (arr)
-		array_idx = _array_find_greater_than(arr, k, f);
+		array_idx = _array_find_greater_than(arr, k, f, env);
 
 	if (nessunlikely(array_idx == -1)) {
 		if (chain_idx < (p->used - 1)) {
 			chain_idx += 1;
 			arr = p->chain[chain_idx];
 			if (arr->used > 0) {
-				*e = arr->elems[0];
+				*retval = arr->elems[0];
 				ret = NESS_OK;
 			}
 		}
 	} else {
-		*e = arr->elems[array_idx];
+		*retval = arr->elems[array_idx];
 		ret = NESS_OK;
 	}
 
 	return ret;
 }
 
-int pma_find_zero(struct pma *p, void *k, compare_func f, void **e)
+int pma_find_zero(struct pma *p,
+                  void *k,
+                  compare_func f,
+                  void *env,
+                  void **retval,
+                  struct pma_coord *coord)
 {
+	int found = 0;
 	int chain_idx = 0;
 	int array_idx = 0;
 	int ret = NESS_NOTFOUND;
 	struct array *arr;
 
+	memset(coord, 0, sizeof(*coord));
 	if (p->used == 0)
 		return ret;
 
-	chain_idx = _chain_find_lowerbound(p, k, f);
+	chain_idx = _chain_find_lowerbound(p, k, f, env);
 	arr = p->chain[chain_idx];
 	if (arr)
-		array_idx = _array_find_zero(arr, k, f);
+		array_idx = _array_find_zero(arr, k, f, env, &found);
 
 	/* got one value */
-	if (array_idx != -1) {
-		*e = arr->elems[array_idx];
+	if (found) {
+		*retval = arr->elems[array_idx];
 		ret = NESS_OK;
+	} else {
+		coord->chain_idx = chain_idx;
+		coord->array_idx = array_idx;
 	}
 
 	return ret;

@@ -52,16 +52,16 @@ void _child_maybe_reactivity(struct tree *t, struct node *parent, struct node *c
 
 	switch (re) {
 	case STABLE:
-		cache_unpin(t->cf, child);
-		cache_unpin(t->cf, parent);
+		cache_unpin(t->cf, child->cpair, make_cpair_attr(child));
+		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
 		break;
 	case FISSIBLE:
 		node_split_child(t, parent, child);
-		cache_unpin(t->cf, child);
-		cache_unpin(t->cf, parent);
+		cache_unpin(t->cf, child->cpair, make_cpair_attr(child));
+		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
 		break;
 	case FLUSHBLE:
-		cache_unpin(t->cf, parent);
+		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
 		_flush_some_child(t, child);
 		break;
 	}
@@ -91,7 +91,7 @@ void _flush_some_child(struct tree *t, struct node *parent)
 	nassert(childnum < parent->n_children);
 	part = &parent->parts[childnum];
 	buffer = part->ptr.u.nonleaf->buffer;
-	if (cache_get_and_pin(t->cf, part->child_nid, &child, L_WRITE) != NESS_OK) {
+	if (cache_get_and_pin(t->cf, part->child_nid, (void**)&child, L_WRITE) != NESS_OK) {
 		__ERROR("cache get node error, nid [%" PRIu64 "]", part->child_nid);
 		return;
 	}
@@ -99,7 +99,7 @@ void _flush_some_child(struct tree *t, struct node *parent)
 	re = get_reactivity(t, child);
 	if (re == STABLE) {
 		node_set_dirty(parent);
-		part->ptr.u.nonleaf->buffer = nmb_new();
+		part->ptr.u.nonleaf->buffer = nmb_new(t->e);
 		_flush_buffer_to_child(t, child, buffer);
 		nmb_free(buffer);
 	}
@@ -135,7 +135,7 @@ static void _flush_node_func(void *fe)
 		if (re == FLUSHBLE)
 			_flush_some_child(t, n);
 		else
-			cache_unpin(t->cf, n);
+			cache_unpin(t->cf, n->cpair, make_cpair_attr(n));
 	} else {
 		/* we want flush some buffer from n */
 		_flush_some_child(t, n);
@@ -178,7 +178,7 @@ void tree_flush_node_on_background(struct tree *t, struct node *parent)
 	part = &parent->parts[childnum];
 
 	/* pin the child */
-	if (cache_get_and_pin(t->cf, part->child_nid, &child, L_WRITE) != NESS_OK) {
+	if (cache_get_and_pin(t->cf, part->child_nid, (void**)&child, L_WRITE) != NESS_OK) {
 		__ERROR("cache get node error, nid [%" PRIu64 "]", part->child_nid);
 		return;
 	}
@@ -188,11 +188,11 @@ void tree_flush_node_on_background(struct tree *t, struct node *parent)
 		/* detach buffer from parent */
 		struct nmb *buf = part->ptr.u.nonleaf->buffer;
 		node_set_dirty(parent);
-		part->ptr.u.nonleaf->buffer = nmb_new();
+		part->ptr.u.nonleaf->buffer = nmb_new(t->e);
 
 		/* flush it in background thread */
 		_place_node_and_buffer_on_background(t, child, buf);
-		cache_unpin(t->cf, parent);
+		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
 	} else {
 		/* the child is reactive, we deal it in main thread */
 		_child_maybe_reactivity(t, parent, child);

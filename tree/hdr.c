@@ -4,13 +4,44 @@
  *
  */
 
+#include "posix.h"
 #include "file.h"
 #include "version.h"
-#include "compress/compress.h"
 #include "msgpack.h"
 #include "crc32.h"
 #include "hdr.h"
 
+struct hdr *hdr_new(struct env *e) {
+	struct hdr *hdr = xcalloc(1, sizeof(struct hdr));
+
+	hdr->e = e;
+	hdr->height = 0U;
+	hdr->last_nid = NID_START;
+	hdr->block = block_new(e);
+
+	return hdr;
+}
+
+void hdr_free(struct hdr *hdr)
+{
+	block_free(hdr->block);
+	xfree(hdr);
+}
+
+NID hdr_next_nid(struct hdr *hdr)
+{
+	atomic64_increment(&hdr->last_nid);
+	nassert(hdr->last_nid >= NID_START);
+
+	return hdr->last_nid;
+}
+
+MSN hdr_next_msn(struct hdr *hdr)
+{
+	atomic64_increment(&hdr->last_msn);
+
+	return hdr->last_msn;
+}
 
 /**********************************************************************
  *
@@ -28,7 +59,7 @@
  *  +----------+------+-----------+---------------+--------+
  *               ...
  */
-int _serialize_blockpairs_to_disk(int fd, struct block *b, struct hdr *hdr)
+static int _serialize_blockpairs_to_disk(int fd, struct hdr *hdr)
 {
 	uint32_t i;
 	int r = NESS_OK;
@@ -37,6 +68,7 @@ int _serialize_blockpairs_to_disk(int fd, struct block *b, struct hdr *hdr)
 	DISKOFF address;
 	struct msgpack *packer;
 	uint32_t xsum;
+	struct block *b = hdr->block;
 
 	packer = msgpack_new(1 << 20);
 	for (i = 0; i < b->pairs_used; i++) {
@@ -85,7 +117,7 @@ ERR:
 	return r;
 }
 
-int _deserialize_blockpairs_from_disk(int fd, struct block *b, struct hdr *hdr)
+static int _deserialize_blockpairs_from_disk(int fd, struct hdr *hdr)
 {
 	int r = NESS_ERR;
 	uint32_t read_size;
@@ -139,7 +171,7 @@ int _deserialize_blockpairs_from_disk(int fd, struct block *b, struct hdr *hdr)
 	}
 
 	if (block_count > 0)
-		block_init(b, pairs, block_count);
+		block_init(hdr->block, pairs, block_count);
 	xfree(pairs);
 
 	msgpack_free(packer);
@@ -224,7 +256,7 @@ ERR:
 /*
  * double-write for header
  */
-int serialize_hdr_to_disk(int fd, struct block *b, struct hdr *hdr)
+int serialize_hdr_to_disk(int fd, struct hdr *hdr)
 {
 	int r;
 
@@ -232,7 +264,7 @@ int serialize_hdr_to_disk(int fd, struct block *b, struct hdr *hdr)
 	DISKOFF v1_write_off = ALIGN(512);
 
 	/* first to serialize pairs to disk */
-	if (_serialize_blockpairs_to_disk(fd, b, hdr) != NESS_OK) {
+	if (_serialize_blockpairs_to_disk(fd, hdr) != NESS_OK) {
 		r = NESS_SERIAL_BLOCKPAIR_ERR;
 		goto ERR;
 	}
@@ -248,15 +280,13 @@ ERR:
 }
 
 
-int read_hdr_from_disk(int fd, struct block *b, struct hdr **h, DISKOFF off)
+int read_hdr_from_disk(int fd, struct hdr *hdr, DISKOFF off)
 {
 	int r = NESS_ERR;
-	struct hdr *hdr = NULL;
 	struct msgpack *packer = NULL;
 	uint32_t exp_xsum, act_xsum;
 	uint32_t read_size, align_size;
 
-	hdr = xcalloc(1, sizeof(*hdr));
 	read_size = (
 	                    + 8		/* magic        */
 	                    + 8		/* last nid     */
@@ -309,33 +339,30 @@ int read_hdr_from_disk(int fd, struct block *b, struct hdr **h, DISKOFF off)
 	}
 
 	/* block pairs */
-	r = _deserialize_blockpairs_from_disk(fd, b, hdr);
+	r = _deserialize_blockpairs_from_disk(fd, hdr);
 	if (r != NESS_OK) {
 		r = NESS_DESERIAL_BLOCKPAIR_ERR;
 		goto ERR;
 	}
 
-	*h = hdr;
-
 	msgpack_free(packer);
 	return NESS_OK;
 ERR:
 	msgpack_free(packer);
-	xfree(hdr);
 	return r;
 }
 
-int deserialize_hdr_from_disk(int fd, struct block *b, struct hdr **h)
+int deserialize_hdr_from_disk(int fd, struct hdr *h)
 {
 	int r;
 	DISKOFF v0_read_off = 0UL;
 	DISKOFF v1_read_off = ALIGN(512);
 
-	r = read_hdr_from_disk(fd, b, h, v0_read_off);
+	r = read_hdr_from_disk(fd, h, v0_read_off);
 	if (r != NESS_OK) {
 		__ERROR("1st header broken, "
 		        "try to read next, nxt-off[%"PRIu64"]", v1_read_off);
-		r = read_hdr_from_disk(fd, b, h, v1_read_off);
+		r = read_hdr_from_disk(fd, h, v1_read_off);
 	}
 
 	return r;

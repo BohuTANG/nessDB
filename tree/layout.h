@@ -19,12 +19,10 @@
  *
  */
 int serialize_node_to_disk(int fd,
-                           struct block *b,
                            struct node *node,
                            struct hdr *hdr);
 
 int deserialize_node_from_disk(int fd,
-                               struct block *block,
                                struct hdr *hdr,
                                NID nid,
                                struct node **node);

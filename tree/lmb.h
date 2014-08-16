@@ -7,6 +7,7 @@
 #ifndef nessDB_LMB_H_
 #define nessDB_LMB_H_
 
+#include "env.h"
 #include "internal.h"
 #include "msgpack.h"
 #include "mempool.h"
@@ -25,9 +26,10 @@ struct xr {
 struct leafentry {
 	uint32_t keylen;
 	void *keyp;
+	uint16_t xrs_size;
 	uint32_t num_pxrs;		/* how many of uxrs[] are provisional */
 	uint32_t num_cxrs;		/* how many of uxrs[] are committed */
-	struct xr xrs_static[32];
+	struct xr *xrs;
 };
 
 struct lmb_values {
@@ -36,11 +38,13 @@ struct lmb_values {
 };
 
 struct lmb {
+	uint32_t count;
 	struct pma *pma;
 	struct mempool *mpool;
+	struct env *e;
 };
 
-struct lmb *lmb_new();
+struct lmb *lmb_new(struct env *);
 void lmb_free(struct lmb*);
 
 uint32_t lmb_memsize(struct lmb*);

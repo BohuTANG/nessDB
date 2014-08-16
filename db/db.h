@@ -19,7 +19,10 @@ extern "C" {
 		struct msg val;
 	};
 
-	struct nessdb *db_open(const char *basedir);
+	struct env *env_open(const char *home, uint32_t flags);
+	void env_close(struct env *e);
+
+	struct nessdb *db_open(struct env *e, const char *dbname);
 	int db_get(struct nessdb *db, struct msg *k, struct msg *v);
 	int db_set(struct nessdb *db, struct msg *k, struct msg *v);
 	int db_del(struct nessdb *db, struct msg *k);
@@ -35,8 +38,8 @@ extern "C" {
 	void db_c_next(struct db_cursor *cursor);
 	void db_c_prev(struct db_cursor *cursor);
 
-	int env_set_cache_size(struct nessdb *db, uint64_t cache_size);
-	int env_set_compress_method(struct nessdb *db, ness_compress_method_t method);
+	int env_set_cache_size(struct env *env, uint64_t cache_size);
+	int env_set_compress_method(struct env *env , int method);
 
 #ifdef __cplusplus
 }

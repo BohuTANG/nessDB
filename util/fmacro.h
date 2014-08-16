@@ -7,8 +7,6 @@
 #ifndef nessDB_FMACRO_H_
 #define nessDB_FMACRO_H_
 
-#define _BSD_SOURCE
-
 #if defined(__linux__)
 #define _GNU_SOURCE
 #endif

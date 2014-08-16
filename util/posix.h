@@ -7,13 +7,17 @@
 #ifndef nessDB_POSIX_H_
 #define nessDB_POSIX_H_
 
-#include "internal.h"
-#include "debug.h"
+#include <stdlib.h>
+#include <stdint.h>
+#include <assert.h>
+#include <pthread.h>
+#include <time.h>
+#include <sys/time.h>
+
 
 #define pthread_call(result, msg)					\
 	do {								\
 		if (result != 0) {					\
-			__ERROR("[%s], %s", strerror(result), msg);	\
 			abort();					\
 		}							\
 	} while(0)
@@ -116,8 +120,8 @@ static inline void ness_rwlock_init(struct rwlock *rwlock)
 
 static inline void ness_rwlock_destroy(struct rwlock *rwlock)
 {
-	nassert(rwlock->reader == 0 && rwlock->want_reader == 0);
-	nassert(rwlock->writer == 0 && rwlock->want_writer == 0);
+	assert(rwlock->reader == 0 && rwlock->want_reader == 0);
+	assert(rwlock->writer == 0 && rwlock->want_writer == 0);
 	cond_destroy(&rwlock->wait_read);
 	cond_destroy(&rwlock->wait_write);
 }
@@ -136,8 +140,8 @@ static inline void rwlock_read_lock(struct rwlock *rwlock, ness_mutex_t *mutex)
 
 static inline void rwlock_read_unlock(struct rwlock *rwlock)
 {
-	nassert(rwlock->reader > 0);
-	nassert(rwlock->writer == 0);
+	assert(rwlock->reader > 0);
+	assert(rwlock->writer == 0);
 	rwlock->reader--;
 	if (rwlock->want_writer > 0)
 		cond_signal(&rwlock->wait_write);
@@ -156,8 +160,8 @@ static inline void rwlock_write_lock(struct rwlock *rwlock, ness_mutex_t *mutex)
 
 static inline void rwlock_write_unlock(struct rwlock *rwlock)
 {
-	nassert(rwlock->reader == 0);
-	nassert(rwlock->writer == 1);
+	assert(rwlock->reader == 0);
+	assert(rwlock->writer == 1);
 	rwlock->writer--;
 	if (rwlock->want_writer)
 		cond_signal(&rwlock->wait_write);
@@ -215,7 +219,7 @@ void cron_free(struct cron *cron);
 /*******************************
  * time
  ******************************/
-void gettime(struct timespec *a);
+void ngettime(struct timespec *a);
 long long time_diff_ms(struct timespec start, struct timespec end);
 
 #endif /* nessDB_POSIX_H_ */

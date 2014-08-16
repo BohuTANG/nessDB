@@ -8,8 +8,8 @@
 #define nessDB_BLOCK_H_
 
 #include "internal.h"
-#include "file.h"
 #include "posix.h"
+#include "file.h"
 
 /**
  * @file block.h
@@ -37,9 +37,10 @@ struct block {
 	struct status *status;
 	ness_mutex_t mtx;
 	struct rwlock rwlock;
+	struct env *e;
 };
 
-struct block *block_new(struct status*);
+struct block *block_new(struct env*);
 void block_init(struct block *b,
                 struct block_pair *pairs,
                 uint32_t size);

@@ -221,7 +221,7 @@ void compress_partitions(struct node *node, struct hdr *hdr)
 	uint32_t bound;
 	uint32_t start = 0U;
 	struct msgpack *part_packer = msgpack_new(1 << 20);
-	ness_compress_method_t method = hdr->opts->compress_method;
+	ness_compress_method_t method = hdr->e->compress_method;
 
 	__DEBUG("-node nid %"PRIu64 " , children %d, height %d", node->nid, node->n_children, node->height);
 	for (i = 0; i < node->n_children; i++) {
@@ -331,13 +331,14 @@ void deserialize_node_from_packer(struct msgpack *packer, struct node *node, str
 	deserialize_node_end(node);
 }
 
-int serialize_node_to_disk(int fd, struct block *block, struct node *node, struct hdr *hdr)
+int serialize_node_to_disk(int fd, struct node *node, struct hdr *hdr)
 {
 	int r;
 	uint32_t xsum = 0;
 	uint32_t real_size;
 	uint32_t write_size;
 	DISKOFF address;
+	struct block *block = hdr->block;
 	struct msgpack *write_packer = msgpack_new(1 << 20);
 
 	serialize_node_to_packer(write_packer, node, hdr);
@@ -365,7 +366,7 @@ ERR:
 	return r;
 }
 
-int deserialize_node_from_disk(int fd, struct block *block, struct hdr *hdr, NID nid, struct node **node)
+int deserialize_node_from_disk(int fd, struct hdr *hdr, NID nid, struct node **node)
 {
 	int r = NESS_OK;
 	struct block_pair *bp;
@@ -375,6 +376,7 @@ int deserialize_node_from_disk(int fd, struct block *block, struct hdr *hdr, NID
 	uint32_t real_size;
 	uint32_t read_size;
 	struct node *n;
+	struct block *block = hdr->block;
 	struct msgpack *read_packer = NULL;
 
 	r = block_get_off_bynid(block, nid, &bp);
@@ -404,7 +406,7 @@ int deserialize_node_from_disk(int fd, struct block *block, struct hdr *hdr, NID
 	}
 
 	msgpack_seekfirst(read_packer);
-	n = node_alloc_empty(nid, bp->height);
+	n = node_alloc_empty(nid, bp->height, hdr->e);
 	deserialize_node_from_packer(read_packer, n, hdr);
 	*node = n;
 

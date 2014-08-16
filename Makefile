@@ -1,5 +1,5 @@
 PLATFORM_SHARED_CFLAGS=-fPIC
-PLATFORM_SHARED_LDFLAGS=-c -std=c99 -W -Wall -Werror
+PLATFORM_SHARED_LDFLAGS=-c -W -Wall -Werror -std=c99
 
 CC = gcc
 #OPT ?= -O2 -DERROR# (A) Production use (optimized mode)
@@ -25,6 +25,7 @@ LIB_OBJS =	 			\
 	./tree/lmb.o			\
 	./tree/msg.o			\
 	./tree/mb.o			\
+	./util/comparator.o		\
 	./util/xmalloc.o		\
 	./util/mempool.o		\
 	./util/kibbutz.o		\

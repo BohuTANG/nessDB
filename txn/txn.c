@@ -5,9 +5,7 @@
  */
 
 #include "txn.h"
-#include "txnmgr.h"
 #include "tree.h"
-#include "debug.h"
 
 int txn_begin(TXN *parent,
               LOGGER *logger,
@@ -71,7 +69,9 @@ int txn_commit(TXN *txn)
 
 int txn_abort(TXN *txn)
 {
-	FILENUM fn;
+	(void)txn;
+	/*
+	int fn;
 	struct tree *t = NULL;
 	struct msg *rollkey = NULL;
 	struct roll_entry *re = txn->rollentry;
@@ -113,6 +113,7 @@ int txn_abort(TXN *txn)
 		TXN *parent = txn->parent;
 		txn->parent = parent->child = NULL;
 	}
+	*/
 
 	return NESS_OK;
 }
