@@ -301,5 +301,6 @@ void msgpack_to_lmb(struct msgpack *packer, struct lmb *lmb)
 		           (void*)new_le,
 		           _lmb_entry_key_compare,
 		           (void*)lmb->e);
+		lmb->count++;
 	}
 }

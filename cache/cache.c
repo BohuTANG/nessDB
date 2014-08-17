@@ -266,6 +266,9 @@ void _run_eviction(struct cache *c)
 	/* TODO (BohuTANG) : for all cache files */
 	struct cache_file *cf = c->cf_first;
 
+	if (!cf)
+		return;
+
 	/* barriered by clock READ lock */
 	_cf_clock_read_lock(cf);
 	cur = cf->clock->head;
@@ -305,6 +308,7 @@ struct cache *cache_new(struct env *e) {
 	struct cache *c;
 
 	c = xcalloc(1, sizeof(*c));
+	mutex_init(&c->mtx);
 	mutex_init(&c->makeroom_mtx);
 	cond_init(&c->wait_makeroom);
 

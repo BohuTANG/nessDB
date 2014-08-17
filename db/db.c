@@ -29,8 +29,8 @@ struct env *env_open(const char *home, uint32_t flags) {
 
 	/* tree */
 	e->inner_node_fanout = 16;
-	e->inner_default_node_size = 4 << 20;	/* 4MB */
-	e->leaf_default_node_size = 1 << 20;		/* 1MB */
+	e->inner_default_node_size = 4 << 20;		/* 4MB */
+	e->leaf_default_node_size = 4 << 20;		/* 4MB */
 	e->leaf_default_basement_size = 128 << 10;	/* 128KB */
 
 	/* cache */

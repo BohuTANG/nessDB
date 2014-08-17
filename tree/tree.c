@@ -115,6 +115,15 @@ static void _leaf_and_lmb_split(struct tree *t,
 	struct lmb *mbb;
 	struct msg *sp_key = NULL;
 
+	__DEBUG("leaf split begin, NID %"PRIu64""
+	        ", nodesz %d"
+	        ", nodec %d"
+	        ", children %d"
+	        , leaf->nid
+	        , node_size(leaf)
+	        , node_count(leaf)
+	        , leaf->n_children);
+
 	leafa = leaf;
 	cptra = &leafa->parts[0].ptr;
 
@@ -138,6 +147,24 @@ static void _leaf_and_lmb_split(struct tree *t,
 	/* set dirty */
 	node_set_dirty(leafa);
 	node_set_dirty(leafb);
+
+	__DEBUG("leaf split end, leafa NID %"PRIu64""
+	        ", nodesz %d"
+	        ", nodec %d"
+	        ", children %d"
+	        , leafa->nid
+	        , node_size(leafa)
+	        , node_count(leafa)
+	        , leafa->n_children);
+
+	__DEBUG("leaf split end, leafb NID %"PRIu64""
+	        ", nodesz %d"
+	        ", nodec %d"
+	        ", children %d"
+	        , leafb->nid
+	        , node_size(leafb)
+	        , node_count(leafb)
+	        , leafb->n_children);
 
 	*a = leafa;
 	*b = leafb;
@@ -183,6 +210,15 @@ static void _node_split(struct tree *t,
 	struct node *nodeb;
 	struct msg *spk;
 
+	__DEBUG("nonleaf split begin, NID %"PRIu64""
+	        ", nodesz %d"
+	        ", nodec %d"
+	        ", children %d"
+	        , node->nid
+	        , node_size(node)
+	        , node_count(node)
+	        , node->n_children);
+
 	nodea = node;
 	pivots_old = node->n_children - 1;
 	nassert(pivots_old > 2);
@@ -218,6 +254,24 @@ static void _node_split(struct tree *t,
 
 	node_set_dirty(nodea);
 	node_set_dirty(nodeb);
+
+	__DEBUG("nonleaf split end, nodea NID %"PRIu64""
+	        ", nodesz %d"
+	        ", nodec %d"
+	        ", children %d"
+	        , nodea->nid
+	        , node_size(nodea)
+	        , node_count(nodea)
+	        , nodea->n_children);
+
+	__DEBUG("nonleaf split end, nodeb NID %"PRIu64""
+	        ", nodesz %d"
+	        ", nodec %d"
+	        ", children %d"
+	        , nodeb->nid
+	        , node_size(nodeb)
+	        , node_count(nodeb)
+	        , nodeb->n_children);
 
 	*a = nodea;
 	*b = nodeb;
@@ -279,7 +333,7 @@ enum reactivity get_reactivity(struct tree *t, struct node *node)
 		if (children >= t->e->inner_node_fanout)
 			return FISSIBLE;
 
-		if (node_size(node) > t->e->inner_default_node_size)
+		if (node_size(node) >= t->e->inner_default_node_size)
 			return FLUSHBLE;
 	}
 

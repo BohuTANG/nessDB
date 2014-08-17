@@ -17,7 +17,7 @@ void __debug_raw(int level,
 	char buf[64];
 	time_t now = time(NULL);
 	FILE *fp = fopen(EVENT_NAME, "a");
-	const char *c[] = {"INFO", "WARN", "DEBUG", "ERROR"};
+	const char *c[] = {"INFO", "DEBUG", "WARN", "ERROR"};
 
 	if (fp) {
 		strftime(buf, sizeof(buf), "%d %b %I:%M:%S", localtime(&now));

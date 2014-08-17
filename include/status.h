@@ -23,6 +23,7 @@
  * some probes
  */
 struct status {
+	uint64_t tree_put_bytes;
 	uint64_t tree_leaf_split_nums;
 	uint64_t tree_leaf_put_nums;
 	uint64_t tree_leaf_nums;
@@ -73,33 +74,41 @@ static inline void status_add(uint64_t *dest, uint64_t add)
 static inline void status_free(struct status *status)
 {
 #if 1
-	__WARN("tree_nodes: leaf [%" PRIu64 "], nonleaf [%" PRIu64 "]",
-	       status->tree_leaf_nums,
-	       status->tree_nonleaf_nums
-	      );
+	__DEBUG("tree_nodes: leaf [%" PRIu64 "], nonleaf [%" PRIu64 "]",
+	        status->tree_leaf_nums,
+	        status->tree_nonleaf_nums
+	       );
 
-	__WARN("leaf_read_from_disk_nums [%" PRIu64 "]", status->leaf_read_from_disk_nums);
-	__WARN("leaf_compress_data_costs [%" PRIu64 "], leaf_uncompress_data_costs [%" PRIu64 "]",
-	       status->leaf_compress_data_costs,
-	       status->leaf_uncompress_data_costs
-	      );
+	/* leaf */
+	__DEBUG("leaf_read_from_disk_nums [%" PRIu64 "]", status->leaf_read_from_disk_nums);
+	__DEBUG("leaf_compress_data_costs [%" PRIu64 "], leaf_uncompress_data_costs [%" PRIu64 "]",
+	        status->leaf_compress_data_costs,
+	        status->leaf_uncompress_data_costs
+	       );
 
-	__WARN("nonleaf_read_from_disk_nums [%" PRIu64 "]", status->nonleaf_read_from_disk_nums);
-	__WARN("nonleaf_compress_data_costs [%" PRIu64 "], nonleaf_uncompress_data_costs [%" PRIu64 "]",
-	       status->nonleaf_compress_data_costs,
-	       status->nonleaf_uncompress_data_costs
-	      );
+	/* nonleaf */
+	__DEBUG("nonleaf_read_from_disk_nums [%" PRIu64 "]", status->nonleaf_read_from_disk_nums);
+	__DEBUG("nonleaf_compress_data_costs [%" PRIu64 "], nonleaf_uncompress_data_costs [%" PRIu64 "]",
+	        status->nonleaf_compress_data_costs,
+	        status->nonleaf_uncompress_data_costs
+	       );
 
-	__WARN("tree_node_fetch_nums [%" PRIu64 "], tree_node_fetch_costs_ms [%" PRIu64 "]",
-	       status->tree_node_fetch_nums,
-	       status->tree_node_fetch_costs
-	      );
+	/* flush */
+	__DEBUG("tree_node_flush_nums [%" PRIu64 "], tree_node_flush_costs [%" PRIu64 "]",
+	        status->tree_node_flush_nums,
+	        status->tree_node_flush_costs
+	       );
 
-	__WARN("tree_flush_child_nums [%" PRIu64 "], tree_flush_child_costs_ms [%" PRIu64 "]",
-	       status->tree_flush_child_nums,
-	       status->tree_flush_child_costs
-	      );
+	/* fetch */
+	__DEBUG("tree_node_fetch_nums [%" PRIu64 "], tree_node_fetch_costs [%" PRIu64 "]",
+	        status->tree_node_fetch_nums,
+	        status->tree_node_fetch_costs
+	       );
 
+	__DEBUG("tree_flush_child_nums [%" PRIu64 "], tree_flush_child_costs_ms [%" PRIu64 "]",
+	        status->tree_flush_child_nums,
+	        status->tree_flush_child_costs
+	       );
 #endif
 	xfree(status);
 }

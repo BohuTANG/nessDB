@@ -269,9 +269,14 @@ static int _create_node(NID nid,
 	} else {
 		new_node = node_alloc_full(nid, height, children, version, e);
 	}
+	if (height > 0)
+		status_increment(&e->status->tree_nonleaf_nums);
+	else
+		status_increment(&e->status->tree_leaf_nums);
+
 	*n = new_node;
 
-	return 1;
+	return NESS_OK;
 }
 
 int node_create(NID nid,

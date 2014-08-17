@@ -80,12 +80,12 @@ void _child_maybe_reactivity(struct tree *t, struct node *parent, struct node *c
  */
 void _flush_some_child(struct tree *t, struct node *parent)
 {
-	enum reactivity re;
-
 	int childnum;
+	enum reactivity re;
 	struct node *child;
 	struct partition *part;
 	struct nmb *buffer;
+	struct timespec t1, t2;
 
 	childnum = node_find_heaviest_idx(parent);
 	nassert(childnum < parent->n_children);
@@ -96,6 +96,7 @@ void _flush_some_child(struct tree *t, struct node *parent)
 		return;
 	}
 
+	ngettime(&t1);
 	re = get_reactivity(t, child);
 	if (re == STABLE) {
 		node_set_dirty(parent);
@@ -103,6 +104,10 @@ void _flush_some_child(struct tree *t, struct node *parent)
 		_flush_buffer_to_child(t, child, buffer);
 		nmb_free(buffer);
 	}
+	ngettime(&t2);
+	status_add(&t->e->status->tree_flush_child_costs, time_diff_ms(t1, t2));
+	status_increment(&t->e->status->tree_flush_child_nums);
+
 	_child_maybe_reactivity(t, parent, child);
 }
 

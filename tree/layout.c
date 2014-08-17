@@ -223,8 +223,8 @@ void compress_partitions(struct node *node, struct hdr *hdr)
 	struct msgpack *part_packer = msgpack_new(1 << 20);
 	ness_compress_method_t method = hdr->e->compress_method;
 
-	__DEBUG("-node nid %"PRIu64 " , children %d, height %d", node->nid, node->n_children, node->height);
 	for (i = 0; i < node->n_children; i++) {
+		struct timespec t1, t2;
 		struct child_pointer *ptr = &node->parts[i].ptr;
 		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
 
@@ -239,8 +239,15 @@ void compress_partitions(struct node *node, struct hdr *hdr)
 		bound = ness_compress_bound(method, disk_info->uncompressed_size);
 		disk_info->compressed_ptr =  xcalloc(1, bound);
 
+		/* compress */
+		ngettime(&t1);
 		ness_compress(method, part_packer->base, part_packer->NUL,
 		              disk_info->compressed_ptr, &disk_info->compressed_size);
+		ngettime(&t2);
+		if (node->height > 0)
+			status_add(&hdr->e->status->nonleaf_compress_data_costs, time_diff_ms(t1, t2));
+		else
+			status_add(&hdr->e->status->leaf_compress_data_costs, time_diff_ms(t1, t2));
 
 		do_xsum(disk_info->compressed_ptr, disk_info->compressed_size, &disk_info->xsum);
 		start += (disk_info->compressed_size + sizeof(disk_info->xsum));
@@ -254,18 +261,27 @@ void compress_partitions(struct node *node, struct hdr *hdr)
  * REQUIRE:
  *	- node disk_info has read
  */
-void decompress_partitions(struct node *node)
+void decompress_partitions(struct node *node, struct hdr *hdr)
 {
 	int r;
 	int i;
 	struct msgpack *part_packer;
 
 	for (i = 0; i < node->n_children; i++) {
+		struct timespec t1, t2;
 		struct partition_disk_info *disk_info = &node->parts[i].disk_info;
 
 		part_packer = msgpack_new(disk_info->uncompressed_size);
+
+		/* decompress */
+		ngettime(&t1);
 		r = ness_decompress(disk_info->compressed_ptr, disk_info->compressed_size,
 		                    part_packer->base, disk_info->uncompressed_size);
+		ngettime(&t2);
+		if (node->height > 0)
+			status_add(&hdr->e->status->nonleaf_uncompress_data_costs, time_diff_ms(t1, t2));
+		else
+			status_add(&hdr->e->status->leaf_uncompress_data_costs, time_diff_ms(t1, t2));
 
 		/* maybe compressed data is NULL */
 		if (r == NESS_OK) {
@@ -316,7 +332,6 @@ void serialize_node_to_packer(struct msgpack *packer, struct node *node, struct 
 
 void deserialize_node_from_packer(struct msgpack *packer, struct node *node, struct hdr *hdr)
 {
-	(void)hdr;
 	/* 1) node header */
 	deserialize_node_header(packer, node);
 
@@ -324,7 +339,7 @@ void deserialize_node_from_packer(struct msgpack *packer, struct node *node, str
 	deserialize_node_info(packer, node);
 
 	/* 3) node partitions */
-	decompress_partitions(node);
+	decompress_partitions(node, hdr);
 	deserialize_node_partitions(packer, node);
 
 	/* 4) end */

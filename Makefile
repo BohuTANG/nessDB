@@ -4,7 +4,7 @@ PLATFORM_SHARED_LDFLAGS=-c -W -Wall -Werror -std=c99
 CC = gcc
 #OPT ?= -O2 -DERROR# (A) Production use (optimized mode)
 #OPT ?= -g2 -DINFO -DASSERT  -DUSE_VALGRIND# (B) Debug mode, w/ full line-level debugging symbols
-OPT ?= -O2 -g2 -DWARN -DASSERT# (C) Profiling mode: opt, but w/debugging symbols
+OPT ?= -O2 -g2 -DDEBUG -DASSERT# (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
 INCLUDES =  -Iinclude -Itree -Icache -Iutil -Ilog -Itxn -Idb
 CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(OPT)
