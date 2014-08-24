@@ -294,7 +294,12 @@ uint32_t pma_count(struct pma *p)
 	return p->count;
 }
 
-int pma_find_minus(struct pma *p, void *k, compare_func f, void *env, void **retval)
+int pma_find_minus(struct pma *p,
+                   void *k,
+                   compare_func f,
+                   void *env,
+                   void **retval,
+                   struct pma_coord *coord)
 {
 	int chain_idx = 0;
 	int array_idx = 0;
@@ -314,6 +319,7 @@ int pma_find_minus(struct pma *p, void *k, compare_func f, void *env, void **ret
 			arr = p->chain[chain_idx];
 			if (arr->used > 0) {
 				*retval = arr->elems[arr->used - 1];
+				array_idx = arr->used - 1;
 				ret = NESS_OK;
 			}
 		}
@@ -322,10 +328,18 @@ int pma_find_minus(struct pma *p, void *k, compare_func f, void *env, void **ret
 		ret = NESS_OK;
 	}
 
+	coord->chain_idx = chain_idx;
+	coord->array_idx = array_idx == -1 ? 0 : array_idx;
+
 	return ret;
 }
 
-int pma_find_plus(struct pma *p, void *k, compare_func f, void *env, void **retval)
+int pma_find_plus(struct pma *p,
+                  void *k,
+                  compare_func f,
+                  void *env,
+                  void **retval,
+                  struct pma_coord *coord)
 {
 	int chain_idx = 0;
 	int array_idx = 0;
@@ -346,6 +360,7 @@ int pma_find_plus(struct pma *p, void *k, compare_func f, void *env, void **retv
 			arr = p->chain[chain_idx];
 			if (arr->used > 0) {
 				*retval = arr->elems[0];
+				array_idx = 0;
 				ret = NESS_OK;
 			}
 		}
@@ -353,6 +368,9 @@ int pma_find_plus(struct pma *p, void *k, compare_func f, void *env, void **retv
 		*retval = arr->elems[array_idx];
 		ret = NESS_OK;
 	}
+
+	coord->chain_idx = chain_idx;
+	coord->array_idx = array_idx == -1 ? arr->used : array_idx;
 
 	return ret;
 }

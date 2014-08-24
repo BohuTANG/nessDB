@@ -60,4 +60,7 @@ void nmb_get_values(struct mb_iter *, struct nmb_values *);
 void nmb_to_msgpack(struct nmb  *, struct msgpack *);
 void msgpack_to_nmb(struct msgpack *, struct nmb *);
 
+int nmb_get_left_coord(struct nmb *, struct msg *, struct pma_coord *);
+int nmb_get_right_coord(struct nmb *, struct msg *, struct pma_coord *);
+
 #endif /* nessDB_NMB_H_ */

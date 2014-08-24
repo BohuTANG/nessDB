@@ -123,7 +123,10 @@ void nmb_put(struct nmb *nmb,
 
 	base = mempool_alloc_aligned(nmb->mpool, size);
 	_nmb_entry_pack(base, msn, type, key, val, xidpair);
-	pma_insert(nmb->pma, (void*)base, _nmb_entry_key_compare, (void*)nmb->e);
+	pma_insert(nmb->pma,
+	           (void*)base,
+	           _nmb_entry_key_compare,
+	           (void*)nmb->e);
 	nmb->count++;
 }
 
@@ -206,6 +209,65 @@ void msgpack_to_nmb(struct msgpack *packer, struct nmb *nmb)
 		struct nmb_values values;
 
 		nmb_unpack_values_from_msgpack(packer, &values);
-		nmb_put(nmb, values.msn, values.type, &values.key, &values.val, &values.xidpair);
+		nmb_put(nmb,
+		        values.msn,
+		        values.type,
+		        &values.key,
+		        &values.val,
+		        &values.xidpair);
 	}
+}
+
+/*
+ * EFFECTS:
+ *	return the first coord which >k
+ */
+int nmb_get_left_coord(struct nmb *nmb, struct msg *left, struct pma_coord *coord)
+{
+	memset(coord, 0, sizeof(*coord));
+	if (left) {
+		void *retval;
+		struct nmb_entry *entry = xcalloc(1, NMB_ENTRY_SIZE + left->size);
+
+		entry->keylen = left->size;
+		xmemcpy((char*)entry + NMB_ENTRY_SIZE, left->data, left->size);
+		pma_find_plus(nmb->pma,
+		              entry,
+		              _nmb_entry_key_compare,
+		              nmb->e,
+		              &retval, coord);
+		xfree(entry);
+	}
+
+	return 1;
+}
+
+/*
+ * EFFECTS:
+ *	return the first coord which >k
+ */
+int nmb_get_right_coord(struct nmb *nmb, struct msg *right, struct pma_coord *coord)
+{
+	int chain_idx = nmb->pma->used - 1;
+	/* is uesd not used - 1 */
+	int array_idx = nmb->pma->chain[chain_idx]->used;
+
+	coord->chain_idx = chain_idx;
+	coord->array_idx = array_idx;
+	if (right) {
+		void *retval;
+		struct nmb_entry *entry = xcalloc(1, NMB_ENTRY_SIZE + right->size);
+
+		entry->keylen = right->size;
+		xmemcpy((char*)entry + NMB_ENTRY_SIZE, right->data, right->size);
+		pma_find_plus(nmb->pma,
+		              entry,
+		              _nmb_entry_key_compare,
+		              nmb->e,
+		              &retval,
+		              coord);
+		xfree(entry);
+	}
+
+	return 1;
 }

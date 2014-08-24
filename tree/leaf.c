@@ -6,6 +6,7 @@
 
 #include "cursor.h"
 #include "node.h"
+#include "nmb.h"
 #include "lmb.h"
 
 int _le_apply_insert(struct lmb *mb, struct bt_cmd *cmd)
@@ -19,91 +20,6 @@ int _le_apply_insert(struct lmb *mb, struct bt_cmd *cmd)
 
 	return NESS_OK;
 }
-
-/*
-int _le_apply_delete(struct msgbuf *mb, struct bt_cmd *cmd)
-{
-	msgbuf_put(mb,
-	           cmd->msn,
-	           cmd->type,
-	           cmd->key,
-	           NULL,
-	           &cmd->xidpair);
-
-	return NESS_OK;
-}
-
-int _le_apply_commit(struct lmb *mb, struct bt_cmd *cmd)
-{
-	int cmp;
-	int ret;
-	struct mb_iter iter;
-
-	lmb_iter_init(&iter, mb);
-
-	mb_iter_seek(&iter, cmd->key);
-	cmp = msg_key_compare(&iter.key, cmd->key);
-	if (cmp == 0) {
-		struct skipnode *node;
-
-		node = iter.list_iter.node;
-		if (node->num_px < 1) {
-			ret = NESS_TXN_COMMIT_ERR;
-			goto RET;
-		}
-		if (msgbuf_internal_iter_reverse(&iter)) {
-			int same_pxid = iter.xidpair.parent_xid == cmd->xidpair.parent_xid;
-			int same_xid = iter.xidpair.child_xid == cmd->xidpair.child_xid;
-			if (same_pxid && same_xid) {
-				nassert(node->used == (node->num_px + node->num_cx));
-				node->num_cx++;
-				node->num_px--;
-				node->keys[node->num_cx] = node->keys[node->used - 1];
-			}
-		}
-		ret = NESS_OK;
-	} else {
-		ret = NESS_TXN_COMMIT_ERR;
-	}
-
-	return ret;
-}
-
-int _le_apply_abort(struct msgbuf *mb, struct bt_cmd *cmd)
-{
-	int cmp;
-	int ret;
-	struct msgbuf_iter iter;
-
-	msgbuf_iter_init(&iter, mb);
-
-	msgbuf_iter_seek(&iter, cmd->key);
-	cmp = msg_key_compare(&iter.key, cmd->key);
-	if (cmp == 0) {
-		struct skipnode *node;
-
-		node = iter.list_iter.node;
-		if (node->num_px < 1) {
-			ret = NESS_TXN_COMMIT_ERR;
-			goto RET;
-		}
-		if (msgbuf_internal_iter_reverse(&iter)) {
-			int same_pxid = iter.xidpair.parent_xid == cmd->xidpair.parent_xid;
-			int same_xid = iter.xidpair.child_xid == cmd->xidpair.child_xid;
-			if (same_pxid && same_xid) {
-				nassert(node->used == (node->num_px + node->num_cx));
-				node->num_px--;
-				node->used--;
-			}
-		}
-		ret = NESS_OK;
-	} else {
-		ret = NESS_TXN_ABORT_ERR;
-	}
-
-	return ret;
-}
-*/
 
 /*
  * apply a msg to leaf msgbuf
@@ -122,15 +38,12 @@ int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 		ret = _le_apply_insert(buffer, cmd);
 		break;
 	case MSG_DELETE:
-		//ret = _le_apply_delete(leaf->u.l.buffer, cmd);
 		break;
 	case MSG_UPDATE:
 		break;
 	case MSG_COMMIT:
-		//ret = _le_apply_commit(leaf->u.l.buffer, cmd);
 		break;
 	case MSG_ABORT:
-		//ret = _le_apply_abort(leaf->u.l.buffer, cmd);
 		break;
 	default:
 		break;
@@ -151,7 +64,7 @@ int leaf_do_gc(struct node *leaf)
 }
 
 /*
- * apply parent's [leaf, right] messages to child node
+ * apply parent's (left, right] messages to child node
  */
 void _apply_msg_to_child(struct node *parent,
                          int child_num,
@@ -159,45 +72,38 @@ void _apply_msg_to_child(struct node *parent,
                          struct msg *left,
                          struct msg *right)
 {
-	(void)parent;
-	(void)child_num;
-	(void)child;
-	(void)left;
-	(void)right;
-	/*
-	int height;
-	struct fifo *fifo;
-	struct msgbuf_iter iter;
+	struct nmb *buffer;
+	struct mb_iter iter;
+	struct pma_coord coord_left;
+	struct pma_coord coord_right;
 
-	nassert(child != NULL);
 	nassert(parent->height > 0);
+	buffer = parent->parts[child_num].ptr.u.nonleaf->buffer;
 
-	height = child->height;
-	fifo = parent->u.n.parts[child_num].buffer;
+	nmb_get_left_coord(buffer, left, &coord_left);
+	nmb_get_right_coord(buffer, right, &coord_right);
 
-	fifo_iter_init(&iter, fifo);
-	msgbuf_iter_seek(&iter, left);
+	mb_iter_init(&iter, buffer->pma);
+	while (mb_iterate_on_range(&iter, &coord_left, &coord_right)) {
+		struct nmb_values values;
 
-	while (msgbuf_iter_valid_lessorequal(&iter, right)) {
-		while (msgbuf_internal_iter_next(&iter)) {
-			struct bt_cmd cmd = {
-				.msn = iter.msn,
-				.type = iter.type,
-				.key = &iter.key,
-				.val = &iter.val,
-				.xidpair = iter.xidpair
-			};
+		nmb_get_values(&iter, &values);
 
-			if (cmd.msn > child->msn) {
-				if (nessunlikely(height == 0))
-					leaf_put_cmd(child, &cmd);
-				else
-					nonleaf_put_cmd(child, &cmd);
-			}
+		struct bt_cmd cmd = {
+			.msn = values.msn,
+			.type = values.type,
+			.key = &values.key,
+			.val = &values.val,
+			.xidpair = values.xidpair
+		};
+
+		if (cmd.msn > child->msn) {
+			if (nessunlikely(child->height == 0))
+				leaf_put_cmd(child, &cmd);
+			else
+				nonleaf_put_cmd(child, &cmd);
 		}
-		msgbuf_iter_next(&iter);
 	}
-	*/
 }
 
 /*
@@ -206,33 +112,33 @@ void _apply_msg_to_child(struct node *parent,
  *  1) leaf write-lock
  *  2) ances all write-lock
  */
-/*
 int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances)
 {
-	struct ancestors *ance;
-	struct msg *left = NULL;
-	struct msg *right = NULL;
-	struct msgbuf_iter iter;
-	struct msgbuf *mb = leaf->u.l.buffer;
+	int childnum;
+	struct node *node;
+	struct msg *left, *right;
+	struct ancestors *cur_ance;
 
-	msgbuf_iter_init(&iter, mb);
-	msgbuf_iter_seektofirst(&iter);
-	if (msgbuf_iter_valid(&iter))
-		left = msgdup(&iter.key);
+	(void)leaf;
+	nassert(ances);
 
-	msgbuf_iter_seektolast(&iter);
-	if (msgbuf_iter_valid(&iter))
-		right = msgdup(&iter.key);
+	/* get the bounds (left, right] */
+	cur_ance = ances;
+	while (cur_ance && cur_ance->next)
+		cur_ance = cur_ance->next;
+	childnum = cur_ance->childnum;
+	node = (struct node*)cur_ance->v;
+	left = (childnum > 0) ? msgdup(&node->pivots[childnum - 1]) : NULL;
+	right = (childnum == node->n_children) ? NULL : msgdup(&node->pivots[childnum]);
 
-	ance = ances;
-	while (ance && ance->next) {
-		//apply [leaf, right] to leaf
-		_apply_msg_to_child(ance->v,
-		                    ance->childnum,
-		                    ance->next->v,
+	cur_ance = ances;
+	while (cur_ance && cur_ance->next) {
+		_apply_msg_to_child(cur_ance->v,
+		                    cur_ance->childnum,
+		                    cur_ance->next->v,
 		                    left,
 		                    right);
-		ance = ances->next;
+		cur_ance = cur_ance->next;
 	}
 
 	msgfree(left);
@@ -240,4 +146,3 @@ int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances)
 
 	return NESS_OK;
 }
-*/

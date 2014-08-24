@@ -1,9 +1,8 @@
 TODO list(5star urgent):
 
 a) large number of unit tests (****)
-b) buffered-tree root-to-leaf message applied (*****)
-c) gc on MVCC (*****)
-d) sharp checkpoint (*****)
+b) gc on MVCC (*****)
+c) sharp checkpoint (*****)
 
 
--- BohuTANG 2014/3/
+-- BohuTANG 2014/8/

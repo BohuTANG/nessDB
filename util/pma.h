@@ -38,8 +38,8 @@ void pma_insertat(struct pma *, void *, compare_func f, void *, struct pma_coord
 void pma_append(struct pma *, void *, compare_func f, void *);
 uint32_t pma_count(struct pma *);
 
-int pma_find_minus(struct pma *, void *, compare_func f, void *, void **);
-int pma_find_plus(struct pma *, void *, compare_func f, void *, void **);
+int pma_find_minus(struct pma *, void *, compare_func f, void *, void **, struct pma_coord *);
+int pma_find_plus(struct pma *, void *, compare_func f, void *, void **, struct pma_coord *);
 int pma_find_zero(struct pma *, void *, compare_func f, void *, void **, struct pma_coord *);
 
 #endif /* nessDB_PMA_H_ */
