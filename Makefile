@@ -34,6 +34,7 @@ LIB_OBJS =	 			\
 	./util/file.o			\
 	./util/debug.o			\
 	./util/pma.o			\
+	./util/counter.o		\
 	./txn/txnmgr.o			\
 	./txn/txn.o			\
 	./txn/rollback.o		\

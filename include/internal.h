@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sched.h>
 #include "debug.h"
 #include "xmalloc.h"
 #include "status.h"

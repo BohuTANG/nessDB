@@ -14,10 +14,10 @@ CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(OPT
 
 LIB_OBJS =	 			\
 	$(top_builddir)/tree/compress/compress.o	\
-	$(top_builddir)/tree/compress/snappy.o	\
+	$(top_builddir)/tree/compress/snappy.o		\
 	$(top_builddir)/tree/tree-func.o		\
-	$(top_builddir)/tree/flusher.o		\
-	$(top_builddir)/tree/msgpack.o		\
+	$(top_builddir)/tree/flusher.o			\
+	$(top_builddir)/tree/msgpack.o			\
 	$(top_builddir)/tree/block.o			\
 	$(top_builddir)/tree/layout.o			\
 	$(top_builddir)/tree/hdr.o			\
@@ -28,23 +28,25 @@ LIB_OBJS =	 			\
 	$(top_builddir)/tree/lmb.o			\
 	$(top_builddir)/tree/msg.o			\
 	$(top_builddir)/tree/mb.o			\
-	$(top_builddir)/util/xmalloc.o		\
-	$(top_builddir)/util/mempool.o		\
-	$(top_builddir)/util/kibbutz.o		\
+	$(top_builddir)/util/comparator.o		\
+	$(top_builddir)/util/xmalloc.o			\
+	$(top_builddir)/util/mempool.o			\
+	$(top_builddir)/util/kibbutz.o			\
 	$(top_builddir)/util/posix.o			\
 	$(top_builddir)/util/crc32.o			\
 	$(top_builddir)/util/file.o			\
 	$(top_builddir)/util/debug.o			\
 	$(top_builddir)/util/pma.o			\
+	$(top_builddir)/util/counter.o			\
 	$(top_builddir)/txn/txnmgr.o			\
 	$(top_builddir)/txn/txn.o			\
-	$(top_builddir)/txn/rollback.o		\
+	$(top_builddir)/txn/rollback.o			\
 	$(top_builddir)/cache/cache.o			\
 	$(top_builddir)/db/db.o
 
 
-TEST_OBJS = 				\
-	pma-test.o			\
+TEST_OBJS = 						\
+	counter-test.o					\
 	main.o			
 
 
