@@ -84,7 +84,7 @@ void _apply_msg_to_child(struct node *parent,
 	nmb_get_right_coord(buffer, right, &coord_right);
 
 	mb_iter_init(&iter, buffer->pma);
-	while (mb_iterate_on_range(&iter, &coord_left, &coord_right)) {
+	while (mb_iter_on_range(&iter, &coord_left, &coord_right)) {
 		struct nmb_values values;
 
 		nmb_get_values(&iter, &values);

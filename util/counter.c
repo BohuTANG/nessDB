@@ -6,8 +6,7 @@
 
 #include "counter.h"
 
-struct counter *counter_new(int cpus)
-{
+struct counter *counter_new(int cpus) {
 	struct counter *c = xcalloc(1, sizeof(*c));
 
 	c->cpus = cpus;
@@ -36,7 +35,7 @@ uint64_t counter_all(struct counter *c)
 	int i;
 	uint64_t all = 0UL;
 
-	for ( i = 0; i < c->cpus; i++) {
+	for (i = 0; i < c->cpus; i++) {
 		all += c->per_cpu_counter[i];
 	}
 

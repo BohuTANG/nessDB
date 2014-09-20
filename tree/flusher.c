@@ -15,7 +15,7 @@ void _flush_buffer_to_child(struct tree *t, struct node *child, struct nmb *buf)
 	struct mb_iter iter;
 
 	mb_iter_init(&iter, buf->pma);
-	while (mb_iterate(&iter)) {
+	while (mb_iter_next(&iter)) {
 		/* TODO(BohuTANG): check msn */
 		struct nmb_values nvalues;
 

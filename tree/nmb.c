@@ -195,7 +195,7 @@ void nmb_to_msgpack(struct nmb  *nmb, struct msgpack *packer)
 	struct mb_iter iter;
 
 	mb_iter_init(&iter, nmb->pma);
-	while (mb_iterate(&iter)) {
+	while (mb_iter_next(&iter)) {
 		struct nmb_values values;
 
 		nmb_get_values(&iter, &values);
@@ -220,7 +220,7 @@ void msgpack_to_nmb(struct msgpack *packer, struct nmb *nmb)
 
 /*
  * EFFECTS:
- *	return the first coord which >k
+ *	return the first coord which > k
  */
 int nmb_get_left_coord(struct nmb *nmb, struct msg *left, struct pma_coord *coord)
 {
@@ -244,7 +244,7 @@ int nmb_get_left_coord(struct nmb *nmb, struct msg *left, struct pma_coord *coor
 
 /*
  * EFFECTS:
- *	return the first coord which >k
+ *	return the first coord which < k
  */
 int nmb_get_right_coord(struct nmb *nmb, struct msg *right, struct pma_coord *coord)
 {

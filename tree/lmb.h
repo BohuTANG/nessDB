@@ -62,6 +62,21 @@ void lmb_split(struct lmb *,
                struct lmb **,
                struct msg **);
 
+int lmb_find_zero(struct lmb *,
+                  struct msg *,
+                  struct leafentry **,
+                  struct pma_coord *);
+
+int lmb_find_plus(struct lmb *,
+                  struct msg *,
+                  struct leafentry **,
+                  struct pma_coord *);
+
+int lmb_find_minus(struct lmb *,
+                   struct msg *,
+                   struct leafentry **,
+                   struct pma_coord *);
+
 void lmb_get_values(struct mb_iter *, struct lmb_values *);
 void lmb_to_msgpack(struct lmb *, struct msgpack *);
 void msgpack_to_lmb(struct msgpack *, struct lmb *);

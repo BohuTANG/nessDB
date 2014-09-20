@@ -13,10 +13,11 @@ LIB_OBJS =	 			\
 	./tree/compress/compress.o	\
 	./tree/compress/snappy.o	\
 	./tree/tree-func.o		\
+	./tree/cursor.o			\
 	./tree/flusher.o		\
 	./tree/msgpack.o		\
-	./tree/block.o			\
 	./tree/layout.o			\
+	./tree/block.o			\
 	./tree/hdr.o			\
 	./tree/node.o			\
 	./tree/tree.o			\

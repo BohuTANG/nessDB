@@ -177,7 +177,7 @@ void lmb_split(struct lmb *lmb,
 
 	nassert(count > 1);
 	mb_iter_init(&iter, lmb->pma);
-	while (mb_iterate(&iter)) {
+	while (mb_iter_next(&iter)) {
 		struct lmb *mb;
 		struct leafentry *le;
 		struct leafentry *le_clone = NULL;
@@ -276,7 +276,7 @@ void lmb_to_msgpack(struct lmb *lmb, struct msgpack *packer)
 	struct mb_iter iter;
 
 	mb_iter_init(&iter, lmb->pma);
-	while (mb_iterate(&iter)) {
+	while (mb_iter_next(&iter)) {
 		struct leafentry *le = (struct leafentry*)iter.base;
 
 		lmb_pack_le_to_msgpack(le, packer);
@@ -303,4 +303,61 @@ void msgpack_to_lmb(struct msgpack *packer, struct lmb *lmb)
 		           (void*)lmb->e);
 		lmb->count++;
 	}
+}
+
+/*
+ * EFFECTS:
+ *	find the entry which = key
+ */
+int lmb_find_zero(struct lmb *lmb,
+                  struct msg *key,
+                  struct leafentry **le,
+                  struct pma_coord *coord)
+{
+	struct leafentry kle = {.keylen = key->size, .keyp = key->data};
+
+	return pma_find_zero(lmb->pma,
+	                     (void*)&kle,
+	                     _lmb_entry_key_compare,
+	                     (void*)lmb->e,
+	                     (void**)le,
+	                     coord);
+}
+
+/*
+ * EFFECTS:
+ *	find the first entry which > key
+ */
+int lmb_find_plus(struct lmb *lmb,
+                  struct msg *key,
+                  struct leafentry **le,
+                  struct pma_coord *coord)
+{
+	struct leafentry kle = {.keylen = key->size, .keyp = key->data};
+
+	return pma_find_plus(lmb->pma,
+	                     (void*)&kle,
+	                     _lmb_entry_key_compare,
+	                     (void*)lmb->e,
+	                     (void**)le,
+	                     coord);
+}
+
+/*
+ * EFFECTS:
+ *	find the first entry which < key
+ */
+int lmb_find_minus(struct lmb *lmb,
+                   struct msg *key,
+                   struct leafentry **le,
+                   struct pma_coord *coord)
+{
+	struct leafentry kle = {.keylen = key->size, .keyp = key->data};
+
+	return pma_find_minus(lmb->pma,
+	                      (void*)&kle,
+	                      _lmb_entry_key_compare,
+	                      (void*)lmb->e,
+	                      (void**)le,
+	                      coord);
 }

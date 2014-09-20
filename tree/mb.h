@@ -21,9 +21,12 @@ struct mb_iter {
 };
 
 void mb_iter_init(struct mb_iter *, struct pma *);
-int mb_iterate(struct mb_iter *);
-int mb_iterate_on_range(struct mb_iter *,
-                        struct pma_coord *,
-                        struct pma_coord *);
+void mb_iter_reset(struct mb_iter *, struct pma_coord *coord);
+int mb_iter_valid(struct mb_iter *);
+int mb_iter_next(struct mb_iter *);
+int mb_iter_prev(struct mb_iter *);
+int mb_iter_on_range(struct mb_iter *,
+                     struct pma_coord *,
+                     struct pma_coord *);
 
 #endif /* nessDB_MB_H_ */

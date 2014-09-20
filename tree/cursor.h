@@ -70,10 +70,10 @@ struct cursor {
 	MSN msn;
 	int valid;
 	msgtype_t msgtype;
-	struct msg key;		/* return key */
-	struct msg val;		/* return val */
-	struct tree *tree;	/* index */
-	void *extra;		/* extra(no-use) */
+	struct msg key;			/* return key */
+	struct msg val;			/* return val */
+	struct tree *tree;		/* index */
+	void *extra;			/* extra(no-use) */
 	TXN_ISOLATION_TYPE iso_type;
 
 	/* root->to->leaf bsm path */
