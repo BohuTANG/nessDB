@@ -34,7 +34,7 @@ int mb_iter_valid(struct mb_iter *iter)
 	int array_idx = iter->array_idx;
 
 	return ((chain_idx >= 0) && (chain_idx < iter->pma->used))
-	       && ((array_idx >= 0) && (array_idx < iter->pma[chain_idx].used));
+	       && ((array_idx >= 0) && (array_idx < iter->pma->chain[chain_idx]->used));
 }
 
 

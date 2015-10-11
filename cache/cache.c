@@ -286,7 +286,7 @@ void _run_eviction(struct cache *c)
 		nxt = cur->list_next;
 		_cf_clock_read_unlock(cf);
 
-		if ((users == 0)) {
+		if (users == 0) {
 			_try_evict_pair(cf, cur);
 			cond_signalall(&c->wait_makeroom);
 		}

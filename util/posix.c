@@ -109,16 +109,6 @@ static inline long long millisec_elapsed(struct timespec diff)
 	return ((long long)diff.tv_sec * 1000) + (diff.tv_nsec / 1000000);
 }
 
-static inline long long microsec_elapsed(struct timespec diff)
-{
-	return ((long long)diff.tv_sec * 1000000) + (diff.tv_nsec / 1000);
-}
-
-static inline long long nanosec_elapsed(struct timespec diff)
-{
-	return ((long long)diff.tv_sec * 1000000000) + diff.tv_nsec;
-}
-
 long long time_diff_ms(struct timespec start, struct timespec end)
 {
 	return millisec_elapsed(diff_timespec(start, end));

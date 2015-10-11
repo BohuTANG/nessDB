@@ -1,3 +1,4 @@
+PLATFORM_LDFLAGS=-pthread
 PLATFORM_SHARED_CFLAGS=-fPIC
 PLATFORM_SHARED_LDFLAGS=-c -W -Wall -Werror -std=c99
 
@@ -58,7 +59,7 @@ cleandb:
 	-rm -rf dbbench/
 
 $(LIBRARY): $(LIB_OBJS)
-	$(CC) -pthread -fPIC -shared $(LIB_OBJS) -o $(LIBRARY) -lm
+	$(CC) $(PLATFORM_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(LIB_OBJS) -o $(LIBRARY)
 
 db-bench: $(BENCH_OBJS) $(LIB_OBJS)
-	$(CC) -pthread $(LIB_OBJS) $(BENCH_OBJS) $(DEBUG) -o $@
+	$(CC) $(PLATFORM_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(LIB_OBJS) $(BENCH_OBJS) $(DEBUG) -o $@
