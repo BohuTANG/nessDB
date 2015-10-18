@@ -30,6 +30,7 @@ int atomic32_decrement(int *dest);
 uint64_t atomic64_increment(uint64_t *dest);
 uint64_t atomic64_decrement(uint64_t *dest);
 uint64_t atomic64_add(uint64_t *dest, uint64_t add);
+uint64_t atomic64_sub(uint64_t *dest, uint64_t sub);
 
 /*******************************
  * mutex

@@ -62,13 +62,13 @@ static inline struct status *status_new() {
 static inline void status_increment(uint64_t *dest)
 {
 	VALGRIND_DISABLE_CHECKING(dest, sizeof(*dest));
-	(*dest)++;
+	__sync_add_and_fetch(dest, 1);
 }
 
 static inline void status_add(uint64_t *dest, uint64_t add)
 {
 	VALGRIND_DISABLE_CHECKING(dest, sizeof(*dest));
-	*dest += add;
+	__sync_add_and_fetch(dest, add);
 }
 
 static inline void status_free(struct status *status)

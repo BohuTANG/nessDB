@@ -5,16 +5,18 @@
  */
 
 #include <errno.h>
+#include "fmacro.h"
 #include "xmalloc.h"
 #include "posix.h"
 
 /* atomic functions */
 static pthread_mutex_t atomic_mtx __attribute__((__unused__)) = PTHREAD_MUTEX_INITIALIZER;
+
 int atomic32_increment(int *dest)
 {
 	int r;
 
-#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4
+#if defined(HAVE_ATOMIC)
 	r = __sync_add_and_fetch(dest, 1U);
 #else
 	pthread_mutex_lock(&atomic_mtx);
@@ -29,7 +31,7 @@ int atomic32_decrement(int *dest)
 {
 	int r;
 
-#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4
+#if defined(HAVE_ATOMIC)
 	r = __sync_sub_and_fetch(dest, 1U);
 #else
 	pthread_mutex_lock(&atomic_mtx);
@@ -45,7 +47,7 @@ uint64_t atomic64_add(uint64_t *dest, uint64_t add)
 {
 	uint64_t r;
 
-#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8
+#if defined(HAVE_ATOMIC)
 	r = __sync_add_and_fetch(dest, add);
 #else
 	pthread_mutex_lock(&atomic_mtx);
@@ -56,6 +58,22 @@ uint64_t atomic64_add(uint64_t *dest, uint64_t add)
 	return r;
 }
 
+uint64_t atomic64_sub(uint64_t *dest, uint64_t sub)
+{
+	uint64_t r;
+
+#if defined(HAVE_ATOMIC)
+	r = __sync_sub_and_fetch(dest, sub);
+#else
+	pthread_mutex_lock(&atomic_mtx);
+	*dest -= sub;
+	r = *dest;
+	pthread_mutex_unlock(&atomic_mtx);
+#endif
+
+	return r;
+}
+
 uint64_t atomic64_increment(uint64_t *dest)
 {
 	return atomic64_add(dest, 1UL);
@@ -63,17 +81,7 @@ uint64_t atomic64_increment(uint64_t *dest)
 
 uint64_t atomic64_decrement(uint64_t *dest)
 {
-	uint64_t r;
-
-#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8
-	r = __sync_sub_and_fetch(dest, 1U);
-#else
-	pthread_mutex_lock(&atomic_mtx);
-	*dest -= 1;
-	r = *dest;
-	pthread_mutex_unlock(&atomic_mtx);
-#endif
-	return r;
+	return atomic64_sub(dest, 1UL);
 }
 
 /* time functions */

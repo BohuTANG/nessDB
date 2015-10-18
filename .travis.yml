@@ -1,6 +1,6 @@
 language: c
 
-script: make db-bench
+script: make
 
 notifications:
   email:

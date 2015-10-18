@@ -166,10 +166,15 @@ struct cpair *cpair_htable_find(struct cpair_htable *table, NID key) {
  */
 void _free_cpair(struct cache_file *cf, struct cpair *cp)
 {
+	struct cache *c = cf->cache;
+
 	mutex_lock(&cf->mtx);
 	cf->cache->cp_count--;
-	cf->cache->cache_size -= cp->attr.nodesz;
 	mutex_unlock(&cf->mtx);
+
+	mutex_lock(&c->mtx);
+	cf->cache->cache_size -= cp->attr.nodesz;
+	mutex_unlock(&c->mtx);
 
 	cf->tcb->free_node_cb(cp->v);
 	xfree(cp);
@@ -264,8 +269,11 @@ void _run_eviction(struct cache *c)
 	struct cpair *cur;
 	struct cpair *nxt;
 	/* TODO (BohuTANG) : for all cache files */
-	struct cache_file *cf = c->cf_first;
+	struct cache_file *cf;
 
+	mutex_lock(&c->mtx);
+	cf = c->cf_first;
+	mutex_unlock(&c->mtx);
 	if (!cf)
 		return;
 
@@ -349,7 +357,9 @@ void _make_room(struct cache *c)
 		if (must) {
 			__WARN("must evict, waiting..., cache limits [%" PRIu64 "]MB", c->cache_size / 1048576);
 			cron_signal(c->flusher);
+			mutex_lock(&c->makeroom_mtx);
 			cond_wait(&c->wait_makeroom, &c->makeroom_mtx);
+			mutex_unlock(&c->makeroom_mtx);
 		} else if (allow_delay && need) {
 			/* slow down */
 			usleep(100);
@@ -486,6 +496,7 @@ int cache_put_and_pin(struct cache_file *cf, NID k, void *v)
 
 void cache_unpin(struct cache_file *cf, struct cpair *p, struct cpair_attr attr)
 {
+	int delta = 0;
 	struct cache *c = cf->cache;
 
 	nassert(p);
@@ -496,7 +507,7 @@ void cache_unpin(struct cache_file *cf, struct cpair *p, struct cpair_attr attr)
 	if (p->pintype == L_WRITE) {
 		mutex_lock(&cf->mtx);
 		p->pintype = L_NONE;
-		c->cache_size += (int)(attr.nodesz - p->attr.nodesz);
+		delta = (int)(attr.nodesz - p->attr.nodesz);
 		p->attr = attr;
 		mutex_unlock(&cf->mtx);
 
@@ -507,6 +518,9 @@ void cache_unpin(struct cache_file *cf, struct cpair *p, struct cpair_attr attr)
 	}
 
 	cpair_unlocked_by_key(cf->table, k);
+	mutex_lock(&c->mtx);
+	c->cache_size += delta;
+	mutex_unlock(&c->mtx);
 }
 
 int cache_file_remove(struct cache *c, int filenum)
@@ -551,8 +565,10 @@ struct cache_file *cache_file_create(struct cache *c,
 void cache_file_free(struct cache_file *cf)
 {
 	cpair_htable_free(cf->table);
+	_cf_clock_read_lock(cf);
 	cpair_list_free(cf->clock);
 	cache_file_remove(cf->cache, cf->filenum);
+	_cf_clock_read_unlock(cf);
 	xfree(cf);
 }
 
