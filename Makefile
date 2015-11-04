@@ -41,6 +41,7 @@ LIB_OBJS =	 			\
 	./txn/txn.o			\
 	./txn/rollback.o		\
 	./cache/cache.o			\
+	./db/ness.o				\
 	./db/db.o
 
 

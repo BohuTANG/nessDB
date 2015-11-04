@@ -1,5 +1,5 @@
 #include "posix.h"
-#include "db.h"
+#include "ness.h"
 #include "random.h"
 
 #define V "3.0.0"
@@ -9,18 +9,18 @@
 #define VAL_SIZE (100)
 
 struct random *rnd;
-static struct env *e;
-static struct nessdb *db;
+void *e;
+void *db;
 static uint64_t FLAGS_num = 1000000;
 static uint64_t FLAGS_cache_size = (1024 * 1024 * 256);
 static const char* FLAGS_benchmarks = "fillrandom";
-static ness_compress_method_t FLAGS_method = NESS_SNAPPY_METHOD;
+static int FLAGS_method = 1; //snappy
 
 void _print_warnings()
 {
-	if (FLAGS_method != NESS_NO_COMPRESS) {
+	if (FLAGS_method != 0) {
 		switch (FLAGS_method) {
-		case NESS_SNAPPY_METHOD:
+		case 1:
 			fprintf(stdout, "Compression:Snappy\n");
 			break;
 		default:
@@ -116,10 +116,7 @@ void dbwrite(char *name, int random)
 		snprintf(kbuf, KEY_SIZE, "%016d", key);
 		vbuf = rnd_str(rnd, VAL_SIZE);
 
-		struct msg k = {.data = kbuf, .size = strlen(kbuf)};
-		struct msg v = {.data = vbuf, .size = VAL_SIZE};
-
-		if (db_set(db, &k, &v) != NESS_OK) {
+		if (ness_db_set(db, kbuf, strlen(kbuf), vbuf, VAL_SIZE) != NESS_OK) {
 			fprintf(stderr, " set error\n");
 		}
 
@@ -169,19 +166,19 @@ int dbopen()
 	char basedir[] = "./dbbench/";
 	char dbname[] = "test.db";
 
-	e = env_open(basedir, -1);
-	db = db_open(e, dbname);
+	e = ness_env_open(basedir, -1);
+	db = ness_db_open(e, dbname);
 	if (!db) {
 		fprintf(stderr, "open db error, see ness.event for details\n");
 		return 0;
 	}
 
-	if (!env_set_cache_size(e, FLAGS_cache_size)) {
+	if (!ness_env_set_cache_size(e, FLAGS_cache_size)) {
 		fprintf(stderr, "set cache size error, see ness.event for details\n");
 		return 0;
 	}
 
-	if (!env_set_compress_method(e, FLAGS_method)) {
+	if (!ness_env_set_compress_method(e, FLAGS_method)) {
 		fprintf(stderr, "set compress method error, see ness.event for details\n");
 		return 0;
 	}
@@ -225,9 +222,9 @@ int main(int argc, char *argv[])
 
 		} else if (strncmp(argv[i], "--compress=", 11) == 0) {
 			if (strcmp(argv[i] + strlen("--compress="), "snappy") == 0)
-				FLAGS_method = NESS_SNAPPY_METHOD;
+				FLAGS_method = 1;
 			else if (strcmp(argv[i] + strlen("--compress="), "no") == 0)
-				FLAGS_method = NESS_NO_COMPRESS;
+				FLAGS_method = 0;
 		} else {
 			fprintf(stderr, "invalid flag %s\n", argv[i]);
 			exit(1);
@@ -243,8 +240,8 @@ int main(int argc, char *argv[])
 		exit(1);
 
 	rnd_free(rnd);
-	db_close(db);
-	env_close(e);
+	ness_db_close(db);
+	ness_env_close(e);
 
 	return 1;
 }
