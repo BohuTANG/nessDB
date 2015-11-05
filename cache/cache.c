@@ -4,8 +4,9 @@
  *
  */
 
-#include "hdr.h"
-#include "cache.h"
+#include "u.h"
+#include "env.h"
+#include "c.h"
 
 #define PAIR_LIST_SIZE (5<<10)
 

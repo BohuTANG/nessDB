@@ -4,7 +4,8 @@
  *
  */
 
-#include "msgpack.h"
+#include "u.h"
+#include "t.h"
 
 unsigned _next_power(unsigned x)
 {

@@ -1,3 +1,5 @@
+MAJOR=3
+MINOR=1
 PLATFORM_LDFLAGS=-pthread
 PLATFORM_SHARED_CFLAGS=-fPIC
 PLATFORM_SHARED_LDFLAGS=-c -W -Wall -Werror -std=c99
@@ -10,7 +12,7 @@ OPT ?= -O2 -g2 -DDEBUG -DASSERT# (C) Profiling mode: opt, but w/debugging symbol
 INCLUDES =  -Iinclude -Itree -Icache -Iutil -Ilog -Itxn -Idb
 CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(OPT)
 
-LIB_OBJS =	 			\
+LIB_OBJS =	 				\
 	./tree/compress/compress.o	\
 	./tree/compress/snappy.o	\
 	./tree/tree-func.o		\
@@ -25,8 +27,8 @@ LIB_OBJS =	 			\
 	./tree/leaf.o			\
 	./tree/nmb.o			\
 	./tree/lmb.o			\
-	./tree/msg.o			\
-	./tree/mb.o			\
+	./tree/mb.o				\
+	./util/msg.o			\
 	./util/comparator.o		\
 	./util/xmalloc.o		\
 	./util/mempool.o		\
@@ -38,9 +40,10 @@ LIB_OBJS =	 			\
 	./util/pma.o			\
 	./util/counter.o		\
 	./txn/txnmgr.o			\
-	./txn/txn.o			\
+	./txn/txn.o				\
 	./txn/rollback.o		\
 	./cache/cache.o			\
+	./log/logger.o			\
 	./db/ness.o				\
 	./db/db.o
 
@@ -51,16 +54,19 @@ BENCH_OBJS = \
 
 LIBRARY = libnessdb.so
 
-all: $(LIBRARY)
+all: banner $(LIBRARY)
+banner:
+	@echo "nessDB $(MAJOR).$(MINOR)"
+	@echo
+	@echo "cc: $(CC)"
+	@echo "cflags: $(CFLAGS)"
+	@echo
 
 clean:
-	-rm -rf $(LIBRARY) $(LIB_OBJS) $(BENCH_OBJS) $(TEST) ness.event test.brt db-bench dbbench/
-
-cleandb:
-	-rm -rf dbbench/
+	-rm -rf $(LIBRARY) $(LIB_OBJS) $(BENCH_OBJS) $(TEST)
 
 $(LIBRARY): $(LIB_OBJS)
 	$(CC) $(PLATFORM_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(LIB_OBJS) -shared -o $(LIBRARY)
 
-db-bench: $(BENCH_OBJS) $(LIB_OBJS)
+db-bench: banner $(BENCH_OBJS) $(LIB_OBJS)
 	$(CC) $(PLATFORM_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(LIB_OBJS) $(BENCH_OBJS) $(DEBUG) -o $@

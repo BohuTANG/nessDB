@@ -7,10 +7,6 @@
 #ifndef nessDB_TXNMGR_H_
 #define nessDB_TXNMGR_H_
 
-#include "xtypes.h"
-#include "internal.h"
-#include "posix.h"
-
 struct txnid_snapshot {
 	int size;
 	int used;

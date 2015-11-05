@@ -7,13 +7,6 @@
 #ifndef nessDB_XMALLOC_H_
 #define nessDB_XMALLOC_H_
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
-#include <stdint.h>
-#include <inttypes.h>
-
 void *xmalloc(size_t s);
 void *xcalloc(size_t n, size_t s);
 void *xmalloc_aligned(size_t alignment, size_t s);

@@ -7,10 +7,6 @@
 #ifndef nessDB_LOGGER_H_
 #define nessDB_LOGGER_H_
 
-#include "internal.h"
-#include "cache.h"
-#include "txnmgr.h"
-
 struct logger {
 	struct cache *cache;
 	struct txnmgr *txnmgr;

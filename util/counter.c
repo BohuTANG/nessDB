@@ -4,7 +4,7 @@
  *
  */
 
-#include "counter.h"
+#include "u.h"
 
 struct counter *counter_new(int cpus) {
 	struct counter *c = xcalloc(1, sizeof(*c));

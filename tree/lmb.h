@@ -7,12 +7,6 @@
 #ifndef nessDB_LMB_H_
 #define nessDB_LMB_H_
 
-#include "env.h"
-#include "internal.h"
-#include "msgpack.h"
-#include "mempool.h"
-#include "mb.h"
-
 /* transaction record */
 #define XR_SIZE (sizeof(struct xr))
 struct xr {

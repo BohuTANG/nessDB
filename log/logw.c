@@ -4,9 +4,8 @@
  *
  */
 
-#include "buf.h"
-#include "file.h"
-#include "logw.h"
+#include "u.h"
+#include "l.h"
 
 /**
  * @file logw.c

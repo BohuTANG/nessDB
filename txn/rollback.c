@@ -4,7 +4,8 @@
  *
  */
 
-#include "rollback.h"
+#include "u.h"
+#include "x.h"
 
 void rollentry_free(struct roll_entry *re)
 {

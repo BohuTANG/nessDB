@@ -4,8 +4,7 @@
  *
  */
 
-#include "posix.h"
-#include "kibbutz.h"
+#include "u.h"
 
 struct todo {
 	void (*f)(void *extra);

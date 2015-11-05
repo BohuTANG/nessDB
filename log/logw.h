@@ -7,10 +7,6 @@
 #ifndef nessDB_LOGW_H_
 #define nessDB_LOGW_H_
 
-#include "internal.h"
-#include "options.h"
-#include "msg.h"
-
 struct logw {
 	int fd;
 	char *base;

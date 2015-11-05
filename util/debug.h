@@ -7,16 +7,6 @@
 #ifndef __nessDB__DEBUG_H_
 #define __nessDB__DEBUG_H_
 
-#include <stdio.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdarg.h>
-#include <assert.h>
-#include <errno.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/time.h>
-
 #define SHORT_FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 enum DEBUG_LEVEL {
 	LEVEL_INFO,

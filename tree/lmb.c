@@ -4,7 +4,8 @@
  *
  */
 
-#include "lmb.h"
+#include "u.h"
+#include "t.h"
 
 static inline int _lmb_entry_key_compare(void *a, void *b, void *env)
 {

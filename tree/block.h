@@ -7,10 +7,6 @@
 #ifndef nessDB_BLOCK_H_
 #define nessDB_BLOCK_H_
 
-#include "internal.h"
-#include "posix.h"
-#include "file.h"
-
 /**
  * @file block.h
  * @brief block translation table

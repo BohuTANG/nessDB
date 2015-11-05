@@ -4,15 +4,10 @@
  *
  */
 
-#include "internal.h"
-#include "posix.h"
-#include "env.h"
-#include "comparator.h"
-#include "tree-func.h"
-#include "tree.h"
-#include "txnmgr.h"
-#include "logger.h"
-#include "db.h"
+#include "u.h"
+#include "c.h"
+#include "t.h"
+#include "x.h"
 
 #define DB_NAME ("ness.DB")
 
@@ -20,6 +15,7 @@ struct nessdb {
 	struct env *e;
 	struct tree *tree;
 };
+
 
 struct env *env_open(const char *home, uint32_t flags) {
 	struct env *e;

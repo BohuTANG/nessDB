@@ -4,10 +4,8 @@
  *
  */
 
-#include "cursor.h"
-#include "node.h"
-#include "nmb.h"
-#include "lmb.h"
+#include "u.h"
+#include "t.h"
 
 int _le_apply_insert(struct lmb *mb, struct bt_cmd *cmd)
 {

@@ -4,9 +4,9 @@
  *
  */
 
-#include "logr.h"
-#include "file.h"
-#include "msgpack.h"
+#include "u.h"
+#include "t.h"
+#include "l.h"
 
 #define LOG_BASE_SIZE (4194304) /* 4MB */
 

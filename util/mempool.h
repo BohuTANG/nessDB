@@ -7,8 +7,6 @@
 #ifndef nessDB_MEMPOOL_H_
 #define nessDB_MEMPOOL_H_
 
-#include "internal.h"
-
 /**
  * @file mempool.h
  * @brief mempool definitions

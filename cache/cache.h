@@ -7,11 +7,6 @@
 #ifndef nessDB_CACHE_H_
 #define nessDB_CACHE_H_
 
-#include "internal.h"
-#include "env.h"
-#include "posix.h"
-#include "kibbutz.h"
-
 /**
  * @file cache.h
  * @brief virtual cache(VCACHE)

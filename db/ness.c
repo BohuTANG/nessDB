@@ -4,11 +4,9 @@
  *
  */
 
-#include "internal.h"
+#include "u.h"
 #include "db.h"
 #include "ness.h"
-
-#define DB_NAME ("ness.DB")
 
 void *ness_env_open(const char *home, uint32_t flags) {
 	return env_open(home, flags);

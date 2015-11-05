@@ -4,8 +4,7 @@
  *
  */
 
-#include "internal.h"
-#include "comparator.h"
+#include "u.h"
 
 int bt_compare_func_builtin(void *a,
                             int alen,

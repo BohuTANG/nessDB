@@ -7,8 +7,6 @@
 #ifndef nessDB_XTYPES_H_
 #define nessDB_XTYPES_H_
 
-#include <stdint.h>
-
 /* compress method */
 typedef enum {
 	NESS_NO_COMPRESS = 0,

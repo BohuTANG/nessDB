@@ -7,10 +7,6 @@
 #ifndef nessDB_LEAF_H_
 #define nessDB_LEAF_H_
 
-#include "internal.h"
-#include "node.h"
-#include "msg.h"
-
 /**
  *
  * @file leaf.h

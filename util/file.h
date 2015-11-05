@@ -7,8 +7,6 @@
 #ifndef nessDB_FILE_H_
 #define nessDB_FILE_H_
 
-#include "internal.h"
-
 void ness_set_fun_open(int (*open_fun)(const char *, int, int));
 void ness_set_fun_pwrite(int (*pwrite_fun)(int, const void*, size_t, DISKOFF));
 void ness_set_fun_pread(int (*pread_fun)(int, void*, size_t, DISKOFF));

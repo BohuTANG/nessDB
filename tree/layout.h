@@ -7,12 +7,6 @@
 #ifndef nessDB_LAYOUT_H_
 #define nessDB_LAYOUT_H_
 
-#include "internal.h"
-#include "block.h"
-#include "tree.h"
-#include "node.h"
-#include "file.h"
-
 /**
  * @file layout.h
  * @brief serializer&deserializer of buffered-tree node

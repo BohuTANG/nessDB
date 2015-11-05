@@ -7,9 +7,6 @@
 #ifndef nessDB_ROLLBACK_H_
 #define nessDB_ROLLBACK_H_
 
-#include "internal.h"
-#include "msg.h"
-
 struct rolltype_cmdinsert {
 	int filenum;
 	struct msg *key;

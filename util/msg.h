@@ -7,9 +7,6 @@
 #ifndef nessDB_MSG_H_
 #define nessDB_MSG_H_
 
-#include "xtypes.h"
-#include "internal.h"
-
 /* msg type */
 typedef enum {
 	MSG_NONE = 0,

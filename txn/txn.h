@@ -7,10 +7,6 @@
 #ifndef nessDB_TXN_H_
 #define nessDB_TXN_H_
 
-#include "internal.h"
-#include "logger.h"
-#include "rollback.h"
-
 /**
  *
  * @file txn.h

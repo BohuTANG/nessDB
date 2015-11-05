@@ -7,12 +7,6 @@
 #ifndef nessDB_CURSOR_H_
 #define nessDB_CURSOR_H_
 
-#include "internal.h"
-#include "node.h"
-#include "tree.h"
-#include "txn.h"
-#include "msg.h"
-
 /**
  * @file cursor.h
  * @brief cursor of tree

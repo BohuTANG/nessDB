@@ -4,10 +4,7 @@
  *
  */
 
-#include <errno.h>
-#include "fmacro.h"
-#include "xmalloc.h"
-#include "posix.h"
+#include "u.h"
 
 /* atomic functions */
 static pthread_mutex_t atomic_mtx __attribute__((__unused__)) = PTHREAD_MUTEX_INITIALIZER;

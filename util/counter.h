@@ -7,8 +7,6 @@
 #ifndef nessDB_COUNTER_H_
 #define nessDB_COUNTER_H_
 
-#include "internal.h"
-
 struct counter {
 	int cpus;
 	uint64_t *per_cpu_counter;

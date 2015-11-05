@@ -7,11 +7,6 @@
 #ifndef nessDB_LOGR_H_
 #define nessDB_LOGR_H_
 
-#include "xtypes.h"
-#include "internal.h"
-#include "options.h"
-#include "msg.h"
-
 struct logr {
 	int fd;
 	uint32_t fsize;

@@ -4,11 +4,11 @@
  *
  */
 
-#include "db.h"
-#include "tx.h"
+#ifndef nessDB_L_H_
+#define nessDB_L_H_
 
-/* TODO */
-/**
- * check the exist ness.redo* files and recovery them
- * return the last log lsn to db
- */
+#include "logger.h"
+
+#endif /* nessDB_L_H_ */
+
+

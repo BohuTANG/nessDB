@@ -4,7 +4,8 @@
  *
  */
 
-#include "block.h"
+#include "u.h"
+#include "t.h"
 
 /* auto extend pairs array size */
 void _extend(struct block *b, uint32_t n)

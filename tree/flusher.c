@@ -4,11 +4,8 @@
  *
  */
 
-#include "cache.h"
-#include "tree.h"
-#include "node.h"
-#include "mb.h"
-#include "flusher.h"
+#include "u.h"
+#include "t.h"
 
 void _flush_buffer_to_child(struct tree *t, struct node *child, struct nmb *buf)
 {

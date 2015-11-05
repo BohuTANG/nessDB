@@ -4,8 +4,9 @@
  *
  */
 
-#include "txn.h"
-#include "txnmgr.h"
+#include "u.h"
+#include "x.h"
+#include "t.h"
 
 struct txnmgr *txnmgr_new(void) {
 	struct txnmgr *tm;

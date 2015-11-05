@@ -7,9 +7,6 @@
 #ifndef nessDB_TREE_FUNC_H_
 #define nessDB_TREE_FUNC_H_
 
-#include "internal.h"
-#include "node.h"
-
 int tree_fetch_node_callback(int fd, void *hdr, NID nid, void **n);
 int tree_flush_node_callback(int fd, void *hdr, void *n);
 

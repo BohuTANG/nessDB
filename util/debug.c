@@ -4,8 +4,7 @@
  *
  */
 
-#include <stdlib.h>
-#include "debug.h"
+#include "u.h"
 
 #define EVENT_NAME "ness.event"
 

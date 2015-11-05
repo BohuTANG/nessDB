@@ -7,6 +7,7 @@
 #ifndef nessDB_NESS_H_
 #define nessDB_NESS_H_
 
+#include <inttypes.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

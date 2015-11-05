@@ -1,4 +1,4 @@
-#include "posix.h"
+#include "u.h"
 #include "ness.h"
 #include "random.h"
 

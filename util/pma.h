@@ -7,8 +7,6 @@
 #ifndef nessDB_PMA_H_
 #define nessDB_PMA_H_
 
-#include "internal.h"
-
 #define ARRAY_CACHE_SIZE (64)
 typedef int (*compare_func)(void *, void *, void *);
 

@@ -4,14 +4,8 @@
  *
  */
 
-#include "file.h"
-#include "mb.h"
-#include "nmb.h"
-#include "lmb.h"
-#include "crc32.h"
-#include "msgpack.h"
-#include "compress/compress.h"
-#include "layout.h"
+#include "u.h"
+#include "t.h"
 
 /*
  * node header

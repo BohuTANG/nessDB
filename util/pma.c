@@ -5,7 +5,7 @@
  * unrolled packed memory array
  */
 
-#include "pma.h"
+#include "u.h"
 
 #define UNROLLED_LIMIT (64)
 

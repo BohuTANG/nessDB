@@ -7,12 +7,6 @@
 #ifndef nessDB_TREE_H_
 #define nessDB_TREE_H_
 
-#include "internal.h"
-#include "cache.h"
-#include "node.h"
-#include "block.h"
-#include "hdr.h"
-
 /**
  *
  * @file tree.h
@@ -21,6 +15,7 @@
  *
  */
 
+#include "cache.h"
 struct tree {
 	int fd;
 	struct hdr *hdr;

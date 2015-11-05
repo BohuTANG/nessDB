@@ -7,11 +7,6 @@
 #ifndef nessDB_NODE_H_
 #define nessDB_NODE_H_
 
-#include "internal.h"
-#include "posix.h"
-#include "nmb.h"
-#include "lmb.h"
-
 #define PART_SIZE (sizeof(struct partition))
 #define PIVOT_SIZE (sizeof(struct msg))
 

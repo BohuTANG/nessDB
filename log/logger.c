@@ -4,7 +4,8 @@
  *
  */
 
-#include "logger.h"
+#include "u.h"
+#include "l.h"
 
 
 struct logger *logger_new(struct cache *cache, struct txnmgr *txnmgr) {

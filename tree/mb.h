@@ -7,10 +7,6 @@
 #ifndef nessDB_MB_H_
 #define nessDB_MB_H_
 
-#include "internal.h"
-#include "env.h"
-#include "pma.h"
-
 struct mb_iter {
 	int valid;
 

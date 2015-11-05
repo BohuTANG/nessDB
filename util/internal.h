@@ -15,13 +15,13 @@
 #include <inttypes.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/time.h>
 #include <sys/stat.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <sched.h>
-#include "debug.h"
-#include "xmalloc.h"
-#include "status.h"
+#include <errno.h>
+#include <stdarg.h>
 
 /* error no from -30800 to -30999 */
 #define	NESS_ERR				(0)

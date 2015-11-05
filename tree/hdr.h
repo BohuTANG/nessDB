@@ -7,9 +7,6 @@
 #ifndef nessDB_HDR_H_
 #define nessDB_HDR_H_
 
-#include "internal.h"
-#include "block.h"
-
 /**
  * @file hdr.h
  * @brief

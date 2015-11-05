@@ -7,9 +7,6 @@
 #ifndef nessDB_RECOVERY_H_
 #define nessDB_RECOVERY_H_
 
-#include "internal.h"
-#include "logr.h"
-
 /* TODO */
 /* recovery all WAL to index trees */
 int recovery(struct nessdb *db);

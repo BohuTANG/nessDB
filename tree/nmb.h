@@ -7,11 +7,6 @@
 #ifndef nessDB_NMB_H_
 #define nessDB_NMB_H_
 
-#include "internal.h"
-#include "msgpack.h"
-#include "mempool.h"
-#include "mb.h"
-
 /**
  *
  * @file nmb

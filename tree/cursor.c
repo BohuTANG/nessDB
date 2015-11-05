@@ -4,10 +4,8 @@
  *
  */
 
-#include "cache.h"
-#include "leaf.h"
-#include "lmb.h"
-#include "cursor.h"
+#include "u.h"
+#include "t.h"
 
 /**
  * @file tcursor.c

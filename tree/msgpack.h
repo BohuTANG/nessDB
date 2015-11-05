@@ -7,9 +7,6 @@
 #ifndef nessDB_MSGPACK_H_
 #define nessDB_MSGPACK_H_
 
-#include "internal.h"
-#include "msg.h"
-
 /**
  * a msgpack stream
  */

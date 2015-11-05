@@ -7,9 +7,6 @@
 #ifndef nessDB_COMPRESS_H_
 #define nessDB_COMPRESS_H_
 
-#include "xtypes.h"
-#include "internal.h"
-
 uint32_t ness_compress_bound(ness_compress_method_t m, uint32_t size);
 
 int ness_compress(ness_compress_method_t m,

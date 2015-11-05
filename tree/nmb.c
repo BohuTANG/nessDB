@@ -4,7 +4,8 @@
  *
  */
 
-#include "nmb.h"
+#include "u.h"
+#include "t.h"
 
 static inline int _nmb_entry_key_compare(void *a, void *b, void *env)
 {

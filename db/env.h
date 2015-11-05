@@ -7,8 +7,6 @@
 #ifndef nessDB_ENV_H_
 #define nessDB_ENV_H_
 
-#include <stdint.h>
-
 struct env {
 	/* tree */
 	uint32_t inner_node_fanout;

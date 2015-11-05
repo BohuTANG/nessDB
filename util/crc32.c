@@ -5,7 +5,7 @@
  * Copyright 2001-2010 Georges Menie (www.menie.org)
  */
 
-#include "crc32.h"
+#include "u.h"
 
 static const uint32_t table0_[256] = {
 	0x00000000, 0xf26b8303, 0xe13b70f7, 0x1350f3f4,

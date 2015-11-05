@@ -4,7 +4,7 @@
  *
  */
 
-#include "msg.h"
+#include "u.h"
 
 struct msg *msgdup(struct msg *src) {
 	struct msg *dst;

@@ -7,14 +7,6 @@
 #ifndef nessDB_POSIX_H_
 #define nessDB_POSIX_H_
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <assert.h>
-#include <pthread.h>
-#include <time.h>
-#include <sys/time.h>
-
-
 #define pthread_call(result, msg)					\
 	do {								\
 		if (result != 0) {					\

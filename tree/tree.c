@@ -4,13 +4,10 @@
  *
  */
 
-#include "cache.h"
-#include "file.h"
-#include "leaf.h"
-#include "txn.h"
-#include "flusher.h"
-#include "layout.h"
-#include "tree.h"
+#include "u.h"
+#include "c.h"
+#include "x.h"
+#include "t.h"
 
 /*
  *

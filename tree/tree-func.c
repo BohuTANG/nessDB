@@ -4,8 +4,8 @@
  *
  */
 
-#include "layout.h"
-#include "tree-func.h"
+#include "u.h"
+#include "t.h"
 
 int tree_fetch_node_callback(int fd, void *hdr, NID nid, void **n)
 {

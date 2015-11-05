@@ -4,7 +4,7 @@
  *
  */
 
-#include "mempool.h"
+#include "u.h"
 
 #define MEMPOOL_BLOCKNUM	(16)
 #define MEMPOOL_BLOCKSIZE	(4096*16)

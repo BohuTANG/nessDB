@@ -4,12 +4,8 @@
  *
  */
 
-#include "posix.h"
-#include "file.h"
-#include "version.h"
-#include "msgpack.h"
-#include "crc32.h"
-#include "hdr.h"
+#include "u.h"
+#include "t.h"
 
 struct hdr *hdr_new(struct env *e) {
 	struct hdr *hdr = xcalloc(1, sizeof(struct hdr));
