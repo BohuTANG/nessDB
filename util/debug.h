@@ -9,10 +9,10 @@
 
 #define SHORT_FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 enum DEBUG_LEVEL {
-	LEVEL_INFO,
-	LEVEL_DEBUG,
-	LEVEL_WARNING,
-	LEVEL_ERROR
+    LEVEL_INFO,
+    LEVEL_DEBUG,
+    LEVEL_WARNING,
+    LEVEL_ERROR
 };
 
 void __debug(char *file,

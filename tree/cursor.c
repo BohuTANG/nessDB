@@ -5,6 +5,7 @@
  */
 
 #include "u.h"
+#include "c.h"
 #include "t.h"
 
 /**
@@ -276,7 +277,7 @@ void _tree_search(struct cursor * cur, struct search * so)
 	int r;
 	NID root_nid;
 	int child_to_search;
-	struct tree *t;
+	struct buftree *t;
 	struct node *root;
 
 	t = cur->tree;
@@ -314,7 +315,8 @@ void _tree_search_finish(struct search * so)
 	msgfree(so->pivot_bound);
 }
 
-struct cursor *cursor_new(struct tree * t, TXN *txn) {
+struct cursor *cursor_new(struct buftree * t, TXN *txn)
+{
 	struct cursor *cur;
 
 	cur = xcalloc(1, sizeof(*cur));

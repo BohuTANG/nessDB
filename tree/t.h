@@ -8,6 +8,7 @@
 #define nessDB_T_H_
 
 #include "env.h"
+#include "tcb.h"
 #include "msgpack.h"
 #include "mb.h"
 #include "lmb.h"
@@ -18,8 +19,10 @@
 #include "hdr.h"
 #include "layout.h"
 #include "leaf.h"
-#include "tree.h"
-#include "tree-func.h"
+#include "buftree.h"
+#include "buftree-func.h"
+#include "rolltree.h"
+#include "rolltree-func.h"
 #include "cursor.h"
 #include "flusher.h"
 #include "compress/compress.h"

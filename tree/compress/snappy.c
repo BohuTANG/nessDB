@@ -49,7 +49,139 @@
 #include <asm/unaligned.h>
 #else
 #include "snappy.h"
-#include "compat.h"
+#ifdef __FreeBSD__
+#  include <sys/endian.h>
+#elif defined(__APPLE_CC_) || defined(__MACH__)  /* MacOS/X support */
+#  include <machine/endian.h>
+
+#if    __DARWIN_BYTE_ORDER == __DARWIN_LITTLE_ENDIAN
+#  define	htole16(x) (x)
+#  define	le32toh(x) (x)
+#elif  __DARWIN_BYTE_ORDER == __DARWIN_BIG_ENDIAN
+#  define	htole16(x) __DARWIN_OSSwapInt16(x)
+#  define	le32toh(x) __DARWIN_OSSwapInt32(x)
+#else
+#  error "Endianness is undefined"
+#endif
+
+
+#elif !defined(__WIN32__)
+#  include <endian.h>
+#endif
+
+#include <stdlib.h>
+#include <assert.h>
+#include <string.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <limits.h>
+#ifndef __WIN32__
+#include <sys/uio.h>
+#endif
+
+#ifdef __ANDROID__
+#define le32toh letoh32
+#endif
+
+#if defined(__WIN32__) && defined(SG)
+struct iovec {
+	void *iov_base;	/* Pointer to data.  */
+	size_t iov_len;	/* Length of data.  */
+};
+#endif
+
+#define get_unaligned_memcpy(x) ({ \
+		typeof(*(x)) _ret; \
+		memcpy(&_ret, (x), sizeof(*(x))); \
+		_ret; })
+#define put_unaligned_memcpy(v,x) ({ \
+		typeof((v)) _v = (v); \
+		memcpy((x), &_v, sizeof(*(x))); })
+
+#define get_unaligned_direct(x) (*(x))
+#define put_unaligned_direct(v,x) (*(x) = (v))
+
+// Potentially unaligned loads and stores.
+// x86 and PowerPC can simply do these loads and stores native.
+#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__)
+
+#define get_unaligned get_unaligned_direct
+#define put_unaligned put_unaligned_direct
+#define get_unaligned64 get_unaligned_direct
+#define put_unaligned64 put_unaligned_direct
+
+// ARMv7 and newer support native unaligned accesses, but only of 16-bit
+// and 32-bit values (not 64-bit); older versions either raise a fatal signal,
+// do an unaligned read and rotate the words around a bit, or do the reads very
+// slowly (trip through kernel mode). There's no simple #define that says just
+// “ARMv7 or higher”, so we have to filter away all ARMv5 and ARMv6
+// sub-architectures.
+//
+// This is a mess, but there's not much we can do about it.
+#elif defined(__arm__) && \
+	!defined(__ARM_ARCH_4__) &&		\
+	!defined(__ARM_ARCH_4T__) &&		\
+	!defined(__ARM_ARCH_5__) &&		\
+	!defined(__ARM_ARCH_5T__) &&		\
+	!defined(__ARM_ARCH_5TE__) &&		\
+	!defined(__ARM_ARCH_5TEJ__) &&		\
+	!defined(__ARM_ARCH_6__) &&		\
+	!defined(__ARM_ARCH_6J__) &&		\
+	!defined(__ARM_ARCH_6K__) &&		\
+	!defined(__ARM_ARCH_6Z__) &&		\
+	!defined(__ARM_ARCH_6ZK__) &&		\
+	!defined(__ARM_ARCH_6T2__)
+
+#define get_unaligned get_unaligned_direct
+#define put_unaligned put_unaligned_direct
+#define get_unaligned64 get_unaligned_memcpy
+#define put_unaligned64 put_unaligned_memcpy
+
+// These macroses are provided for architectures that don't support
+// unaligned loads and stores.
+#else
+
+#define get_unaligned get_unaligned_memcpy
+#define put_unaligned put_unaligned_memcpy
+#define get_unaligned64 get_unaligned_memcpy
+#define put_unaligned64 put_unaligned_memcpy
+
+#endif
+
+#define get_unaligned_le32(x) (le32toh(get_unaligned((u32 *)(x))))
+#define put_unaligned_le16(v,x) (put_unaligned(htole16(v), (u16 *)(x)))
+
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned u32;
+typedef unsigned long long u64;
+
+#define BUG_ON(x) assert(!(x))
+
+#define vmalloc(x) malloc(x)
+#define vfree(x) free(x)
+
+#define EXPORT_SYMBOL(x)
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
+
+#define likely(x) __builtin_expect((x), 1)
+#define unlikely(x) __builtin_expect((x), 0)
+
+#define min_t(t,x,y) ((x) < (y) ? (x) : (y))
+#define max_t(t,x,y) ((x) > (y) ? (x) : (y))
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN__ 1
+#endif
+
+#if __LITTLE_ENDIAN__ == 1 && (defined(__LSB_VERSION__) || defined(__WIN32__))
+#define htole16(x) (x)
+#define le32toh(x) (x)
+#endif
+
+#define BITS_PER_LONG (__SIZEOF_LONG__ * 8)
+
 #endif
 
 #define CRASH_UNLESS(x) BUG_ON(!(x))
@@ -136,8 +268,8 @@ static inline int find_lsb_set_non_zero64(u64 n)
  * "result <= limit".
  */
 static inline const char *varint_parse32_with_limit(const char *p,
-                const char *l,
-                u32 * OUTPUT)
+        const char *l,
+        u32 * OUTPUT)
 {
 	const unsigned char *ptr = (const unsigned char *)(p);
 	const unsigned char *limit = (const unsigned char *)(l);
@@ -414,7 +546,7 @@ static inline void incremental_copy(const char *src, char *op, ssize_t len)
 #define kmax_increment_copy_overflow  10
 
 static inline void incremental_copy_fast_path(const char *src, char *op,
-                ssize_t len)
+        ssize_t len)
 {
 	while (op - src < 8) {
 		unaligned_copy64(src, op);
@@ -430,7 +562,7 @@ static inline void incremental_copy_fast_path(const char *src, char *op,
 }
 
 static inline bool writer_append_from_self(struct writer *w, u32 offset,
-                u32 len)
+        u32 len)
 {
 	char *const op = w->op;
 	CHECK_LE(op, w->op_limit);
@@ -471,7 +603,7 @@ static inline bool writer_append(struct writer *w, const char *ip, u32 len)
 }
 
 static inline bool writer_try_fast_append(struct writer *w, const char *ip,
-                u32 available_bytes, u32 len)
+        u32 available_bytes, u32 len)
 {
 	char *const op = w->op;
 	const int space_left = w->op_limit - op;
@@ -531,10 +663,10 @@ size_t snappy_max_compressed_length(size_t source_len)
 }
 
 enum {
-	LITERAL = 0,
-	COPY_1_BYTE_OFFSET = 1,	/* 3 bit length + 3 bits of offset in opcode */
-	COPY_2_BYTE_OFFSET = 2,
-	COPY_4_BYTE_OFFSET = 3
+    LITERAL = 0,
+    COPY_1_BYTE_OFFSET = 1,	/* 3 bit length + 3 bits of offset in opcode */
+    COPY_2_BYTE_OFFSET = 2,
+    COPY_4_BYTE_OFFSET = 3
 };
 
 static inline char *emit_literal(char *op,
@@ -592,8 +724,8 @@ static inline char *emit_copy_less_than64(char *op, int offset, int len)
 		int len_minus_4 = len - 4;
 		DCHECK(len_minus_4 < 8);	/* Must fit in 3 bits */
 		*op++ =
-		        COPY_1_BYTE_OFFSET + ((len_minus_4) << 2) + ((offset >> 8)
-		                        << 5);
+		    COPY_1_BYTE_OFFSET + ((len_minus_4) << 2) + ((offset >> 8)
+		            << 5);
 		*op++ = offset & 0xff;
 	} else {
 		*op++ = COPY_2_BYTE_OFFSET + ((len - 1) << 2);
@@ -734,8 +866,8 @@ static inline int find_match_length(const char *s1,
 			 * instruction to improve.
 			 */
 			u64 x =
-			        UNALIGNED_LOAD64(s2) ^ UNALIGNED_LOAD64(s1 +
-			                        matched);
+			    UNALIGNED_LOAD64(s2) ^ UNALIGNED_LOAD64(s1 +
+			            matched);
 			int matching_bits = find_lsb_set_non_zero64(x);
 			matched += matching_bits >> 3;
 			return matched;
@@ -766,7 +898,7 @@ static inline int find_match_length(const char *s1,
 	}
 	if (is_little_endian() && s2 <= s2_limit - 4) {
 		u32 x =
-		        UNALIGNED_LOAD32(s2) ^ UNALIGNED_LOAD32(s1 + matched);
+		    UNALIGNED_LOAD32(s2) ^ UNALIGNED_LOAD32(s1 + matched);
 		int matching_bits = find_lsb_set_non_zero(x);
 		matched += matching_bits >> 3;
 	} else {
@@ -962,12 +1094,12 @@ static char *compress_fragment(const char *const input,
 				}
 				input_bytes = get_eight_bytes_at(insert_tail);
 				u32 prev_hash =
-				        hash_bytes(get_u32_at_offset
-				                   (input_bytes, 0), shift);
+				    hash_bytes(get_u32_at_offset
+				               (input_bytes, 0), shift);
 				table[prev_hash] = ip - baseip - 1;
 				u32 cur_hash =
-				        hash_bytes(get_u32_at_offset
-				                   (input_bytes, 1), shift);
+				    hash_bytes(get_u32_at_offset
+				               (input_bytes, 1), shift);
 				candidate = baseip + table[cur_hash];
 				candidate_bytes = UNALIGNED_LOAD32(candidate);
 				table[cur_hash] = ip - baseip;
@@ -975,8 +1107,8 @@ static char *compress_fragment(const char *const input,
 			         candidate_bytes);
 
 			next_hash =
-			        hash_bytes(get_u32_at_offset(input_bytes, 2),
-			                   shift);
+			    hash_bytes(get_u32_at_offset(input_bytes, 2),
+			               shift);
 			++ip;
 		}
 	}
@@ -1327,8 +1459,8 @@ static inline int compress(struct snappy_env *env, struct source *reader,
 			while (bytes_read < num_to_read) {
 				fragment = peek(reader, &fragment_size);
 				size_t n =
-				        min_t(size_t, fragment_size,
-				              num_to_read - bytes_read);
+				    min_t(size_t, fragment_size,
+				          num_to_read - bytes_read);
 				memcpy((char *)(env->scratch) + bytes_read, fragment, n);
 				bytes_read += n;
 				skip(reader, n);
@@ -1560,7 +1692,7 @@ int snappy_init_env_sg(struct snappy_env *env, bool sg)
 		if (!env->scratch)
 			goto error;
 		env->scratch_output =
-		        vmalloc(snappy_max_compressed_length(kblock_size));
+		    vmalloc(snappy_max_compressed_length(kblock_size));
 		if (!env->scratch_output)
 			goto error;
 	}

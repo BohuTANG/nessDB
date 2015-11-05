@@ -5,6 +5,7 @@
  */
 
 #include "u.h"
+#include "t.h"
 #include "env.h"
 #include "c.h"
 
@@ -32,7 +33,8 @@ static inline void cpair_unlocked_by_key(struct cpair_htable *table, NID key)
 	mutex_unlock(&table->mutexes[key & (PAIR_LIST_SIZE - 1)].aligned_mtx);
 }
 
-struct cpair *cpair_new() {
+struct cpair *cpair_new()
+{
 	struct cpair *cp;
 
 	cp = xcalloc(1, sizeof(*cp));
@@ -55,7 +57,8 @@ void cpair_init(struct cpair *cp, NID k, void *value, struct cache_file *cf)
 /*******************************
  * list (in clock order)
  ******************************/
-struct cpair_list *cpair_list_new() {
+struct cpair_list *cpair_list_new()
+{
 	struct cpair_list *list;
 
 	list = xcalloc(1, sizeof(*list));
@@ -97,7 +100,8 @@ void cpair_list_remove(struct cpair_list *list, struct cpair *pair)
 /*******************************
  * hashtable
  ******************************/
-struct cpair_htable *cpair_htable_new() {
+struct cpair_htable *cpair_htable_new()
+{
 	int i;
 	struct cpair_htable *table;
 
@@ -143,7 +147,8 @@ void cpair_htable_remove(struct cpair_htable *table, struct cpair *pair)
 	}
 }
 
-struct cpair *cpair_htable_find(struct cpair_htable *table, NID key) {
+struct cpair *cpair_htable_find(struct cpair_htable *table, NID key)
+{
 	int hash;
 	struct cpair *curr;
 
@@ -313,7 +318,8 @@ static void *flusher_cb(void *arg)
 	return NULL;
 }
 
-struct cache *cache_new(struct env *e) {
+struct cache *cache_new(struct env *e)
+{
 	struct cache *c;
 
 	c = xcalloc(1, sizeof(*c));
@@ -535,7 +541,8 @@ int cache_file_remove(struct cache *c, int filenum)
 struct cache_file *cache_file_create(struct cache *c,
                                      int fd,
                                      void *hdr,
-                                     struct tree_callback *tcb) {
+                                     struct tree_callback *tcb)
+{
 	struct cache_file *cf;
 
 	cf = xcalloc(1, sizeof(*cf));

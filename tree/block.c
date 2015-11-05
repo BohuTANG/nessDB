@@ -35,7 +35,8 @@ static int _pair_compare_fun(const void *a, const void *b)
 	return 0;
 }
 
-struct block *block_new(struct env *e) {
+struct block *block_new(struct env *e)
+{
 	struct block *b;
 
 	b = xcalloc(1, sizeof(*b));

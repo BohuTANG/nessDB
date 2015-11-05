@@ -8,7 +8,8 @@
 #include "db.h"
 #include "ness.h"
 
-void *ness_env_open(const char *home, uint32_t flags) {
+void *ness_env_open(const char *home, uint32_t flags)
+{
 	return env_open(home, flags);
 }
 
@@ -18,7 +19,8 @@ void ness_env_close(void *nessenv)
 	env_close(e);
 }
 
-void *ness_db_open(void *nessenv, const char *dbname) {
+void *ness_db_open(void *nessenv, const char *dbname)
+{
 	struct env *e = (struct env*)nessenv;
 
 	return db_open(e, dbname);

@@ -11,9 +11,9 @@
 #define PIVOT_SIZE (sizeof(struct msg))
 
 enum reactivity {
-	FISSIBLE,
-	FLUSHBLE,
-	STABLE
+    FISSIBLE,
+    FLUSHBLE,
+    STABLE
 };
 
 struct ancestors {

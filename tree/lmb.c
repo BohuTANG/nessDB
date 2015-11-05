@@ -20,7 +20,8 @@ static inline int _lmb_entry_key_compare(void *a, void *b, void *env)
 	                          leb->keylen);
 }
 
-struct lmb *lmb_new(struct env *e) {
+struct lmb *lmb_new(struct env *e)
+{
 	struct lmb *lmb = xmalloc(sizeof(*lmb));
 
 	lmb->mpool = mempool_new();

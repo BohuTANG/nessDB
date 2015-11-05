@@ -7,7 +7,8 @@
 #include "u.h"
 #include "t.h"
 
-struct hdr *hdr_new(struct env *e) {
+struct hdr *hdr_new(struct env *e)
+{
 	struct hdr *hdr = xcalloc(1, sizeof(struct hdr));
 
 	hdr->e = e;
@@ -284,14 +285,14 @@ int read_hdr_from_disk(int fd, struct hdr *hdr, DISKOFF off)
 	uint32_t read_size, align_size;
 
 	read_size = (
-	                    + 8		/* magic        */
-	                    + 8		/* last nid     */
-	                    + 8		/* last msn     */
-	                    + 8		/* root nid     */
-	                    + 4		/* version      */
-	                    + 4		/* block size   */
-	                    + 8		/* block offset */
-	                    + CRC_SIZE);/* checksum     */
+	                + 8		/* magic        */
+	                + 8		/* last nid     */
+	                + 8		/* last msn     */
+	                + 8		/* root nid     */
+	                + 4		/* version      */
+	                + 4		/* block size   */
+	                + 8		/* block offset */
+	                + CRC_SIZE);/* checksum     */
 
 	align_size = ALIGN(read_size);
 	packer = msgpack_new(align_size);

@@ -9,7 +9,7 @@
 
 /**
  * @file cursor.h
- * @brief cursor of tree
+ * @brief cursor of buftree
  *
  * supports: SEEK, SEEKTOFIRST, SEEKTOLAST, NEXT, PREV
  * when we do the range seek operations,
@@ -26,20 +26,20 @@ typedef int (*search_pivotbound_compare_func)(struct search *, struct msg *);
 typedef int (*search_key_compare_func)(struct msg *, struct msg *);
 
 typedef enum {
-	SEARCH_FORWARD = 1,
-	SEARCH_BACKWARD = -1
+    SEARCH_FORWARD = 1,
+    SEARCH_BACKWARD = -1
 } direction_t;
 
 typedef enum {
-	GAP_POSI = 1,
-	GAP_ZERO = 0,
-	GAP_NEGA = -1
+    GAP_POSI = 1,
+    GAP_ZERO = 0,
+    GAP_NEGA = -1
 } gap_t;
 
 enum {
-	CURSOR_CONTINUE = 10000,
-	CURSOR_EOF = -10001,
-	CURSOR_TRY_AGAIN = -10002
+    CURSOR_CONTINUE = 10000,
+    CURSOR_EOF = -10001,
+    CURSOR_TRY_AGAIN = -10002
 };
 
 /* internal search entry */
@@ -66,7 +66,7 @@ struct cursor {
 	msgtype_t msgtype;
 	struct msg key;			/* return key */
 	struct msg val;			/* return val */
-	struct tree *tree;		/* index */
+	struct buftree *tree;		/* index */
 	void *extra;			/* extra(no-use) */
 	TXN_ISOLATION_TYPE iso_type;
 
@@ -75,7 +75,7 @@ struct cursor {
 	struct ancestors *ances;
 };
 
-struct cursor *cursor_new(struct tree *t, TXN *txn);
+struct cursor *cursor_new(struct buftree *t, TXN *txn);
 void cursor_free(struct cursor *cur);
 int tree_cursor_valid(struct cursor *cur);
 void tree_cursor_first(struct cursor *cur);

@@ -81,7 +81,8 @@ static void *work_on_kibbutz(void *arg)
 	kunlock(k);
 }
 
-struct kibbutz *kibbutz_new(int n_workers) {
+struct kibbutz *kibbutz_new(int n_workers)
+{
 	int i;
 	int r;
 	struct kibbutz *k;

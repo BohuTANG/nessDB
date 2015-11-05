@@ -91,7 +91,8 @@ void ngettime(struct timespec *a)
 	a->tv_nsec = tv.tv_usec * 1000LL;
 }
 
-struct timespec diff_timespec(struct timespec start, struct timespec end) {
+struct timespec diff_timespec(struct timespec start, struct timespec end)
+{
 	struct timespec result;
 
 	if (end.tv_nsec < start.tv_nsec) {
@@ -120,7 +121,8 @@ long long time_diff_ms(struct timespec start, struct timespec end)
 }
 
 /* cron functions */
-struct cron *cron_new(func f, uint32_t period_ms) {
+struct cron *cron_new(func f, uint32_t period_ms)
+{
 	struct cron *cron;
 
 	cron = xcalloc(1, sizeof(*cron));

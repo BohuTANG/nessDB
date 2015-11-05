@@ -6,7 +6,8 @@
 
 #include "u.h"
 
-struct msg *msgdup(struct msg *src) {
+struct msg *msgdup(struct msg *src)
+{
 	struct msg *dst;
 
 	if (!src)

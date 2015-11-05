@@ -8,10 +8,23 @@
 #define nessDB_U_H_
 
 #include "fmacro.h"
-#include "internal.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <inttypes.h>
+#include <fcntl.h>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <sched.h>
+#include <errno.h>
+#include <stdarg.h>
+
 #include "xtypes.h"
 #include "debug.h"
-#include "internal.h"
 #include "counter.h"
 #include "comparator.h"
 #include "crc32.h"

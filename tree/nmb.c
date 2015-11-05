@@ -78,7 +78,8 @@ void _nmb_entry_unpack(char *base,
 	}
 }
 
-struct nmb *nmb_new(struct env *e) {
+struct nmb *nmb_new(struct env *e)
+{
 	struct nmb *nmb = xmalloc(sizeof(*nmb));
 
 	nmb->mpool = mempool_new();

@@ -7,8 +7,6 @@
 #ifndef nessDB_STATUS_H_
 #define nessDB_STATUS_H_
 
-#include "internal.h"
-
 #if defined(__linux__) && USE_VALGRIND
 #include <valgrind/helgrind.h>
 #include <valgrind/drd.h>
@@ -51,7 +49,8 @@ struct status {
 	uint64_t nonleaf_uncompress_data_costs;
 };
 
-static inline struct status *status_new() {
+static inline struct status *status_new()
+{
 	struct status *status;
 
 	status = xcalloc(1, sizeof(*status));

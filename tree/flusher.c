@@ -5,9 +5,10 @@
  */
 
 #include "u.h"
+#include "c.h"
 #include "t.h"
 
-void _flush_buffer_to_child(struct tree *t, struct node *child, struct nmb *buf)
+void _flush_buffer_to_child(struct buftree *t, struct node *child, struct nmb *buf)
 {
 	struct mb_iter iter;
 
@@ -29,7 +30,7 @@ void _flush_buffer_to_child(struct tree *t, struct node *child, struct nmb *buf)
 	}
 }
 
-void _flush_some_child(struct tree *t, struct node *parent);
+void _flush_some_child(struct buftree *t, struct node *parent);
 
 /*
  * PROCESS:
@@ -43,7 +44,7 @@ void _flush_some_child(struct tree *t, struct node *parent);
  *	- parent is unlocked
  *	- no nodes are locked
  */
-void _child_maybe_reactivity(struct tree *t, struct node *parent, struct node *child)
+void _child_maybe_reactivity(struct buftree *t, struct node *parent, struct node *child)
 {
 	enum reactivity re = get_reactivity(t, child);
 
@@ -75,7 +76,7 @@ void _child_maybe_reactivity(struct tree *t, struct node *parent, struct node *c
  *	- parent is unlocked
  *	- no nodes are locked
  */
-void _flush_some_child(struct tree *t, struct node *parent)
+void _flush_some_child(struct buftree *t, struct node *parent)
 {
 	int childnum;
 	enum reactivity re;
@@ -123,7 +124,7 @@ static void _flush_node_func(void *fe)
 {
 	enum reactivity re;
 	struct flusher_extra *extra = (struct flusher_extra*)fe;
-	struct tree *t = extra->tree;
+	struct buftree *t = extra->tree;
 	struct node *n = extra->node;
 	struct nmb *buf = extra->buffer;
 
@@ -149,7 +150,7 @@ static void _flush_node_func(void *fe)
 /*
  * add work to background thread (non-block)
  */
-static void _place_node_and_buffer_on_background(struct tree *t, struct node *node, struct nmb *buffer)
+static void _place_node_and_buffer_on_background(struct buftree *t, struct node *node, struct nmb *buffer)
 {
 	struct flusher_extra *extra = xmalloc(sizeof(*extra));
 
@@ -168,7 +169,7 @@ static void _place_node_and_buffer_on_background(struct tree *t, struct node *no
  * EXIT:
  *	- nodes are all unlocked
  */
-void tree_flush_node_on_background(struct tree *t, struct node *parent)
+void buftree_flush_node_on_background(struct buftree *t, struct node *parent)
 {
 	int childnum;
 	enum reactivity re;

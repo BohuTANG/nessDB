@@ -7,7 +7,7 @@
 #include "u.h"
 #include "t.h"
 
-int tree_fetch_node_callback(int fd, void *hdr, NID nid, void **n)
+int buftree_fetch_node_callback(int fd, void *hdr, NID nid, void **n)
 {
 	int r;
 	struct timespec t1, t2;
@@ -25,7 +25,7 @@ int tree_fetch_node_callback(int fd, void *hdr, NID nid, void **n)
 	return r;
 }
 
-int tree_flush_node_callback(int fd, void *hdr, void *n)
+int buftree_flush_node_callback(int fd, void *hdr, void *n)
 {
 	int r;
 	struct timespec t1, t2;
@@ -42,7 +42,7 @@ int tree_flush_node_callback(int fd, void *hdr, void *n)
 	return r;
 }
 
-int tree_fetch_hdr_callback(int fd, void *hdr)
+int buftree_fetch_hdr_callback(int fd, void *hdr)
 {
 	int r;
 
@@ -53,7 +53,7 @@ int tree_fetch_hdr_callback(int fd, void *hdr)
 	return r;
 }
 
-int tree_flush_hdr_callback(int fd, void *hdr)
+int buftree_flush_hdr_callback(int fd, void *hdr)
 {
 	int r;
 	struct hdr *h = (struct hdr*)hdr;
@@ -65,13 +65,13 @@ int tree_flush_hdr_callback(int fd, void *hdr)
 	return r;
 }
 
-int tree_free_node_callback(void *n)
+int buftree_free_node_callback(void *n)
 {
 	node_free(n);
 	return NESS_OK;
 }
 
-int tree_cache_put_callback(void *n, void *cpair)
+int buftree_cache_put_callback(void *n, void *cpair)
 {
 	struct node *node = (struct node*)n;
 
@@ -79,17 +79,28 @@ int tree_cache_put_callback(void *n, void *cpair)
 	return NESS_OK;
 }
 
-int tree_node_is_dirty_callback(void *n)
+int buftree_node_is_dirty_callback(void *n)
 {
 	struct node *node = (struct node*)n;
 
 	return node_is_dirty(node);
 }
 
-int tree_node_set_nondirty_callback(void *n)
+int buftree_node_set_nondirty_callback(void *n)
 {
 	struct node *node = (struct node*)n;
 
 	node_set_nondirty(node);
 	return NESS_OK;
 }
+
+struct tree_callback buftree_cb = {
+	.fetch_node_cb = buftree_fetch_node_callback,
+	.flush_node_cb = buftree_flush_node_callback,
+	.fetch_hdr_cb = buftree_fetch_hdr_callback,
+	.flush_hdr_cb = buftree_flush_hdr_callback,
+	.free_node_cb = buftree_free_node_callback,
+	.cache_put_cb = buftree_cache_put_callback,
+	.node_is_dirty_cb = buftree_node_is_dirty_callback,
+	.node_set_nondirty_cb = buftree_node_set_nondirty_callback,
+};

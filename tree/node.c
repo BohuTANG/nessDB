@@ -13,7 +13,8 @@ static struct node_operations nop = {
 	.pivot_compare_func = msg_key_compare
 };
 
-struct leaf_basement_node *create_leaf(struct env *e) {
+struct leaf_basement_node *create_leaf(struct env *e)
+{
 	struct leaf_basement_node *leaf = xcalloc(1, sizeof(*leaf));
 
 	leaf->buffer = lmb_new(e);
@@ -27,7 +28,8 @@ static void free_leaf(struct leaf_basement_node *leaf)
 	xfree(leaf);
 }
 
-struct nonleaf_childinfo *create_nonleaf(struct env *e) {
+struct nonleaf_childinfo *create_nonleaf(struct env *e)
+{
 	struct nonleaf_childinfo *nonleaf = xcalloc(1, sizeof(*nonleaf));
 
 	nonleaf->buffer = nmb_new(e);
@@ -92,7 +94,8 @@ void node_ptrs_alloc(struct node *node)
  * EFFECT:
  *	- alloc node header
  */
-struct node *node_alloc_empty(NID nid, int height, struct env *e) {
+struct node *node_alloc_empty(NID nid, int height, struct env *e)
+{
 	struct node *node;
 
 	node = xcalloc(1, sizeof(*node));
@@ -130,7 +133,8 @@ struct node *node_alloc_full(NID nid,
                              int height,
                              int children,
                              int layout_version,
-                             struct env *e) {
+                             struct env *e)
+{
 	struct node *node;
 
 	node = node_alloc_empty(nid, height, e);

@@ -33,7 +33,7 @@
  *	- node a is already locked(L_WRITE)
  *	- node b is already locked(L_WRITE)
  */
-static void _add_pivot_to_parent(struct tree *t,
+static void _add_pivot_to_parent(struct buftree *t,
                                  struct node *parent,
                                  int child_num,
                                  struct node *a,
@@ -97,7 +97,7 @@ static void _add_pivot_to_parent(struct tree *t,
  *	- a is locked
  *	- b is locked
  */
-static void _leaf_and_lmb_split(struct tree *t,
+static void _leaf_and_lmb_split(struct buftree *t,
                                 struct node *leaf,
                                 struct node **a,
                                 struct node **b,
@@ -193,7 +193,7 @@ static void _leaf_and_lmb_split(struct tree *t,
  *	- a is locked(L_WRITE)
  *	- b is locked(L_WRITE)
  */
-static void _node_split(struct tree *t,
+static void _node_split(struct buftree *t,
                         struct node *node,
                         struct node **a,
                         struct node **b,
@@ -275,7 +275,8 @@ static void _node_split(struct tree *t,
 	*split_key = spk;
 }
 
-struct cpair_attr make_cpair_attr(struct node *n) {
+struct cpair_attr make_cpair_attr(struct node *n)
+{
 	struct cpair_attr attr = {.nodesz = node_size(n)};
 
 	return attr;
@@ -292,7 +293,7 @@ struct cpair_attr make_cpair_attr(struct node *n) {
  *	- parent is locked
  *	- child is locked
  */
-void node_split_child(struct tree *t,
+void node_split_child(struct buftree *t,
                       struct node *parent,
                       struct node *child)
 {
@@ -319,7 +320,7 @@ void node_split_child(struct tree *t,
 		status_increment(&t->e->status->tree_leaf_split_nums);
 }
 
-enum reactivity get_reactivity(struct tree *t, struct node *node)
+enum reactivity get_reactivity(struct buftree *t, struct node *node)
 {
 	uint32_t children = node->n_children;
 
@@ -387,7 +388,7 @@ void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd)
  * EXITS:
  *	- node is locked
  */
-void node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd)
+void node_put_cmd(struct buftree *t, struct node *node, struct bt_cmd *cmd)
 {
 	if (nessunlikely(node->height == 0)) {
 		leaf_put_cmd(node, cmd);
@@ -443,7 +444,7 @@ static void _root_swap(struct node *new_root, struct node *old_root)
 	new_root->isroot = 1;
 }
 
-static void _root_split(struct tree *t,
+static void _root_split(struct buftree *t,
                         struct node *new_root,
                         struct node *old_root)
 {
@@ -482,7 +483,7 @@ static void _root_split(struct tree *t,
  * EFFECT:
  *	- split the fissible root
  */
-void _root_fissible(struct tree *t, struct node *root)
+void _root_fissible(struct buftree *t, struct node *root)
 {
 	struct node *new_root;
 	uint32_t new_root_height = 1;
@@ -510,7 +511,7 @@ void _root_fissible(struct tree *t, struct node *root)
  * EXITS:
  *	- all nodes are unlocked
  */
-int root_put_cmd(struct tree *t, struct bt_cmd *cmd)
+int root_put_cmd(struct buftree *t, struct bt_cmd *cmd)
 {
 	struct node *root;
 	enum reactivity re;
@@ -545,23 +546,23 @@ CHANGE_LOCK_TYPE:
 			locktype = L_WRITE;
 			goto CHANGE_LOCK_TYPE;
 		}
-		tree_flush_node_on_background(t, root);
+		buftree_flush_node_on_background(t, root);
 		break;
 	}
 
 	return NESS_OK;
 }
 
-struct tree *tree_open(const char *dbname,
-                       struct env *e,
-                       struct tree_callback *tcb) {
+struct buftree *buftree_open(const char *dbname, struct env *e)
+{
 	int fd;
 	int flag;
 	mode_t mode;
 	int is_create = 0;
-	struct tree *t;
+	struct buftree *t;
 	struct node *root;
 	struct cache_file *cf;
+	struct tree_callback *tcb = &buftree_cb;
 
 	t = xcalloc(1, sizeof(*t));
 	t->e = e;
@@ -623,7 +624,7 @@ ERR:
 	return NESS_ERR;
 }
 
-int tree_put(struct tree *t,
+int buftree_put(struct buftree *t,
              struct msg *k,
              struct msg *v,
              msgtype_t type,
@@ -663,7 +664,7 @@ int tree_put(struct tree *t,
 	return  root_put_cmd(t, &cmd);
 }
 
-void tree_free(struct tree *t)
+void buftree_free(struct buftree *t)
 {
 	if (!t) return;
 

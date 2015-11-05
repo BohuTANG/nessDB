@@ -13,7 +13,8 @@
  *
  */
 
-struct logw *logw_open(struct options *opts, uint64_t logsn) {
+struct logw *logw_open(struct options *opts, uint64_t logsn)
+{
 	int flag;
 	mode_t mode;
 	struct logw *lgw;

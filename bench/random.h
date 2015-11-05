@@ -7,8 +7,6 @@
 #ifndef nessDB_RANDOM_H_
 #define nessDB_RANDOM_H_
 
-#include "internal.h"
-
 struct random {
 	uint32_t seed;
 	uint32_t pos;

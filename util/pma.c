@@ -120,7 +120,8 @@ static void _array_insertat(struct array *a, void *e, int i)
 	a->used++;
 }
 
-struct array *_array_new(int reverse) {
+struct array *_array_new(int reverse)
+{
 	struct array *a = xcalloc(1, sizeof(*a));
 
 	a->used = 0;
@@ -228,7 +229,8 @@ void pma_insertat(struct pma *p, void *k, compare_func f, void *env, struct pma_
 	}
 }
 
-struct pma *pma_new(int reverse) {
+struct pma *pma_new(int reverse)
+{
 	struct pma *p = xcalloc(1, sizeof(*p));
 
 	p->used = 0;

@@ -15,7 +15,8 @@ CFLAGS =  $(INCLUDES) $(PLATFORM_SHARED_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) $(OPT
 LIB_OBJS =	 				\
 	./tree/compress/compress.o	\
 	./tree/compress/snappy.o	\
-	./tree/tree-func.o		\
+	./tree/buftree-func.o		\
+	./tree/rolltree-func.o		\
 	./tree/cursor.o			\
 	./tree/flusher.o		\
 	./tree/msgpack.o		\
@@ -23,7 +24,8 @@ LIB_OBJS =	 				\
 	./tree/block.o			\
 	./tree/hdr.o			\
 	./tree/node.o			\
-	./tree/tree.o			\
+	./tree/buftree.o			\
+	./tree/rolltree.o			\
 	./tree/leaf.o			\
 	./tree/nmb.o			\
 	./tree/lmb.o			\

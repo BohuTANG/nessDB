@@ -7,20 +7,13 @@
 #ifndef nessDB_FLUSHER_H_
 #define nessDB_FLUSHER_H_
 
-#include "internal.h"
-#include "block.h"
-#include "node.h"
-#include "mb.h"
-#include "nmb.h"
-#include "lmb.h"
-
 struct flusher_extra {
-	struct tree *tree;
+	struct buftree *tree;
 	struct node *node;
 	struct nmb *buffer;
 };
 
-void flush_some_child(struct tree *t, struct node *parent);
-void tree_flush_node_on_background(struct tree *t, struct node *parent);
+void flush_some_child(struct buftree *t, struct node *parent);
+void buftree_flush_node_on_background(struct buftree *t, struct node *parent);
 
 #endif /* nessDB_FLUSHER_H_ */

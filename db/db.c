@@ -13,11 +13,12 @@
 
 struct nessdb {
 	struct env *e;
-	struct tree *tree;
+	struct buftree *tree;
 };
 
 
-struct env *env_open(const char *home, uint32_t flags) {
+struct env *env_open(const char *home, uint32_t flags)
+{
 	struct env *e;
 
 	e = xcalloc(1, sizeof(*e));
@@ -74,10 +75,11 @@ void env_close(struct env *e)
 	xfree(e);
 }
 
-struct nessdb *db_open(struct env *e, const char *dbname) {
+struct nessdb *db_open(struct env *e, const char *dbname)
+{
 	char dbpath[FILE_NAME_MAXLEN];
 	struct nessdb *db;
-	struct tree *tree;
+	struct buftree *tree;
 
 	memset(dbpath, 0, FILE_NAME_MAXLEN);
 	snprintf(dbpath,
@@ -86,18 +88,7 @@ struct nessdb *db_open(struct env *e, const char *dbname) {
 	         e->dir,
 	         dbname);
 	ness_file_exist(dbpath);
-
-	static struct tree_callback tree_cb = {
-		.fetch_node_cb = tree_fetch_node_callback,
-		.flush_node_cb = tree_flush_node_callback,
-		.fetch_hdr_cb = tree_fetch_hdr_callback,
-		.flush_hdr_cb = tree_flush_hdr_callback,
-		.free_node_cb = tree_free_node_callback,
-		.cache_put_cb = tree_cache_put_callback,
-		.node_is_dirty_cb = tree_node_is_dirty_callback,
-		.node_set_nondirty_cb = tree_node_set_nondirty_callback,
-	};
-	tree = tree_open(dbpath, e, &tree_cb);
+	tree = buftree_open(dbpath, e);
 
 	db = xcalloc(1, sizeof(*db));
 	db->e = e;
@@ -110,7 +101,7 @@ int db_set(struct nessdb *db, struct msg *k, struct msg *v)
 {
 	int r;
 
-	r = tree_put(db->tree, k, v, MSG_INSERT, NULL);
+	r = buftree_put(db->tree, k, v, MSG_INSERT, NULL);
 
 	return r;
 }
@@ -119,7 +110,7 @@ int db_del(struct nessdb *db, struct msg *k)
 {
 	int r;
 
-	r = tree_put(db->tree, k, NULL, MSG_DELETE, NULL);
+	r = buftree_put(db->tree, k, NULL, MSG_DELETE, NULL);
 
 	return r;
 }
@@ -159,7 +150,7 @@ int env_set_compare_func(struct env *e, int (*bt_compare_func)(void *a, int lena
 
 int db_close(struct nessdb *db)
 {
-	tree_free(db->tree);
+	buftree_free(db->tree);
 	xfree(db);
 
 	return 1;

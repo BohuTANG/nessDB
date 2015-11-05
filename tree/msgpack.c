@@ -74,7 +74,8 @@ static void getuint64(char *data, uint64_t *v)
 	*v = ((uint64_t)(hi) << 32 | lo);
 }
 
-struct msgpack *msgpack_new(uint32_t size) {
+struct msgpack *msgpack_new(uint32_t size)
+{
 	struct msgpack *pk;
 
 	pk = xcalloc(1, sizeof(*pk));

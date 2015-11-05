@@ -6,7 +6,8 @@
 
 #include "u.h"
 
-struct counter *counter_new(int cpus) {
+struct counter *counter_new(int cpus)
+{
 	struct counter *c = xcalloc(1, sizeof(*c));
 
 	c->cpus = cpus;
@@ -24,7 +25,7 @@ void counter_free(struct counter *c)
 
 void counter_incr(struct counter *c)
 {
-#ifdef HAVE_SCHED_GETCPU 
+#ifdef HAVE_SCHED_GETCPU
 	int cpu = sched_getcpu();
 #else
 	int cpu = 4;

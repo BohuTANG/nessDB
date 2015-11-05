@@ -9,7 +9,8 @@
 #define MEMPOOL_BLOCKNUM	(16)
 #define MEMPOOL_BLOCKSIZE	(4096*16)
 
-struct memblk *_new_blk(struct mempool *pool, uint32_t bytes) {
+struct memblk *_new_blk(struct mempool *pool, uint32_t bytes)
+{
 	uint32_t sizes;
 	struct memblk *blk;
 
@@ -39,7 +40,8 @@ void _mempool_makeroom(struct mempool *pool)
 	pool->blk_nums = new_nums;
 }
 
-struct mempool *mempool_new() {
+struct mempool *mempool_new()
+{
 	struct mempool *pool;
 
 	pool = xcalloc(1, sizeof(*pool));

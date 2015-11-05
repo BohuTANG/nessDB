@@ -18,7 +18,8 @@ size_t _file_size(char *filename)
 	return st.st_size;
 }
 
-struct logr *logr_open(struct options *opts, uint64_t logsn) {
+struct logr *logr_open(struct options *opts, uint64_t logsn)
+{
 	int flag;
 	mode_t mode;
 	struct logr *lgr;

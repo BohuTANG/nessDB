@@ -1,5 +1,5 @@
+#include "u.h"
 #include "random.h"
-#include "xmalloc.h"
 
 void _random_buffer(char *key, int length)
 {
@@ -10,7 +10,8 @@ void _random_buffer(char *key, int length)
 		key[i] = salt[rand() % 36];
 }
 
-struct random *rnd_new() {
+struct random *rnd_new()
+{
 	struct random *rnd = xcalloc(1, sizeof(*rnd));
 
 	rnd->seed = 301;

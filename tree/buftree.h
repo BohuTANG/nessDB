@@ -4,43 +4,40 @@
  *
  */
 
-#ifndef nessDB_TREE_H_
-#define nessDB_TREE_H_
+#ifndef nessDB_BUFTREE_H_
+#define nessDB_BUFTREE_H_
 
 /**
  *
- * @file tree.h
+ * @file buftree.h
  * @brief a buffered-tree index data structure
  * http://cs.au.dk/~large/Paperpages/bufferalgo.htm
  *
  */
 
-#include "cache.h"
-struct tree {
+struct buftree {
 	int fd;
 	struct hdr *hdr;
 	struct cache_file *cf;
 	struct env *e;
 };
 
-struct cache;
-struct tree *tree_open(const char *dbname,
-                       struct env *e,
-                       struct tree_callback *tcb);
+struct buftree *buftree_open(const char *dbname, struct env *e);
+void buftree_free(struct buftree *t);
 
-int tree_put(struct tree *t,
+int buftree_put(struct buftree *t,
              struct msg *k,
              struct msg *v,
              msgtype_t type,
              TXN *txn);
-void tree_free(struct tree *t);
 
-int root_put_cmd(struct tree *t, struct bt_cmd *cmd);
+int root_put_cmd(struct buftree *t, struct bt_cmd *cmd);
+void node_put_cmd(struct buftree *t, struct node *node, struct bt_cmd *cmd);
 void leaf_put_cmd(struct node *node, struct bt_cmd *cmd);
 void nonleaf_put_cmd(struct node *node, struct bt_cmd *cmd);
-void node_put_cmd(struct tree *t, struct node *node, struct bt_cmd *cmd);
-enum reactivity get_reactivity(struct tree *t, struct node *node);
-void node_split_child(struct tree *t, struct node *parent, struct node *child);
 
+void node_split_child(struct buftree *t, struct node *parent, struct node *child);
+enum reactivity get_reactivity(struct buftree *t, struct node *node);
 struct cpair_attr make_cpair_attr(struct node *n);
+
 #endif /* nessDB_TREE_H_ */
