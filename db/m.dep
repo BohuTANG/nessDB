@@ -1,0 +1,4 @@
+D_OBJS = ./db/db.o \
+         ./db/env.o\
+         ./db/ness.o
+

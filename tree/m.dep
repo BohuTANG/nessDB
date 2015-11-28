@@ -1,0 +1,18 @@
+T_OBJS = ./tree/compress.o     \
+         ./tree/rolltree-func.o\
+         ./tree/buftree-func.o \
+         ./tree/rolltree.o     \
+         ./tree/buftree.o      \
+         ./tree/msgpack.o      \
+         ./tree/flusher.o      \
+         ./tree/cursor.o       \
+         ./tree/layout.o       \
+         ./tree/block.o        \
+         ./tree/inter.o        \
+         ./tree/node.o         \
+         ./tree/leaf.o         \
+         ./tree/hdr.o          \
+         ./tree/nmb.o          \
+         ./tree/lmb.o          \
+         ./tree/mb.o           \
+

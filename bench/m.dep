@@ -1,0 +1,2 @@
+B_OBJS = ./bench/random.o \
+         ./bench/db-bench.o

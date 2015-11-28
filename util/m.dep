@@ -1,0 +1,16 @@
+U_OBJS = ./util/snappy.o    \
+         ./util/comparator.o\
+         ./util/xmalloc.o   \
+         ./util/mempool.o   \
+         ./util/kibbutz.o   \
+         ./util/xtable.o    \
+         ./util/counter.o   \
+         ./util/posix.o     \
+         ./util/crc32.o     \
+         ./util/debug.o     \
+         ./util/quota.o     \
+         ./util/file.o      \
+         ./util/vfs.o       \
+         ./util/pma.o       \
+         ./util/msg.o       \
+
