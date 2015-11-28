@@ -20,7 +20,7 @@ int ness_db_set(void *db, char *k, uint32_t ksize, char *v, uint32_t vsize);
 int ness_db_close(void *db);
 
 int ness_env_set_cache_size(void *nessenv, uint64_t cache_size);
-int ness_env_set_compress_method(void *nessenv, int method);
+int ness_db_change_compress_method(void *nessenv, int method);
 
 #ifdef __cplusplus
 }

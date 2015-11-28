@@ -7,13 +7,13 @@
 #include "u.h"
 #include "t.h"
 
-struct tree_callback rolltree_cb = {
-	.fetch_node_cb = NULL,
-	.flush_node_cb = NULL,
-	.fetch_hdr_cb = NULL,
-	.flush_hdr_cb = NULL,
-	.free_node_cb = NULL,
-	.cache_put_cb = NULL,
-	.node_is_dirty_cb = NULL,
-	.node_set_nondirty_cb = NULL,
+struct tree_operations rolltree_operations = {
+	.fetch_node = NULL,
+	.flush_node = NULL,
+	.fetch_hdr = NULL,
+	.flush_hdr = NULL,
+	.free_node = NULL,
+	.cache_put = NULL,
+	.node_is_dirty = NULL,
+	.node_set_nondirty = NULL,
 };

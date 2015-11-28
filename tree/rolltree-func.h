@@ -7,6 +7,6 @@
 #ifndef nessDB_ROLLTREE_FUNC_H_
 #define nessDB_ROLLTREE_FUNC_H_
 
-struct tree_callback rolltree_cb;
+struct tree_operations rolltree_operations;
 
 #endif /* nessDB_TREE_FUNC_H_ */

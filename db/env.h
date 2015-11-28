@@ -8,24 +8,13 @@
 #define nessDB_ENV_H_
 
 struct env {
-	/* tree */
-	uint32_t inner_node_fanout;
-	uint32_t inner_default_node_size;
-	uint32_t leaf_default_node_size;
-	uint32_t leaf_default_basement_size;
-
 	/* cache */
 	uint64_t cache_limits_bytes;
 	uint64_t cache_high_watermark;
 	uint32_t cache_flush_period_ms;
 	uint32_t cache_checkpoint_period_ms;
 
-	/* db */
-	uint32_t enable_redo_log;
-	int compress_method;
-
 	/* IO */
-	uint8_t use_directio;
 	char *redo_path;
 	char *dir;
 
@@ -36,9 +25,12 @@ struct env {
 
 	/* flags */
 	uint32_t flags;
-
-	/* callback */
-	int (*bt_compare_func)(void *a, int alen, void *b, int blen);
 };
+
+struct env *env_open(const char *home, uint32_t flags);
+void env_close(struct env *e);
+int env_set_cache_size(struct env *e, uint64_t cache_size);
+int env_set_compress_method(struct env *e, int method);
+int env_set_compare_func(struct env *e, int (*bt_compare_func)(void *a, int lena, void *b, int lenb));
 
 #endif /* nessDB_ENV_H_ */

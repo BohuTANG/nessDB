@@ -23,9 +23,9 @@ struct rolltype_cmdupdate {
 };
 
 enum rollback_type {
-    RT_CMDINSERT = 'i',
-    RT_CMDDELETE = 'd',
-    RT_CMDUPDATE = 'u'
+	RT_CMDINSERT = 'i',
+	RT_CMDDELETE = 'd',
+	RT_CMDUPDATE = 'u'
 };
 
 struct roll_entry {

@@ -16,65 +16,6 @@ struct nessdb {
 	struct buftree *tree;
 };
 
-
-struct env *env_open(const char *home, uint32_t flags)
-{
-	struct env *e;
-
-	e = xcalloc(1, sizeof(*e));
-	e->flags = flags;
-
-	/* tree */
-	e->inner_node_fanout = 16;
-	e->inner_default_node_size = 4 << 20;		/* 4MB */
-	e->leaf_default_node_size = 4 << 20;		/* 4MB */
-	e->leaf_default_basement_size = 128 << 10;	/* 128KB */
-
-	/* cache */
-	e->cache_limits_bytes = 1024 << 20;
-	e->cache_high_watermark = 80;		/* 80% */
-	e->cache_flush_period_ms = 100;		/* 0.1s */
-	e->cache_checkpoint_period_ms = 600000;	/* 60s */
-
-	/* IO */
-	e->use_directio = 1;
-	e->redo_path = "./dbbench";
-	e->enable_redo_log = 1;
-	if (!home)
-		home = ".";
-
-	e->dir = xcalloc(1, strlen(home) + 1);
-	xmemcpy(e->dir, (void*)home, strlen(home));
-	ness_check_dir(e->dir);
-
-	/* compress */
-	e->compress_method = NESS_SNAPPY_METHOD;
-
-	/* callback */
-	e->bt_compare_func = bt_compare_func_builtin;
-
-	/* internal */
-	e->cache = cache_new(e);
-	nassert(e->cache);
-
-	e->txnmgr = txnmgr_new();
-	nassert(e->txnmgr);
-
-	e->status = status_new();
-	nassert(e->status);
-
-	return e;
-}
-
-void env_close(struct env *e)
-{
-	cache_free(e->cache);
-	status_free(e->status);
-	txnmgr_free(e->txnmgr);
-	xfree(e->dir);
-	xfree(e);
-}
-
 struct nessdb *db_open(struct env *e, const char *dbname)
 {
 	char dbpath[FILE_NAME_MAXLEN];
@@ -88,7 +29,7 @@ struct nessdb *db_open(struct env *e, const char *dbname)
 	         e->dir,
 	         dbname);
 	ness_file_exist(dbpath);
-	tree = buftree_open(dbpath, e);
+	tree = buftree_open(dbpath, e->cache);
 
 	db = xcalloc(1, sizeof(*db));
 	db->e = e;
@@ -124,26 +65,12 @@ int db_get(struct nessdb *db, struct msg *k, struct msg *v)
 	return -1;
 }
 
-int env_set_cache_size(struct env *e, uint64_t cache_size)
-{
-	e->cache_limits_bytes = cache_size;
-
-	return NESS_OK;
-}
-
-int env_set_compress_method(struct env *e, int method)
+int db_change_compress_method(struct nessdb *db, int method)
 {
 	if (method >= (int)sizeof(ness_compress_method_t))
 		return NESS_ERR;
 
-	e->compress_method = method;
-
-	return NESS_OK;
-}
-
-int env_set_compare_func(struct env *e, int (*bt_compare_func)(void *a, int lena, void *b, int lenb))
-{
-	e->bt_compare_func = bt_compare_func;
+	buftree_set_compress_method(db->tree->hdr, method);
 
 	return NESS_OK;
 }

@@ -7,6 +7,6 @@
 #ifndef nessDB_BUFTREE_FUNC_H_
 #define nessDB_BUFTREE_FUNC_H_
 
-struct tree_callback buftree_cb;
+struct tree_operations buftree_operations;
 
 #endif /* nessDB_TREE_FUNC_H_ */

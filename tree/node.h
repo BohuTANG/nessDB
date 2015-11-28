@@ -10,10 +10,18 @@
 #define PART_SIZE (sizeof(struct partition))
 #define PIVOT_SIZE (sizeof(struct msg))
 
-enum reactivity {
-    FISSIBLE,
-    FLUSHBLE,
-    STABLE
+
+/* lock type */
+enum lock_type {
+	L_NONE = 0,
+	L_READ = 1,
+	L_WRITE = 2,
+};
+
+enum node_state {
+	FISSIBLE,
+	FLUSHBLE,
+	STABLE
 };
 
 struct ancestors {
@@ -23,14 +31,7 @@ struct ancestors {
 	struct ancestors *next;
 };
 
-/* funcations for nodes operations */
-struct node_operations {
-	int (*update_func)(void *a, void *b);
-	int (*delete_all_func)(void *a, void *b);
-	int (*pivot_compare_func)(struct msg *a, struct msg *b);
-};
-
-struct partition_disk_info {
+struct disk_info {
 	uint32_t xsum;
 	uint32_t start;
 	uint32_t compressed_size;
@@ -40,27 +41,11 @@ struct partition_disk_info {
 	char *uncompressed_ptr;
 };
 
-struct leaf_basement_node {
-	MSN max_applied_msn;
-	struct lmb *buffer;
-};
-
-struct nonleaf_childinfo {
-	struct nmb *buffer;
-};
-
-struct child_pointer {
-	union {
-		struct nonleaf_childinfo *nonleaf;
-		struct leaf_basement_node *leaf;
-	} u;
-};
-
 struct partition {
 	int fetched;
 	NID child_nid;
-	struct child_pointer ptr;
-	struct partition_disk_info disk_info;
+	void *msgbuf;
+	struct disk_info disk_info;
 };
 
 struct node_attr {
@@ -82,45 +67,41 @@ struct node {
 
 	struct node_attr attr;
 	struct timespec modified;
-	struct node_operations *node_op;
 
 	int n_children;
 	struct msg *pivots;
 	struct partition *parts;
 	struct cpair *cpair;
-	struct env *env;
+
+	struct tree_options *opts;
+	struct node_operations *i;
 };
 
-struct leaf_basement_node *create_leaf(struct env *);
-struct nonleaf_childinfo *create_nonleaf(struct env *);
-struct node *node_alloc_empty(NID nid, int height, struct env *);
-struct node *node_alloc_full(NID nid, int height, int children, int layout_version, struct env *);
-void node_init_empty(struct node *node, int children, int version);
-void node_ptrs_alloc(struct node *node);
-void node_free(struct node *n);
+struct node_operations {
+	void (*apply)(struct node *node,
+	              struct nmb *buffer,
+	              struct msg *left,
+	              struct msg *right);
+	void (*split)(void *tree,
+	              struct node *node,
+	              struct node **a,
+	              struct node **b,
+	              struct msg **split_key);
+	int (*put)(struct node *node, struct bt_cmd *cmd);
+	void (*init_msgbuf)(struct node *node);
+	void (*free)(struct node *node);
+	int (*find_heaviest)(struct node *node);
+	uint32_t (*size)(struct node *node);
+	uint32_t (*count)(struct node *node);
 
-void node_set_dirty(struct node *n);
-void node_set_nondirty(struct node *n);
-int node_is_dirty(struct node *n);
+	void (*mb_packer)(void *packer, void *msgbuf);
+	void (*mb_unpacker)(void *packer, void *msgbuf);
+} NESSPACKED;
 
-uint32_t node_size(struct node *n);
-uint32_t node_count(struct node *n);
-
+void node_set_dirty(struct node *node);
+void node_set_nondirty(struct node *node);
+int node_is_dirty(struct node *node);
 int node_partition_idx(struct node *node, struct msg *k);
-int node_find_heaviest_idx(struct node *node);
-
-int node_create(NID nid,
-                uint32_t height,
-                uint32_t children,
-                int version,
-                struct env *e,
-                struct node **n);
-
-int node_create_light(NID nid,
-                      uint32_t height,
-                      uint32_t children,
-                      int version,
-                      struct env *e,
-                      struct node **n);
+enum node_state get_node_state(struct node *node);
 
 #endif /* nessDB_NODE_H_ */

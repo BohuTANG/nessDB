@@ -19,22 +19,24 @@
 #endif
 #endif
 
+#if defined (__linux__)
+#if !defined(O_DIRECT)
+#define O_DIRECT O_SYNC
+#endif
+#define HAVE_DIRECTIO
+#endif
+
 #if defined(__linux__)
 #define _GNU_SOURCE
 #endif
-
 #if defined(__linux__) || defined(__OpenBSD__)
 #define _XOPEN_SOURCE 700
-/*
- * On NetBSD, _XOPEN_SOURCE undefines _NETBSD_SOURCE and
- * thus hides inet_aton etc.
- */
-#elif !defined(__NetBSD__)
-#define _XOPEN_SOURCE
 #endif
 
-#define _LARGEFILE_SOURCE
-#define _FILE_OFFSET_BITS 64
-#define O_BINARY 0
+#define nesslikely(EXPR) __builtin_expect(!! (EXPR), 1)
+#define nessunlikely(EXPR) __builtin_expect(!! (EXPR), 0)
+#define NESSPACKED  __attribute__((__aligned__(64)))
+
+#define FILE_NAME_MAXLEN (256)
 
 #endif /* nessDB_FMACRO_H_ */

@@ -33,8 +33,8 @@ typedef struct ness_mutex {
 
 
 typedef struct {
-	ness_mutex_t aligned_mtx  __attribute__((__aligned__(64)));
-} ness_mutex_aligned_t;
+	ness_mutex_t aligned_mtx;
+} ness_mutex_aligned_t NESSPACKED;
 
 
 static inline void mutex_init(ness_mutex_t *mutex)

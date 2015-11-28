@@ -6,7 +6,6 @@
 
 #include "u.h"
 #include "t.h"
-#include "compress/snappy.h"
 
 uint32_t ness_compress_bound(ness_compress_method_t m, uint32_t size)
 {

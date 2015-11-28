@@ -129,10 +129,10 @@ int _search_leaf(struct cursor *cur, struct search *so, struct node *leaf)
 	struct pma_coord coord;
 
 	/* 1) apply all msgs to leaf msgbuf */
-	leaf_apply_ancestors(leaf, cur->ances);
+	//leaf_apply_ancestors(leaf, cur->ances);
 
 	/* 2) init leaf iterator, TODO: which msgbuf to read */
-	lmb = leaf->parts[0].ptr.u.leaf->buffer;
+	lmb = leaf->parts[0].msgbuf;
 	mb_iter_init(&iter, lmb->pma);
 
 	/* 3) do search */
@@ -202,7 +202,7 @@ int _search_child(struct cursor *cur,
 	struct node *child;
 
 	nassert(n->height > 0);
-	ancestors_append(cur, n->parts[childnum].ptr.u.nonleaf->buffer);
+	ancestors_append(cur, n->parts[childnum].msgbuf);
 
 	child_nid = n->parts[childnum].child_nid;
 	if (!cache_get_and_pin(cur->tree->cf, child_nid, (void**)&child, L_READ)) {
@@ -215,7 +215,7 @@ int _search_child(struct cursor *cur,
 	ret = _search_node(cur, so, child, child_to_search);
 
 	/* unpin */
-	cache_unpin(cur->tree->cf, child->cpair, make_cpair_attr(child));
+	cache_unpin(cur->tree->cf, child->cpair);
 
 	return ret;
 }
@@ -294,7 +294,7 @@ TRY_AGAIN:
 	r = _search_node(cur, so, root, child_to_search);
 
 	/* unpin */
-	cache_unpin(t->cf, root->cpair, make_cpair_attr(root));
+	cache_unpin(t->cf, root->cpair);
 
 	switch (r) {
 	case CURSOR_CONTINUE:	  /* got the end of leaf */

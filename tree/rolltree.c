@@ -5,15 +5,14 @@
  */
 
 #include "u.h"
-#include "c.h"
 #include "x.h"
 #include "t.h"
 
 int rolltree_put(struct rolltree *t,
-             struct msg *k,
-             struct msg *v,
-             msgtype_t type,
-             TXN *txn)
+                 struct msg *k,
+                 struct msg *v,
+                 msgtype_t type,
+                 TXN *txn)
 {
 	(void)t;
 	(void)k;

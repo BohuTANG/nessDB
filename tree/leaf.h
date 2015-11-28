@@ -13,8 +13,12 @@
  * @brief leaf
  *
  */
+void leaf_new(struct hdr *hdr,
+              NID nid,
+              uint32_t height,
+              uint32_t children,
+              struct node **n);
 
-int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd);
-int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances);
+struct node_operations leaf_operations;
 
 #endif /* nessDB_LEAF_H_ */

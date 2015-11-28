@@ -11,9 +11,9 @@
  * buffered tree layout version
  */
 enum layout_version_e {
-    LAYOUT_VERSION_3 = 3, /* current layout version */
-    LAYOUT_VERSION = LAYOUT_VERSION_3,
-    LAYOUT_MIN_SUPPORTED_VERSION = LAYOUT_VERSION_3,
+	LAYOUT_VERSION_3 = 3, /* current layout version */
+	LAYOUT_VERSION = LAYOUT_VERSION_3,
+	LAYOUT_MIN_SUPPORTED_VERSION = LAYOUT_VERSION_3,
 };
 
 #endif

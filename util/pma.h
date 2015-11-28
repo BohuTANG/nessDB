@@ -19,7 +19,7 @@ struct array {
 	int size;
 	int used;
 	void **elems;
-} __attribute__((aligned(ARRAY_CACHE_SIZE)));
+} NESSPACKED;
 
 struct pma {
 	int size;
@@ -28,7 +28,7 @@ struct pma {
 	struct array **chain;
 };
 
-struct pma *pma_new(int);
+struct pma *pma_new();
 void pma_free(struct pma *);
 
 void pma_insert(struct pma *, void *, compare_func f, void *);

@@ -35,7 +35,7 @@ static int _pair_compare_fun(const void *a, const void *b)
 	return 0;
 }
 
-struct block *block_new(struct env *e)
+struct block *block_new()
 {
 	struct block *b;
 
@@ -43,7 +43,6 @@ struct block *block_new(struct env *e)
 	mutex_init(&b->mtx);
 	ness_rwlock_init(&b->rwlock);
 	b->allocated += ALIGN(BLOCK_OFFSET_START);
-	b->e = e;
 
 	return b;
 }

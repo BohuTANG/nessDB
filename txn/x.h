@@ -8,6 +8,7 @@
 #define nessDB_TX_H_
 
 #include "u.h"
+#include "l.h"
 #include "txn.h"
 #include "rollback.h"
 #include "txnmgr.h"

@@ -23,12 +23,13 @@
 #include <errno.h>
 #include <stdarg.h>
 
-#include "xtypes.h"
+#include "err.h"
 #include "debug.h"
 #include "counter.h"
 #include "comparator.h"
 #include "crc32.h"
 #include "debug.h"
+#include "vfs.h"
 #include "file.h"
 #include "kibbutz.h"
 #include "mempool.h"
@@ -37,5 +38,8 @@
 #include "posix.h"
 #include "xmalloc.h"
 #include "status.h"
+#include "quota.h"
+#include "xtable.h"
+#include "snappy.h"
 
 #endif /* nessDB_U_H_ */

@@ -15,10 +15,11 @@
  *
  */
 
+#define NID_START (3)
 struct hdr {
 	int dirty;
 	int height;
-	int version;
+	int layout_version;
 	uint32_t blocksize;
 	uint64_t lastseq;
 
@@ -27,10 +28,10 @@ struct hdr {
 	MSN last_msn;
 	DISKOFF blockoff;
 	struct block *block;
-	struct env *e;
+	struct tree_options *opts;
 };
 
-struct hdr *hdr_new(struct env *e);
+struct hdr *hdr_new(struct tree_options *opts);
 void hdr_free(struct hdr *hdr);
 NID hdr_next_nid(struct hdr *hdr);
 MSN hdr_next_msn(struct hdr *hdr);

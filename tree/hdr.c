@@ -7,14 +7,14 @@
 #include "u.h"
 #include "t.h"
 
-struct hdr *hdr_new(struct env *e)
+struct hdr *hdr_new(struct tree_options *opts)
 {
 	struct hdr *hdr = xcalloc(1, sizeof(struct hdr));
 
-	hdr->e = e;
 	hdr->height = 0U;
+	hdr->opts = opts;
 	hdr->last_nid = NID_START;
-	hdr->block = block_new(e);
+	hdr->block = block_new();
 
 	return hdr;
 }
@@ -100,7 +100,7 @@ static int _serialize_blockpairs_to_disk(int fd, struct hdr *hdr)
 	msgpack_pack_null(packer, align_size - real_size);
 
 	address = block_alloc_off(b, 0, real_size, 0, 0);
-	if (ness_os_pwrite(fd, packer->base, align_size, address) != 0) {
+	if (hdr->opts->vfs->pwrite(fd, packer->base, align_size, address) != 0) {
 		r = NESS_WRITE_ERR;
 		goto ERR;
 	}
@@ -126,7 +126,7 @@ static int _deserialize_blockpairs_from_disk(int fd, struct hdr *hdr)
 	align_size = ALIGN(read_size);
 
 	packer = msgpack_new(align_size);
-	if (ness_os_pread(fd, packer->base, align_size, hdr->blockoff) != (ssize_t)align_size) {
+	if (hdr->opts->vfs->pread(fd, packer->base, align_size, hdr->blockoff) != (ssize_t)align_size) {
 		r = NESS_READ_ERR;
 		goto ERR;
 	}
@@ -235,7 +235,7 @@ int write_hdr_to_disk(int fd, struct hdr *hdr, DISKOFF off)
 	align_size = ALIGN(real_size);
 	msgpack_pack_null(packer, align_size - real_size);
 
-	if (ness_os_pwrite(fd, packer->base, align_size, off) != 0) {
+	if (hdr->opts->vfs->pwrite(fd, packer->base, align_size, off) != 0) {
 		r = NESS_WRITE_ERR;
 		goto ERR;
 	}
@@ -296,7 +296,7 @@ int read_hdr_from_disk(int fd, struct hdr *hdr, DISKOFF off)
 
 	align_size = ALIGN(read_size);
 	packer = msgpack_new(align_size);
-	if (ness_os_pread(fd, packer->base, align_size, off) !=
+	if (hdr->opts->vfs->pread(fd, packer->base, align_size, off) !=
 	    (ssize_t)align_size) {
 		__ERROR("ness pread error, read size [%" PRIu32 "], "
 		        "offset [%" PRIu64 "]", align_size, 0UL);
@@ -318,7 +318,7 @@ int read_hdr_from_disk(int fd, struct hdr *hdr, DISKOFF off)
 
 	msgpack_seekfirst(packer);
 	if (!msgpack_skip(packer, 8)) goto ERR;
-	if (!msgpack_unpack_uint32(packer, (uint32_t*)&hdr->version)) goto ERR;
+	if (!msgpack_unpack_uint32(packer, (uint32_t*)&hdr->layout_version)) goto ERR;
 	if (!msgpack_unpack_uint64(packer, &hdr->last_nid)) goto ERR;
 	if (!msgpack_unpack_uint64(packer, &hdr->last_msn)) goto ERR;
 	if (!msgpack_unpack_uint64(packer, &hdr->root_nid)) goto ERR;
@@ -327,11 +327,11 @@ int read_hdr_from_disk(int fd, struct hdr *hdr, DISKOFF off)
 
 	nassert(hdr->root_nid >= NID_START);
 
-	if (hdr->version < LAYOUT_MIN_SUPPORTED_VERSION) {
+	if (hdr->layout_version < LAYOUT_MIN_SUPPORTED_VERSION) {
 		r = NESS_LAYOUT_VERSION_OLDER_ERR;
 		__ERROR("tree layout too older [%d], "
 		        "min_support_version [%d]",
-		        hdr->version, LAYOUT_MIN_SUPPORTED_VERSION);
+		        hdr->layout_version, LAYOUT_MIN_SUPPORTED_VERSION);
 		goto ERR;
 	}
 

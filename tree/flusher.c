@@ -8,7 +8,7 @@
 #include "c.h"
 #include "t.h"
 
-void _flush_buffer_to_child(struct buftree *t, struct node *child, struct nmb *buf)
+void _flush_buffer_to_child(struct node *child, struct nmb *buf)
 {
 	struct mb_iter iter;
 
@@ -26,7 +26,7 @@ void _flush_buffer_to_child(struct buftree *t, struct node *child, struct nmb *b
 			.val = &nvalues.val,
 			.xidpair = nvalues.xidpair
 		};
-		node_put_cmd(t, child, &cmd);
+		child->i->put(child, &cmd);
 	}
 }
 
@@ -46,20 +46,20 @@ void _flush_some_child(struct buftree *t, struct node *parent);
  */
 void _child_maybe_reactivity(struct buftree *t, struct node *parent, struct node *child)
 {
-	enum reactivity re = get_reactivity(t, child);
+	enum node_state state = get_node_state(child);
 
-	switch (re) {
+	switch (state) {
 	case STABLE:
-		cache_unpin(t->cf, child->cpair, make_cpair_attr(child));
-		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
+		cache_unpin(t->cf, child->cpair);
+		cache_unpin(t->cf, parent->cpair);
 		break;
 	case FISSIBLE:
 		node_split_child(t, parent, child);
-		cache_unpin(t->cf, child->cpair, make_cpair_attr(child));
-		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
+		cache_unpin(t->cf, child->cpair);
+		cache_unpin(t->cf, parent->cpair);
 		break;
 	case FLUSHBLE:
-		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
+		cache_unpin(t->cf, parent->cpair);
 		_flush_some_child(t, child);
 		break;
 	}
@@ -79,32 +79,27 @@ void _child_maybe_reactivity(struct buftree *t, struct node *parent, struct node
 void _flush_some_child(struct buftree *t, struct node *parent)
 {
 	int childnum;
-	enum reactivity re;
+	enum node_state state;
 	struct node *child;
 	struct partition *part;
 	struct nmb *buffer;
-	struct timespec t1, t2;
 
-	childnum = node_find_heaviest_idx(parent);
+	childnum = parent->i->find_heaviest(parent);
 	nassert(childnum < parent->n_children);
 	part = &parent->parts[childnum];
-	buffer = part->ptr.u.nonleaf->buffer;
+	buffer = part->msgbuf;
 	if (cache_get_and_pin(t->cf, part->child_nid, (void**)&child, L_WRITE) != NESS_OK) {
 		__ERROR("cache get node error, nid [%" PRIu64 "]", part->child_nid);
 		return;
 	}
 
-	ngettime(&t1);
-	re = get_reactivity(t, child);
-	if (re == STABLE) {
+	state = get_node_state(child);
+	if (state == STABLE) {
 		node_set_dirty(parent);
-		part->ptr.u.nonleaf->buffer = nmb_new(t->e);
-		_flush_buffer_to_child(t, child, buffer);
+		part->msgbuf = nmb_new(t->hdr->opts);
+		_flush_buffer_to_child(child, buffer);
 		nmb_free(buffer);
 	}
-	ngettime(&t2);
-	status_add(&t->e->status->tree_flush_child_costs, time_diff_ms(t1, t2));
-	status_increment(&t->e->status->tree_flush_child_nums);
 
 	_child_maybe_reactivity(t, parent, child);
 }
@@ -122,7 +117,7 @@ void _flush_some_child(struct buftree *t, struct node *parent)
  */
 static void _flush_node_func(void *fe)
 {
-	enum reactivity re;
+	enum node_state state;
 	struct flusher_extra *extra = (struct flusher_extra*)fe;
 	struct buftree *t = extra->tree;
 	struct node *n = extra->node;
@@ -130,15 +125,15 @@ static void _flush_node_func(void *fe)
 
 	node_set_dirty(n);
 	if (buf) {
-		_flush_buffer_to_child(t, n, buf);
+		_flush_buffer_to_child(n, buf);
 		nmb_free(buf);
 
 		/* check the child node */
-		re = get_reactivity(t, n);
-		if (re == FLUSHBLE)
+		state = get_node_state(n);
+		if (state == FLUSHBLE)
 			_flush_some_child(t, n);
 		else
-			cache_unpin(t->cf, n->cpair, make_cpair_attr(n));
+			cache_unpin(t->cf, n->cpair);
 	} else {
 		/* we want flush some buffer from n */
 		_flush_some_child(t, n);
@@ -172,12 +167,12 @@ static void _place_node_and_buffer_on_background(struct buftree *t, struct node 
 void buftree_flush_node_on_background(struct buftree *t, struct node *parent)
 {
 	int childnum;
-	enum reactivity re;
+	enum node_state state;
 	struct node *child;
 	struct partition *part;
 
 	nassert(parent->height > 0);
-	childnum = node_find_heaviest_idx(parent);
+	childnum = parent->i->find_heaviest(parent);
 	part = &parent->parts[childnum];
 
 	/* pin the child */
@@ -186,16 +181,16 @@ void buftree_flush_node_on_background(struct buftree *t, struct node *parent)
 		return;
 	}
 
-	re = get_reactivity(t, child);
-	if (re == STABLE) {
+	state = get_node_state(child);
+	if (state == STABLE) {
 		/* detach buffer from parent */
-		struct nmb *buf = part->ptr.u.nonleaf->buffer;
+		struct nmb *buf = part->msgbuf;
 		node_set_dirty(parent);
-		part->ptr.u.nonleaf->buffer = nmb_new(t->e);
+		part->msgbuf = nmb_new(t->hdr->opts);
 
 		/* flush it in background thread */
 		_place_node_and_buffer_on_background(t, child, buf);
-		cache_unpin(t->cf, parent->cpair, make_cpair_attr(parent));
+		cache_unpin(t->cf, parent->cpair);
 	} else {
 		/* the child is reactive, we deal it in main thread */
 		_child_maybe_reactivity(t, parent, child);

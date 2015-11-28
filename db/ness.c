@@ -6,6 +6,7 @@
 
 #include "u.h"
 #include "db.h"
+#include "env.h"
 #include "ness.h"
 
 void *ness_env_open(const char *home, uint32_t flags)
@@ -49,10 +50,10 @@ int ness_env_set_cache_size(void *nessenv, uint64_t cache_size)
 	return env_set_cache_size(e, cache_size);
 }
 
-int ness_env_set_compress_method(void *nessenv, int method)
+int ness_db_change_compress_method(void *nessdb, int method)
 {
-	struct env *e = (struct env*)nessenv;
+	struct nessdb *db = (struct nessdb*)nessdb;
 
-	return env_set_compress_method(e, method);
+	return db_change_compress_method(db, method);
 }
 

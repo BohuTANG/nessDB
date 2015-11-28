@@ -7,42 +7,31 @@
 #include "u.h"
 #include "t.h"
 
-int buftree_fetch_node_callback(int fd, void *hdr, NID nid, void **n)
+int buftree_fetch_node(int fd, void *hdr, NID nid, void **n)
 {
 	int r;
-	struct timespec t1, t2;
 	struct hdr *h = (struct hdr*)hdr;
 
-	ngettime(&t1);
 	r = deserialize_node_from_disk(fd, h, nid, (struct node**)n);
-	ngettime(&t2);
-	atomic64_add(&h->e->status->tree_node_fetch_costs, (uint64_t)time_diff_ms(t1, t2));
-	atomic64_increment(&h->e->status->tree_node_fetch_nums);
-
 	if (r != NESS_OK)
 		__PANIC("fetch node from disk error, errno [%d]", r);
 
 	return r;
 }
 
-int buftree_flush_node_callback(int fd, void *hdr, void *n)
+int buftree_flush_node(int fd, void *hdr, void *n)
 {
 	int r;
-	struct timespec t1, t2;
 	struct hdr *h = (struct hdr*)hdr;
 
-	ngettime(&t1);
 	r = serialize_node_to_disk(fd, n, h);
-	ngettime(&t2);
-	h->e->status->tree_node_flush_costs += time_diff_ms(t1, t2);
-	h->e->status->tree_node_flush_nums++;
 	if (r != NESS_OK)
 		__PANIC("flush node to disk error, errno [%d]", r);
 
 	return r;
 }
 
-int buftree_fetch_hdr_callback(int fd, void *hdr)
+int buftree_fetch_hdr(int fd, void *hdr)
 {
 	int r;
 
@@ -53,7 +42,7 @@ int buftree_fetch_hdr_callback(int fd, void *hdr)
 	return r;
 }
 
-int buftree_flush_hdr_callback(int fd, void *hdr)
+int buftree_flush_hdr(int fd, void *hdr)
 {
 	int r;
 	struct hdr *h = (struct hdr*)hdr;
@@ -65,13 +54,16 @@ int buftree_flush_hdr_callback(int fd, void *hdr)
 	return r;
 }
 
-int buftree_free_node_callback(void *n)
+int buftree_free_node(void *n)
 {
-	node_free(n);
+	struct node *node = (struct node*)n;
+
+	node->i->free(n);
+
 	return NESS_OK;
 }
 
-int buftree_cache_put_callback(void *n, void *cpair)
+int buftree_cache_put(void *n, void *cpair)
 {
 	struct node *node = (struct node*)n;
 
@@ -79,14 +71,14 @@ int buftree_cache_put_callback(void *n, void *cpair)
 	return NESS_OK;
 }
 
-int buftree_node_is_dirty_callback(void *n)
+int buftree_node_is_dirty(void *n)
 {
 	struct node *node = (struct node*)n;
 
 	return node_is_dirty(node);
 }
 
-int buftree_node_set_nondirty_callback(void *n)
+int buftree_node_set_nondirty(void *n)
 {
 	struct node *node = (struct node*)n;
 
@@ -94,13 +86,21 @@ int buftree_node_set_nondirty_callback(void *n)
 	return NESS_OK;
 }
 
-struct tree_callback buftree_cb = {
-	.fetch_node_cb = buftree_fetch_node_callback,
-	.flush_node_cb = buftree_flush_node_callback,
-	.fetch_hdr_cb = buftree_fetch_hdr_callback,
-	.flush_hdr_cb = buftree_flush_hdr_callback,
-	.free_node_cb = buftree_free_node_callback,
-	.cache_put_cb = buftree_cache_put_callback,
-	.node_is_dirty_cb = buftree_node_is_dirty_callback,
-	.node_set_nondirty_cb = buftree_node_set_nondirty_callback,
+uint64_t buftree_node_size(void *n)
+{
+	struct node *node = (struct node*)n;
+
+	return node->i->size(node);
+}
+
+struct tree_operations buftree_operations = {
+	.fetch_hdr			= &buftree_fetch_hdr,
+	.flush_hdr			= &buftree_flush_hdr,
+	.fetch_node			= &buftree_fetch_node,
+	.flush_node			= &buftree_flush_node,
+	.free_node			= &buftree_free_node,
+	.cache_put			= &buftree_cache_put,
+	.node_size			= &buftree_node_size,
+	.node_is_dirty		= &buftree_node_is_dirty,
+	.node_set_nondirty	= &buftree_node_set_nondirty,
 };

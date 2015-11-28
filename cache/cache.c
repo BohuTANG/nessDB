@@ -11,27 +11,26 @@
 
 #define PAIR_LIST_SIZE (5<<10)
 
+int cache_xtable_hash_func(void *k)
+{
+	struct cpair *c = (struct cpair*)k;
+
+	return (int)c->k;
+}
+
+int cache_xtable_compare_func(void *a, void *b)
+{
+	struct cpair *ca = (struct cpair*)a;
+	struct cpair *cb = (struct cpair*)b;
+
+	return (ca->k - cb->k);
+}
+
+
 struct cpair_list {
 	struct cpair *head;
 	struct cpair *last;
 };
-
-struct cpair_htable {
-	struct cpair **tables;
-	ness_mutex_aligned_t *mutexes;	/* array lock */
-};
-
-/* hashtable array lock */
-static inline void cpair_locked_by_key(struct cpair_htable *table, NID key)
-{
-	mutex_lock(&table->mutexes[key & (PAIR_LIST_SIZE - 1)].aligned_mtx);
-}
-
-/* hashtable array unlock */
-static inline void cpair_unlocked_by_key(struct cpair_htable *table, NID key)
-{
-	mutex_unlock(&table->mutexes[key & (PAIR_LIST_SIZE - 1)].aligned_mtx);
-}
 
 struct cpair *cpair_new()
 {
@@ -97,73 +96,6 @@ void cpair_list_remove(struct cpair_list *list, struct cpair *pair)
 
 }
 
-/*******************************
- * hashtable
- ******************************/
-struct cpair_htable *cpair_htable_new()
-{
-	int i;
-	struct cpair_htable *table;
-
-	table = xcalloc(1, sizeof(*table));
-	table->tables = xcalloc(PAIR_LIST_SIZE, sizeof(*table->tables));
-	table->mutexes = xcalloc(PAIR_LIST_SIZE, sizeof(*table->mutexes));
-	for (i = 0; i < PAIR_LIST_SIZE; i++) {
-		mutex_init(&table->mutexes[i].aligned_mtx);
-	}
-
-	return table;
-}
-
-void cpair_htable_free(struct cpair_htable *table)
-{
-	xfree(table->tables);
-	xfree(table->mutexes);
-	xfree(table);
-}
-
-void cpair_htable_add(struct cpair_htable *table, struct cpair *pair)
-{
-	int hash;
-
-	hash = (pair->k & (PAIR_LIST_SIZE - 1));
-	pair->hash_next = table->tables[hash];
-	table->tables[hash] = pair;
-}
-
-void cpair_htable_remove(struct cpair_htable *table, struct cpair *pair)
-{
-	int hash;
-
-	hash = (pair->k & (PAIR_LIST_SIZE - 1));
-	if (table->tables[hash] == pair) {
-		table->tables[hash] = pair->hash_next;
-	} else {
-		struct cpair *curr = table->tables[hash];
-		while (curr->hash_next != pair) {
-			curr = curr->hash_next;
-		}
-		curr->hash_next = pair->hash_next;
-	}
-}
-
-struct cpair *cpair_htable_find(struct cpair_htable *table, NID key)
-{
-	int hash;
-	struct cpair *curr;
-
-	hash = (key & (PAIR_LIST_SIZE - 1));
-	curr = table->tables[hash];
-	while (curr) {
-		if (curr->k == key) {
-			return curr;
-		}
-		curr = curr->hash_next;
-	}
-
-	return NULL;
-}
-
 /*
  * free a cpair&node
  *
@@ -178,11 +110,9 @@ void _free_cpair(struct cache_file *cf, struct cpair *cp)
 	cf->cache->cp_count--;
 	mutex_unlock(&cf->mtx);
 
-	mutex_lock(&c->mtx);
-	cf->cache->cache_size -= cp->attr.nodesz;
-	mutex_unlock(&c->mtx);
-
-	cf->tcb->free_node_cb(cp->v);
+	quota_remove(c->quota, cp->attr.nodesz);
+	cf->tree_opts->free_node(cp->v);
+	mutex_destroy(&cp->mtx);
 	xfree(cp);
 }
 
@@ -214,55 +144,32 @@ static inline void _cf_clock_read_unlock(struct cache_file *cf)
 	mutex_unlock(&cf->mtx);
 }
 
-static inline int _must_evict(struct cache *c)
-{
-	int must;
-
-	mutex_lock(&c->mtx);
-	must = ((c->cache_size > c->e->cache_limits_bytes));
-	mutex_unlock(&c->mtx);
-
-	return must;
-}
-
-static inline int _need_evict(struct cache *c)
-{
-	int need;
-
-	mutex_lock(&c->mtx);
-	need = (c->cache_size > (c->e->cache_limits_bytes *
-	                         c->e->cache_high_watermark / 100));
-	mutex_unlock(&c->mtx);
-
-	return need;
-}
-
 /* try to evict(free) a pair */
 void _try_evict_pair(struct cache_file *cf, struct cpair *p)
 {
 	int is_dirty;
-	struct tree_callback *tcb = p->cf->tcb;
+	struct tree_operations *tree_opts = p->cf->tree_opts;
 
 	if (!rwlock_users(&p->value_lock)) {
 		/* barriered by key lock */
-		cpair_locked_by_key(cf->table, p->k);
+		xtable_slot_locked(cf->xtable, p);
 
 		/* write dirty to disk */
 		rwlock_write_lock(&p->disk_lock, &p->mtx);
-		is_dirty = tcb->node_is_dirty_cb(p->v);
+		is_dirty = tree_opts->node_is_dirty(p->v);
 		if (is_dirty) {
-			tcb->flush_node_cb(cf->fd, cf->hdr, p->v);
-			tcb->node_set_nondirty_cb(p->v);
+			tree_opts->flush_node(cf->fd, cf->hdr, p->v);
+			tree_opts->node_set_nondirty(p->v);
 		}
 		rwlock_write_unlock(&p->disk_lock);
 
 		/* remove from list */
 		_cf_clock_write_lock(cf);
 		cpair_list_remove(cf->clock, p);
-		cpair_htable_remove(cf->table, p);
+		xtable_remove(cf->xtable, p);
 		_cf_clock_write_unlock(cf);
 
-		cpair_unlocked_by_key(cf->table, p->k);
+		xtable_slot_unlocked(cf->xtable, p);
 
 		/* here, none can grant the pair */
 		_free_cpair(cf, p);
@@ -291,7 +198,7 @@ void _run_eviction(struct cache *c)
 	if (!cur)
 		return;
 
-	while (_need_evict(c) && cur) {
+	while (quota_highwater(c->quota) && cur) {
 		int users = 0;
 
 		/* barriered by clock READ lock */
@@ -302,7 +209,6 @@ void _run_eviction(struct cache *c)
 
 		if (users == 0) {
 			_try_evict_pair(cf, cur);
-			cond_signalall(&c->wait_makeroom);
 		}
 		cur = nxt;
 	}
@@ -321,15 +227,15 @@ static void *flusher_cb(void *arg)
 struct cache *cache_new(struct env *e)
 {
 	struct cache *c;
+	double hw_percent = 0.0;
 
 	c = xcalloc(1, sizeof(*c));
-	mutex_init(&c->mtx);
-	mutex_init(&c->makeroom_mtx);
-	cond_init(&c->wait_makeroom);
-
-	c->c_kibbutz = kibbutz_new(2);
-
 	c->e = e;
+	mutex_init(&c->mtx);
+	c->c_kibbutz = kibbutz_new(2);
+	hw_percent = (double)(e->cache_high_watermark) / 100;
+	c->quota = quota_new(e->cache_limits_bytes, hw_percent);
+
 	ngettime(&c->last_checkpoint);
 	c->flusher = cron_new(flusher_cb, e->cache_flush_period_ms);
 	if (cron_start(c->flusher, (void*)c) != 1) {
@@ -347,7 +253,7 @@ ERR:
 void _cpair_insert(struct cache_file *cf, struct cpair *p)
 {
 	cpair_list_add(cf->clock, p);
-	cpair_htable_add(cf->table, p);
+	xtable_add(cf->xtable, p);
 	cf->cache->cp_count++;
 }
 
@@ -358,15 +264,12 @@ void _make_room(struct cache *c)
 	int allow_delay = 1;
 
 	while (1) {
-		int must = _must_evict(c);
-		int need = _need_evict(c);
+		int must = quota_fullwater(c->quota);
+		int need = quota_highwater(c->quota);
 
 		if (must) {
-			__WARN("must evict, waiting..., cache limits [%" PRIu64 "]MB", c->cache_size / 1048576);
 			cron_signal(c->flusher);
-			mutex_lock(&c->makeroom_mtx);
-			cond_wait(&c->wait_makeroom, &c->makeroom_mtx);
-			mutex_unlock(&c->makeroom_mtx);
+			quota_check_maybe_wait(c->quota);
 		} else if (allow_delay && need) {
 			/* slow down */
 			usleep(100);
@@ -407,18 +310,19 @@ TRY_PIN:
 	_make_room(c);
 
 	/* barriered by key locked */
-	cpair_locked_by_key(cf->table, k);
-	p = cpair_htable_find(cf->table, k);
+	struct cpair cptmp = {.k = k};
+	xtable_slot_locked(cf->xtable, &cptmp);
+	p = xtable_find(cf->xtable, &cptmp);
 	if (p) {
 		if (locktype != L_READ) {
 			if (rwlock_users(&p->value_lock)) {
-				cpair_unlocked_by_key(cf->table, k);
+				xtable_slot_unlocked(cf->xtable, &cptmp);
 				goto TRY_PIN;
 			}
 			rwlock_write_lock(&p->value_lock, &p->mtx);
 		} else {
 			if (rwlock_blocked_writers(&p->value_lock)) {
-				cpair_unlocked_by_key(cf->table, k);
+				xtable_slot_unlocked(cf->xtable, &cptmp);
 				goto TRY_PIN;
 			}
 			rwlock_read_lock(&p->value_lock, &p->mtx);
@@ -427,23 +331,23 @@ TRY_PIN:
 		nassert(p->pintype == L_NONE);
 		*n = p->v;
 		p->pintype = locktype;
-		cpair_unlocked_by_key(cf->table, k);
+		xtable_slot_unlocked(cf->xtable, &cptmp);
 
 		return NESS_OK;
 	}
 
-	p = cpair_htable_find(cf->table, k);
+	p = xtable_find(cf->xtable, &cptmp);
 	if (p) {
 		/*
 		 * if we go here, means that someone got before us
 		 * try pin again
 		 */
-		cpair_unlocked_by_key(cf->table, k);
+		xtable_slot_unlocked(cf->xtable, p);
 		goto TRY_PIN;
 	}
 
-	struct tree_callback *tcb = cf->tcb;
-	int r = tcb->fetch_node_cb(cf->fd, cf->hdr, k, n);
+	struct tree_operations *tree_opts = cf->tree_opts;
+	int r = tree_opts->fetch_node(cf->fd, cf->hdr, k, n);
 
 	if (r != NESS_OK) {
 		__PANIC("fetch node from disk error, nid [%" PRIu64 "], errno %d",
@@ -469,8 +373,8 @@ TRY_PIN:
 		rwlock_read_lock(&p->value_lock, &p->mtx);
 
 	p->pintype = locktype;
-	tcb->cache_put_cb(*n, p);
-	cpair_unlocked_by_key(cf->table, k);
+	tree_opts->cache_put(*n, p);
+	xtable_slot_unlocked(cf->xtable, p);
 
 	return NESS_OK;
 
@@ -482,7 +386,7 @@ int cache_put_and_pin(struct cache_file *cf, NID k, void *v)
 {
 	struct cpair *p;
 	struct cache *c = cf->cache;
-	struct tree_callback *tcb = cf->tcb;
+	struct tree_operations *tree_opts = cf->tree_opts;
 
 	_make_room(c);
 	p = cpair_new();
@@ -496,12 +400,12 @@ int cache_put_and_pin(struct cache_file *cf, NID k, void *v)
 	_cf_clock_write_lock(cf);
 	_cpair_insert(cf, p);
 	_cf_clock_write_unlock(cf);
-	tcb->cache_put_cb(v, p);
+	tree_opts->cache_put(v, p);
 
 	return NESS_OK;
 }
 
-void cache_unpin(struct cache_file *cf, struct cpair *p, struct cpair_attr attr)
+void cache_unpin(struct cache_file *cf, struct cpair *p)
 {
 	int delta = 0;
 	struct cache *c = cf->cache;
@@ -509,13 +413,13 @@ void cache_unpin(struct cache_file *cf, struct cpair *p, struct cpair_attr attr)
 	nassert(p);
 	nassert(p->pintype != L_NONE);
 
-	NID k = p->k;
-	cpair_locked_by_key(cf->table, k);
+	int nodesz = (int)cf->tree_opts->node_size(p->v);
+	xtable_slot_locked(cf->xtable, p);
 	if (p->pintype == L_WRITE) {
 		mutex_lock(&cf->mtx);
 		p->pintype = L_NONE;
-		delta = (int)(attr.nodesz - p->attr.nodesz);
-		p->attr = attr;
+		delta = (int)(nodesz - p->attr.nodesz);
+		p->attr.nodesz = nodesz;
 		mutex_unlock(&cf->mtx);
 
 		rwlock_write_unlock(&p->value_lock);
@@ -524,10 +428,11 @@ void cache_unpin(struct cache_file *cf, struct cpair *p, struct cpair_attr attr)
 		rwlock_read_unlock(&p->value_lock);
 	}
 
-	cpair_unlocked_by_key(cf->table, k);
-	mutex_lock(&c->mtx);
-	c->cache_size += delta;
-	mutex_unlock(&c->mtx);
+	xtable_slot_unlocked(cf->xtable, p);
+	if (delta > 0)
+		quota_add(c->quota, delta);
+	else
+		quota_remove(c->quota, delta);
 }
 
 int cache_file_remove(struct cache *c, int filenum)
@@ -541,21 +446,21 @@ int cache_file_remove(struct cache *c, int filenum)
 struct cache_file *cache_file_create(struct cache *c,
                                      int fd,
                                      void *hdr,
-                                     struct tree_callback *tcb)
+                                     struct tree_operations *tree_opts)
 {
 	struct cache_file *cf;
 
 	cf = xcalloc(1, sizeof(*cf));
 	cf->cache = c;
-	cf->tcb = tcb;
 	cf->fd = fd;
 	cf->hdr = hdr;
+	cf->tree_opts = tree_opts;
 	cf->filenum = atomic32_increment(&c->filenum);
 
 	mutex_init(&cf->mtx);
 	ness_rwlock_init(&cf->clock_lock);
 	cf->clock = cpair_list_new();
-	cf->table = cpair_htable_new();
+	cf->xtable = xtable_new(PAIR_LIST_SIZE, cache_xtable_hash_func, cache_xtable_compare_func);
 
 	mutex_lock(&c->mtx);
 	if (!c->cf_first) {
@@ -572,11 +477,12 @@ struct cache_file *cache_file_create(struct cache *c,
 
 void cache_file_free(struct cache_file *cf)
 {
-	cpair_htable_free(cf->table);
+	xtable_free(cf->xtable);
 	_cf_clock_read_lock(cf);
 	cpair_list_free(cf->clock);
 	cache_file_remove(cf->cache, cf->filenum);
 	_cf_clock_read_unlock(cf);
+	mutex_destroy(&cf->mtx);
 	xfree(cf);
 }
 
@@ -585,26 +491,24 @@ void cache_file_flush_dirty_nodes(struct cache_file *cf)
 	int r;
 	struct cpair *cur;
 	struct cpair *nxt;
-	struct tree_callback *tcb = cf->tcb;
+	struct tree_operations *tree_opts = cf->tree_opts;
 
 	cur = cf->clock->head;
 	while (cur) {
 		nxt = cur->list_next;
-		if (tcb->node_is_dirty_cb(cur->v)) {
-			NID k = cur->k;
-
-			cpair_locked_by_key(cf->table, k);
-			r = tcb->flush_node_cb(cf->fd, cf->hdr, cur->v);
-			cpair_unlocked_by_key(cf->table, k);
+		if (tree_opts->node_is_dirty(cur->v)) {
+			xtable_slot_locked(cf->xtable, cur);
+			r = tree_opts->flush_node(cf->fd, cf->hdr, cur->v);
+			xtable_slot_unlocked(cf->xtable, cur);
 			if (r != NESS_OK)
 				__PANIC("serialize node to disk error, fd [%d]", cf->fd);
-			tcb->node_set_nondirty_cb(cur->v);
+			tree_opts->node_set_nondirty(cur->v);
 		}
 		_free_cpair(cf, cur);
 		cur = nxt;
 	}
 
-	r = tcb->flush_hdr_cb(cf->fd, cf->hdr);
+	r = tree_opts->flush_hdr(cf->fd, cf->hdr);
 	if (r != NESS_OK)
 		__PANIC("serialize hdr[%d] to disk error", cf->fd);
 }
@@ -612,9 +516,9 @@ void cache_file_flush_dirty_nodes(struct cache_file *cf)
 void cache_file_flush_hdr(struct cache_file *cf)
 {
 	int r;
-	struct tree_callback *tcb = cf->tcb;
+	struct tree_operations *tree_opts = cf->tree_opts;
 
-	r = tcb->flush_hdr_cb(cf->fd, cf->hdr);
+	r = tree_opts->flush_hdr(cf->fd, cf->hdr);
 	if (r != NESS_OK)
 		__PANIC("serialize hdr[%d] to disk error", cf->fd);
 }
@@ -624,6 +528,7 @@ void cache_free(struct cache *c)
 	/* first to stop background threads */
 	kibbutz_free(c->c_kibbutz);
 	cron_free(c->flusher);
-
+	quota_free(c->quota);
+	mutex_destroy(&c->mtx);
 	xfree(c);
 }

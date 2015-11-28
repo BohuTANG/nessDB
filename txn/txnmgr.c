@@ -145,5 +145,6 @@ void txnmgr_child_txn_start(struct txnmgr* tm, TXN *parent, TXN *child)
 void txnmgr_free(struct txnmgr *tm)
 {
 	_txnid_snapshot_free(tm->live_root_txnids);
+	mutex_destroy(&tm->mtx);
 	xfree(tm);
 }

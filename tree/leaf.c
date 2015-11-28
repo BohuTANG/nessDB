@@ -5,18 +5,59 @@
  */
 
 #include "u.h"
+#include "c.h"
 #include "t.h"
 
-int _le_apply_insert(struct lmb *mb, struct bt_cmd *cmd)
+void leaf_new(struct hdr *hdr,
+              NID nid,
+              uint32_t height,
+              uint32_t children,
+              struct node **n)
 {
-	lmb_put(mb,
-	        cmd->msn,
-	        cmd->type,
-	        cmd->key,
-	        cmd->val,
-	        &cmd->xidpair);
+	struct node *node;
 
-	return NESS_OK;
+	nassert(height == 0);
+	nassert(children == 1);
+	node = xcalloc(1, sizeof(*node));
+	nassert(node);
+	node->nid = nid;
+	node->height = height;
+	mutex_init(&node->attr.mtx);
+	node->n_children = children;
+	node->layout_version = hdr->layout_version;
+
+	if (children > 0) {
+		node->pivots = xcalloc(children - 1, PIVOT_SIZE);
+		node->parts = xcalloc(children, PART_SIZE);
+	}
+
+	node->opts = hdr->opts;
+	node->i = &leaf_operations;
+	node_set_dirty(node);
+
+	*n = node;
+}
+
+void leaf_free(struct node *leaf)
+{
+	int i;
+	nassert(leaf != NULL);
+	nassert(leaf->height == 0);
+
+	for (i = 0; i < (leaf->n_children - 1); i++)
+		xfree(leaf->pivots[i].data);
+
+	for (i = 0; i < leaf->n_children; i++)
+		lmb_free(leaf->parts[i].msgbuf);
+	mutex_destroy(&leaf->attr.mtx);
+	xfree(leaf->pivots);
+	xfree(leaf->parts);
+	xfree(leaf);
+}
+
+void leaf_msgbuf_init(struct node *leaf)
+{
+	leaf->parts[0].msgbuf = lmb_new(leaf->opts);
 }
 
 /*
@@ -26,14 +67,20 @@ int _le_apply_insert(struct lmb *mb, struct bt_cmd *cmd)
  * the difference between LE_CLEAN and LE_MVCC is gc affects.
  *
  */
-int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
+int leaf_put(struct node *leaf, struct bt_cmd *cmd)
 {
 	int ret = NESS_ERR;
-	struct lmb *buffer = leaf->parts[0].ptr.u.leaf->buffer;
+	struct lmb *buffer = (struct lmb*)leaf->parts[0].msgbuf;
 
 	switch (cmd->type & 0xff) {
 	case MSG_INSERT:
-		ret = _le_apply_insert(buffer, cmd);
+		lmb_put(buffer,
+		        cmd->msn,
+		        cmd->type,
+		        cmd->key,
+		        cmd->val,
+		        &cmd->xidpair);
+		return NESS_OK;
 		break;
 	case MSG_DELETE:
 		break;
@@ -47,41 +94,107 @@ int leaf_apply_msg(struct node *leaf, struct bt_cmd *cmd)
 		break;
 	}
 
+	leaf->msn = cmd->msn > leaf->msn ? cmd->msn : leaf->msn;
+	node_set_dirty(leaf);
+
 	return ret;
 }
 
 /*
- * TODO: (BohuTANG) to do gc on MVCC
- * a) if a commit txid(with the same key) is smaller than other, gc it
+ * EFFECT:
+ *	- split leaf&lmb into two leaves:a & b
+ *	  a&b are both the half of the lmb
+ *
+ * PROCESS:
+ *	- leaf:
+ *		+-----------------------------------+
+ *		|  0  |  1  |  2  |  3  |  4  |  5  |
+ *		+-----------------------------------+
+ *
+ *	- split:
+ *				   root
+ *				 +--------+
+ *				 |   2    |
+ *				 +--------+
+ *              /          \
+ *	+-----------------+	 +------------------+
+ *	    	|  0  |  1  |  2  |	 |  3  |  4  |  5   |
+ *	    	+-----------------+	 +------------------+
+ *	    	      nodea			nodeb
+ *
+ * ENTER:
+ *	- leaf is already locked (L_WRITE)
+ * EXITS:
+ *	- a is locked
+ *	- b is locked
  */
-int leaf_do_gc(struct node *leaf)
+void leaf_split(void *tree,
+                struct node *node,
+                struct node **a,
+                struct node **b,
+                struct msg **split_key)
 {
-	(void)leaf;
+	struct partition *pa;
+	struct partition *pb;
+	struct node *leafa;
+	struct node *leafb;
+	struct lmb *mb;
+	struct lmb *mba;
+	struct lmb *mbb;
+	struct msg *sp_key = NULL;
+	struct buftree *t = (struct buftree*)tree;
 
-	return NESS_OK;
+	leafa = node;
+	pa = &leafa->parts[0];
+
+	/* split lmb of leaf to mba & mbb */
+	mb = pa->msgbuf;
+	lmb_split(mb, &mba, &mbb, &sp_key);
+	lmb_free(mb);
+
+	/* reset leafa buffer */
+	pa->msgbuf = mba;
+
+	/* new leafb */
+	NID nid = hdr_next_nid(t->hdr);
+	leaf_new(t->hdr,
+	         nid,
+	         0,
+	         1,
+	         &leafb);
+	leaf_msgbuf_init(leafb);
+
+	cache_put_and_pin(t->cf, nid, leafb);
+
+	pb = &leafb->parts[0];
+	lmb_free(pb->msgbuf);
+	pb->msgbuf = mbb;
+
+	/* set dirty */
+	node_set_dirty(leafa);
+	node_set_dirty(leafb);
+
+	*a = leafa;
+	*b = leafb;
+	*split_key = sp_key;
 }
 
 /*
  * apply parent's (left, right] messages to child node
  */
-void _apply_msg_to_child(struct node *parent,
-                         int child_num,
-                         struct node *child,
-                         struct msg *left,
-                         struct msg *right)
+void leaf_apply(struct node *leaf,
+                struct nmb *msgbuf,
+                struct msg *left,
+                struct msg *right)
 {
-	struct nmb *buffer;
 	struct mb_iter iter;
 	struct pma_coord coord_left;
 	struct pma_coord coord_right;
 
-	nassert(parent->height > 0);
-	buffer = parent->parts[child_num].ptr.u.nonleaf->buffer;
+	nmb_get_left_coord(msgbuf, left, &coord_left);
+	nmb_get_right_coord(msgbuf, right, &coord_right);
 
-	nmb_get_left_coord(buffer, left, &coord_left);
-	nmb_get_right_coord(buffer, right, &coord_right);
-
-	mb_iter_init(&iter, buffer->pma);
+	mb_iter_init(&iter, msgbuf->pma);
 	while (mb_iter_on_range(&iter, &coord_left, &coord_right)) {
 		struct nmb_values values;
 
@@ -95,52 +208,69 @@ void _apply_msg_to_child(struct node *parent,
 			.xidpair = values.xidpair
 		};
 
-		if (cmd.msn > child->msn) {
-			if (nessunlikely(child->height == 0))
-				leaf_put_cmd(child, &cmd);
-			else
-				nonleaf_put_cmd(child, &cmd);
+		if (cmd.msn > leaf->msn) {
+			leaf_put(leaf, &cmd);
 		}
 	}
 }
 
-/*
- * apply msgs from ances to leaf msgbuf which are between(include) left and right
- * REQUIRES:
- *  1) leaf write-lock
- *  2) ances all write-lock
- */
-int leaf_apply_ancestors(struct node *leaf, struct ancestors *ances)
+int leaf_find_heaviest_idx(struct node *leaf)
 {
-	int childnum;
-	struct node *node;
-	struct msg *left, *right;
-	struct ancestors *cur_ance;
+	int i;
+	int idx = 0;
+	uint32_t sz = 0;
+	uint32_t maxsz = 0;
 
-	(void)leaf;
-	nassert(ances);
+	for (i = 0; i < leaf->n_children; i++) {
+		struct lmb *msgbuf = (struct lmb*)&leaf->parts[i].msgbuf;
 
-	/* get the bounds (left, right] */
-	cur_ance = ances;
-	while (cur_ance && cur_ance->next)
-		cur_ance = cur_ance->next;
-	childnum = cur_ance->childnum;
-	node = (struct node*)cur_ance->v;
-	left = (childnum > 0) ? msgdup(&node->pivots[childnum - 1]) : NULL;
-	right = (childnum == node->n_children) ? NULL : msgdup(&node->pivots[childnum]);
-
-	cur_ance = ances;
-	while (cur_ance && cur_ance->next) {
-		_apply_msg_to_child(cur_ance->v,
-		                    cur_ance->childnum,
-		                    cur_ance->next->v,
-		                    left,
-		                    right);
-		cur_ance = cur_ance->next;
+		sz = lmb_memsize(msgbuf);
+		if (sz > maxsz) {
+			idx = i;
+			maxsz = sz;
+		}
 	}
 
-	msgfree(left);
-	msgfree(right);
-
-	return NESS_OK;
+	return idx;
 }
+
+uint32_t leaf_size(struct node *leaf)
+{
+	int i;
+	uint32_t sz = 0U;
+
+	for (i = 0; i < leaf->n_children; i++) {
+		struct lmb *lmb = leaf->parts[0].msgbuf;
+
+		sz += lmb_memsize(lmb);
+	}
+
+	return sz;
+}
+
+uint32_t leaf_count(struct node *leaf)
+{
+	int i;
+	uint32_t c = 0U;
+
+	for (i = 0; i < leaf->n_children; i++) {
+		struct lmb *lmb = leaf->parts[0].msgbuf;
+
+		c += lmb_count(lmb);
+	}
+
+	return c;
+}
+
+struct node_operations leaf_operations = {
+	.put			= &leaf_put,
+	.apply			= &leaf_apply,
+	.split			= &leaf_split,
+	.free			= &leaf_free,
+	.size			= &leaf_size,
+	.count			= &leaf_count,
+	.mb_packer		= &lmb_to_msgpack,
+	.mb_unpacker	= &msgpack_to_lmb,
+	.init_msgbuf	= &leaf_msgbuf_init,
+	.find_heaviest	= &leaf_find_heaviest_idx,
+};

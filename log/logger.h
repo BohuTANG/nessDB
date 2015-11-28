@@ -7,10 +7,10 @@
 #ifndef nessDB_LOGGER_H_
 #define nessDB_LOGGER_H_
 
-struct logger {
+typedef struct logger {
 	struct cache *cache;
 	struct txnmgr *txnmgr;
-};
+} LOGGER;
 
 struct logger *logger_new(struct cache *cache, struct txnmgr *txnmgr);
 void logger_free(struct logger *logger);

@@ -7,26 +7,25 @@
 #include "u.h"
 #include "t.h"
 
-static inline int _lmb_entry_key_compare(void *a, void *b, void *env)
+static inline int _lmb_entry_key_compare(void *a, void *b, void *extra)
 {
-	struct env *e = (struct env*)env;
+	struct lmb *lmb = (struct lmb*)extra;
 	struct leafentry *lea = (struct leafentry*)a;
 	struct leafentry *leb = (struct leafentry*)b;
 
-	nassert(e->bt_compare_func);
-	return e->bt_compare_func(lea->keyp,
-	                          lea->keylen,
-	                          leb->keyp,
-	                          leb->keylen);
+	return lmb->opts->bt_compare_func(lea->keyp,
+	                                  lea->keylen,
+	                                  leb->keyp,
+	                                  leb->keylen);
 }
 
-struct lmb *lmb_new(struct env *e)
+struct lmb *lmb_new(struct tree_options *opts)
 {
 	struct lmb *lmb = xmalloc(sizeof(*lmb));
 
 	lmb->mpool = mempool_new();
 	lmb->pma = pma_new(64);
-	lmb->e = e;
+	lmb->opts = opts;
 	lmb->count = 0;
 
 	return lmb;
@@ -49,7 +48,7 @@ void lmb_put(struct lmb *lmb,
 	int ret = pma_find_zero(lmb->pma,
 	                        (void*)&kle,
 	                        _lmb_entry_key_compare,
-	                        (void*)lmb->e,
+	                        (void*)lmb,
 	                        (void**)&le,
 	                        &coord);
 
@@ -66,7 +65,7 @@ void lmb_put(struct lmb *lmb,
 		pma_insertat(lmb->pma,
 		             (void*)base,
 		             _lmb_entry_key_compare,
-		             (void*)lmb->e,
+		             (void*)lmb,
 		             &coord);
 		lmb->count++;
 	}
@@ -174,8 +173,8 @@ void lmb_split(struct lmb *lmb,
 	struct mb_iter iter;
 	uint32_t count = lmb_count(lmb);
 	uint32_t a_count = count / 2;
-	struct lmb *A = lmb_new(lmb->e);
-	struct lmb *B = lmb_new(lmb->e);
+	struct lmb *A = lmb_new(lmb->opts);
+	struct lmb *B = lmb_new(lmb->opts);
 
 	nassert(count > 1);
 	mb_iter_init(&iter, lmb->pma);
@@ -200,7 +199,7 @@ void lmb_split(struct lmb *lmb,
 
 		/* append to pma */
 		_lmb_leafentry_clone(le, mb->mpool, &le_clone);
-		pma_append(mb->pma, le_clone, _lmb_entry_key_compare, mb->e);
+		pma_append(mb->pma, le_clone, _lmb_entry_key_compare, mb);
 		mb->count++;
 
 		i++;
@@ -273,9 +272,11 @@ ERR:
  * EFFECTS:
  *	- pack lmb leafentry to msgpack
  */
-void lmb_to_msgpack(struct lmb *lmb, struct msgpack *packer)
+void lmb_to_msgpack(void *p, void *n)
 {
 	struct mb_iter iter;
+	struct msgpack *packer = (struct msgpack*)p;
+	struct lmb *lmb = (struct lmb*)n;
 
 	mb_iter_init(&iter, lmb->pma);
 	while (mb_iter_next(&iter)) {
@@ -289,8 +290,11 @@ void lmb_to_msgpack(struct lmb *lmb, struct msgpack *packer)
  * EFFECTS:
  *	- unpack lmb leafentry from msgpack
  */
-void msgpack_to_lmb(struct msgpack *packer, struct lmb *lmb)
+void msgpack_to_lmb(void *p, void *n)
 {
+	struct msgpack *packer = (struct msgpack*)p;
+	struct lmb *lmb = (struct lmb*)n;
+
 	while (packer->SEEK < packer->NUL) {
 		struct leafentry le;
 		struct leafentry *new_le;
@@ -302,7 +306,7 @@ void msgpack_to_lmb(struct msgpack *packer, struct lmb *lmb)
 		pma_append(lmb->pma,
 		           (void*)new_le,
 		           _lmb_entry_key_compare,
-		           (void*)lmb->e);
+		           (void*)lmb);
 		lmb->count++;
 	}
 }
@@ -321,7 +325,7 @@ int lmb_find_zero(struct lmb *lmb,
 	return pma_find_zero(lmb->pma,
 	                     (void*)&kle,
 	                     _lmb_entry_key_compare,
-	                     (void*)lmb->e,
+	                     (void*)lmb,
 	                     (void**)le,
 	                     coord);
 }
@@ -340,7 +344,7 @@ int lmb_find_plus(struct lmb *lmb,
 	return pma_find_plus(lmb->pma,
 	                     (void*)&kle,
 	                     _lmb_entry_key_compare,
-	                     (void*)lmb->e,
+	                     (void*)lmb,
 	                     (void**)le,
 	                     coord);
 }
@@ -359,7 +363,7 @@ int lmb_find_minus(struct lmb *lmb,
 	return pma_find_minus(lmb->pma,
 	                      (void*)&kle,
 	                      _lmb_entry_key_compare,
-	                      (void*)lmb->e,
+	                      (void*)lmb,
 	                      (void**)le,
 	                      coord);
 }

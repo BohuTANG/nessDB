@@ -33,7 +33,6 @@ void db_c_last(struct db_cursor *cursor);
 void db_c_next(struct db_cursor *cursor);
 void db_c_prev(struct db_cursor *cursor);
 
-int env_set_cache_size(struct env *env, uint64_t cache_size);
-int env_set_compress_method(struct env *env , int method);
+int db_change_compress_method(struct nessdb *db, int method);
 
 #endif /* nessDB_DB_H_ */

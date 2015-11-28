@@ -35,10 +35,10 @@ struct nmb {
 	uint32_t count;
 	struct pma *pma;
 	struct mempool *mpool;
-	struct env *e;
+	struct tree_options *opts;
 };
 
-struct nmb *nmb_new(struct env *);
+struct nmb *nmb_new(struct tree_options *opts);
 void nmb_free(struct nmb*);
 
 uint32_t nmb_memsize(struct nmb*);
@@ -52,8 +52,8 @@ void nmb_put(struct nmb*,
              struct txnid_pair*);
 
 void nmb_get_values(struct mb_iter *, struct nmb_values *);
-void nmb_to_msgpack(struct nmb  *, struct msgpack *);
-void msgpack_to_nmb(struct msgpack *, struct nmb *);
+void nmb_to_msgpack(void *packer, void *msgbuf);
+void msgpack_to_nmb(void *packer, void *msgbuf);
 
 int nmb_get_left_coord(struct nmb *, struct msg *, struct pma_coord *);
 int nmb_get_right_coord(struct nmb *, struct msg *, struct pma_coord *);

@@ -663,10 +663,10 @@ size_t snappy_max_compressed_length(size_t source_len)
 }
 
 enum {
-    LITERAL = 0,
-    COPY_1_BYTE_OFFSET = 1,	/* 3 bit length + 3 bits of offset in opcode */
-    COPY_2_BYTE_OFFSET = 2,
-    COPY_4_BYTE_OFFSET = 3
+	LITERAL = 0,
+	COPY_1_BYTE_OFFSET = 1,	/* 3 bit length + 3 bits of offset in opcode */
+	COPY_2_BYTE_OFFSET = 2,
+	COPY_4_BYTE_OFFSET = 3
 };
 
 static inline char *emit_literal(char *op,

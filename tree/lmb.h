@@ -35,10 +35,10 @@ struct lmb {
 	uint32_t count;
 	struct pma *pma;
 	struct mempool *mpool;
-	struct env *e;
+	struct tree_options *opts;
 };
 
-struct lmb *lmb_new(struct env *);
+struct lmb *lmb_new(struct tree_options *opts);
 void lmb_free(struct lmb*);
 
 uint32_t lmb_memsize(struct lmb*);
@@ -72,7 +72,7 @@ int lmb_find_minus(struct lmb *,
                    struct pma_coord *);
 
 void lmb_get_values(struct mb_iter *, struct lmb_values *);
-void lmb_to_msgpack(struct lmb *, struct msgpack *);
-void msgpack_to_lmb(struct msgpack *, struct lmb *);
+void lmb_to_msgpack(void *packer, void *msgbuf);
+void msgpack_to_lmb(void *packer, void *msgbuf);
 
 #endif /* nessDB_LMB_H_ */

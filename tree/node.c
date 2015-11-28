@@ -7,42 +7,6 @@
 #include "u.h"
 #include "t.h"
 
-static struct node_operations nop = {
-	.update_func = NULL,
-	.delete_all_func = NULL,
-	.pivot_compare_func = msg_key_compare
-};
-
-struct leaf_basement_node *create_leaf(struct env *e)
-{
-	struct leaf_basement_node *leaf = xcalloc(1, sizeof(*leaf));
-
-	leaf->buffer = lmb_new(e);
-
-	return leaf;
-}
-
-static void free_leaf(struct leaf_basement_node *leaf)
-{
-	lmb_free(leaf->buffer);
-	xfree(leaf);
-}
-
-struct nonleaf_childinfo *create_nonleaf(struct env *e)
-{
-	struct nonleaf_childinfo *nonleaf = xcalloc(1, sizeof(*nonleaf));
-
-	nonleaf->buffer = nmb_new(e);
-
-	return nonleaf;
-}
-
-static void free_nonleaf(struct nonleaf_childinfo *nonleaf)
-{
-	nmb_free(nonleaf->buffer);
-	xfree(nonleaf);
-}
-
 void node_set_dirty(struct node *node)
 {
 	mutex_lock(&node->attr.mtx);
@@ -71,103 +35,6 @@ int node_is_dirty(struct node *node)
 }
 
 /*
- * EFFECT:
- *	- alloc ptrs with nonleaf or leaf
- * REQUIRE:
- *	- node has height
- *	- node has n_children
- */
-void node_ptrs_alloc(struct node *node)
-{
-	int i;
-
-	for (i = 0; i < node->n_children; i++) {
-		struct child_pointer *ptr = &node->parts[i].ptr;
-		if (node->height > 0)
-			ptr->u.nonleaf = create_nonleaf(node->env);
-		else
-			ptr->u.leaf = create_leaf(node->env);
-	}
-}
-
-/*
- * EFFECT:
- *	- alloc node header
- */
-struct node *node_alloc_empty(NID nid, int height, struct env *e)
-{
-	struct node *node;
-
-	node = xcalloc(1, sizeof(*node));
-	node->nid = nid;
-	node->height = height;
-	node->node_op = &nop;
-	node->env = e;
-
-	mutex_init(&node->attr.mtx);
-	node_set_dirty(node);
-
-	return node;
-}
-
-/*
- * EFFECT:
- *	- just init and alloc pivots and parts
- */
-void node_init_empty(struct node *node, int children, int layout_version)
-{
-	node->n_children = children;
-	node->layout_version = layout_version;
-
-	if (children > 0) {
-		node->pivots = xcalloc(children - 1, PIVOT_SIZE);
-		node->parts = xcalloc(children, PART_SIZE);
-	}
-}
-
-/*
- * EFFECT:
- *	- alloc a full node: header + non/leaf infos
- */
-struct node *node_alloc_full(NID nid,
-                             int height,
-                             int children,
-                             int layout_version,
-                             struct env *e)
-{
-	struct node *node;
-
-	node = node_alloc_empty(nid, height, e);
-	node_init_empty(node, children, layout_version);
-	node_ptrs_alloc(node);
-
-	return node;
-}
-
-void node_free(struct node *node)
-{
-	int i;
-	nassert(node != NULL);
-
-	for (i = 0; i < (node->n_children - 1); i++)
-		xfree(node->pivots[i].data);
-
-
-	for (i = 0; i < node->n_children; i++) {
-		struct child_pointer *ptr = &node->parts[i].ptr;
-
-		if (node->height > 0)
-			free_nonleaf(ptr->u.nonleaf);
-		else
-			free_leaf(ptr->u.leaf);
-	}
-
-	xfree(node->pivots);
-	xfree(node->parts);
-	xfree(node);
-}
-
-/*
  * PROCESS:
  *	- find the 1st pivot index which pivot >= k
  *	- it's lowerbound binary search
@@ -187,7 +54,8 @@ int node_partition_idx(struct node *node, struct msg *k)
 	nassert(node->n_children > 1);
 	while (lo <= hi) {
 		int mid = (lo + hi) / 2;
-		int cmp = node->node_op->pivot_compare_func(&node->pivots[mid], k);
+		int cmp = node->opts->bt_compare_func(node->pivots[mid].data, node->pivots[mid].size,
+		                                      k->data, k->size);
 
 		if (cmp >= 0) {
 			best = mid;
@@ -200,106 +68,20 @@ int node_partition_idx(struct node *node, struct msg *k)
 	return best;
 }
 
-int node_find_heaviest_idx(struct node *node)
+enum node_state get_node_state(struct node *node)
 {
-	int i;
-	int idx = 0;
-	uint32_t sz = 0;
-	uint32_t maxsz = 0;
+	uint32_t children = node->n_children;
 
-	for (i = 0; i < node->n_children; i++) {
-		struct child_pointer *ptr = &node->parts[i].ptr;
-
-		if (node->height > 0)
-			sz = nmb_memsize(ptr->u.nonleaf->buffer);
-		else
-			sz = lmb_memsize(ptr->u.leaf->buffer);
-
-		if (sz > maxsz) {
-			idx = i;
-			maxsz = sz;
-		}
-	}
-
-	return idx;
-}
-
-uint32_t node_count(struct node *node)
-{
-	int i;
-	uint32_t c = 0U;
-
-	for (i = 0; i < node->n_children; i++) {
-		struct child_pointer *ptr = &node->parts[i].ptr;
-
-		if (node->height > 0)
-			c += nmb_count(ptr->u.nonleaf->buffer);
-		else
-			c += lmb_count(ptr->u.leaf->buffer);
-	}
-
-	return c;
-}
-
-uint32_t node_size(struct node *node)
-{
-	int i;
-	uint32_t sz = 0;
-
-	for (i = 0; i < node->n_children; i++) {
-		struct child_pointer *ptr = &node->parts[i].ptr;
-
-		if (node->height > 0)
-			sz += nmb_memsize(ptr->u.nonleaf->buffer);
-		else
-			sz += lmb_memsize(ptr->u.leaf->buffer);
-	}
-
-	return sz;
-}
-
-static int _create_node(NID nid,
-                        uint32_t height,
-                        uint32_t children,
-                        int version,
-                        struct node **n,
-                        struct env *e,
-                        int light)
-{
-	struct node *new_node;
-
-	if (light) {
-		new_node = node_alloc_empty(nid, height, e);
-		node_init_empty(new_node, children, version);
+	if (nessunlikely(node->height == 0)) {
+		if (node->i->size(node) >= node->opts->leaf_node_size)
+			return FISSIBLE;
 	} else {
-		new_node = node_alloc_full(nid, height, children, version, e);
+		if (children >= node->opts->inner_node_fanout)
+			return FISSIBLE;
+
+		if (node->i->size(node) >= node->opts->inner_node_size)
+			return FLUSHBLE;
 	}
-	if (height > 0)
-		status_increment(&e->status->tree_nonleaf_nums);
-	else
-		status_increment(&e->status->tree_leaf_nums);
 
-	*n = new_node;
-
-	return NESS_OK;
-}
-
-int node_create(NID nid,
-                uint32_t height,
-                uint32_t children,
-                int version,
-                struct env *e,
-                struct node **n)
-{
-	return _create_node(nid, height, children, version, n, e, 0);
-}
-
-int node_create_light(NID nid,
-                      uint32_t height,
-                      uint32_t children,
-                      int version,
-                      struct env *e,
-                      struct node **n)
-{
-	return _create_node(nid, height, children, version, n, e, 1);
+	return STABLE;
 }

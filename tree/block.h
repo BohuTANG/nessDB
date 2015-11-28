@@ -16,6 +16,9 @@
  *
  */
 
+/* reserved 1024bytes for double-write tree header */
+#define BLOCK_OFFSET_START (ALIGN(1024))
+
 struct block_pair {
 	DISKOFF offset;
 	NID nid;
@@ -33,10 +36,9 @@ struct block {
 	struct status *status;
 	ness_mutex_t mtx;
 	struct rwlock rwlock;
-	struct env *e;
 };
 
-struct block *block_new(struct env*);
+struct block *block_new();
 void block_init(struct block *b,
                 struct block_pair *pairs,
                 uint32_t size);

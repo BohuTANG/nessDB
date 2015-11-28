@@ -26,20 +26,20 @@ typedef int (*search_pivotbound_compare_func)(struct search *, struct msg *);
 typedef int (*search_key_compare_func)(struct msg *, struct msg *);
 
 typedef enum {
-    SEARCH_FORWARD = 1,
-    SEARCH_BACKWARD = -1
+	SEARCH_FORWARD = 1,
+	SEARCH_BACKWARD = -1
 } direction_t;
 
 typedef enum {
-    GAP_POSI = 1,
-    GAP_ZERO = 0,
-    GAP_NEGA = -1
+	GAP_POSI = 1,
+	GAP_ZERO = 0,
+	GAP_NEGA = -1
 } gap_t;
 
 enum {
-    CURSOR_CONTINUE = 10000,
-    CURSOR_EOF = -10001,
-    CURSOR_TRY_AGAIN = -10002
+	CURSOR_CONTINUE = 10000,
+	CURSOR_EOF = -10001,
+	CURSOR_TRY_AGAIN = -10002
 };
 
 /* internal search entry */

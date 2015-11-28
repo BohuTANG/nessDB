@@ -7,16 +7,16 @@
 #include "u.h"
 #include "t.h"
 
-static inline int _nmb_entry_key_compare(void *a, void *b, void *env)
+static inline int _nmb_entry_key_compare(void *a, void *b, void *extra)
 {
-	struct env *e = (struct env*)env;
+	struct nmb *nmb = (struct nmb*)extra;
 	struct nmb_entry *nea = (struct nmb_entry*)a;
 	struct nmb_entry *neb = (struct nmb_entry*)b;
 
-	return e->bt_compare_func((char*)nea + NMB_ENTRY_SIZE,
-	                          nea->keylen,
-	                          (char*)neb + NMB_ENTRY_SIZE,
-	                          neb->keylen);
+	return nmb->opts->bt_compare_func((void*)((char*)nea + NMB_ENTRY_SIZE),
+	                                  (int)nea->keylen,
+	                                  (void*)((char*)neb + NMB_ENTRY_SIZE),
+	                                  (int)neb->keylen);
 }
 
 void _nmb_entry_pack(char *base,
@@ -78,14 +78,14 @@ void _nmb_entry_unpack(char *base,
 	}
 }
 
-struct nmb *nmb_new(struct env *e)
+struct nmb *nmb_new(struct tree_options *opts)
 {
 	struct nmb *nmb = xmalloc(sizeof(*nmb));
 
 	nmb->mpool = mempool_new();
 	nmb->pma = pma_new(64);
 	nmb->count = 0;
-	nmb->e  = e;
+	nmb->opts = opts;
 
 	return nmb;
 }
@@ -128,7 +128,7 @@ void nmb_put(struct nmb *nmb,
 	pma_insert(nmb->pma,
 	           (void*)base,
 	           _nmb_entry_key_compare,
-	           (void*)nmb->e);
+	           (void*)nmb);
 	nmb->count++;
 }
 
@@ -192,9 +192,11 @@ ERR:
 	return NESS_ERR;
 }
 
-void nmb_to_msgpack(struct nmb  *nmb, struct msgpack *packer)
+void nmb_to_msgpack(void *p, void *n)
 {
 	struct mb_iter iter;
+	struct msgpack *packer = (struct msgpack*)p;
+	struct nmb *nmb = (struct nmb*)n;
 
 	mb_iter_init(&iter, nmb->pma);
 	while (mb_iter_next(&iter)) {
@@ -205,8 +207,10 @@ void nmb_to_msgpack(struct nmb  *nmb, struct msgpack *packer)
 	}
 }
 
-void msgpack_to_nmb(struct msgpack *packer, struct nmb *nmb)
+void msgpack_to_nmb(void *p, void *n)
 {
+	struct msgpack *packer = (struct msgpack*)p;
+	struct nmb *nmb = (struct nmb*)n;
 	while (packer->SEEK < packer->NUL) {
 		struct nmb_values values;
 
@@ -236,7 +240,7 @@ int nmb_get_left_coord(struct nmb *nmb, struct msg *left, struct pma_coord *coor
 		pma_find_plus(nmb->pma,
 		              entry,
 		              _nmb_entry_key_compare,
-		              nmb->e,
+		              nmb,
 		              &retval, coord);
 		xfree(entry);
 	}
@@ -265,7 +269,7 @@ int nmb_get_right_coord(struct nmb *nmb, struct msg *right, struct pma_coord *co
 		pma_find_plus(nmb->pma,
 		              entry,
 		              _nmb_entry_key_compare,
-		              nmb->e,
+		              nmb,
 		              &retval,
 		              coord);
 		xfree(entry);

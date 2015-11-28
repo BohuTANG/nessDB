@@ -1,18 +1,19 @@
 #include "u.h"
 #include "ness.h"
 #include "random.h"
+#include "histogram.h"
 
 #define V "3.0.0"
-#define LINE1 "--------------------------------------------------------------------\n"
+#define LINE1 "------------------------------------------------------------\n"
 
 #define KEY_SIZE (20)
 #define VAL_SIZE (100)
 
-struct random *rnd;
 void *e;
 void *db;
+struct random *rnd;
 static uint64_t FLAGS_num = 1000000;
-static uint64_t FLAGS_cache_size = (1024 * 1024 * 256);
+static uint64_t FLAGS_cache_size = (1073741824); // 1GB
 static const char* FLAGS_benchmarks = "fillrandom";
 static int FLAGS_method = 1; //snappy
 
@@ -89,24 +90,14 @@ void _print_header()
 	fprintf(stdout, LINE1);
 }
 
-void report(char *name, struct timespec a, struct timespec b)
-{
-	uint64_t bytes = FLAGS_num * (KEY_SIZE + VAL_SIZE);
-	long long cost_ms = time_diff_ms(a, b) + 1;
-	printf("%s:%" PRIu64 ", cost:%d(ms), %.f ops/sec, %6.1f MB/sec\n",
-	       name,
-	       FLAGS_num,
-	       (int)cost_ms,
-	       (double)(FLAGS_num / cost_ms) * 1000,
-	       (double)((double)(bytes / cost_ms / 1048576.0) * 1000));
-}
-
 void dbwrite(char *name, int random)
 {
 	uint32_t i;
 	int done = 0;;
 	int next_report = 100;
 	char kbuf[KEY_SIZE];
+	histogram h;
+	histogram_init(&h);
 
 	for (i = 0; i < FLAGS_num; i++) {
 		char *vbuf;
@@ -116,9 +107,13 @@ void dbwrite(char *name, int random)
 		snprintf(kbuf, KEY_SIZE, "%016d", key);
 		vbuf = rnd_str(rnd, VAL_SIZE);
 
+		double t0 = histogram_time();
 		if (ness_db_set(db, kbuf, strlen(kbuf), vbuf, VAL_SIZE) != NESS_OK) {
 			fprintf(stderr, " set error\n");
 		}
+		double t1 = histogram_time();
+		double tb = t1 - t0;
+		histogram_add(&h, tb);
 
 		done++;
 		if (done >= next_report) {
@@ -137,6 +132,7 @@ void dbwrite(char *name, int random)
 			fflush(stderr);
 		}
 	}
+	histogram_print(&h);
 }
 
 void writeseq()
@@ -147,7 +143,6 @@ void writeseq()
 	ngettime(&a);
 	dbwrite(name, 0);
 	ngettime(&b);
-	report(name, a, b);
 }
 
 void writerandom()
@@ -158,7 +153,6 @@ void writerandom()
 	ngettime(&a);
 	dbwrite(name, 1);
 	ngettime(&b);
-	report(name, a, b);
 }
 
 int dbopen()
@@ -178,7 +172,7 @@ int dbopen()
 		return 0;
 	}
 
-	if (!ness_env_set_compress_method(e, FLAGS_method)) {
+	if (!ness_db_change_compress_method(db, FLAGS_method)) {
 		fprintf(stderr, "set compress method error, see ness.event for details\n");
 		return 0;
 	}

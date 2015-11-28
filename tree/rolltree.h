@@ -18,16 +18,15 @@ struct rolltree {
 	int fd;
 	struct hdr *hdr;
 	struct cache_file *cf;
-	struct env *e;
 };
 
-struct rolltree *rolltree_open(const char *dbname, struct env *e);
+struct rolltree *rolltree_open(const char *dbname, struct cache *cache);
 void rolltree_free(struct rolltree *t);
 
 int rolltree_put(struct rolltree *t,
-             struct msg *k,
-             struct msg *v,
-             msgtype_t type,
-             TXN *txn);
+                 struct msg *k,
+                 struct msg *v,
+                 msgtype_t type,
+                 TXN *txn);
 
 #endif /* nessDB_ROLLTREE_H_ */

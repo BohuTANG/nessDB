@@ -9,14 +9,14 @@
 
 #define CRC_SIZE	(sizeof(uint32_t))
 
-uint32_t crc32(const char *buf, uint32_t n);
+uint16_t crc16(const char *buf, int n);
 
 static inline int do_xsum(const char *data, uint32_t len, uint32_t *xsum)
 {
 	if (len == 0)
 		return 0;
 
-	*xsum = crc32(data, len);
+	*xsum = crc16(data, len);
 
 	return 1;
 }

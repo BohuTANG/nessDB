@@ -7,15 +7,28 @@
 #ifndef nessDB_MSG_H_
 #define nessDB_MSG_H_
 
+#define ZERO_MSN (0)
+typedef uint64_t MSN;
+typedef uint64_t TXNID;
+struct msg {
+	uint32_t size;
+	void *data;
+};
+
 /* msg type */
 typedef enum {
-    MSG_NONE = 0,
-    MSG_INSERT = 1,
-    MSG_DELETE = 2,
-    MSG_UPDATE = 3,
-    MSG_COMMIT = 4,
-    MSG_ABORT = 5
+	MSG_NONE = 0,
+	MSG_INSERT = 1,
+	MSG_DELETE = 2,
+	MSG_UPDATE = 3,
+	MSG_COMMIT = 4,
+	MSG_ABORT = 5
 } msgtype_t;
+
+struct txnid_pair {
+	TXNID child_xid;
+	TXNID parent_xid;
+};
 
 /* buffer tree cmd */
 struct bt_cmd {
