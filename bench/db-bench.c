@@ -1,7 +1,6 @@
 #include "u.h"
 #include "ness.h"
 #include "random.h"
-#include "histogram.h"
 
 #define V "3.0.0"
 #define LINE1 "------------------------------------------------------------\n"

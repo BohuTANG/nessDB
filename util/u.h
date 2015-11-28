@@ -41,5 +41,6 @@
 #include "quota.h"
 #include "xtable.h"
 #include "snappy.h"
+#include "histogram.h"
 
 #endif /* nessDB_U_H_ */
