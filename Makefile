@@ -5,7 +5,7 @@ PLATFORM_SHARED_CFLAGS=-fPIC
 PLATFORM_SHARED_LDFLAGS=-c -W -Wall -Werror -std=c99
 
 ifdef ENABLE_ASAN
-		WITH_SAN = -fsanitize=address -fno-omit-frame-pointer -lasan
+		WITH_SAN = -fsanitize=address -fno-omit-frame-pointer
 else
 		ifdef ENABLE_TSAN
 		WITH_SAN = -fsanitize=thread
@@ -53,9 +53,6 @@ clean:
 	@rm -rf $(BENCH_OBJS)
 	@rm -rf $(BENCH)
 	@rm -rf dbbench ness.event
-
-.c.o:
-	$(CC) $(CFLAGS) $(PLATFORM_LDFLAGS) $(PLATFORM_SHARED_CFLAGS) -c $< -o $@
 
 $(LIBRARY): banner
 	@echo "ld libnessdb.so"

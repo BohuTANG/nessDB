@@ -4,8 +4,8 @@
  *
  */
 
-#ifndef nessDB_OPTIONS_H_
-#define nessDB_OPTIONS_H_
+#ifndef nessDB_TREE_OPTIONS_H_
+#define nessDB_TREE_OPTIONS_H_
 
 struct tree_options {
 	/* tree */
@@ -28,4 +28,4 @@ struct tree_options {
 	struct ness_vfs *vfs;
 };
 
-#endif /* nessDB_ENV_H_ */
+#endif /* nessDB_TREE_OPTIONS_H_ */
