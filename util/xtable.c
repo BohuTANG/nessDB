@@ -63,22 +63,20 @@ void xtable_add(struct xtable *xtbl, void *v)
 void xtable_remove(struct xtable *xtbl, void *v)
 {
 	int hash;
-	struct xtable_entry *curr;
-	struct xtable_entry *prev = NULL;
+	struct xtable_entry *e;
+	struct xtable_entry **ptr;
 
 	hash = xtbl->hash_func(v) & (xtbl->slot - 1);
-	curr = xtbl->slots[hash];
-	while (curr && curr->v != v) {
-		prev = curr;
-		curr = curr->next;
-	}
-
-	if (curr) {
-		if (prev)
-			prev->next = curr->next;
-		else
-			xtbl->slots[hash] = curr->next;
-		xfree(curr);
+	e = xtbl->slots[hash];
+	ptr = &e;
+	while (e) {
+		if (e->v == v) {
+			*ptr = e->next;
+			xfree(e);
+			break;
+		}
+		e = e->next;
+		ptr = &e;
 	}
 }
 

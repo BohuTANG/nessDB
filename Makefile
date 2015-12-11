@@ -63,6 +63,6 @@ $(STATIC): banner
 	@ar crs $@ $(LIB_OBJS)
 
 $(BENCH): banner $(BENCH_OBJS) $(LIB_OBJS)
-	$(CC) $(BENCH_OBJS) $(LIB_OBJS) $(WITH_SAN) -o $@
+	$(CC) $(BENCH_OBJS) $(PLATFORM_LDFLAGS) $(LIB_OBJS) $(WITH_SAN) -o $@
 
 .PHONY: all banner clean

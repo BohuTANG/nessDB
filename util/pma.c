@@ -171,6 +171,7 @@ static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f,
 	int hi = p->used - 1;
 	int best = hi;
 	struct array **chain = p->chain;
+	// need chain lock
 
 	if (p->used == 0)
 		return 0;
@@ -191,21 +192,9 @@ static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f,
 	return best;
 }
 
-void pma_insertat(struct pma *p, void *k, compare_func f, void *extra, struct pma_coord *coord)
+void chain_maybe_resize(struct pma *p, int chain_idx, compare_func f, void *extra)
 {
-	struct array *array = NULL;
-	int pma_used = p->used;
-	int chain_idx = coord->chain_idx;
-	int array_idx = coord->array_idx;
-
-	nassert(chain_idx <= pma_used);
-	if (pma_used == 0) {
-		array = _array_new(UNROLLED_LIMIT);
-		_chain_insertat(p, array, p->used);
-	} else {
-		array = p->chain[chain_idx];
-	}
-	_array_insertat(array, k, array_idx);
+	struct array *array = p->chain[chain_idx];
 	if (array->used > UNROLLED_LIMIT) {
 		struct array *new_arr;
 		int half = array->used / 2;
@@ -254,19 +243,23 @@ void pma_free(struct pma *p)
 void pma_insert(struct pma *p, void *k, compare_func f, void *extra)
 {
 	int array_idx = 0;
-	int chain_idx = _chain_find_lowerbound(p, k, f, extra);
-	struct array *arr = p->chain[chain_idx];
+	int chain_idx = 0;
+	struct array **arr;
 
-	if (arr)
-		array_idx = _array_find_greater_than(arr, k, f, extra);
+	chain_idx  = _chain_find_lowerbound(p, k, f, extra);
+	arr = &p->chain[chain_idx];
+	if (*arr)
+		array_idx = _array_find_greater_than(*arr, k, f, extra);
+	else {
+		*arr = _array_new(UNROLLED_LIMIT);
+	}
 
 	/* if array_idx is -1, means that we got the end of the array */
 	if (nessunlikely(array_idx == -1))
-		array_idx = arr->used;
+		array_idx = (*arr)->used;
 
-	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
-
-	pma_insertat(p, k, f, extra, &coord);
+	_array_insertat(*arr, k, array_idx);
+	chain_maybe_resize(p, chain_idx, f, extra);
 	p->count++;
 }
 
@@ -274,20 +267,20 @@ void pma_append(struct pma *p, void *k, compare_func f, void *extra)
 {
 	int array_idx = 0;
 	int chain_idx = 0;
+	struct array **arr;
 
 	if (p->used > 0)
 		chain_idx = p->used - 1;
 
-	if (chain_idx > 0) {
-		struct array *arr = p->chain[chain_idx];
+	arr = &p->chain[chain_idx];
+	if (!*arr)
+		*arr = _array_new(UNROLLED_LIMIT);
 
-		if (arr && (arr->used > 1))
-			array_idx = arr->used - 1;
-	}
+	if ((*arr)->used > 0)
+		array_idx = (*arr)->used - 1;
 
-	struct pma_coord coord = {.chain_idx = chain_idx, .array_idx = array_idx};
-	pma_insertat(p, k, f, extra, &coord);
-
+	_array_insertat(*arr, k, array_idx);
+	chain_maybe_resize(p, chain_idx, f, extra);
 	p->count++;
 }
 

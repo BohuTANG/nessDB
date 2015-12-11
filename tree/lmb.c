@@ -62,11 +62,10 @@ void lmb_put(struct lmb *lmb,
 		le->keyp = base + LEAFENTRY_SIZE;
 
 		xmemcpy(le->keyp, key->data, key->size);
-		pma_insertat(lmb->pma,
-		             (void*)base,
-		             _lmb_entry_key_compare,
-		             (void*)lmb,
-		             &coord);
+		pma_insert(lmb->pma,
+		           (void*)base,
+		           _lmb_entry_key_compare,
+		           (void*)lmb);
 		lmb->count++;
 	}
 

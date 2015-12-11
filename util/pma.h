@@ -7,7 +7,6 @@
 #ifndef nessDB_PMA_H_
 #define nessDB_PMA_H_
 
-#define ARRAY_CACHE_SIZE (64)
 typedef int (*compare_func)(void *, void *, void *);
 
 struct pma_coord {
@@ -32,7 +31,6 @@ struct pma *pma_new();
 void pma_free(struct pma *);
 
 void pma_insert(struct pma *, void *, compare_func f, void *);
-void pma_insertat(struct pma *, void *, compare_func f, void *, struct pma_coord *);
 void pma_append(struct pma *, void *, compare_func f, void *);
 uint32_t pma_count(struct pma *);
 
