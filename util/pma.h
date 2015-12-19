@@ -25,8 +25,9 @@ struct pma {
 	int used;
 	int count;
 	struct array **chain;
-	ness_mutex_t chain_mtx;
+	ness_mutex_t mtx;
 	ness_rwlock_t chain_rwlock;
+	ness_mutex_aligned_t *mutexes;	/* array lock */
 };
 
 struct pma *pma_new();
