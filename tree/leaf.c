@@ -239,11 +239,14 @@ uint32_t leaf_size(struct node *leaf)
 	int i;
 	uint32_t sz = 0U;
 
+	nassert(leaf->n_children == 1);
 	for (i = 0; i < leaf->n_children; i++) {
-		struct lmb *lmb = leaf->parts[0].msgbuf;
-
-		sz += lmb_memsize(lmb);
+		if (nessunlikely(i < (leaf->n_children - 1)))
+			sz += msgsize(&leaf->pivots[i]);
+		sz += sizeof(leaf->parts[i]);
+		sz += lmb_memsize(leaf->parts[i].msgbuf);
 	}
+	sz += sizeof(*leaf);
 
 	return sz;
 }

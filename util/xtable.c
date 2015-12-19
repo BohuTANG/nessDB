@@ -67,16 +67,16 @@ void xtable_remove(struct xtable *xtbl, void *v)
 	struct xtable_entry **ptr;
 
 	hash = xtbl->hash_func(v) & (xtbl->slot - 1);
-	e = xtbl->slots[hash];
-	ptr = &e;
+	ptr = &xtbl->slots[hash];
+	e = *ptr;
 	while (e) {
-		if (e->v == v) {
+		if (xtbl->compare_func(e->v, v) == 0) {
 			*ptr = e->next;
 			xfree(e);
 			break;
 		}
+		ptr = &(e->next);
 		e = e->next;
-		ptr = &e;
 	}
 }
 
@@ -96,18 +96,12 @@ void *xtable_find(struct xtable *xtbl, void *k)
 	return NULL;
 }
 
-void xtable_slot_locked(struct xtable *xtbl, void *v)
+void xtable_slot_locked(struct xtable *xtbl, int hash)
 {
-	int hash;
-
-	hash = xtbl->hash_func(v) & (xtbl->slot - 1);
-	mutex_lock(&xtbl->mutexes[hash].aligned_mtx);
+	mutex_lock(&xtbl->mutexes[hash & (xtbl->slot - 1)].aligned_mtx);
 }
 
-void xtable_slot_unlocked(struct xtable *xtbl, void *v)
+void xtable_slot_unlocked(struct xtable *xtbl, int hash)
 {
-	int hash;
-
-	hash = xtbl->hash_func(v) & (xtbl->slot - 1);
-	mutex_unlock(&xtbl->mutexes[hash].aligned_mtx);
+	mutex_unlock(&xtbl->mutexes[hash & (xtbl->slot - 1)].aligned_mtx);
 }

@@ -10,7 +10,6 @@
 struct env {
 	/* cache */
 	uint64_t cache_limits_bytes;
-	uint64_t cache_high_watermark;
 	uint32_t cache_flush_period_ms;
 	uint32_t cache_checkpoint_period_ms;
 

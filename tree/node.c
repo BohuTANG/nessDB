@@ -7,6 +7,17 @@
 #include "u.h"
 #include "t.h"
 
+int node_is_root(struct node *node)
+{
+	int ret;
+
+	mutex_lock(&node->attr.mtx);
+	ret = (int)(node->isroot == 1);
+	mutex_unlock(&node->attr.mtx);
+
+	return ret;
+}
+
 void node_set_dirty(struct node *node)
 {
 	mutex_lock(&node->attr.mtx);

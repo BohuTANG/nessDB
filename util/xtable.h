@@ -31,7 +31,7 @@ void xtable_remove(struct xtable *xtbl, void *v);
 void *xtable_find(struct xtable *xtbl, void *k);
 
 
-void xtable_slot_locked(struct xtable *xtbl, void *key);
-void xtable_slot_unlocked(struct xtable *xtbl, void *key);
+void xtable_slot_locked(struct xtable *xtbl, int hash);
+void xtable_slot_unlocked(struct xtable *xtbl, int hash);
 
 #endif /* nessDB_XTABLE_H_ */

@@ -71,6 +71,13 @@ int buftree_cache_put(void *n, void *cpair)
 	return NESS_OK;
 }
 
+int buftree_node_is_root(void *n)
+{
+	struct node *node = (struct node*)n;
+
+	return node_is_root(node);
+}
+
 int buftree_node_is_dirty(void *n)
 {
 	struct node *node = (struct node*)n;
@@ -101,6 +108,7 @@ struct tree_operations buftree_operations = {
 	.free_node			= &buftree_free_node,
 	.cache_put			= &buftree_cache_put,
 	.node_size			= &buftree_node_size,
+	.node_is_root		= &buftree_node_is_root,
 	.node_is_dirty		= &buftree_node_is_dirty,
 	.node_set_nondirty	= &buftree_node_set_nondirty,
 };

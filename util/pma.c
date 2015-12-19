@@ -171,16 +171,19 @@ static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f,
 	int hi = p->used - 1;
 	int best = hi;
 	struct array **chain = p->chain;
-	// need chain lock
 
-	if (p->used == 0)
+	// empty
+	if (nessunlikely(p->used == 1) &&
+	    nessunlikely(chain[0]->used == 0))
 		return 0;
 
 	while (lo <= hi) {
+		int cmp;
 		int mid = (hi + lo) / 2;
-		struct array *a = chain[mid];
-		int cmp = f(*(a->elems), k, extra);
+		struct array *a;
 
+		a = chain[mid];
+		cmp = f(*(a->elems), k, extra);
 		if (cmp <= 0) {
 			best = mid;
 			lo = mid + 1;
@@ -192,39 +195,50 @@ static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f,
 	return best;
 }
 
-void chain_maybe_resize(struct pma *p, int chain_idx, compare_func f, void *extra)
+void _array_unrolled(struct pma *p, int chain_idx, compare_func f, void *extra)
 {
-	struct array *array = p->chain[chain_idx];
-	if (array->used > UNROLLED_LIMIT) {
-		struct array *new_arr;
-		int half = array->used / 2;
+	int half;
+	int last;
+	struct array *array;
+	struct array *new_array;
 
-		/* deal with duplicate elements moving */
-		if (half > 0) {
-			int last = array->used - 1;
+	rwlock_write_lock(&p->chain_rwlock, &p->chain_mtx);
+	array = p->chain[chain_idx];
+	nassert(array->used >= UNROLLED_LIMIT);
+	half = array->used / 2;
 
-			while (f(array->elems[half - 1], array->elems[half], extra) == 0) {
-				if (half == last)
-					return;
-				half++;
-			}
+	/* deal with duplicate elements moving */
+	if (half > 0) {
+		last = array->used - 1;
+
+		while (f(array->elems[half - 1],
+		         array->elems[half],
+		         extra) == 0) {
+			if (half == last)
+				return;
+			half++;
 		}
-
-		new_arr = _array_new(UNROLLED_LIMIT);
-		new_arr->used = array->used - half;
-		memcpy(new_arr->elems, array->elems + half, new_arr->used * sizeof(void*));
-		array->used = half;
-		_chain_insertat(p, new_arr, chain_idx + 1);
 	}
+
+	new_array = _array_new(UNROLLED_LIMIT);
+	new_array->used = array->used - half;
+	memcpy(new_array->elems, array->elems + half, new_array->used * sizeof(void*));
+	array->used = half;
+	_chain_insertat(p, new_array, chain_idx + 1);
+	rwlock_write_unlock(&p->chain_rwlock);
 }
 
 struct pma *pma_new(int reverse)
 {
 	struct pma *p = xcalloc(1, sizeof(*p));
 
-	p->used = 0;
 	p->size = reverse;
 	p->chain = xcalloc(p->size, sizeof(struct array*));
+	mutex_init(&p->chain_mtx);
+	ness_rwlock_init(&p->chain_rwlock);
+
+	p->chain[0] = _array_new(UNROLLED_LIMIT);
+	p->used++;
 
 	return p;
 }
@@ -236,6 +250,7 @@ void pma_free(struct pma *p)
 	for (i = 0; i < p->used; i++)
 		_array_free(p->chain[i]);
 
+	mutex_destroy(&p->chain_mtx);
 	xfree(p->chain);
 	xfree(p);
 }
@@ -244,44 +259,52 @@ void pma_insert(struct pma *p, void *k, compare_func f, void *extra)
 {
 	int array_idx = 0;
 	int chain_idx = 0;
-	struct array **arr;
+	int array_used = 0;
+	struct array *arr;
 
+	rwlock_read_lock(&p->chain_rwlock, &p->chain_mtx);
 	chain_idx  = _chain_find_lowerbound(p, k, f, extra);
-	arr = &p->chain[chain_idx];
-	if (*arr)
-		array_idx = _array_find_greater_than(*arr, k, f, extra);
-	else {
-		*arr = _array_new(UNROLLED_LIMIT);
-	}
+	arr = p->chain[chain_idx];
+	// array lock
+	array_used = arr->used;
+	array_idx = _array_find_greater_than(arr, k, f, extra);
 
 	/* if array_idx is -1, means that we got the end of the array */
 	if (nessunlikely(array_idx == -1))
-		array_idx = (*arr)->used;
+		array_idx = arr->used;
 
-	_array_insertat(*arr, k, array_idx);
-	chain_maybe_resize(p, chain_idx, f, extra);
+	_array_insertat(arr, k, array_idx);
 	p->count++;
+	//array unlock
+	rwlock_read_unlock(&p->chain_rwlock);
+
+	if (array_used > UNROLLED_LIMIT)
+		_array_unrolled(p, chain_idx, f, extra);
 }
 
 void pma_append(struct pma *p, void *k, compare_func f, void *extra)
 {
 	int array_idx = 0;
 	int chain_idx = 0;
-	struct array **arr;
+	int array_used = 0;
+	struct array *arr;
 
+	rwlock_read_lock(&p->chain_rwlock, &p->chain_mtx);
 	if (p->used > 0)
 		chain_idx = p->used - 1;
 
-	arr = &p->chain[chain_idx];
-	if (!*arr)
-		*arr = _array_new(UNROLLED_LIMIT);
+	arr = p->chain[chain_idx];
+	array_used = arr->used;
 
-	if ((*arr)->used > 0)
-		array_idx = (*arr)->used - 1;
+	if (array_used > 0)
+		array_idx = array_used - 1;
 
-	_array_insertat(*arr, k, array_idx);
-	chain_maybe_resize(p, chain_idx, f, extra);
+	_array_insertat(arr, k, array_idx);
 	p->count++;
+	rwlock_read_unlock(&p->chain_rwlock);
+
+	if (array_used > UNROLLED_LIMIT)
+		_array_unrolled(p, chain_idx, f, extra);
 }
 
 uint32_t pma_count(struct pma *p)

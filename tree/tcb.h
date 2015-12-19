@@ -15,6 +15,7 @@ struct tree_operations {
 	int (*fetch_hdr)(int fd, void *hdr);
 	int (*flush_hdr)(int fd, void *hdr);
 	int (*cache_put)(void *n, void *cpair);
+	int (*node_is_root)(void *n);
 	int (*node_is_dirty)(void *n);
 	int (*node_set_nondirty)(void *n);
 	uint64_t (*node_size)(void *n);

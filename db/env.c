@@ -18,7 +18,6 @@ struct env *env_open(const char *home, uint32_t flags)
 
 	/* cache */
 	e->cache_limits_bytes = 1024 * 1024 * 1024;
-	e->cache_high_watermark = 80;		/* 80% */
 	e->cache_flush_period_ms = 100;		/* 0.1s */
 	e->cache_checkpoint_period_ms = 600000;	/* 60s */
 

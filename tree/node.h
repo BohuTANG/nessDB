@@ -98,6 +98,7 @@ struct node_operations {
 	void (*mb_unpacker)(void *packer, void *msgbuf);
 } NESSPACKED;
 
+int node_is_root(struct node *node);
 void node_set_dirty(struct node *node);
 void node_set_nondirty(struct node *node);
 int node_is_dirty(struct node *node);

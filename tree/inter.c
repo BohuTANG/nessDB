@@ -193,8 +193,13 @@ uint32_t inter_size(struct node * node)
 	uint32_t sz = 0;
 
 	nassert(node->height > 0);
-	for (i = 0; i < node->n_children; i++)
+	for (i = 0; i < node->n_children; i++) {
+		if (nessunlikely(i < (node->n_children - 1)))
+			sz += msgsize(&node->pivots[i]);
+		sz += sizeof(node->parts[i]);
 		sz += nmb_memsize(node->parts[i].msgbuf);
+	}
+	sz += sizeof(*node);
 
 	return sz;
 }

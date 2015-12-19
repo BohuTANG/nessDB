@@ -14,6 +14,7 @@ struct tree_operations rolltree_operations = {
 	.flush_hdr = NULL,
 	.free_node = NULL,
 	.cache_put = NULL,
+	.node_is_root = NULL,
 	.node_is_dirty = NULL,
 	.node_set_nondirty = NULL,
 };
