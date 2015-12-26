@@ -15,8 +15,8 @@ endif
 endif
 
 CC = gcc
-#OPT ?= -O2 -DERROR# (A) Production use (optimized mode)
-OPT ?= -g2 -DINFO -DASSERT  -DUSE_VALGRIND # (B) Debug mode, w/ full line-level debugging symbols
+OPT ?= -O2 -DERROR# (A) Production use (optimized mode)
+#OPT ?= -g2 -DINFO -DASSERT  -DUSE_VALGRIND # (B) Debug mode, w/ full line-level debugging symbols
 #OPT ?= -O2 -g -DDEBUG -DASSERT# (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
 
@@ -46,9 +46,7 @@ TEST_OBJS = xtable-test.o\
             pma-test.o\
           main.o
 
-LIBRARY = libnessdb.so
-STATIC  = libnessdb.a
-all: banner $(LIB_OBJS) $(LIBRARY) $(STATIC)
+all: banner $(TEST) $(LIB_OBJS)
 banner:
 	@echo "nessDB $(MAJOR).$(MINOR) -_-"
 	@echo
@@ -57,20 +55,10 @@ banner:
 	@echo
 
 clean:
-	@rm -rf $(LIBRARY)
-	@rm -rf $(STATIC)
 	@rm -rf $(LIB_OBJS)
 	@rm -rf $(TEST_OBJS)
 	@rm -rf $(TEST)
 	@rm -rf ness.event
-
-$(LIBRARY): banner
-	@echo "ld libnessdb.so"
-	$(CC) $(LIB_OBJS) $(WITH_SAN) -shared -o $@
-
-$(STATIC): banner
-	@echo "ar libnessdb.a"
-	@ar crs $@ $(LIB_OBJS)
 
 $(TEST): banner $(TEST_OBJS) $(LIB_OBJS)
 	$(CC) $(TEST_OBJS) $(PLATFORM_LDFLAGS) $(LIB_OBJS) $(WITH_SAN) -o $@

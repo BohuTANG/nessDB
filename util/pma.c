@@ -7,7 +7,7 @@
 
 #include "u.h"
 
-#define UNROLLED_LIMIT (64)
+#define UNROLLED_LIMIT (256)
 
 /*
  * EFFECT:
@@ -194,31 +194,25 @@ static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f,
 	return best;
 }
 
-void _array_unrolled(struct pma *p, int chain_idx, compare_func f, void *extra)
+void _array_unrolled(struct pma *p, int chain_idx)
 {
 	int half;
-	int last;
 	struct array *array;
 	struct array *new_array;
+
+
+	mutex_lock(&p->mtx);
+	if (rwlock_users(&p->chain_rwlock) > 1) {
+	mutex_unlock(&p->mtx);
+		return;
+	}
+	mutex_unlock(&p->mtx);
 
 	array = p->chain[chain_idx];
 	nassert(array->used >= UNROLLED_LIMIT);
 	half = array->used / 2;
 
-	/* deal with duplicate elements moving */
-	if (half > 0) {
-		last = array->used - 1;
-
-		while (f(array->elems[half - 1],
-		         array->elems[half],
-		         extra) == 0) {
-			if (half == last)
-				return;
-			half++;
-		}
-	}
-
-	new_array = _array_new(UNROLLED_LIMIT);
+	new_array = _array_new(array->size);
 	new_array->used = array->used - half;
 	memcpy(new_array->elems, array->elems + half, new_array->used * sizeof(void*));
 	array->used = half;
@@ -276,8 +270,8 @@ void pma_insert(struct pma *p, void *k, compare_func f, void *extra)
 	_array_insertat(arr, k, array_idx);
 	p->count++;
 
-	if (array_used > UNROLLED_LIMIT)
-		_array_unrolled(p, chain_idx, f, extra);
+	if ((array_used+1) >= UNROLLED_LIMIT)
+		_array_unrolled(p, chain_idx);
 
 	mutex_lock(&p->mtx);
 	rwlock_write_unlock(&p->chain_rwlock);
@@ -290,6 +284,8 @@ void pma_append(struct pma *p, void *k, compare_func f, void *extra)
 	int chain_idx = 0;
 	int array_used = 0;
 	struct array *arr;
+	(void)f;
+	(void)extra;
 
 	mutex_lock(&p->mtx);
 	rwlock_write_lock(&p->chain_rwlock, &p->mtx);
@@ -308,10 +304,10 @@ void pma_append(struct pma *p, void *k, compare_func f, void *extra)
 	p->count++;
 
 	if (array_used > UNROLLED_LIMIT)
-		_array_unrolled(p, chain_idx, f, extra);
+		_array_unrolled(p, chain_idx);
 
 	mutex_lock(&p->mtx);
-	rwlock_read_unlock(&p->chain_rwlock);
+	rwlock_write_unlock(&p->chain_rwlock);
 	mutex_unlock(&p->mtx);
 }
 
