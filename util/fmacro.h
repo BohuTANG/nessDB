@@ -39,4 +39,6 @@
 
 #define FILE_NAME_MAXLEN (256)
 
+#define atomic_compare_and_swap(t,old,new) __sync_bool_compare_and_swap (t, old, new)
+
 #endif /* nessDB_FMACRO_H_ */

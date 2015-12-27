@@ -201,12 +201,9 @@ void _array_unrolled(struct pma *p, int chain_idx)
 	struct array *new_array;
 
 
-	mutex_lock(&p->mtx);
-	if (rwlock_users(&p->chain_rwlock) > 1) {
-	mutex_unlock(&p->mtx);
+	if (!rwlock_try_write_lock(&p->chain_rwlock)) {
 		return;
 	}
-	mutex_unlock(&p->mtx);
 
 	array = p->chain[chain_idx];
 	nassert(array->used >= UNROLLED_LIMIT);
@@ -217,6 +214,7 @@ void _array_unrolled(struct pma *p, int chain_idx)
 	memcpy(new_array->elems, array->elems + half, new_array->used * sizeof(void*));
 	array->used = half;
 	_chain_insertat(p, new_array, chain_idx + 1);
+	rwlock_write_unlock(&p->chain_rwlock);
 }
 
 struct pma *pma_new(int reverse)
@@ -226,7 +224,7 @@ struct pma *pma_new(int reverse)
 	p->size = reverse;
 	p->chain = xcalloc(p->size, sizeof(struct array*));
 	mutex_init(&p->mtx);
-	ness_rwlock_init(&p->chain_rwlock);
+	ness_rwlock_init(&p->chain_rwlock, &p->mtx);
 
 	p->chain[0] = _array_new(UNROLLED_LIMIT);
 	p->used++;
@@ -253,13 +251,14 @@ void pma_insert(struct pma *p, void *k, compare_func f, void *extra)
 	int array_used = 0;
 	struct array *arr;
 
-	mutex_lock(&p->mtx);
-	rwlock_write_lock(&p->chain_rwlock, &p->mtx);
-	mutex_unlock(&p->mtx);
-
+try_again:
+	rwlock_read_lock(&p->chain_rwlock);
 	chain_idx  = _chain_find_lowerbound(p, k, f, extra);
 	arr = p->chain[chain_idx];
-	// array lock
+	if (!atomic_compare_and_swap(&arr->latch, 0, 1)) {
+		rwlock_read_unlock(&p->chain_rwlock);
+		goto try_again;
+	}
 	array_used = arr->used;
 	array_idx = _array_find_greater_than(arr, k, f, extra);
 
@@ -268,14 +267,14 @@ void pma_insert(struct pma *p, void *k, compare_func f, void *extra)
 		array_idx = arr->used;
 
 	_array_insertat(arr, k, array_idx);
-	p->count++;
+	atomic_fetch_and_inc(&p->count);
+	if (!atomic_compare_and_swap(&arr->latch, 1, 0))
+		abort();
+	rwlock_read_unlock(&p->chain_rwlock);
 
 	if ((array_used+1) >= UNROLLED_LIMIT)
 		_array_unrolled(p, chain_idx);
 
-	mutex_lock(&p->mtx);
-	rwlock_write_unlock(&p->chain_rwlock);
-	mutex_unlock(&p->mtx);
 }
 
 void pma_append(struct pma *p, void *k, compare_func f, void *extra)
@@ -287,9 +286,7 @@ void pma_append(struct pma *p, void *k, compare_func f, void *extra)
 	(void)f;
 	(void)extra;
 
-	mutex_lock(&p->mtx);
-	rwlock_write_lock(&p->chain_rwlock, &p->mtx);
-	mutex_unlock(&p->mtx);
+	rwlock_write_lock(&p->chain_rwlock);
 
 	if (p->used > 0)
 		chain_idx = p->used - 1;
@@ -302,13 +299,11 @@ void pma_append(struct pma *p, void *k, compare_func f, void *extra)
 
 	_array_insertat(arr, k, array_idx);
 	p->count++;
+	rwlock_write_unlock(&p->chain_rwlock);
 
 	if (array_used > UNROLLED_LIMIT)
 		_array_unrolled(p, chain_idx);
 
-	mutex_lock(&p->mtx);
-	rwlock_write_unlock(&p->chain_rwlock);
-	mutex_unlock(&p->mtx);
 }
 
 uint32_t pma_count(struct pma *p)
@@ -336,9 +331,7 @@ int pma_find_minus(struct pma *p,
 	if (p->used == 0)
 		return ret;
 
-	mutex_lock(&p->mtx);
-	rwlock_read_lock(&p->chain_rwlock, &p->mtx);
-	mutex_unlock(&p->mtx);
+	rwlock_read_lock(&p->chain_rwlock);
 	chain_idx = _chain_find_lowerbound(p, k, f, extra);
 	arr = p->chain[chain_idx];
 	if (arr)
@@ -361,9 +354,7 @@ int pma_find_minus(struct pma *p,
 	coord->chain_idx = chain_idx;
 	coord->array_idx = array_idx == -1 ? 0 : array_idx;
 
-	mutex_lock(&p->mtx);
 	rwlock_read_unlock(&p->chain_rwlock);
-	mutex_unlock(&p->mtx);
 
 	return ret;
 }
@@ -380,16 +371,10 @@ int pma_find_plus(struct pma *p,
 	int ret = NESS_NOTFOUND;
 	struct array *arr;
 
-	if (p->used == 0)
-		return ret;
-
-	mutex_lock(&p->mtx);
-	rwlock_read_lock(&p->chain_rwlock, &p->mtx);
-	mutex_unlock(&p->mtx);
+	rwlock_read_lock(&p->chain_rwlock);
 	chain_idx = _chain_find_lowerbound(p, k, f, extra);
 	arr = p->chain[chain_idx];
-	if (arr)
-		array_idx = _array_find_greater_than(arr, k, f, extra);
+	array_idx = _array_find_greater_than(arr, k, f, extra);
 
 	if (nessunlikely(array_idx == -1)) {
 		if (chain_idx < (p->used - 1)) {
@@ -408,9 +393,7 @@ int pma_find_plus(struct pma *p,
 
 	coord->chain_idx = chain_idx;
 	coord->array_idx = array_idx == -1 ? arr->used : array_idx;
-	mutex_lock(&p->mtx);
 	rwlock_read_unlock(&p->chain_rwlock);
-	mutex_unlock(&p->mtx);
 
 	return ret;
 }
@@ -422,7 +405,6 @@ int pma_find_zero(struct pma *p,
                   void **retval,
                   struct pma_coord *coord)
 {
-	int used = 0;
 	int found = 0;
 	int chain_idx = 0;
 	int array_idx = 0;
@@ -430,20 +412,10 @@ int pma_find_zero(struct pma *p,
 	struct array *arr;
 
 	memset(coord, 0, sizeof(*coord));
-	mutex_lock(&p->mtx);
-	used = p->used;
-	mutex_unlock(&p->mtx);
-
-	if (!used)
-		return ret;
-
-	mutex_lock(&p->mtx);
-	rwlock_read_lock(&p->chain_rwlock, &p->mtx);
-	mutex_unlock(&p->mtx);
+	rwlock_read_lock(&p->chain_rwlock);
 	chain_idx = _chain_find_lowerbound(p, k, f, extra);
 	arr = p->chain[chain_idx];
-	if (arr)
-		array_idx = _array_find_zero(arr, k, f, extra, &found);
+	array_idx = _array_find_zero(arr, k, f, extra, &found);
 
 	/* got one value */
 	if (found) {
@@ -453,9 +425,7 @@ int pma_find_zero(struct pma *p,
 		coord->chain_idx = chain_idx;
 		coord->array_idx = array_idx;
 	}
-	mutex_lock(&p->mtx);
 	rwlock_read_unlock(&p->chain_rwlock);
-	mutex_unlock(&p->mtx);
 
 	return ret;
 }

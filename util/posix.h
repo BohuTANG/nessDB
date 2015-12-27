@@ -17,12 +17,11 @@
 /*******************************
  * atomic
  ******************************/
-int atomic32_increment(int *dest);
-int atomic32_decrement(int *dest);
-uint64_t atomic64_increment(uint64_t *dest);
-uint64_t atomic64_decrement(uint64_t *dest);
-uint64_t atomic64_add(uint64_t *dest, uint64_t add);
-uint64_t atomic64_sub(uint64_t *dest, uint64_t sub);
+#define atomic_fetch_and_inc(t) __sync_fetch_and_add (t, 1)
+#define atomic_fetch_and_dec(t) __sync_fetch_and_sub (t, 1)
+#define atomic_fetch_and_add(t, v) __sync_fetch_and_add (t, v)
+#define atomic_fetch_and_sub(t, v) __sync_fetch_and_sub (t, v)
+#define atomic_compare_and_swap(t,old,new) __sync_bool_compare_and_swap (t, old, new)
 
 /*******************************
  * mutex
@@ -101,14 +100,16 @@ typedef struct rwlock {
 	int writer;
 	int want_writer;
 	ness_cond_t wait_write;
+	ness_mutex_t *mtx;
 } ness_rwlock_t;
 
-static inline void ness_rwlock_init(struct rwlock *rwlock)
+static inline void ness_rwlock_init(struct rwlock *rwlock, ness_mutex_t *mtx)
 {
 	rwlock->reader = rwlock->want_reader = 0;
 	rwlock->writer = rwlock->want_writer = 0;
 	cond_init(&rwlock->wait_read);
 	cond_init(&rwlock->wait_write);
+	rwlock->mtx = mtx;
 }
 
 static inline void ness_rwlock_destroy(struct rwlock *rwlock)
@@ -119,40 +120,62 @@ static inline void ness_rwlock_destroy(struct rwlock *rwlock)
 	cond_destroy(&rwlock->wait_write);
 }
 
-static inline void rwlock_read_lock(struct rwlock *rwlock, ness_mutex_t *mutex)
+static inline void rwlock_read_lock(struct rwlock *rwlock)
 {
+	mutex_lock(rwlock->mtx);
 	if (rwlock->writer || rwlock->want_writer) {
 		rwlock->want_reader++;
 		while (rwlock->writer || rwlock->want_writer) {
-			cond_wait(&rwlock->wait_read, mutex);
+			cond_wait(&rwlock->wait_read, rwlock->mtx);
 		}
 		rwlock->want_reader--;
 	}
 	rwlock->reader++;
+	mutex_unlock(rwlock->mtx);
 }
 
 static inline void rwlock_read_unlock(struct rwlock *rwlock)
 {
+	mutex_lock(rwlock->mtx);
 	assert(rwlock->reader > 0);
 	assert(rwlock->writer == 0);
 	rwlock->reader--;
 	if (rwlock->want_writer > 0)
 		cond_signal(&rwlock->wait_write);
+	mutex_unlock(rwlock->mtx);
 }
 
-static inline void rwlock_write_lock(struct rwlock *rwlock, ness_mutex_t *mutex)
+static inline void rwlock_write_lock(struct rwlock *rwlock)
 {
+	mutex_lock(rwlock->mtx);
 	if (rwlock->reader || rwlock->writer) {
 		rwlock->want_writer++;
 		while (rwlock->reader || rwlock->writer)
-			cond_wait(&rwlock->wait_write, mutex);
+			cond_wait(&rwlock->wait_write, rwlock->mtx);
 		rwlock->want_writer--;
 	}
 	rwlock->writer++;
+	mutex_unlock(rwlock->mtx);
+}
+
+static inline int rwlock_try_write_lock(struct rwlock *rwlock)
+{
+	int ret = 0;
+	mutex_lock(rwlock->mtx);
+
+	int users = rwlock->reader + rwlock->want_reader + rwlock->writer + rwlock->want_writer;
+	if(users == 0) {
+		rwlock->writer++;
+		ret = 1;
+	}
+	mutex_unlock(rwlock->mtx);
+
+	return ret;
 }
 
 static inline void rwlock_write_unlock(struct rwlock *rwlock)
 {
+	mutex_lock(rwlock->mtx);
 	assert(rwlock->reader == 0);
 	assert(rwlock->writer == 1);
 	rwlock->writer--;
@@ -160,31 +183,62 @@ static inline void rwlock_write_unlock(struct rwlock *rwlock)
 		cond_signal(&rwlock->wait_write);
 	else
 		cond_signalall(&rwlock->wait_read);
+	mutex_unlock(rwlock->mtx);
 }
 
 static inline int rwlock_users(struct rwlock *rwlock)
 {
-	return rwlock->reader + rwlock->want_reader + rwlock->writer + rwlock->want_writer;
+	int users = 0;
+
+	mutex_lock(rwlock->mtx);
+	users = rwlock->reader + rwlock->want_reader + rwlock->writer + rwlock->want_writer;
+	mutex_unlock(rwlock->mtx);
+
+	return users;
 }
 
 static inline int rwlock_readers(struct rwlock *rwlock)
 {
-	return rwlock->reader;
+	int users = 0;
+
+	mutex_lock(rwlock->mtx);
+	users = rwlock->reader;
+	mutex_unlock(rwlock->mtx);
+
+	return users;
 }
 
 static inline int rwlock_blocked_readers(struct rwlock *rwlock)
 {
-	return rwlock->want_reader;
+	int users = 0;
+
+	mutex_lock(rwlock->mtx);
+	users = rwlock->want_reader;
+	mutex_unlock(rwlock->mtx);
+
+	return users;
 }
 
 static inline int rwlock_writers(struct rwlock *rwlock)
 {
-	return rwlock->writer;
+	int users = 0;
+
+	mutex_lock(rwlock->mtx);
+	users = rwlock->writer;
+	mutex_unlock(rwlock->mtx);
+
+	return users;
 }
 
 static inline int rwlock_blocked_writers(struct rwlock *rwlock)
 {
-	return rwlock->want_writer;
+	int users = 0;
+
+	mutex_lock(rwlock->mtx);
+	users = rwlock->want_writer;
+	mutex_unlock(rwlock->mtx);
+
+	return users;
 }
 
 /*******************************

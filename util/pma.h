@@ -17,6 +17,7 @@ struct pma_coord {
 struct array {
 	int size;
 	int used;
+	int latch;
 	void **elems;
 } NESSPACKED;
 

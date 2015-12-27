@@ -39,7 +39,7 @@ void _pma_benchmark(int thds)
 	int i = 0;
 	struct pma_extra *pe;
 	struct pma *p = pma_new(thds);
-	struct kibbutz *ktz = kibbutz_new(thds + 2);
+	struct kibbutz *ktz = kibbutz_new(thds + 1);
 	struct timespec ts1, ts2;
 
 	ngettime(&ts1);
