@@ -50,7 +50,7 @@ struct cpair {
 struct cache {
 	int filenum;
 	uint32_t cp_count;
-	struct cron *flusher;			/* flush/evict nodes to disk when cache limits reached */
+	struct ness_cron *flusher;			/* flush/evict nodes to disk when cache limits reached */
 	struct cache_file *cf_first;
 	struct cache_file *cf_last;
 	struct timespec last_checkpoint;

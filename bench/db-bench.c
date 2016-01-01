@@ -139,9 +139,9 @@ void writeseq()
 	char *name = "seq write";
 	struct timespec a, b;
 
-	ngettime(&a);
+	ness_gettime(&a);
 	dbwrite(name, 0);
-	ngettime(&b);
+	ness_gettime(&b);
 }
 
 void writerandom()
@@ -149,9 +149,9 @@ void writerandom()
 	char *name = "random write";
 	struct timespec a, b;
 
-	ngettime(&a);
+	ness_gettime(&a);
 	dbwrite(name, 1);
-	ngettime(&b);
+	ness_gettime(&b);
 }
 
 int dbopen()

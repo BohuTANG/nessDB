@@ -10,25 +10,27 @@
 typedef int (*compare_func)(void *, void *, void *);
 
 struct pma_coord {
-	int chain_idx;
+	int slot_idx;
 	int array_idx;
 };
 
 struct array {
 	int size;
 	int used;
-	int latch;
 	void **elems;
+	ness_mutex_t mtx;
+	ness_rwlock_t rwlock;
+	ness_spinlock r_spinlock; /* read spin lock */
+	ness_spinlock w_spinlock; /* write spin lock */
 } NESSPACKED;
 
 struct pma {
 	int size;
 	int used;
 	int count;
-	struct array **chain;
+	struct array **slots;
 	ness_mutex_t mtx;
-	ness_rwlock_t chain_rwlock;
-	ness_mutex_aligned_t *mutexes;	/* array lock */
+	ness_rwlock_t slots_rwlock;
 };
 
 struct pma *pma_new();

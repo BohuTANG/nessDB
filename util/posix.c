@@ -7,7 +7,7 @@
 #include "u.h"
 
 /* time functions */
-void ngettime(struct timespec *a)
+void ness_gettime(struct timespec *a)
 {
 	struct timeval tv;
 
@@ -16,7 +16,7 @@ void ngettime(struct timespec *a)
 	a->tv_nsec = tv.tv_usec * 1000LL;
 }
 
-struct timespec diff_timespec(struct timespec start, struct timespec end)
+struct timespec ness_diff_timespec(struct timespec start, struct timespec end)
 {
 	struct timespec result;
 
@@ -40,15 +40,15 @@ static inline long long millisec_elapsed(struct timespec diff)
 	return ((long long)diff.tv_sec * 1000) + (diff.tv_nsec / 1000000);
 }
 
-long long time_diff_ms(struct timespec start, struct timespec end)
+long long ness_time_diff_ms(struct timespec start, struct timespec end)
 {
-	return millisec_elapsed(diff_timespec(start, end));
+	return millisec_elapsed(ness_diff_timespec(start, end));
 }
 
 /* cron functions */
-struct cron *cron_new(func f, uint32_t period_ms)
+struct ness_cron *ness_cron_new(func f, uint32_t period_ms)
 {
-	struct cron *cron;
+	struct ness_cron *cron;
 
 	cron = xcalloc(1, sizeof(*cron));
 	cron->f = f;
@@ -58,14 +58,14 @@ struct cron *cron_new(func f, uint32_t period_ms)
 	/* init */
 	pthread_mutex_init(&cron->mtx, NULL);
 	pthread_cond_init(&cron->cond, NULL);
-	ngettime(&cron->last_call);
+	ness_gettime(&cron->last_call);
 
 	return cron;
 }
 
 static void *_do_cron(void *arg)
 {
-	struct cron *cron = (struct cron*)arg;
+	struct ness_cron *cron = (struct ness_cron*)arg;
 
 	pthread_mutex_lock(&cron->mtx);
 	while (1) {
@@ -92,7 +92,7 @@ static void *_do_cron(void *arg)
 					pthread_mutex_unlock(&cron->mtx);
 					cron->f(cron->arg);
 					pthread_mutex_lock(&cron->mtx);
-					ngettime(&cron->last_call);
+					ness_gettime(&cron->last_call);
 				}
 			}
 		}
@@ -102,7 +102,7 @@ static void *_do_cron(void *arg)
 	return NULL;
 }
 
-int cron_start(struct cron *cron, void *arg)
+int ness_cron_start(struct ness_cron *cron, void *arg)
 {
 	pthread_attr_t attr;
 
@@ -119,7 +119,7 @@ int cron_start(struct cron *cron, void *arg)
 	return 1;
 }
 
-int cron_change_period(struct cron *cron, uint32_t period_ms)
+int ness_cron_change_period(struct ness_cron *cron, uint32_t period_ms)
 {
 	pthread_mutex_lock(&cron->mtx);
 	cron->period_ms = period_ms;
@@ -129,7 +129,7 @@ int cron_change_period(struct cron *cron, uint32_t period_ms)
 	return 1;
 }
 
-int cron_stop(struct cron *cron)
+int ness_cron_stop(struct ness_cron *cron)
 {
 	pthread_mutex_lock(&cron->mtx);
 	cron->isalive = 0;
@@ -139,17 +139,17 @@ int cron_stop(struct cron *cron)
 	return 1;
 }
 
-void cron_signal(struct cron *cron)
+void ness_cron_signal(struct ness_cron *cron)
 {
 	pthread_mutex_lock(&cron->mtx);
 	pthread_cond_signal(&cron->cond);
 	pthread_mutex_unlock(&cron->mtx);
 }
 
-void cron_free(struct cron *cron)
+void ness_cron_free(struct ness_cron *cron)
 {
 	if (cron->isalive)
-		cron_stop(cron);
+		ness_cron_stop(cron);
 
 	pthread_join(cron->thread, NULL);
 
@@ -159,5 +159,3 @@ void cron_free(struct cron *cron)
 	pthread_mutex_destroy(&cron->mtx);
 	xfree(cron);
 }
-
-

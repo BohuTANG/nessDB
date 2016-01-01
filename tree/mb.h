@@ -11,7 +11,7 @@ struct mb_iter {
 	int valid;
 
 	void *base;
-	int chain_idx;
+	int slot_idx;
 	int array_idx;
 	struct pma *pma;
 };

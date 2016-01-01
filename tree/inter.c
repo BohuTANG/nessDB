@@ -21,7 +21,7 @@ void inter_new(struct hdr *hdr,
 	nassert(node);
 	node->nid = nid;
 	node->height = height;
-	mutex_init(&node->attr.mtx);
+	ness_mutex_init(&node->attr.mtx);
 	node->n_children = children;
 	node->layout_version = hdr->layout_version;
 
@@ -51,7 +51,7 @@ void inter_free(struct node *node)
 
 	xfree(node->pivots);
 	xfree(node->parts);
-	mutex_destroy(&node->attr.mtx);
+	ness_mutex_destroy(&node->attr.mtx);
 	xfree(node);
 }
 

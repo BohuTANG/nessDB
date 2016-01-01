@@ -21,7 +21,7 @@ struct xtable *xtable_new(uint32_t slot,
 	xtbl->mutexes = xcalloc(slot, sizeof(*xtbl->mutexes));
 
 	for (i = 0; i < slot; i++) {
-		mutex_init(&xtbl->mutexes[i].aligned_mtx);
+		ness_mutex_init(&xtbl->mutexes[i].aligned_mtx);
 	}
 
 	return xtbl;
@@ -40,7 +40,7 @@ void xtable_free(struct xtable *xtbl)
 			xfree(curr);
 			curr = next;
 		}
-		mutex_destroy(&xtbl->mutexes[i].aligned_mtx);
+		ness_mutex_destroy(&xtbl->mutexes[i].aligned_mtx);
 	}
 
 	xfree(xtbl->slots);
@@ -98,10 +98,10 @@ void *xtable_find(struct xtable *xtbl, void *k)
 
 void xtable_slot_locked(struct xtable *xtbl, int hash)
 {
-	mutex_lock(&xtbl->mutexes[hash & (xtbl->slot - 1)].aligned_mtx);
+	ness_mutex_lock(&xtbl->mutexes[hash & (xtbl->slot - 1)].aligned_mtx);
 }
 
 void xtable_slot_unlocked(struct xtable *xtbl, int hash)
 {
-	mutex_unlock(&xtbl->mutexes[hash & (xtbl->slot - 1)].aligned_mtx);
+	ness_mutex_unlock(&xtbl->mutexes[hash & (xtbl->slot - 1)].aligned_mtx);
 }

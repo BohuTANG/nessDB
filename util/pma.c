@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2015 The nessDB Project Developers. All rights reserved.
  * Code is licensed with BSD.
  *
- * unrolled packed memory array
+ * unrolled packed memory array with Fine-Grained Lock
  */
 
 #include "u.h"
@@ -17,7 +17,10 @@
  *	- return 0 when e < array[0]
  *	- return -1 when e > array[max]
  */
-static inline int _array_find_greater_than(struct array *a, void *k, compare_func f, void *extra)
+static inline int _array_find_greater_than(struct array *a,
+		void *k,
+		compare_func f,
+		void *extra)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -47,7 +50,10 @@ static inline int _array_find_greater_than(struct array *a, void *k, compare_fun
  *	- return -1 when e < array[0]
  *	- return max idx when array[max] < e
  */
-static inline int _array_find_less_than(struct array *a, void *k, compare_func f, void *extra)
+static inline int _array_find_less_than(struct array *a,
+		void *k,
+		compare_func f,
+		void *extra)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -74,7 +80,11 @@ static inline int _array_find_less_than(struct array *a, void *k, compare_func f
  *	- binary search
  *	- find the 1st idx which e == array[idx]
  */
-static inline int _array_find_zero(struct array *a, void *k, compare_func f, void *extra, int *found)
+static inline int _array_find_zero(struct array *a,
+		void *k,
+		compare_func f,
+		void *extra,
+		int *found)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -102,8 +112,12 @@ static inline int _array_find_zero(struct array *a, void *k, compare_func f, voi
 static inline void _array_extend(struct array *a)
 {
 	if ((a->used + 1) >= a->size) {
+		/* make sure no readers on this array */
+		ness_spinwlock(&a->w_spinlock);
+		ness_spinlock_waitfree(&a->r_spinlock);
 		a->size *= 2;
 		a->elems = xrealloc(a->elems, a->size * sizeof(void*));
+		ness_spinwunlock(&a->w_spinlock);
 	}
 }
 
@@ -127,6 +141,10 @@ struct array *_array_new(int reverse)
 	a->used = 0;
 	a->size = reverse;
 	a->elems = xcalloc(a->size, sizeof(void*));
+	ness_mutex_init(&a->mtx);
+	ness_rwlock_init(&a->rwlock, &a->mtx);
+	ness_spinlock_init(&a->r_spinlock);
+	ness_spinlock_init(&a->w_spinlock);
 
 	return a;
 }
@@ -137,23 +155,23 @@ static void _array_free(struct array *a)
 	xfree(a);
 }
 
-static inline void _chain_extend(struct pma *p)
+static inline void _slots_extend(struct pma *p)
 {
 	if ((p->used + 1) >= p->size) {
 		p->size *= 2;
-		p->chain = xrealloc(p->chain, p->size * sizeof(void*));
+		p->slots = xrealloc(p->slots, p->size * sizeof(void*));
 	}
 }
 
-static void _chain_insertat(struct pma *p, struct array *a, int i)
+static void _slots_insertat(struct pma *p, struct array *a, int i)
 {
-	_chain_extend(p);
+	_slots_extend(p);
 	if (i < p->used) {
-		xmemmove(p->chain + i + 1,
-		         p->chain + i,
+		xmemmove(p->slots + i + 1,
+		         p->slots + i,
 		         (p->used - i) * sizeof(void*));
 	}
-	p->chain[i] = a;
+	p->slots[i] = a;
 	p->used++;
 }
 
@@ -165,13 +183,13 @@ static void _chain_insertat(struct pma *p, struct array *a, int i)
  *	- return 0 when e < array[0]
  *	- return max  when e > array[max]
  */
-static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f, void *extra)
+static inline int _slots_find_lowerbound(struct pma *p, void *k, compare_func f, void *extra)
 {
 	int lo = 0;
 
 	int hi = p->used - 1;
 	int best = hi;
-	struct array **chain = p->chain;
+	struct array **slots = p->slots;
 
 	if (hi == 0)
 		return 0;
@@ -181,8 +199,12 @@ static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f,
 		int mid = (hi + lo) / 2;
 		struct array *a;
 
-		a = chain[mid];
+		a = slots[mid];
+		/* make sure no extending on this array */
+		ness_spinlock_waitfree(&a->w_spinlock);
+		ness_spinrlock(&a->r_spinlock);
 		cmp = f(*(a->elems), k, extra);
+		ness_spinrunlock(&a->r_spinlock);
 		if (cmp <= 0) {
 			best = mid;
 			lo = mid + 1;
@@ -194,27 +216,29 @@ static inline int _chain_find_lowerbound(struct pma *p, void *k, compare_func f,
 	return best;
 }
 
-void _array_unrolled(struct pma *p, int chain_idx)
+void _array_unrolled(struct pma *p, int slot_idx)
 {
 	int half;
-	struct array *array;
+	struct array *old_array;
 	struct array *new_array;
 
-
-	if (!rwlock_try_write_lock(&p->chain_rwlock)) {
+	ness_rwlock_write_lock(&p->slots_rwlock);
+	old_array = p->slots[slot_idx];
+	if (old_array->used < UNROLLED_LIMIT) {
+		/* some one has unrolled before us */
+		ness_rwlock_write_unlock(&p->slots_rwlock);
 		return;
 	}
 
-	array = p->chain[chain_idx];
-	nassert(array->used >= UNROLLED_LIMIT);
-	half = array->used / 2;
+	nassert(old_array->used >= UNROLLED_LIMIT);
+	half = old_array->used / 2;
 
-	new_array = _array_new(array->size);
-	new_array->used = array->used - half;
-	memcpy(new_array->elems, array->elems + half, new_array->used * sizeof(void*));
-	array->used = half;
-	_chain_insertat(p, new_array, chain_idx + 1);
-	rwlock_write_unlock(&p->chain_rwlock);
+	new_array = _array_new(old_array->size);
+	new_array->used = old_array->used - half;
+	memcpy(new_array->elems, old_array->elems + half, new_array->used * sizeof(void*));
+	old_array->used = half;
+	_slots_insertat(p, new_array, slot_idx + 1);
+	ness_rwlock_write_unlock(&p->slots_rwlock);
 }
 
 struct pma *pma_new(int reverse)
@@ -222,11 +246,11 @@ struct pma *pma_new(int reverse)
 	struct pma *p = xcalloc(1, sizeof(*p));
 
 	p->size = reverse;
-	p->chain = xcalloc(p->size, sizeof(struct array*));
-	mutex_init(&p->mtx);
-	ness_rwlock_init(&p->chain_rwlock, &p->mtx);
+	p->slots = xcalloc(p->size, sizeof(struct array*));
+	ness_mutex_init(&p->mtx);
+	ness_rwlock_init(&p->slots_rwlock, &p->mtx);
 
-	p->chain[0] = _array_new(UNROLLED_LIMIT);
+	p->slots[0] = _array_new(UNROLLED_LIMIT);
 	p->used++;
 
 	return p;
@@ -237,81 +261,80 @@ void pma_free(struct pma *p)
 	int i;
 
 	for (i = 0; i < p->used; i++)
-		_array_free(p->chain[i]);
+		_array_free(p->slots[i]);
 
-	mutex_destroy(&p->mtx);
-	xfree(p->chain);
+	ness_mutex_destroy(&p->mtx);
+	xfree(p->slots);
 	xfree(p);
 }
 
 void pma_insert(struct pma *p, void *k, compare_func f, void *extra)
 {
 	int array_idx = 0;
-	int chain_idx = 0;
+	int slot_idx = 0;
 	int array_used = 0;
 	struct array *arr;
 
 try_again:
-	rwlock_read_lock(&p->chain_rwlock);
-	chain_idx  = _chain_find_lowerbound(p, k, f, extra);
-	arr = p->chain[chain_idx];
-	if (!atomic_compare_and_swap(&arr->latch, 0, 1)) {
-		rwlock_read_unlock(&p->chain_rwlock);
+	ness_rwlock_read_lock(&p->slots_rwlock);
+	slot_idx  = _slots_find_lowerbound(p, k, f, extra);
+	arr = p->slots[slot_idx];
+	if (!ness_rwlock_try_write_lock(&arr->rwlock)) {
+		ness_rwlock_read_unlock(&p->slots_rwlock);
 		goto try_again;
 	}
 	array_used = arr->used;
 	array_idx = _array_find_greater_than(arr, k, f, extra);
 
-	/* if array_idx is -1, means that we got the end of the array */
+	/* if array_idx is -1,
+	   means that we got the end of the array
+	 */
 	if (nessunlikely(array_idx == -1))
 		array_idx = arr->used;
 
 	_array_insertat(arr, k, array_idx);
 	atomic_fetch_and_inc(&p->count);
-	if (!atomic_compare_and_swap(&arr->latch, 1, 0))
-		abort();
-	rwlock_read_unlock(&p->chain_rwlock);
+	ness_rwlock_write_unlock(&arr->rwlock);
+	ness_rwlock_read_unlock(&p->slots_rwlock);
 
-	if ((array_used+1) >= UNROLLED_LIMIT)
-		_array_unrolled(p, chain_idx);
-
+	if ((array_used + 1) > UNROLLED_LIMIT)
+		_array_unrolled(p, slot_idx);
 }
 
 void pma_append(struct pma *p, void *k, compare_func f, void *extra)
 {
 	int array_idx = 0;
-	int chain_idx = 0;
+	int slot_idx = 0;
 	int array_used = 0;
 	struct array *arr;
 	(void)f;
 	(void)extra;
 
-	rwlock_write_lock(&p->chain_rwlock);
-
+	ness_rwlock_read_lock(&p->slots_rwlock);
 	if (p->used > 0)
-		chain_idx = p->used - 1;
+		slot_idx = p->used - 1;
 
-	arr = p->chain[chain_idx];
+	arr = p->slots[slot_idx];
 	array_used = arr->used;
 
 	if (array_used > 0)
 		array_idx = array_used - 1;
 
 	_array_insertat(arr, k, array_idx);
-	p->count++;
-	rwlock_write_unlock(&p->chain_rwlock);
+	atomic_fetch_and_inc(&p->count);
+	ness_rwlock_read_unlock(&p->slots_rwlock);
 
 	if (array_used > UNROLLED_LIMIT)
-		_array_unrolled(p, chain_idx);
+		_array_unrolled(p, slot_idx);
 
 }
 
 uint32_t pma_count(struct pma *p)
 {
 	uint32_t c = 0;
-	mutex_lock(&p->mtx);
+	ness_mutex_lock(&p->mtx);
 	c = p->count;
-	mutex_unlock(&p->mtx);
+	ness_mutex_unlock(&p->mtx);
 
 	return c;
 }
@@ -323,23 +346,28 @@ int pma_find_minus(struct pma *p,
                    void **retval,
                    struct pma_coord *coord)
 {
-	int chain_idx = 0;
+	int slot_idx = 0;
 	int array_idx = 0;
 	int ret = NESS_NOTFOUND;
 	struct array *arr;
 
-	if (p->used == 0)
-		return ret;
 
-	rwlock_read_lock(&p->chain_rwlock);
-	chain_idx = _chain_find_lowerbound(p, k, f, extra);
-	arr = p->chain[chain_idx];
-	if (arr)
-		array_idx = _array_find_less_than(arr, k, f, extra);
+	memset(coord, 0, sizeof(*coord));
+
+try_again:
+	ness_rwlock_read_lock(&p->slots_rwlock);
+	slot_idx = _slots_find_lowerbound(p, k, f, extra);
+	arr = p->slots[slot_idx];
+	if (!ness_rwlock_try_read_lock(&arr->rwlock)) {
+		ness_rwlock_read_unlock(&p->slots_rwlock);
+		goto try_again;
+	}
+
+	array_idx = _array_find_less_than(arr, k, f, extra);
 	if (nessunlikely(array_idx == -1)) {
-		if (chain_idx > 0) {
-			chain_idx -= 1;
-			arr = p->chain[chain_idx];
+		if (slot_idx > 0) {
+			slot_idx -= 1;
+			arr = p->slots[slot_idx];
 			if (arr->used > 0) {
 				*retval = arr->elems[arr->used - 1];
 				array_idx = arr->used - 1;
@@ -351,10 +379,11 @@ int pma_find_minus(struct pma *p,
 		ret = NESS_OK;
 	}
 
-	coord->chain_idx = chain_idx;
+	coord->slot_idx = slot_idx;
 	coord->array_idx = array_idx == -1 ? 0 : array_idx;
 
-	rwlock_read_unlock(&p->chain_rwlock);
+	ness_rwlock_read_unlock(&arr->rwlock);
+	ness_rwlock_read_unlock(&p->slots_rwlock);
 
 	return ret;
 }
@@ -366,20 +395,27 @@ int pma_find_plus(struct pma *p,
                   void **retval,
                   struct pma_coord *coord)
 {
-	int chain_idx = 0;
+	int slot_idx = 0;
 	int array_idx = 0;
 	int ret = NESS_NOTFOUND;
 	struct array *arr;
 
-	rwlock_read_lock(&p->chain_rwlock);
-	chain_idx = _chain_find_lowerbound(p, k, f, extra);
-	arr = p->chain[chain_idx];
+	memset(coord, 0, sizeof(*coord));
+
+try_again:
+	ness_rwlock_read_lock(&p->slots_rwlock);
+	slot_idx = _slots_find_lowerbound(p, k, f, extra);
+	arr = p->slots[slot_idx];
+	if (!ness_rwlock_try_read_lock(&arr->rwlock)) {
+		ness_rwlock_read_unlock(&p->slots_rwlock);
+		goto try_again;
+	}
 	array_idx = _array_find_greater_than(arr, k, f, extra);
 
 	if (nessunlikely(array_idx == -1)) {
-		if (chain_idx < (p->used - 1)) {
-			chain_idx += 1;
-			arr = p->chain[chain_idx];
+		if (slot_idx < (p->used - 1)) {
+			slot_idx += 1;
+			arr = p->slots[slot_idx];
 			if (arr->used > 0) {
 				*retval = arr->elems[0];
 				array_idx = 0;
@@ -391,9 +427,10 @@ int pma_find_plus(struct pma *p,
 		ret = NESS_OK;
 	}
 
-	coord->chain_idx = chain_idx;
+	coord->slot_idx = slot_idx;
 	coord->array_idx = array_idx == -1 ? arr->used : array_idx;
-	rwlock_read_unlock(&p->chain_rwlock);
+	ness_rwlock_read_unlock(&arr->rwlock);
+	ness_rwlock_read_unlock(&p->slots_rwlock);
 
 	return ret;
 }
@@ -406,15 +443,21 @@ int pma_find_zero(struct pma *p,
                   struct pma_coord *coord)
 {
 	int found = 0;
-	int chain_idx = 0;
+	int slot_idx = 0;
 	int array_idx = 0;
 	int ret = NESS_NOTFOUND;
 	struct array *arr;
 
 	memset(coord, 0, sizeof(*coord));
-	rwlock_read_lock(&p->chain_rwlock);
-	chain_idx = _chain_find_lowerbound(p, k, f, extra);
-	arr = p->chain[chain_idx];
+
+try_again:
+	ness_rwlock_read_lock(&p->slots_rwlock);
+	slot_idx = _slots_find_lowerbound(p, k, f, extra);
+	arr = p->slots[slot_idx];
+	if (!ness_rwlock_try_read_lock(&arr->rwlock)) {
+		ness_rwlock_read_unlock(&p->slots_rwlock);
+		goto try_again;
+	}
 	array_idx = _array_find_zero(arr, k, f, extra, &found);
 
 	/* got one value */
@@ -422,10 +465,11 @@ int pma_find_zero(struct pma *p,
 		*retval = arr->elems[array_idx];
 		ret = NESS_OK;
 	} else {
-		coord->chain_idx = chain_idx;
+		coord->slot_idx = slot_idx;
 		coord->array_idx = array_idx;
 	}
-	rwlock_read_unlock(&p->chain_rwlock);
+	ness_rwlock_read_unlock(&arr->rwlock);
+	ness_rwlock_read_unlock(&p->slots_rwlock);
 
 	return ret;
 }

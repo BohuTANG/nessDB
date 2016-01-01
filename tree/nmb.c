@@ -254,11 +254,11 @@ int nmb_get_left_coord(struct nmb *nmb, struct msg *left, struct pma_coord *coor
  */
 int nmb_get_right_coord(struct nmb *nmb, struct msg *right, struct pma_coord *coord)
 {
-	int chain_idx = nmb->pma->used - 1;
+	int slot_idx = nmb->pma->used - 1;
 	/* is uesd not used - 1 */
-	int array_idx = nmb->pma->chain[chain_idx]->used;
+	int array_idx = nmb->pma->slots[slot_idx]->used;
 
-	coord->chain_idx = chain_idx;
+	coord->slot_idx = slot_idx;
 	coord->array_idx = array_idx;
 	if (right) {
 		void *retval;

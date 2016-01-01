@@ -40,7 +40,7 @@ struct block *block_new()
 	struct block *b;
 
 	b = xcalloc(1, sizeof(*b));
-	mutex_init(&b->mtx);
+	ness_mutex_init(&b->mtx);
 	ness_rwlock_init(&b->rwlock, &b->mtx);
 	b->allocated += ALIGN(BLOCK_OFFSET_START);
 
@@ -56,7 +56,7 @@ void block_init(struct block *b,
 
 	nassert(n > 0);
 
-	rwlock_write_lock(&b->rwlock);
+	ness_rwlock_write_lock(&b->rwlock);
 	qsort(pairs, n, sizeof(*pairs), _pair_compare_fun);
 	for (i = 0; i < n; i++) {
 		_extend(b, 1);
@@ -67,7 +67,7 @@ void block_init(struct block *b,
 	/* get the last allocated postion of file*/
 	b->allocated += pairs[n - 1].offset;
 	b->allocated += ALIGN(pairs[n - 1].real_size);
-	rwlock_write_unlock(&b->rwlock);
+	ness_rwlock_write_unlock(&b->rwlock);
 }
 
 DISKOFF block_alloc_off(struct block *b,
@@ -81,7 +81,7 @@ DISKOFF block_alloc_off(struct block *b,
 	int found = 0;
 	uint32_t pos = 0;
 
-	rwlock_write_lock(&b->rwlock);
+	ness_rwlock_write_lock(&b->rwlock);
 	r = ALIGN(b->allocated);
 	_extend(b, 1);
 
@@ -133,7 +133,7 @@ DISKOFF block_alloc_off(struct block *b,
 	b->pairs[pos].used = 1;
 
 	b->pairs_used++;
-	rwlock_write_unlock(&b->rwlock);
+	ness_rwlock_write_unlock(&b->rwlock);
 
 	return r;
 }
@@ -145,7 +145,7 @@ int block_get_off_bynid(struct block *b,
 	uint32_t i;
 	int rval = NESS_ERR;
 
-	rwlock_read_lock(&b->rwlock);
+	ness_rwlock_read_lock(&b->rwlock);
 	for (i = 0; i < b->pairs_used; i++) {
 		if (b->pairs[i].nid == nid) {
 			if (b->pairs[i].used) {
@@ -155,7 +155,7 @@ int block_get_off_bynid(struct block *b,
 			}
 		}
 	}
-	rwlock_read_unlock(&b->rwlock);
+	ness_rwlock_read_unlock(&b->rwlock);
 
 	return rval;
 }
@@ -171,14 +171,14 @@ void block_shrink(struct block *b)
 {
 	uint32_t i, j;
 
-	rwlock_write_lock(&b->rwlock);
+	ness_rwlock_write_lock(&b->rwlock);
 	for (i = 0, j = 0; i < b->pairs_used; i++) {
 		if (b->pairs[i].used) {
 			b->pairs[j++] = b->pairs[i];
 		}
 	}
 	b->pairs_used = j;
-	rwlock_write_unlock(&b->rwlock);
+	ness_rwlock_write_unlock(&b->rwlock);
 }
 
 void block_free(struct block *b)
@@ -186,7 +186,7 @@ void block_free(struct block *b)
 	if (!b) return;
 
 	ness_rwlock_destroy(&b->rwlock);
-	mutex_destroy(&b->mtx);
+	ness_mutex_destroy(&b->mtx);
 	xfree(b->pairs);
 	xfree(b);
 }

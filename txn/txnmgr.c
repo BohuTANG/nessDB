@@ -16,7 +16,7 @@ struct txnmgr *txnmgr_new(void)
 	tm->live_root_txnids = xcalloc(1, sizeof(struct txnid_snapshot));
 	tm->live_root_txnids->size = 1024;
 	tm->live_root_txnids->txnids = xmalloc(tm->live_root_txnids->size * sizeof(TXNID));
-	mutex_init(&tm->mtx);
+	ness_mutex_init(&tm->mtx);
 
 	return tm;
 }
@@ -109,7 +109,7 @@ void txnmgr_txn_start(struct txnmgr* tm, TXN *txn)
 	int needs_snapshot;
 
 	assert(txn->parent == NULL);
-	mutex_lock(&tm->mtx);
+	ness_mutex_lock(&tm->mtx);
 	txn->txnid = tm->last_txnid++;
 	txn->root_parent_txnid = txn->txnid;
 	if (!txn->readonly)
@@ -118,14 +118,14 @@ void txnmgr_txn_start(struct txnmgr* tm, TXN *txn)
 	needs_snapshot = _txn_needs_snapshot(txn->parent, txn->snapshot_type);
 	if (needs_snapshot)
 		_txnid_snapshot_clone(tm->live_root_txnids, &txn->txnid_clone);
-	mutex_unlock(&tm->mtx);
+	ness_mutex_unlock(&tm->mtx);
 }
 
 void txnmgr_child_txn_start(struct txnmgr* tm, TXN *parent, TXN *child)
 {
 	int needs_snapshot;
 
-	mutex_lock(&tm->mtx);
+	ness_mutex_lock(&tm->mtx);
 	child->txnid = tm->last_txnid++;
 	child->root_parent_txnid = parent->root_parent_txnid;
 	if (!child->readonly)
@@ -139,12 +139,12 @@ void txnmgr_child_txn_start(struct txnmgr* tm, TXN *parent, TXN *child)
 	parent->child = child;
 	child->parent = parent;
 
-	mutex_unlock(&tm->mtx);
+	ness_mutex_unlock(&tm->mtx);
 }
 
 void txnmgr_free(struct txnmgr *tm)
 {
 	_txnid_snapshot_free(tm->live_root_txnids);
-	mutex_destroy(&tm->mtx);
+	ness_mutex_destroy(&tm->mtx);
 	xfree(tm);
 }

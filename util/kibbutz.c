@@ -30,22 +30,22 @@ struct kibbutz {
 
 static void klock(struct kibbutz *k)
 {
-	mutex_lock(&k->mtx);
+	ness_mutex_lock(&k->mtx);
 }
 
 static void kunlock(struct kibbutz *k)
 {
-	mutex_unlock(&k->mtx);
+	ness_mutex_unlock(&k->mtx);
 }
 
 static void kwait(struct kibbutz *k)
 {
-	cond_wait(&k->cond, &k->mtx);
+	ness_cond_wait(&k->cond, &k->mtx);
 }
 
 static void ksingal(struct kibbutz *k)
 {
-	cond_signal(&k->cond);
+	ness_cond_signal(&k->cond);
 }
 
 static void *work_on_kibbutz(void *arg)
@@ -89,8 +89,8 @@ struct kibbutz *kibbutz_new(int n_workers)
 
 	k = xcalloc(1, sizeof(*k));
 	k->n_workers = n_workers;
-	mutex_init(&k->mtx);
-	cond_init(&k->cond);
+	ness_mutex_init(&k->mtx);
+	ness_cond_init(&k->cond);
 	k->workers = xcalloc(n_workers, sizeof(*k->workers));
 	k->ids = xcalloc(n_workers, sizeof(*k->ids));
 
@@ -138,6 +138,6 @@ void kibbutz_free(struct kibbutz *k)
 	}
 	xfree(k->workers);
 	xfree(k->ids);
-	cond_destroy(&k->cond);
+	ness_cond_destroy(&k->cond);
 	xfree(k);
 }

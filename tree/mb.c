@@ -16,7 +16,7 @@ void mb_iter_init(struct mb_iter *iter, struct pma *pma)
 	iter->valid = 0;
 	iter->pma = pma;
 
-	iter->chain_idx = 0;
+	iter->slot_idx = 0;
 	iter->array_idx = 0;
 	iter->base = NULL;
 }
@@ -24,18 +24,18 @@ void mb_iter_init(struct mb_iter *iter, struct pma *pma)
 void mb_iter_reset(struct mb_iter *iter, struct pma_coord *coord)
 {
 	iter->valid = 0;
-	iter->chain_idx = coord->chain_idx;
+	iter->slot_idx = coord->slot_idx;
 	iter->array_idx = coord->array_idx;
 	iter->base = NULL;
 }
 
 int mb_iter_valid(struct mb_iter *iter)
 {
-	int chain_idx = iter->chain_idx;
+	int slot_idx = iter->slot_idx;
 	int array_idx = iter->array_idx;
 
-	return ((chain_idx >= 0) && (chain_idx < iter->pma->used))
-	       && ((array_idx >= 0) && (array_idx < iter->pma->chain[chain_idx]->used));
+	return ((slot_idx >= 0) && (slot_idx < iter->pma->used))
+	       && ((array_idx >= 0) && (array_idx < iter->pma->slots[slot_idx]->used));
 }
 
 
@@ -49,13 +49,13 @@ int mb_iter_valid(struct mb_iter *iter)
 int mb_iter_next(struct mb_iter *iter)
 {
 	struct pma *pma = iter->pma;
-	int chain_idx = iter->chain_idx;
+	int slot_idx = iter->slot_idx;
 	int array_idx = iter->array_idx;
 
 	if (mb_iter_valid(iter)) {
-		iter->base = pma->chain[chain_idx]->elems[array_idx];
-		if (array_idx == (pma->chain[chain_idx]->used - 1)) {
-			iter->chain_idx++;
+		iter->base = pma->slots[slot_idx]->elems[array_idx];
+		if (array_idx == (pma->slots[slot_idx]->used - 1)) {
+			iter->slot_idx++;
 			iter->array_idx = 0;
 		} else {
 			iter->array_idx++;
@@ -77,14 +77,14 @@ int mb_iter_next(struct mb_iter *iter)
 int mb_iter_prev(struct mb_iter *iter)
 {
 	struct pma *pma = iter->pma;
-	int chain_idx = iter->chain_idx;
+	int slot_idx = iter->slot_idx;
 	int array_idx = iter->array_idx;
 
 	if (mb_iter_valid(iter)) {
-		iter->base = pma->chain[chain_idx]->elems[array_idx];
+		iter->base = pma->slots[slot_idx]->elems[array_idx];
 		if (array_idx == 0) {
-			iter->chain_idx--;
-			iter->array_idx = pma->chain[chain_idx]->used - 1;
+			iter->slot_idx--;
+			iter->array_idx = pma->slots[slot_idx]->used - 1;
 		} else {
 			iter->array_idx--;
 		}
@@ -106,9 +106,9 @@ int mb_iter_on_range(struct mb_iter *iter,
                      struct pma_coord *left,
                      struct pma_coord *right)
 {
-	int cur_idx = iter->chain_idx + iter->array_idx;
-	int min_idx = left->chain_idx + left->array_idx;
-	int max_idx = right->chain_idx + right->array_idx;
+	int cur_idx = iter->slot_idx + iter->array_idx;
+	int min_idx = left->slot_idx + left->array_idx;
+	int max_idx = right->slot_idx + right->array_idx;
 
 	if (cur_idx >= min_idx && cur_idx < max_idx)
 		return mb_iter_next(iter);

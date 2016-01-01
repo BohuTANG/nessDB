@@ -22,7 +22,7 @@ void leaf_new(struct hdr *hdr,
 	nassert(node);
 	node->nid = nid;
 	node->height = height;
-	mutex_init(&node->attr.mtx);
+	ness_mutex_init(&node->attr.mtx);
 	node->n_children = children;
 	node->layout_version = hdr->layout_version;
 
@@ -49,7 +49,7 @@ void leaf_free(struct node *leaf)
 
 	for (i = 0; i < leaf->n_children; i++)
 		lmb_free(leaf->parts[i].msgbuf);
-	mutex_destroy(&leaf->attr.mtx);
+	ness_mutex_destroy(&leaf->attr.mtx);
 	xfree(leaf->pivots);
 	xfree(leaf->parts);
 	xfree(leaf);

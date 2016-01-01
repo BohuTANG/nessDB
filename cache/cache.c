@@ -39,7 +39,7 @@ struct cpair *cpair_new()
 	cp = xcalloc(1, sizeof(*cp));
 	cp->pintype = L_NONE;
 	cp->attr.nodesz = 0;
-	mutex_init(&cp->mtx);
+	ness_mutex_init(&cp->mtx);
 	ness_rwlock_init(&cp->disk_lock, &cp->mtx);
 	ness_rwlock_init(&cp->value_lock, &cp->mtx);
 
@@ -111,17 +111,17 @@ void _free_cpair(struct cache_file *cf, struct cpair *cp)
 {
 	struct cache *c = cf->cache;
 
-	mutex_lock(&cf->mtx);
+	ness_mutex_lock(&cf->mtx);
 	if (cp) {
 		quota_remove(c->quota, cp->attr.nodesz);
 		quota_remove(c->quota, sizeof(*cp));
 		cf->tree_opts->free_node(cp->v);
-		mutex_destroy(&cp->mtx);
+		ness_mutex_destroy(&cp->mtx);
 		cp->v = NULL;
 		xfree(cp);
 		cf->cache->cp_count--;
 	}
-	mutex_unlock(&cf->mtx);
+	ness_mutex_unlock(&cf->mtx);
 }
 
 /* try to evict(free) a pair */
@@ -141,30 +141,30 @@ void _try_evict_pair(struct cache_file *cf, struct cpair *p)
 	is_dirty = tree_opts->node_is_dirty(p->v);
 	if (is_dirty) {
 		xtable_slot_locked(cf->xtable, hash);
-		rwlock_write_lock(&p->disk_lock);
+		ness_rwlock_write_lock(&p->disk_lock);
 		xtable_slot_unlocked(cf->xtable, hash);
 
 		tree_opts->flush_node(cf->fd, cf->hdr, p->v);
 		tree_opts->node_set_nondirty(p->v);
 
 		xtable_slot_locked(cf->xtable, hash);
-		rwlock_write_unlock(&p->disk_lock);
+		ness_rwlock_write_unlock(&p->disk_lock);
 		xtable_slot_unlocked(cf->xtable, hash);
 	}
 
 	xtable_slot_locked(cf->xtable, hash);
-	if (rwlock_users(&p->value_lock) == 0) {
+	if (ness_rwlock_users(&p->value_lock) == 0) {
 		/* remove from list */
-		rwlock_write_lock(&cf->clock_lock);
+		ness_rwlock_write_lock(&cf->clock_lock);
 		cpair_list_remove(cf->clock, p);
 		xtable_remove(cf->xtable, p);
 		removed = 1;
-		rwlock_write_unlock(&cf->clock_lock);
+		ness_rwlock_write_unlock(&cf->clock_lock);
 	}
 	xtable_slot_unlocked(cf->xtable, hash);
 
 	if (removed) {
-		nassert(rwlock_users(&p->value_lock) == 0);
+		nassert(ness_rwlock_users(&p->value_lock) == 0);
 		_free_cpair(cf, p);
 	}
 }
@@ -177,16 +177,16 @@ void _run_eviction(struct cache *c)
 	/* TODO (BohuTANG) : for all cache files */
 	struct cache_file *cf;
 
-	mutex_lock(&c->mtx);
+	ness_mutex_lock(&c->mtx);
 	cf = c->cf_first;
-	mutex_unlock(&c->mtx);
+	ness_mutex_unlock(&c->mtx);
 	if (!cf)
 		return;
 
 	/* barriered by clock READ lock */
-	rwlock_read_lock(&cf->clock_lock);
+	ness_rwlock_read_lock(&cf->clock_lock);
 	cur = cf->clock->head;
-	rwlock_read_unlock(&cf->clock_lock);
+	ness_rwlock_read_unlock(&cf->clock_lock);
 
 	if (!cur)
 		return;
@@ -195,10 +195,10 @@ void _run_eviction(struct cache *c)
 		int users = 0;
 
 		/* barriered by clock READ lock */
-	rwlock_read_lock(&cf->clock_lock);
-		users = rwlock_users(&cur->value_lock);
-		nxt = cur->list_next;
-	rwlock_read_unlock(&cf->clock_lock);
+	ness_rwlock_read_lock(&cf->clock_lock);
+	users = ness_rwlock_users(&cur->value_lock);
+	nxt = cur->list_next;
+	ness_rwlock_read_unlock(&cf->clock_lock);
 		if (users == 0) {
 			_try_evict_pair(cf, cur);
 		}
@@ -223,13 +223,13 @@ struct cache *cache_new(struct env *e)
 
 	c = xcalloc(1, sizeof(*c));
 	c->e = e;
-	mutex_init(&c->mtx);
+	ness_mutex_init(&c->mtx);
 	c->c_kibbutz = kibbutz_new(2);
 	c->quota = quota_new(e->cache_limits_bytes);
 
-	ngettime(&c->last_checkpoint);
-	c->flusher = cron_new(flusher_cb, e->cache_flush_period_ms);
-	if (cron_start(c->flusher, (void*)c) != 1) {
+	ness_gettime(&c->last_checkpoint);
+	c->flusher = ness_cron_new(flusher_cb, e->cache_flush_period_ms);
+	if (ness_cron_start(c->flusher, (void*)c) != 1) {
 		__PANIC("%s",
 		        "flushe cron start error, will exit");
 		goto ERR;
@@ -259,7 +259,7 @@ void _make_room(struct cache *c)
 
 		switch (state) {
 		case QUOTA_STATE_MUST_EVICT:
-			cron_signal(c->flusher);
+			ness_cron_signal(c->flusher);
 			quota_wait(c->quota);
 			break;
 		case QUOTA_STATE_NEED_EVICT:
@@ -309,17 +309,17 @@ TRY_PIN:
 	p = xtable_find(cf->xtable, &cptmp);
 	if (p) {
 		if (locktype != L_READ) {
-			if (rwlock_users(&p->value_lock)) {
+			if (ness_rwlock_users(&p->value_lock)) {
 				xtable_slot_unlocked(cf->xtable, k);
 				goto TRY_PIN;
 			}
-			rwlock_write_lock(&p->value_lock);
+			ness_rwlock_write_lock(&p->value_lock);
 		} else {
-			if (rwlock_blocked_writers(&p->value_lock)) {
+			if (ness_rwlock_blocked_writers(&p->value_lock)) {
 				xtable_slot_unlocked(cf->xtable, k);
 				goto TRY_PIN;
 			}
-			rwlock_read_lock(&p->value_lock);
+			ness_rwlock_read_lock(&p->value_lock);
 		}
 
 		nassert(p->pintype == L_NONE);
@@ -358,14 +358,14 @@ TRY_PIN:
 	 * add to cache list
 	 * barriered by clock WRITE lock
 	 */
-	rwlock_write_lock(&cf->clock_lock);
+	ness_rwlock_write_lock(&cf->clock_lock);
 	_cpair_insert(cf, p);
-	rwlock_write_unlock(&cf->clock_lock);
+	ness_rwlock_write_unlock(&cf->clock_lock);
 
 	if (locktype != L_READ)
-		rwlock_write_lock(&p->value_lock);
+		ness_rwlock_write_lock(&p->value_lock);
 	else
-		rwlock_read_lock(&p->value_lock);
+		ness_rwlock_read_lock(&p->value_lock);
 
 	p->pintype = locktype;
 	tree_opts->cache_put(*n, p);
@@ -387,14 +387,14 @@ int cache_put_and_pin(struct cache_file *cf, NID k, void *v)
 	p = cpair_new();
 
 	/* default lock type is L_WRITE */
-	rwlock_write_lock(&p->value_lock);
+	ness_rwlock_write_lock(&p->value_lock);
 	cpair_init(p, k, v, cf);
 	p->pintype = L_WRITE;
 
 	/* add to cache list, barriered by clock WRITE lock */
-	rwlock_write_lock(&cf->clock_lock);
+	ness_rwlock_write_lock(&cf->clock_lock);
 	_cpair_insert(cf, p);
-	rwlock_write_unlock(&cf->clock_lock);
+	ness_rwlock_write_unlock(&cf->clock_lock);
 	tree_opts->cache_put(v, p);
 
 	return NESS_OK;
@@ -414,9 +414,9 @@ void cache_unpin(struct cache_file *cf, struct cpair *p)
 	old_nodesz = p->attr.nodesz;
 	new_nodesz = cf->tree_opts->node_size(p->v);
 	if (p->pintype == L_WRITE)
-		rwlock_write_unlock(&p->value_lock);
+		ness_rwlock_write_unlock(&p->value_lock);
 	else
-		rwlock_read_unlock(&p->value_lock);
+		ness_rwlock_read_unlock(&p->value_lock);
 	p->pintype = L_NONE;
 
 	struct cpair_attr new_attr = {
@@ -451,12 +451,12 @@ struct cache_file *cache_file_create(struct cache *c,
 	cf->tree_opts = tree_opts;
 	cf->filenum = atomic_fetch_and_inc(&c->filenum);
 
-	mutex_init(&cf->mtx);
+	ness_mutex_init(&cf->mtx);
 	ness_rwlock_init(&cf->clock_lock, &cf->mtx);
 	cf->clock = cpair_list_new();
 	cf->xtable = xtable_new(PAIR_LIST_SIZE, cache_xtable_hash_func, cache_xtable_compare_func);
 
-	mutex_lock(&c->mtx);
+	ness_mutex_lock(&c->mtx);
 	if (!c->cf_first) {
 		c->cf_first = c->cf_last = cf;
 	} else {
@@ -464,7 +464,7 @@ struct cache_file *cache_file_create(struct cache *c,
 		c->cf_last->next = cf;
 		c->cf_last = cf;
 	}
-	mutex_unlock(&c->mtx);
+	ness_mutex_unlock(&c->mtx);
 
 	return cf;
 }
@@ -472,11 +472,11 @@ struct cache_file *cache_file_create(struct cache *c,
 void cache_file_free(struct cache_file *cf)
 {
 	xtable_free(cf->xtable);
-	rwlock_read_lock(&cf->clock_lock);
+	ness_rwlock_read_lock(&cf->clock_lock);
 	cpair_list_free(cf->clock);
 	cache_file_remove(cf->cache, cf->filenum);
-	rwlock_read_unlock(&cf->clock_lock);
-	mutex_destroy(&cf->mtx);
+	ness_rwlock_read_unlock(&cf->clock_lock);
+	ness_mutex_destroy(&cf->mtx);
 	xfree(cf);
 }
 
@@ -503,12 +503,12 @@ void cache_file_flush_dirty_nodes(struct cache_file *cf)
 		}
 
 		xtable_slot_locked(cf->xtable, hash);
-		if (rwlock_users(&cur->value_lock) == 0) {
-			rwlock_write_lock(&cf->clock_lock);
+		if (ness_rwlock_users(&cur->value_lock) == 0) {
+			ness_rwlock_write_lock(&cf->clock_lock);
 			cpair_list_remove(cf->clock, cur);
 			xtable_remove(cf->xtable, cur);
 			removed = 1;
-			rwlock_write_unlock(&cf->clock_lock);
+			ness_rwlock_write_unlock(&cf->clock_lock);
 		}
 		xtable_slot_unlocked(cf->xtable, hash);
 
@@ -537,8 +537,8 @@ void cache_free(struct cache *c)
 {
 	/* first to stop background threads */
 	kibbutz_free(c->c_kibbutz);
-	cron_free(c->flusher);
+	ness_cron_free(c->flusher);
 	quota_free(c->quota);
-	mutex_destroy(&c->mtx);
+	ness_mutex_destroy(&c->mtx);
 	xfree(c);
 }
