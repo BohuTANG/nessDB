@@ -14,7 +14,7 @@ else
 endif
 endif
 
-CC = clang-3.6
+CC = gcc
 #OPT ?= -O2 -DERROR# (A) Production use (optimized mode)
 OPT ?= -g2 -DINFO -DASSERT  -DUSE_VALGRIND # (B) Debug mode, w/ full line-level debugging symbols
 #OPT ?= -O2 -g -DDEBUG -DASSERT# (C) Profiling mode: opt, but w/debugging symbols
