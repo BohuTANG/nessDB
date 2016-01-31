@@ -84,8 +84,11 @@ struct nmb *nmb_new(struct tree_options *opts)
 
 	nmb->mpool = mempool_new();
 	nmb->pma = pma_new(64);
-	nmb->count = 0;
 	nmb->opts = opts;
+	nmb->count = 0;
+
+	ness_mutex_init(&nmb->mtx);
+	ness_rwlock_init(&nmb->rwlock, &nmb->mtx);
 
 	return nmb;
 }
@@ -97,12 +100,19 @@ void nmb_free(struct nmb *nmb)
 
 	pma_free(nmb->pma);
 	mempool_free(nmb->mpool);
+	ness_mutex_destroy(&nmb->mtx);
 	xfree(nmb);
 }
 
 uint32_t nmb_memsize(struct nmb *nmb)
 {
-	return nmb->mpool->memory_used;
+	uint32_t mem_used = 0U;
+
+	ness_rwlock_read_lock(&nmb->rwlock);
+	mem_used = nmb->mpool->memory_used;
+	ness_rwlock_read_unlock(&nmb->rwlock);
+
+	return mem_used;
 }
 
 uint32_t nmb_count(struct nmb *nmb)
@@ -123,13 +133,17 @@ void nmb_put(struct nmb *nmb,
 	if (type != MSG_DELETE)
 		size += val->size;
 
+	ness_rwlock_write_lock(&nmb->rwlock);
 	base = mempool_alloc_aligned(nmb->mpool, size);
+	ness_rwlock_write_unlock(&nmb->rwlock);
 	_nmb_entry_pack(base, msn, type, key, val, xidpair);
+
+	/* pma is thread-safe */
 	pma_insert(nmb->pma,
 	           (void*)base,
 	           _nmb_entry_key_compare,
 	           (void*)nmb);
-	nmb->count++;
+	atomic_fetch_and_inc(&nmb->count);
 }
 
 /*

@@ -27,17 +27,15 @@ void hdr_free(struct hdr *hdr)
 
 NID hdr_next_nid(struct hdr *hdr)
 {
-	atomic_fetch_and_inc(&hdr->last_nid);
-	nassert(hdr->last_nid >= NID_START);
+	NID nid = atomic_fetch_and_inc(&hdr->last_nid);
+	nassert(nid >= NID_START);
 
-	return hdr->last_nid;
+	return nid;
 }
 
 MSN hdr_next_msn(struct hdr *hdr)
 {
-	atomic_fetch_and_inc(&hdr->last_msn);
-
-	return hdr->last_msn;
+	return atomic_fetch_and_inc(&hdr->last_msn);
 }
 
 /**********************************************************************

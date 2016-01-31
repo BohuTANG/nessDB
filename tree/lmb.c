@@ -28,7 +28,21 @@ struct lmb *lmb_new(struct tree_options *opts)
 	lmb->opts = opts;
 	lmb->count = 0;
 
+	ness_mutex_init(&lmb->mtx);
+	ness_rwlock_init(&lmb->rwlock, &lmb->mtx);
+
 	return lmb;
+}
+
+void lmb_free(struct lmb *lmb)
+{
+	if (!lmb)
+		return;
+
+	pma_free(lmb->pma);
+	mempool_free(lmb->mpool);
+	ness_mutex_destroy(&lmb->mtx);
+	xfree(lmb);
 }
 
 void lmb_put(struct lmb *lmb,
@@ -38,6 +52,7 @@ void lmb_put(struct lmb *lmb,
              struct msg *val,
              struct txnid_pair *xidpair)
 {
+	int ret;
 	(void)msn;
 	char *base;
 	uint32_t size;
@@ -45,12 +60,14 @@ void lmb_put(struct lmb *lmb,
 	struct pma_coord coord;
 
 	struct leafentry kle = {.keylen = key->size, .keyp = key->data};
-	int ret = pma_find_zero(lmb->pma,
-	                        (void*)&kle,
-	                        _lmb_entry_key_compare,
-	                        (void*)lmb,
-	                        (void**)&le,
-	                        &coord);
+
+	ness_rwlock_write_lock(&lmb->rwlock);
+	ret = pma_find_zero(lmb->pma,
+	                    (void*)&kle,
+	                    _lmb_entry_key_compare,
+	                    (void*)lmb,
+	                    (void**)&le,
+	                    &coord);
 
 	if (ret == NESS_NOTFOUND) {
 		size = (LEAFENTRY_SIZE + key->size);
@@ -99,26 +116,23 @@ void lmb_put(struct lmb *lmb,
 		xr->valp = base;
 	}
 	le->num_pxrs++;
+	ness_rwlock_write_unlock(&lmb->rwlock);
 }
 
 uint32_t lmb_memsize(struct lmb *lmb)
 {
-	return lmb->mpool->memory_used;
+	uint32_t mem_used = 0U;
+
+	ness_rwlock_read_lock(&lmb->rwlock);
+	mem_used = lmb->mpool->memory_used;
+	ness_rwlock_read_unlock(&lmb->rwlock);
+
+	return mem_used;
 }
 
 uint32_t lmb_count(struct lmb *lmb)
 {
 	return lmb->count;
-}
-
-void lmb_free(struct lmb *lmb)
-{
-	if (!lmb)
-		return;
-
-	pma_free(lmb->pma);
-	mempool_free(lmb->mpool);
-	xfree(lmb);
 }
 
 /*

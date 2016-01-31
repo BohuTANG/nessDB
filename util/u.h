@@ -42,5 +42,6 @@
 #include "xtable.h"
 #include "snappy.h"
 #include "histogram.h"
+#include "random.h"
 
 #endif /* nessDB_U_H_ */

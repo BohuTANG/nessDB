@@ -16,19 +16,19 @@
 
 /* transaction state */
 typedef enum txn_state {
-	TX_LIVE,
-	TX_PREPARING,
-	TX_COMMITTING,
-	TX_ABORTINT,
+    TX_LIVE,
+    TX_PREPARING,
+    TX_COMMITTING,
+    TX_ABORTINT,
 } TXNSTATE;
 
 /* txn */
 #define TXNID_NONE (0)
 typedef enum {
-	TXN_ISO_SERIALIZABLE = 0,
-	TXN_ISO_REPEATABLE = 1,
-	TXN_ISO_READ_COMMITTED = 2,
-	TXN_ISO_READ_UNCOMMITTED = 3
+    TXN_ISO_SERIALIZABLE = 0,
+    TXN_ISO_REPEATABLE = 1,
+    TXN_ISO_READ_COMMITTED = 2,
+    TXN_ISO_READ_UNCOMMITTED = 3
 } TXN_ISOLATION_TYPE;
 
 /*
@@ -41,9 +41,9 @@ types of snapshots that can be taken by a txn
 			used for READ COMMITTED
 */
 typedef enum {
-	TXN_SNAPSHOT_NONE = 0,
-	TXN_SNAPSHOT_ROOT = 1,
-	TXN_SNAPSHOT_CHILD = 2
+    TXN_SNAPSHOT_NONE = 0,
+    TXN_SNAPSHOT_ROOT = 1,
+    TXN_SNAPSHOT_CHILD = 2
 } TXN_SNAPSHOT_TYPE;
 
 

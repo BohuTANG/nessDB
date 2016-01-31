@@ -22,6 +22,10 @@ void inter_new(struct hdr *hdr,
 	node->nid = nid;
 	node->height = height;
 	ness_mutex_init(&node->attr.mtx);
+
+	ness_mutex_init(&node->mtx);
+	ness_rwlock_init(&node->rwlock, &node->mtx);
+
 	node->n_children = children;
 	node->layout_version = hdr->layout_version;
 
@@ -94,7 +98,10 @@ int inter_put(struct node * node, struct bt_cmd * cmd)
 	        cmd->key,
 	        cmd->val,
 	        &cmd->xidpair);
+
+	ness_mutex_lock(&node->attr.mtx);
 	node->msn = cmd->msn > node->msn ? cmd->msn : node->msn;
+	ness_mutex_unlock(&node->attr.mtx);
 	node_set_dirty(node);
 
 	return NESS_OK;

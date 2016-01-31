@@ -17,12 +17,12 @@ struct msg {
 
 /* msg type */
 typedef enum {
-	MSG_NONE = 0,
-	MSG_INSERT = 1,
-	MSG_DELETE = 2,
-	MSG_UPDATE = 3,
-	MSG_COMMIT = 4,
-	MSG_ABORT = 5
+    MSG_NONE = 0,
+    MSG_INSERT = 1,
+    MSG_DELETE = 2,
+    MSG_UPDATE = 3,
+    MSG_COMMIT = 4,
+    MSG_ABORT = 5
 } msgtype_t;
 
 struct txnid_pair {

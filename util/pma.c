@@ -18,9 +18,9 @@
  *	- return -1 when e > array[max]
  */
 static inline int _array_find_greater_than(struct array *a,
-		void *k,
-		compare_func f,
-		void *extra)
+        void *k,
+        compare_func f,
+        void *extra)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -51,9 +51,9 @@ static inline int _array_find_greater_than(struct array *a,
  *	- return max idx when array[max] < e
  */
 static inline int _array_find_less_than(struct array *a,
-		void *k,
-		compare_func f,
-		void *extra)
+                                        void *k,
+                                        compare_func f,
+                                        void *extra)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -81,10 +81,10 @@ static inline int _array_find_less_than(struct array *a,
  *	- find the 1st idx which e == array[idx]
  */
 static inline int _array_find_zero(struct array *a,
-		void *k,
-		compare_func f,
-		void *extra,
-		int *found)
+                                   void *k,
+                                   compare_func f,
+                                   void *extra,
+                                   int *found)
 {
 	int lo = 0;
 	int hi = a->used - 1;
@@ -113,11 +113,8 @@ static inline void _array_extend(struct array *a)
 {
 	if ((a->used + 1) >= a->size) {
 		/* make sure no readers on this array */
-		ness_spinwlock(&a->w_spinlock);
-		ness_spinlock_waitfree(&a->r_spinlock);
 		a->size *= 2;
 		a->elems = xrealloc(a->elems, a->size * sizeof(void*));
-		ness_spinwunlock(&a->w_spinlock);
 	}
 }
 
@@ -130,6 +127,7 @@ static void _array_insertat(struct array *a, void *e, int i)
 		         a->elems + i,
 		         (a->used - i) * sizeof(void*));
 	}
+
 	a->elems[i] = e;
 	a->used++;
 }
@@ -275,14 +273,13 @@ void pma_insert(struct pma *p, void *k, compare_func f, void *extra)
 	int array_used = 0;
 	struct array *arr;
 
-try_again:
 	ness_rwlock_read_lock(&p->slots_rwlock);
 	slot_idx  = _slots_find_lowerbound(p, k, f, extra);
 	arr = p->slots[slot_idx];
-	if (!ness_rwlock_try_write_lock(&arr->rwlock)) {
-		ness_rwlock_read_unlock(&p->slots_rwlock);
-		goto try_again;
-	}
+
+	 ness_spinwlock(&arr->w_spinlock);
+	 ness_spinlock_waitfree(&arr->r_spinlock);
+
 	array_used = arr->used;
 	array_idx = _array_find_greater_than(arr, k, f, extra);
 
@@ -294,7 +291,7 @@ try_again:
 
 	_array_insertat(arr, k, array_idx);
 	atomic_fetch_and_inc(&p->count);
-	ness_rwlock_write_unlock(&arr->rwlock);
+	 ness_spinwunlock(&arr->w_spinlock);
 	ness_rwlock_read_unlock(&p->slots_rwlock);
 
 	if ((array_used + 1) > UNROLLED_LIMIT)

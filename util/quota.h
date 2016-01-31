@@ -8,9 +8,9 @@
 #define nessDB_QUOTA_H_
 
 typedef enum quota_state {
-	QUOTA_STATE_NONE,
-	QUOTA_STATE_NEED_EVICT,
-	QUOTA_STATE_MUST_EVICT,
+    QUOTA_STATE_NONE,
+    QUOTA_STATE_NEED_EVICT,
+    QUOTA_STATE_MUST_EVICT,
 } QUOTA_STATE;
 
 struct quota {

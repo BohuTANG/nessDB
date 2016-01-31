@@ -23,6 +23,9 @@ void leaf_new(struct hdr *hdr,
 	node->nid = nid;
 	node->height = height;
 	ness_mutex_init(&node->attr.mtx);
+	ness_mutex_init(&node->mtx);
+	ness_rwlock_init(&node->rwlock, &node->mtx);
+
 	node->n_children = children;
 	node->layout_version = hdr->layout_version;
 

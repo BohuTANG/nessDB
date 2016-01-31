@@ -4,8 +4,6 @@
  *
  */
 
-#include "db.h"
-#include "tx.h"
 
 /* TODO */
 /**

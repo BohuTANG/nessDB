@@ -13,4 +13,5 @@ U_OBJS = ./util/snappy.o    \
          ./util/vfs.o       \
          ./util/pma.o       \
          ./util/msg.o       \
+         ./util/random.o       \
 

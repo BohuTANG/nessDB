@@ -11,36 +11,36 @@ int node_is_root(struct node *node)
 {
 	int ret;
 
-	ness_mutex_lock(&node->attr.mtx);
+	ness_rwlock_read_lock(&node->rwlock);
 	ret = (int)(node->isroot == 1);
-	ness_mutex_unlock(&node->attr.mtx);
+	ness_rwlock_read_unlock(&node->rwlock);
 
 	return ret;
 }
 
 void node_set_dirty(struct node *node)
 {
-	ness_mutex_lock(&node->attr.mtx);
+	ness_rwlock_write_lock(&node->rwlock);
 	if (!node->dirty)
 		ness_gettime(&node->modified);
 	node->dirty = 1;
-	ness_mutex_unlock(&node->attr.mtx);
+	ness_rwlock_write_unlock(&node->rwlock);
 }
 
 void node_set_nondirty(struct node *node)
 {
-	ness_mutex_lock(&node->attr.mtx);
+	ness_rwlock_write_lock(&node->rwlock);
 	node->dirty = 0;
-	ness_mutex_unlock(&node->attr.mtx);
+	ness_rwlock_write_unlock(&node->rwlock);
 }
 
 int node_is_dirty(struct node *node)
 {
 	int ret;
 
-	ness_mutex_lock(&node->attr.mtx);
+	ness_rwlock_read_lock(&node->rwlock);
 	ret = (int)(node->dirty == 1);
-	ness_mutex_unlock(&node->attr.mtx);
+	ness_rwlock_read_unlock(&node->rwlock);
 
 	return ret;
 }

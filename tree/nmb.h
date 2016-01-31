@@ -36,6 +36,8 @@ struct nmb {
 	struct pma *pma;
 	struct mempool *mpool;
 	struct tree_options *opts;
+	ness_mutex_t mtx;
+	ness_rwlock_t rwlock;
 };
 
 struct nmb *nmb_new(struct tree_options *opts);

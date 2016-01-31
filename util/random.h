@@ -20,5 +20,3 @@ char *rnd_str(struct random*, int len);
 void rnd_free(struct random*);
 
 #endif /* nessDB_RANDOM_H_ */
-
-

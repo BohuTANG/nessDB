@@ -20,18 +20,13 @@ struct quota *quota_new(uint64_t limit)
 
 int quota_add(struct quota *q, uint64_t v)
 {
-	ness_mutex_lock(&q->lock);
-	q->used += v;
-	ness_mutex_unlock(&q->lock);
-
+	atomic_fetch_and_add(&q->used, v);
 	return NESS_OK;
 }
 
 int quota_remove(struct quota *q, uint64_t v)
 {
-	ness_mutex_lock(&q->lock);
-	q->used -= v;
-	ness_mutex_unlock(&q->lock);
+	atomic_fetch_and_sub(&q->used, v);
 	ness_cond_signal(&q->cond);
 
 	return NESS_OK;
@@ -39,7 +34,9 @@ int quota_remove(struct quota *q, uint64_t v)
 
 int quota_wait(struct quota *q)
 {
+	ness_mutex_lock(&q->lock);
 	ness_cond_wait(&q->cond, &q->lock);
+	ness_mutex_unlock(&q->lock);
 
 	return NESS_OK;
 }
@@ -54,15 +51,14 @@ int quota_signal(struct quota *q)
 
 QUOTA_STATE quota_state(struct quota *q)
 {
+	uint64_t used = atomic_fetch_and_add(&q->used, 0);
 	QUOTA_STATE state = QUOTA_STATE_NONE;
 
-	ness_mutex_lock(&q->lock);
-	if (q->used >= q->hw_value)
+	if (used >= q->hw_value)
 		state = QUOTA_STATE_NEED_EVICT;
 
-	if (q->used >= q->limit)
+	if (used >= q->limit)
 		state = QUOTA_STATE_MUST_EVICT;
-	ness_mutex_unlock(&q->lock);
 
 	return state;
 }

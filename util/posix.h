@@ -202,8 +202,8 @@ static inline int ness_rwlock_try_read_lock(struct rwlock *rwlock)
 
 	ness_mutex_lock(rwlock->mtx);
 	users = rwlock->writer
-		+ rwlock->want_writer;
-	if(users == 0)
+	        + rwlock->want_writer;
+	if (users == 0)
 		rwlock->reader++;
 	ness_mutex_unlock(rwlock->mtx);
 
@@ -240,10 +240,10 @@ static inline int ness_rwlock_try_write_lock(struct rwlock *rwlock)
 
 	ness_mutex_lock(rwlock->mtx);
 	users = rwlock->reader
-		+ rwlock->want_reader
-		+ rwlock->writer
-		+ rwlock->want_writer;
-	if(users == 0)
+	        + rwlock->want_reader
+	        + rwlock->writer
+	        + rwlock->want_writer;
+	if (users == 0)
 		rwlock->writer++;
 	ness_mutex_unlock(rwlock->mtx);
 
@@ -269,9 +269,9 @@ static inline int ness_rwlock_users(struct rwlock *rwlock)
 
 	ness_mutex_lock(rwlock->mtx);
 	users = rwlock->reader
-		+ rwlock->want_reader
-		+ rwlock->writer
-		+ rwlock->want_writer;
+	        + rwlock->want_reader
+	        + rwlock->writer
+	        + rwlock->want_writer;
 	ness_mutex_unlock(rwlock->mtx);
 
 	return users;

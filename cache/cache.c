@@ -93,12 +93,14 @@ void cpair_list_remove(struct cpair_list *list, struct cpair *pair)
 	if (list->head == pair)
 		list->head = pair->list_next;
 
+	if (list->last == pair)
+		list->last = pair->list_prev;
+
 	if (pair->list_next)
 		pair->list_next->list_prev = pair->list_prev;
 
 	if (pair->list_prev)
 		pair->list_prev->list_next = pair->list_next;
-
 }
 
 /*
@@ -195,12 +197,14 @@ void _run_eviction(struct cache *c)
 		int users = 0;
 
 		/* barriered by clock READ lock */
-	ness_rwlock_read_lock(&cf->clock_lock);
-	users = ness_rwlock_users(&cur->value_lock);
-	nxt = cur->list_next;
-	ness_rwlock_read_unlock(&cf->clock_lock);
+		ness_rwlock_read_lock(&cf->clock_lock);
+		users = ness_rwlock_users(&cur->value_lock);
+		nxt = cur->list_next;
+		ness_rwlock_read_unlock(&cf->clock_lock);
 		if (users == 0) {
 			_try_evict_pair(cf, cur);
+		} else {
+			usleep(100);
 		}
 		cur = nxt;
 	}
@@ -252,8 +256,6 @@ void _cpair_insert(struct cache_file *cf, struct cpair *p)
 void _make_room(struct cache *c)
 {
 	/* check cache limits, if reaches we should slow down */
-	int allow_delay = 1;
-
 	while (1) {
 		QUOTA_STATE state = quota_state(c->quota);
 
@@ -263,10 +265,7 @@ void _make_room(struct cache *c)
 			quota_wait(c->quota);
 			break;
 		case QUOTA_STATE_NEED_EVICT:
-			if (allow_delay) {
-				usleep(100);
-				allow_delay = 0;
-			}
+			usleep(100);
 			break;
 		case QUOTA_STATE_NONE:
 			return;
@@ -315,14 +314,14 @@ TRY_PIN:
 			}
 			ness_rwlock_write_lock(&p->value_lock);
 		} else {
-			if (ness_rwlock_blocked_writers(&p->value_lock)) {
+			if (ness_rwlock_writers(&p->value_lock)) {
 				xtable_slot_unlocked(cf->xtable, k);
 				goto TRY_PIN;
 			}
 			ness_rwlock_read_lock(&p->value_lock);
 		}
 
-		nassert(p->pintype == L_NONE);
+		nassert(p->pintype != L_WRITE);
 		*n = p->v;
 		p->pintype = locktype;
 		xtable_slot_unlocked(cf->xtable, k);
@@ -408,8 +407,6 @@ void cache_unpin(struct cache_file *cf, struct cpair *p)
 	struct cache *c = cf->cache;
 
 	nassert(p);
-	nassert(p->pintype != L_NONE);
-
 	xtable_slot_locked(cf->xtable, hash);
 	old_nodesz = p->attr.nodesz;
 	new_nodesz = cf->tree_opts->node_size(p->v);

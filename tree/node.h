@@ -13,15 +13,15 @@
 
 /* lock type */
 enum lock_type {
-	L_NONE = 0,
-	L_READ = 1,
-	L_WRITE = 2,
+    L_NONE = 0,
+    L_READ = 1,
+    L_WRITE = 2,
 };
 
 enum node_state {
-	FISSIBLE,
-	FLUSHBLE,
-	STABLE
+    FISSIBLE,
+    FLUSHBLE,
+    STABLE
 };
 
 struct ancestors {
@@ -75,6 +75,9 @@ struct node {
 
 	struct tree_options *opts;
 	struct node_operations *i;
+
+	ness_mutex_t mtx;
+	ness_rwlock_t rwlock;
 };
 
 struct node_operations {
