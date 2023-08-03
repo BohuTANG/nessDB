@@ -2,7 +2,7 @@ MAJOR=3
 MINOR=1
 PLATFORM_LDFLAGS=-pthread
 PLATFORM_SHARED_CFLAGS=-fPIC
-PLATFORM_SHARED_LDFLAGS=-c -W -Wall -Werror -std=c99
+PLATFORM_SHARED_LDFLAGS=-c -W -Wall -Werror -std=gnu2x
 
 ifdef ENABLE_ASAN
 		WITH_SAN = -fsanitize=address -fno-omit-frame-pointer

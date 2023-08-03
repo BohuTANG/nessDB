@@ -33,7 +33,7 @@ struct pma {
 	ness_rwlock_t slots_rwlock;
 };
 
-struct pma *pma_new();
+struct pma *pma_new(int);
 void pma_free(struct pma *);
 
 void pma_insert(struct pma *, void *, compare_func f, void *);
