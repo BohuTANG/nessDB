@@ -1428,13 +1428,13 @@ static inline int compress(struct snappy_env *env, struct source *reader,
                            struct sink *writer)
 {
 	int err;
-	size_t written = 0;
+//	size_t written = 0;
 	int N = available(reader);
 	char ulength[kmax32];
 	char *p = varint_encode32(ulength, N);
 
 	append(writer, ulength, p - ulength);
-	written += (p - ulength);
+//	written += (p - ulength);
 
 	while (N > 0) {
 		/* Get next block to compress (without copying if possible) */
@@ -1490,7 +1490,7 @@ static inline int compress(struct snappy_env *env, struct source *reader,
 		char *end = compress_fragment(fragment, fragment_size,
 		                              dest, table, table_size);
 		append(writer, dest, end - dest);
-		written += (end - dest);
+//		written += (end - dest);
 
 		N -= num_to_read;
 		skip(reader, pending_advance);
